@@ -13,22 +13,22 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
 ]
-name = "nomad-nomad-dtu-nanolab-plugin"
+name = "nomad-dtu-nanolab-plugin"
 description = "A plugin for the schemas, parsers,"
 version = "0.1.0"
 readme = "README.rst"
 requires-python = ">=3.9"
 authors = [
-    { name = "Lena Mittman", email = "LeAnMi@users.noreply.github.com" },
+    { name = "Lena Mittman" },
 ]
 maintainers = [
-    { name = "Lena Mittman", email = "LeAnMi@users.noreply.github.com" },
+    { name = "Lena Mittman" },
 ]
 license = { file = "LICENSE" }
 dependencies = ["nomad-lab>=1.2.2dev578"]
 
 [project.urls]
-Repository = "https://github.com/DTU-Nanolab-materials-discovery/nomad-nomad-dtu-nanolab-plugin"
+Repository = "https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin"
 
 [project.optional-dependencies]
 dev = ["ruff", "pytest", "structlog"]
@@ -74,7 +74,7 @@ select = [
     "UP",
     # isort
     "I",
-    # pylint 
+    # pylint
     "PL",
 ]
 
@@ -108,7 +108,6 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [project.entry-points.'nomad.plugin']
-myparser = "nomad_nomad_dtu_nanolab_plugin.parsers:myparser"
-mypackage = "nomad_nomad_dtu_nanolab_plugin.schema_packages:mypackage"
-
-myapp = "nomad_nomad_dtu_nanolab_plugin.apps:myapp"
+myparser = "nomad_dtu_nanolab_plugin.parsers:myparser"
+mypackage = "nomad_dtu_nanolab_plugin.schema_packages:mypackage"
+myapp = "nomad_dtu_nanolab_plugin.apps:myapp"
