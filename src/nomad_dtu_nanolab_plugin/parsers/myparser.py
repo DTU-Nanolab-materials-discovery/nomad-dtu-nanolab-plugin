@@ -1,6 +1,4 @@
-from typing import (
-    TYPE_CHECKING,
-)
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import (
@@ -15,7 +13,7 @@ from nomad.datamodel.results import Material, Results
 from nomad.parsing.parser import MatchingParser
 
 configuration = config.get_plugin_entry_point(
-    'nomad_nomad_dtu_nanolab_plugin.parsers:myparser'
+    'nomad_dtu_nanolab_plugin.parsers:myparser'
 )
 
 

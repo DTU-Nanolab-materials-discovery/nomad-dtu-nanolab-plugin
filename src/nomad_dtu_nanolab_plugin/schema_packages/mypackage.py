@@ -1,6 +1,4 @@
-from typing import (
-    TYPE_CHECKING,
-)
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import (
@@ -12,11 +10,12 @@ if TYPE_CHECKING:
 
 from nomad.config import config
 from nomad.datamodel.data import Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
 from nomad.metainfo import Quantity, SchemaPackage
 
 configuration = config.get_plugin_entry_point(
-    'nomad_nomad_dtu_nanolab_plugin.schema_packages:mypackage'
+    'nomad_dtu_nanolab_plugin.schema_packages:mypackage'
 )
 
 m_package = SchemaPackage()

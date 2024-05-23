@@ -6,7 +6,7 @@ class MyParserEntryPoint(ParserEntryPoint):
     parameter: int = Field(0, description='Custom configuration parameter')
 
     def load(self):
-        from nomad_nomad_dtu_nanolab_plugin.parsers.myparser import MyParser
+        from nomad_dtu_nanolab_plugin.parsers.myparser import MyParser
 
         return MyParser(**self.dict())
 
