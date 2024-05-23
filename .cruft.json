@@ -1,0 +1,26 @@
+{
+  "template": "https://github.com/FAIRmat-NFDI/cookiecutter-nomad-plugin",
+  "commit": "9fd908197243621152ebf13626786c92df784fd0",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "full_name": "Lena Mittman",
+      "email": "LeAnMi@users.noreply.github.com",
+      "github_username": "DTU-Nanolab-materials-discovery",
+      "plugin_name": "nomad-dtu-nanolab-plugin",
+      "module_name": "nomad_dtu_nanolab_plugin",
+      "short_description": "A plugin for the schemas, parsers,",
+      "version": "0.1.0",
+      "license": "MIT",
+      "include_schema_package": true,
+      "include_normalizer": false,
+      "include_parser": true,
+      "include_app": true,
+      "_copy_without_render": [
+        "*.html"
+      ],
+      "_template": "https://github.com/FAIRmat-NFDI/cookiecutter-nomad-plugin"
+    }
+  },
+  "directory": null
+}
