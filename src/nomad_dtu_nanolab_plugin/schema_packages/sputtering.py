@@ -23,9 +23,11 @@ from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad_material_processing.physical_vapor_deposition import (
-    PVDSource, PVDStep, SputterDeposition)
-from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
-                                                        GasFlow)
+    PVDSource,
+    PVDStep,
+    SputterDeposition,
+)
+from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
 
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
 

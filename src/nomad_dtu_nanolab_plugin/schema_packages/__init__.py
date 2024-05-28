@@ -6,8 +6,7 @@ class MySchemaPackageEntryPoint(SchemaPackageEntryPoint):
     parameter: int = Field(0, description='Custom configuration parameter')
 
     def load(self):
-        from nomad_dtu_nanolab_plugin.schema_packages.mypackage import \
-            m_package
+        from nomad_dtu_nanolab_plugin.schema_packages.mypackage import m_package
 
         return m_package
 
@@ -21,8 +20,7 @@ mypackage = MySchemaPackageEntryPoint(
 class SputteringEntryPoint(SchemaPackageEntryPoint):
 
     def load(self):
-        from nomad_dtu_nanolab_plugin.schema_packages.sputtering import \
-            m_package
+        from nomad_dtu_nanolab_plugin.schema_packages.sputtering import m_package
 
         return m_package
 
