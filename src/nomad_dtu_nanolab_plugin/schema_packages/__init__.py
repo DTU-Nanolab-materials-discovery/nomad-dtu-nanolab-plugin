@@ -18,7 +18,6 @@ mypackage = MySchemaPackageEntryPoint(
 
 
 class SputteringEntryPoint(SchemaPackageEntryPoint):
-
     def load(self):
         from nomad_dtu_nanolab_plugin.schema_packages.sputtering import m_package
 
@@ -32,7 +31,6 @@ sputtering = SputteringEntryPoint(
 
 
 class GasEntryPoint(SchemaPackageEntryPoint):
-
     def load(self):
         from nomad_dtu_nanolab_plugin.schema_packages.gas import m_package
 
@@ -42,4 +40,43 @@ class GasEntryPoint(SchemaPackageEntryPoint):
 gas = GasEntryPoint(
     name='Gas',
     description='Schema package defined for gas.',
+)
+
+
+class TargetEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.target import m_package
+
+        return m_package
+
+
+target = TargetEntryPoint(
+    name='Targets',
+    description='Schema package defined for targets.',
+)
+
+
+class SubstrateEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.substrate import m_package
+
+        return m_package
+
+
+substrate = SubstrateEntryPoint(
+    name='Substrate',
+    description='Schema package defined for substrate.',
+)
+
+
+class InstrumentEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.instrument import m_package
+
+        return m_package
+
+
+instrument = InstrumentEntryPoint(
+    name='Instrument',
+    description='Schema package defined for instrument.',
 )
