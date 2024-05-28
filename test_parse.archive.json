@@ -1,0 +1,170 @@
+{
+  "data": {
+    "m_def": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+    "name": "Test sintering",
+    "datetime": "2024-05-28T11:14:54.630522+00:00"
+  },
+  "workflow2": {
+    "name": "Test sintering"
+  },
+  "metadata": {
+    "entry_name": "test_sintering.archive.yaml",
+    "mainfile": "/home/hampusnasstrom/repositories/dtu/nomad-dtu-nanolab-plugin/tests/data/test_sintering.archive.yaml",
+    "text_search_contents": [
+      "Test sintering"
+    ],
+    "n_quantities": 14,
+    "quantities": [
+      "",
+      "data",
+      "data.datetime",
+      "data.name",
+      "metadata",
+      "metadata.entry_name",
+      "metadata.mainfile",
+      "metadata.quantities",
+      "metadata.section_defs",
+      "metadata.section_defs.definition_id",
+      "metadata.section_defs.definition_qualified_name",
+      "metadata.section_defs.used_directly",
+      "metadata.sections",
+      "results",
+      "results.eln",
+      "results.eln.methods",
+      "results.eln.names",
+      "results.eln.sections",
+      "results.properties",
+      "workflow2",
+      "workflow2.name"
+    ],
+    "sections": [
+      "nomad.datamodel.datamodel.EntryArchive",
+      "nomad.datamodel.datamodel.EntryMetadata",
+      "nomad.datamodel.metainfo.workflow.Workflow",
+      "nomad.datamodel.results.ELN",
+      "nomad.datamodel.results.Properties",
+      "nomad.datamodel.results.Results",
+      "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering"
+    ],
+    "section_defs": [
+      {
+        "definition_qualified_name": "nomad.datamodel.data.ArchiveSection",
+        "definition_id": "7047cbff9980abff17cce4b1b6b0d1c783505b7f",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.data.EntryData",
+        "definition_id": "538f52fd8d52b29372066f878319c6aeb03b74d2",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.datamodel.EntryArchive",
+        "definition_id": "4f8220ef0081f34a08e0cb211ca52e2ee7cc4d1b",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.datamodel.EntryMetadata",
+        "definition_id": "08e24de48352035bcc932ed9934875ed9b10188e",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.Activity",
+        "definition_id": "fc2735d177bf36f9718ca66a764a56fc0c6200a0",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.BaseSection",
+        "definition_id": "add2edfa25a61ff3bbfdebacc870181f64f41634",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.Process",
+        "definition_id": "8d81e1f95c60f39a6a8c9f954143a55e6f4c984c",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.SynthesisMethod",
+        "definition_id": "f0ebe43a4807c4ec9639d70d2e973178de20c4f5",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.workflow.Task",
+        "definition_id": "ac62fdff74f54fd477531446ca111c0dd9df6ba2",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.workflow.Workflow",
+        "definition_id": "fc65ae24157492e422afe61173a71403fc5e1fd7",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.results.ELN",
+        "definition_id": "eeed330bd18d40f3a2a00cc35ba6f58808d0c543",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.results.Properties",
+        "definition_id": "f6d62b2664a0c37e0c82d4cb570e5e177e445e05",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.results.Results",
+        "definition_id": "d77c26594ec0501fb0de8daaa4d7b25d54b9e0cf",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition_id": "a37ccf0e15559315b21c54ec9103d09e4be0895a",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_material_processing.SampleDeposition",
+        "definition_id": "0f3048edc848ed4909c321968347d4cb30d022d0",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad_material_processing.physical_vapor_deposition.PhysicalVaporDeposition",
+        "definition_id": "89a1cc606d3911723d601ef89511119496b12639",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad_material_processing.physical_vapor_deposition.SputterDeposition",
+        "definition_id": "2d230c67d64cb0f1d81db27a01ed2f8891052173",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_material_processing.vapor_deposition.VaporDeposition",
+        "definition_id": "125c081b2ab77aa6a1b6e0105a23240a4ca252a2",
+        "used_directly": false
+      }
+    ],
+    "search_quantities": [
+      {
+        "id": "data.name#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.BaseSection.name",
+        "path_archive": "data.name",
+        "str_value": "Test sintering"
+      },
+      {
+        "id": "data.datetime#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.Activity.datetime",
+        "path_archive": "data.datetime",
+        "datetime_value": "2024-05-28T11:14:54.630522+00:00"
+      }
+    ]
+  },
+  "results": {
+    "properties": {},
+    "eln": {
+      "sections": [
+        "DTUSputtering"
+      ],
+      "names": [
+        "Test sintering"
+      ],
+      "methods": [
+        "Sputter Deposition"
+      ]
+    }
+  }
+}
