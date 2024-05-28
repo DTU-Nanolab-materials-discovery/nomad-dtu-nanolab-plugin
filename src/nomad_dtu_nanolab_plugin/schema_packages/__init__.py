@@ -25,7 +25,7 @@ class SputteringEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-sputtering = MySchemaPackageEntryPoint(
+sputtering = SputteringEntryPoint(
     name='Sputtering',
     description='Schema package defined for sputtering.',
 )
@@ -39,7 +39,7 @@ class GasEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-gas = MySchemaPackageEntryPoint(
+gas = GasEntryPoint(
     name='Gas',
     description='Schema package defined for gas.',
 )
