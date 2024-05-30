@@ -22,9 +22,11 @@ import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
+from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
+                                                        GasFlow)
 from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
-from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
+from nomad_material_processing.vapor_deposition.pvd.sputtering import \
+    SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -45,12 +47,12 @@ class DTUsamples(CompositeSystemReference, ArchiveSection):
     Substrate_position_x = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
-        unit='cm',
+        unit='m',
     )
     Substrate_position_y = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
-        unit='cm',
+        unit='m',
     )
     method_of_contact = Quantity(
         type=MEnum(['clamps', 'frame', 'other']),
@@ -87,7 +89,7 @@ class Chamber(ArchiveSection):
     total_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
-        unit='mtorr',
+        unit='kg/(m*s^2)',
     )
 
 
@@ -138,12 +140,12 @@ class SCracker(ArchiveSection):
     valve_frequency = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'Hz'},
-        unit='Hz',
+        unit='1/s',
     )
     S_partial_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
-        unit='mbar',
+        unit='kg/(m*s^2)',
     )
 
 
@@ -156,12 +158,12 @@ class Special(ArchiveSection):
     platen_temperature_ramp_rate = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC/minute'},
-        unit='degC/minute',
+        unit='kelvin/s',
     )
     target_ramp_rate = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W/second'},
-        unit='W/second',
+        unit='(kg*m^2)/s^4',
     )
     active_targets = Quantity(
         type=str,
@@ -174,7 +176,7 @@ class Special(ArchiveSection):
     total_deposition_rate = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'angstrom/s'},
-        unit='angstrom/s',
+        unit='m/s',
     )
 
 
@@ -230,7 +232,7 @@ class DTUsource(PVDSource, ArchiveSection):
     applied_power = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
-        unit='W',
+        unit='(kg*m^2)/s^3',
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -338,7 +340,7 @@ class EndOfProcess(ArchiveSection):
     time_in_chamber_after_ending_deposition = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minutes'},
-        unit='minutes',
+        unit='s',
     )
     chamber_purged = Quantity(
         type=MEnum(['yes', 'no']),
@@ -355,7 +357,7 @@ class AdjustedInstrumentParameters(ArchiveSection):
     platen_rotation = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
-        unit='degrees',
+        unit='rad',
     )
     stage_used = Quantity(
         type=MEnum(['heating', 'cooling']),
@@ -385,7 +387,7 @@ class DepositionParameters(ArchiveSection):
     sputter_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
-        unit='mtorr',
+        unit='kg/(m*s^2)',
     )
     material_space = Quantity(
         type=str,
@@ -394,12 +396,12 @@ class DepositionParameters(ArchiveSection):
     applied_power = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
-        unit='W',
+        unit='(kg*m^2)/s^3',
     )
     plasma_ignited_at = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
-        unit='W',
+        unit='(kg*m^2)/s^3',
     )
     power_type = Quantity(
         type=MEnum(['DC', 'RF']),
@@ -416,8 +418,8 @@ class DepositionParameters(ArchiveSection):
     )
     Ar_flow = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mslpm'},
-        unit='mslpm',
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm^3/min'},
+        unit='m^3/s',
     )
     H2S_in_Ar_flow = Quantity(
         type=np.float64,
@@ -428,10 +430,10 @@ class DepositionParameters(ArchiveSection):
         """,
         a_eln={
             'component': 'NumberEditQuantity',
-            'defaultDisplayUnit': 'mslpm',
+            'defaultDisplayUnit': 'cm^3/min',
             'label': 'H2S in Ar flow',
         },
-        unit='mslpm',
+        unit='m^3/s',
     )
     PH3_in_Ar_flow = Quantity(
         type=np.float64,
@@ -440,8 +442,12 @@ class DepositionParameters(ArchiveSection):
             the equivalent rate at a temperature of 0 °C (273.15 K) and a pressure of
             1 atm (101325 Pa).
         """,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mslpm'},
-        unit='mslpm',
+        a_eln={
+            'component': 'NumberEditQuantity',
+              'defaultDisplayUnit': 'cm^3/min',
+              'label': 'H2S in Ar flow',
+              },
+        unit='m^3/s',
     )
     heating_procedure_description = Quantity(
         type=str,
