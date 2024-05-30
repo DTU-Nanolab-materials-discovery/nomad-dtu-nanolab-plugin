@@ -58,8 +58,8 @@ class DTUSubstrate(CompositeSystem, Schema):
         description="""
             The doping of the substrate measured as the electrical resistivity.
         """,
-        a_eln={'component': 'NumberEditQuantity'},
-        unit='ohm*cm',
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'ohm*cm',},
+        unit='(kg*m^3)/(A^2*s^3)',
     )
     doping_elements = Quantity(
         type=str,
@@ -68,17 +68,17 @@ class DTUSubstrate(CompositeSystem, Schema):
     length = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
-        unit='mm',
+        unit='m',
     )
     width = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
-        unit='mm',
+        unit='m',
     )
     thickness = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
-        unit='mm',
+        unit='m',
     )
     substrate_history = Quantity(
         type=str,

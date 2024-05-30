@@ -74,6 +74,7 @@ class DTUTarget(CompositeSystem, Schema):
         type=np.float64,
         description='The time the target or cracker has been used in the system.',
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'min'},
+        unit='s',
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:

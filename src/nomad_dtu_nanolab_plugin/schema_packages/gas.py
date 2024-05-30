@@ -64,12 +64,12 @@ class DTUGasSupply(CompositeSystem, ArchiveSection):
     total_volume_consumption = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'liter'},
-        unit='liter',
+        unit='m^3',
     )
     time_used_gas = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minutes'},
-        unit='minutes',
+        unit='s',
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:

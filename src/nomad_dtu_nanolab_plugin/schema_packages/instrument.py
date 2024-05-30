@@ -49,12 +49,12 @@ class Purge(ArchiveSection):
     time_per_purge_cycles = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minutes'},
-        unit='minutes',
+        unit='s',
     )
     pressure_during_purge = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
-        unit='bar',
+        unit='kg/(m*s^2)',
     )
 
 
@@ -182,12 +182,12 @@ class TaurusSource(ArchiveSection):
     set_angle = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
-        unit='degrees',
+        unit='rad',
     )
     rotation = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
-        unit='degrees',
+        unit='rad',
     )
 
 
@@ -219,12 +219,12 @@ class Magkeeper3Source(ArchiveSection):
     set_angle = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
-        unit='degrees',
+        unit='rad',
     )
     rotation = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
-        unit='degrees',
+        unit='rad',
     )
 
 
@@ -256,12 +256,12 @@ class Magkeeper4Source(ArchiveSection):
     set_angle = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
-        unit='degrees',
+        unit='rad',
     )
     rotation = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
-        unit='degrees',
+        unit='rad',
     )
 
 
@@ -293,7 +293,7 @@ class SCrackerSource(ArchiveSection):
     set_angle = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
-        unit='degrees',
+        unit='rad',
     )
     S_cracker_extension_into_chamber = Quantity(
         type=np.float64,
@@ -314,12 +314,12 @@ class DTUInstrument(Instrument, Schema):
     time_used_chamber = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minutes'},
-        unit='minutes',
+        unit='s',
     )
     base_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
-        unit='bar',
+        unit='kg/(m*s^2)',
     )
     chamber_history = Quantity(
         type=str,
