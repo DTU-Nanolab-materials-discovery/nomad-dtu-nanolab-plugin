@@ -20,8 +20,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import Schema
+from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import CompositeSystem
-from nomad.metainfo import Datetime, MEnum, Package, Quantity, Section
+from nomad.metainfo import Datetime, Package, Quantity, Section
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
@@ -61,11 +62,11 @@ class DTUTarget(CompositeSystem, Schema):
     magkeeper_Target = Quantity(
         type=bool,
         default=True,
-        a_eln=ELNAnnotation(component='BoolEditQuantity'),
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
     target_history = Quantity(
         type=str,
-        a_eln={'component': 'RichTextEditQuantity'},
+        a_eln=ELNAnnotation(component=ELNComponentEnum.RichTextEditQuantity),
     )
     refill_or_mounting_date = Quantity(
         type=Datetime,
