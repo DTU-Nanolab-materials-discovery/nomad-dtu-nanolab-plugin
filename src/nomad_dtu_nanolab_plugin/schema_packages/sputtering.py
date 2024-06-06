@@ -77,9 +77,10 @@ class Chamber(ArchiveSection):
     """
 
     m_def = Section()
-    status_of_the_substrate_shutters = Quantity(
-        type=MEnum(['open', 'close']),
-        a_eln={'component': 'RadioEnumEditQuantity'},
+    shutters_open = Quantity(
+        type=bool,
+        default=False,
+        a_eln=ELNAnnotation(component='BoolEditQuantity'),
     )
     applied_RF_bias_platen = Quantity(
         type=np.float64,
@@ -217,9 +218,12 @@ class DTUsource(PVDSource, ArchiveSection):
     """
 
     m_def = Section()
-    status_of_the_source_shutter = Quantity(
-        type=MEnum(['open', 'close']),
+    source_shutter_open = Quantity(
+        type=bool,
+        default=False,
+        a_eln=ELNAnnotation(component='BoolEditQuantity'),
     )
+
     power_type = Quantity(
         type=MEnum(['RF', 'DC']),
         a_eln={'component': 'RadioEnumEditQuantity'},
@@ -343,8 +347,9 @@ class EndOfProcess(ArchiveSection):
         unit='s',
     )
     chamber_purged = Quantity(
-        type=MEnum(['yes', 'no']),
-        a_eln={'component': 'RadioEnumEditQuantity'},
+        type=bool,
+        default=False,
+        a_eln=ELNAnnotation(component='BoolEditQuantity'),                  
     )
 
 
@@ -364,8 +369,9 @@ class AdjustedInstrumentParameters(ArchiveSection):
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
     mask_used = Quantity(
-        type=MEnum(['yes', 'no']),
-        a_eln={'component': 'RadioEnumEditQuantity'},
+        type=bool,
+        default=False,
+        a_eln=ELNAnnotation(component='BoolEditQuantity'),
     )
     mask_description = Quantity(
         type=str,
