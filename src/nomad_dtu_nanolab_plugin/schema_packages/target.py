@@ -59,8 +59,9 @@ class DTUTarget(CompositeSystem, Schema):
         unit='m',
     )
     magkeeper_Target = Quantity(
-        type=MEnum(['yes', 'no']),
-        a_eln={'component': 'RadioEnumEditQuantity'},
+        type=bool,
+        default=True,
+        a_eln=ELNAnnotation(component='BoolEditQuantity'),
     )
     target_history = Quantity(
         type=str,
