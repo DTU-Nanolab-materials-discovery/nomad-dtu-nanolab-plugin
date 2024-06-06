@@ -48,7 +48,7 @@ class Purge(ArchiveSection):
     )
     time_per_purge_cycles = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minutes'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
     pressure_during_purge = Quantity(
@@ -313,7 +313,7 @@ class DTUInstrument(Instrument, Schema):
     )
     time_used_chamber = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minutes'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
     base_pressure = Quantity(

@@ -342,7 +342,7 @@ class EndOfProcess(ArchiveSection):
     )
     time_in_chamber_after_ending_deposition = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minutes'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
     chamber_purged = Quantity(
@@ -360,7 +360,7 @@ class AdjustedInstrumentParameters(ArchiveSection):
     m_def = Section()
     platen_rotation = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
     stage_used = Quantity(
@@ -423,7 +423,7 @@ class DepositionParameters(ArchiveSection):
     )
     Ar_flow = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm^3/min'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm^3/minute'},
         unit='m^3/s',
     )
     H2S_in_Ar_flow = Quantity(
@@ -435,7 +435,7 @@ class DepositionParameters(ArchiveSection):
         """,
         a_eln={
             'component': 'NumberEditQuantity',
-            'defaultDisplayUnit': 'cm^3/min',
+            'defaultDisplayUnit': 'cm^3/minute',
             'label': 'H2S in Ar flow',
         },
         unit='m^3/s',
@@ -449,7 +449,7 @@ class DepositionParameters(ArchiveSection):
         """,
         a_eln={
             'component': 'NumberEditQuantity',
-              'defaultDisplayUnit': 'cm^3/min',
+              'defaultDisplayUnit': 'cm^3/minute',
               'label': 'H2S in Ar flow',
               },
         unit='m^3/s',

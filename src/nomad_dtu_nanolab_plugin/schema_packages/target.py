@@ -75,7 +75,7 @@ class DTUTarget(CompositeSystem, Schema):
     time_used = Quantity(
         type=np.float64,
         description='The time the target or cracker has been used in the system.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minutes'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
 
