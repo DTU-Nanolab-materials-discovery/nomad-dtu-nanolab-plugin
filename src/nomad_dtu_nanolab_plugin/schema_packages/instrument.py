@@ -181,12 +181,12 @@ class TaurusSource(ArchiveSection):
     )
     set_angle = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
     rotation = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
 
@@ -218,12 +218,12 @@ class Magkeeper3Source(ArchiveSection):
     )
     set_angle = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
     rotation = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
 
@@ -255,12 +255,12 @@ class Magkeeper4Source(ArchiveSection):
     )
     set_angle = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
     rotation = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
 
@@ -292,7 +292,7 @@ class SCrackerSource(ArchiveSection):
     )
     set_angle = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degrees'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
     S_cracker_extension_into_chamber = Quantity(
