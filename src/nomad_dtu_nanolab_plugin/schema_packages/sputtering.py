@@ -450,7 +450,7 @@ class DepositionParameters(ArchiveSection):
         a_eln={
             'component': 'NumberEditQuantity',
               'defaultDisplayUnit': 'cm^3/minute',
-              'label': 'H2S in Ar flow',
+              'label': 'PH3 in Ar flow',
               },
         unit='m^3/s',
     )
