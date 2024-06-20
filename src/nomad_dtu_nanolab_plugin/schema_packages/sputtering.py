@@ -20,15 +20,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
-                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
-                                                        GasFlow)
+from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
 from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
-from nomad_material_processing.vapor_deposition.pvd.sputtering import \
-    SputterDeposition
+from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -93,7 +90,7 @@ class Chamber(ArchiveSection):
     )
     total_pressure = Quantity(
         type=np.float64,
-        default= 0.06797549112081999,
+        default= 5,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
     )
@@ -107,13 +104,11 @@ class Substrate(ArchiveSection):
     m_def = Section()
     set_point_temperature = Quantity(
         type=np.float64,
-        default= 300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
     corrected_real_temperature = Quantity(
         type=np.float64,
-        default = (0.905*set_point_temperature)+12,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
