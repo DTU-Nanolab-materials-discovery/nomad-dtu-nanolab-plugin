@@ -110,7 +110,6 @@ class Substrate(ArchiveSection):
     )
     corrected_real_temperature = Quantity(
         type=np.float64,
-        default = ((0.905*set_point_temperature)+12),
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
