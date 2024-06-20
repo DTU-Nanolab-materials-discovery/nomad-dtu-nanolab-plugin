@@ -20,7 +20,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.basesections import Instrument
+from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from nomad.datamodel.metainfo.basesections import (
+    CompositeSystem,
+    Instrument,
+)
 from nomad.metainfo import Datetime, Package, Quantity, Section, SubSection
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -190,7 +194,7 @@ class TaurusSource(ArchiveSection):
         unit='rad',
     )
     mounted_taret = Quantity(
-        type=DTUTarget,
+        type=CompositeSystem,
         a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
     )
 
