@@ -20,12 +20,15 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
+from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
+                                                        GasFlow)
 from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
-from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
+from nomad_material_processing.vapor_deposition.pvd.sputtering import \
+    SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
