@@ -190,8 +190,8 @@ class TaurusSource(ArchiveSection):
         unit='rad',
     )
     mounted_taret = Quantity(
-        type=DTUTarget
-        a_eln={'component': 'ReferenceEditQuantity'}
+        type=DTUTarget,
+        a_eln={'component': 'ReferenceEditQuantity'},
 
     )
 
