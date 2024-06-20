@@ -189,6 +189,11 @@ class TaurusSource(ArchiveSection):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
+    mounted_taret = Quantity(
+        type=DTUTarget
+        a_eln={'component': 'ReferenceEditQuantity'}
+
+    )
 
 
 class Magkeeper3Source(ArchiveSection):
