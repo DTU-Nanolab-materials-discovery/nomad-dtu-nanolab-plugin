@@ -55,6 +55,7 @@ class DTUsamples(CompositeSystemReference, ArchiveSection):
     )
     method_of_contact = Quantity(
         type=MEnum(['clamps', 'frame', 'other']),
+        default='clamps',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
 
@@ -83,11 +84,13 @@ class Chamber(ArchiveSection):
     )
     applied_RF_bias_platen = Quantity(
         type=np.float64,
+        default= 0
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
     )
     total_pressure = Quantity(
         type=np.float64,
+        default= 5
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
     )

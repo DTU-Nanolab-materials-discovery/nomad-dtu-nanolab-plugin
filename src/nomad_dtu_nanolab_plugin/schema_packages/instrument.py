@@ -191,8 +191,7 @@ class TaurusSource(ArchiveSection):
     )
     mounted_taret = Quantity(
         type=DTUTarget,
-        a_eln={'component': 'ReferenceEditQuantity'},
-
+        a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
     )
 
 
