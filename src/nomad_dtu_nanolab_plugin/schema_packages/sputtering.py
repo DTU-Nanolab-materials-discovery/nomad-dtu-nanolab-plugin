@@ -20,15 +20,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
-                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
-                                                        GasFlow)
+from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
 from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
-from nomad_material_processing.vapor_deposition.pvd.sputtering import \
-    SputterDeposition
+from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -58,7 +55,6 @@ class DTUsamples(CompositeSystemReference, ArchiveSection):
     )
     method_of_contact = Quantity(
         type=MEnum(['clamps', 'frame', 'other']),
-        default='clamps',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
 
@@ -87,13 +83,11 @@ class Chamber(ArchiveSection):
     )
     applied_RF_bias_platen = Quantity(
         type=np.float64,
-        default= 0,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
     )
     total_pressure = Quantity(
         type=np.float64,
-        default= 1,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
     )
@@ -107,13 +101,11 @@ class Substrate(ArchiveSection):
     m_def = Section()
     set_point_temperature = Quantity(
         type=np.float64,
-        default =300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
     corrected_real_temperature = Quantity(
         type=np.float64,
-        default = ((0.905*set_point_temperature)+12),
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
@@ -165,13 +157,11 @@ class Special(ArchiveSection):
     m_def = Section()
     platen_temperature_ramp_rate = Quantity(
         type=np.float64,
-        default = 273.5,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC/minute'},
         unit='kelvin/s',
     )
     target_ramp_rate = Quantity(
         type=np.float64,
-        default  =1,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W/second'},
         unit='(kg*m^2)/s^4',
     )
@@ -235,7 +225,6 @@ class DTUsource(PVDSource, ArchiveSection):
 
     power_type = Quantity(
         type=MEnum(['RF', 'DC']),
-        default = 'RF',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
     applied_voltage = Quantity(
@@ -344,7 +333,6 @@ class EndOfProcess(ArchiveSection):
     m_def = Section()
     taken_out = Quantity(
         type=MEnum(['front', 'back']),
-        default = 'front',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
     Heater_temperature = Quantity(
@@ -377,7 +365,6 @@ class AdjustedInstrumentParameters(ArchiveSection):
     )
     stage_used = Quantity(
         type=MEnum(['heating', 'cooling']),
-        default = 'heating',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
     mask_used = Quantity(
@@ -399,19 +386,16 @@ class DepositionParameters(ArchiveSection):
     m_def = Section()
     deposition_temperature = Quantity(
         type=np.float64,
-        default = 300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
     sputter_pressure = Quantity(
         type=np.float64,
-        default = 5,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
     )
     material_space = Quantity(
         type=str,
-        default = '-P-S',
         a_eln={'component': 'StringEditQuantity'},
     )
     applied_power = Quantity(
@@ -426,7 +410,6 @@ class DepositionParameters(ArchiveSection):
     )
     power_type = Quantity(
         type=MEnum(['DC', 'RF']),
-        default = 'RF',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
     stable_average_voltage = Quantity(
@@ -467,7 +450,7 @@ class DepositionParameters(ArchiveSection):
         a_eln={
             'component': 'NumberEditQuantity',
               'defaultDisplayUnit': 'cm^3/minute',
-              'label': 'PH3 in Ar flow',
+              'label': 'H2S in Ar flow',
               },
         unit='m^3/s',
     )
@@ -492,7 +475,6 @@ class DTUSputtering(SputterDeposition, Schema):
     )
     lab_id = Quantity(
         type=str,
-        default = 'IDOL Lab',
         a_eln={'component': 'StringEditQuantity', 'label': 'Run ID'},
     )
     log_file = Quantity(
