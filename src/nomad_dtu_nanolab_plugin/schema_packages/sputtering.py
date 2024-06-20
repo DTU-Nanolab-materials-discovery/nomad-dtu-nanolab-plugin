@@ -90,7 +90,7 @@ class Chamber(ArchiveSection):
     )
     total_pressure = Quantity(
         type=np.float64,
-        default= 5,
+        default= 1,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
     )
