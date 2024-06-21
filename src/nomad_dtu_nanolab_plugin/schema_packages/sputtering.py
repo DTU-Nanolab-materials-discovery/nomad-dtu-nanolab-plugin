@@ -90,7 +90,7 @@ class Chamber(ArchiveSection):
     )
     total_pressure = Quantity(
         type=np.float64,
-        default= 1,
+        default= 0.6666,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
     )
@@ -110,6 +110,9 @@ class Substrate(ArchiveSection):
     )
     corrected_real_temperature = Quantity(
         type=np.float64,
+        derived = True,
+        dependencies = ['set_point_temperature'],
+        value = 0.5*set_point_temperature,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
@@ -401,7 +404,7 @@ class DepositionParameters(ArchiveSection):
     )
     sputter_pressure = Quantity(
         type=np.float64,
-        default = 5,
+        default = 0.6666,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
     )
@@ -488,7 +491,6 @@ class DTUSputtering(SputterDeposition, Schema):
     )
     lab_id = Quantity(
         type=str,
-        default = 'IDOL Lab',
         a_eln={'component': 'StringEditQuantity', 'label': 'Run ID'},
     )
     log_file = Quantity(
