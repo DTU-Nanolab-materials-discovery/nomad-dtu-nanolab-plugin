@@ -484,7 +484,7 @@ class DepositionParameters(ArchiveSection):
     deposition_time = Quantity(
         type=np.float64,
         default = 1800,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'min'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
 
