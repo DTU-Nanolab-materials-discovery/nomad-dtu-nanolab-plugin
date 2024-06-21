@@ -20,8 +20,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import Schema
-from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
-                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import CompositeSystem
 from nomad.metainfo import Datetime, Package, Quantity, Section
 
