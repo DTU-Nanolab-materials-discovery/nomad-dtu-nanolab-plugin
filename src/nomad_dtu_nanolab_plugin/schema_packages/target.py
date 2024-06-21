@@ -20,7 +20,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
 from nomad.datamodel.metainfo.basesections import CompositeSystem
 from nomad.metainfo import Datetime, Package, Quantity, Section
 
@@ -44,6 +45,7 @@ class DTUTarget(CompositeSystem, Schema):
     )
     supplier_id = Quantity(
         type=str,
+        default = 'Testbourne',
         a_eln={'component': 'StringEditQuantity'},
     )
     purity = Quantity(
@@ -56,6 +58,7 @@ class DTUTarget(CompositeSystem, Schema):
     )
     thickness = Quantity(
         type=np.float64,
+        default = 0.00635,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
         unit='m',
     )

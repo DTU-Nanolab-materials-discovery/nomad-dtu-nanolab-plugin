@@ -20,12 +20,15 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
+from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
+                                                        GasFlow)
 from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
-from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
+from nomad_material_processing.vapor_deposition.pvd.sputtering import \
+    SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -80,6 +83,9 @@ class Chamber(ArchiveSection):
     shutters_open = Quantity(
         type=bool,
         default=False,
+        description="""
+            Position of the substrate shutter.
+        """,
         a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
     applied_RF_bias_platen = Quantity(
@@ -112,7 +118,6 @@ class Substrate(ArchiveSection):
         type=np.float64,
         derived = True,
         dependencies = ['set_point_temperature'],
-        value = 0.5*set_point_temperature,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
@@ -164,7 +169,7 @@ class Special(ArchiveSection):
     m_def = Section()
     platen_temperature_ramp_rate = Quantity(
         type=np.float64,
-        default = 273.5,
+        default = 0.3333,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC/minute'},
         unit='kelvin/s',
     )
@@ -477,6 +482,13 @@ class DepositionParameters(ArchiveSection):
     cooling_procedure_description = Quantity(
         type=str,
         a_eln={'component': 'RichTextEditQuantity'},
+    )
+    m_def = Section()
+    deposition_time = Quantity(
+        type=np.float64,
+        default = 1800,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'min'},
+        unit='s',
     )
 
 

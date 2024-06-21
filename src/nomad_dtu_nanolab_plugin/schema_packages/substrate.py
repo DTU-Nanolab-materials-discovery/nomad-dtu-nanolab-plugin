@@ -43,14 +43,17 @@ class DTUSubstrate(CompositeSystem, Schema):
     )
     supplier_id = Quantity(
         type=str,
+        default = 'Siegert Wafer',
         a_eln={'component': 'StringEditQuantity'},
     )
     substrate_polishing = Quantity(
         type=MEnum(['1 sided', '2 sided', 'none']),
+        default = '1 sided',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
     doping_type_of_substrate = Quantity(
         type=MEnum(['n', 'p', 'none']),
+        default = 'n',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
     doping_of_substrate = Quantity(
@@ -58,25 +61,30 @@ class DTUSubstrate(CompositeSystem, Schema):
         description="""
             The doping of the substrate measured as the electrical resistivity.
         """,
+        default = 0.2,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'ohm*cm',},
         unit='(kg*m^3)/(A^2*s^3)',
     )
     doping_elements = Quantity(
         type=str,
+        default = 'P',
         a_eln={'component': 'StringEditQuantity'},
     )
     length = Quantity(
         type=np.float64,
+        default = 0.04,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
         unit='m',
     )
     width = Quantity(
         type=np.float64,
+        default = 0.04,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
         unit='m',
     )
     thickness = Quantity(
         type=np.float64,
+        default = 0.000675,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
         unit='m',
     )
