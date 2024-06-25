@@ -20,15 +20,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
-                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
-                                                        GasFlow)
+from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
 from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
-from nomad_material_processing.vapor_deposition.pvd.sputtering import \
-    SputterDeposition
+from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -116,8 +113,7 @@ class Substrate(ArchiveSection):
     )
     corrected_real_temperature = Quantity(
         type=np.float64,
-        derived = True,
-        dependencies = ['set_point_temperature'],
+        derived = lambda a: a.set_point_temperature*0.905+12,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
