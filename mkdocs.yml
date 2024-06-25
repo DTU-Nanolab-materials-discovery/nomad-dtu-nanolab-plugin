@@ -3,6 +3,7 @@ site_description: A plugin for the schemas, parsers,
 site_author: Lena Mittman
 
 repo_url: https://github.com/DTU-Nanolab-materials-discovery/nomad-nomad-dtu-nanolab-plugin
+edit_uri: ""
 
 nav:
   - Home: index.md
@@ -28,6 +29,8 @@ theme:
   features:
     - navigation.instant
   custom_dir: docs/theme
+  icon:
+    repo: fontawesome/brands/github
 markdown_extensions:
   - attr_list
   - md_in_html
