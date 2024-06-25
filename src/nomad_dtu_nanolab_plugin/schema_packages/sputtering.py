@@ -90,7 +90,7 @@ class Chamber(ArchiveSection):
     )
     applied_RF_bias_platen = Quantity(
         type=np.float64,
-        default= 0,
+        default= 1,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
     )
