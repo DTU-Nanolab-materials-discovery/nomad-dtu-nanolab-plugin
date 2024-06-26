@@ -486,6 +486,25 @@ class DepositionParameters(ArchiveSection):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
+    boolean_test = Quantity(
+        type=bool,
+        default=False,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+    )
+    if boolean_test:
+        additional_quantity_test = Quantity(
+            type=np.float64,
+            default = 0.5,
+            a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
+            unit='(kg*m^2)/s^3',
+        )
+    else:
+        additional_quantity_test = Quantity(
+            type=np.float64,
+            default = 100,
+            a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
+            unit='V',
+        )
 
 
 class DTUSputtering(SputterDeposition, Schema):
