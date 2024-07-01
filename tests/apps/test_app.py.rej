@@ -1,0 +1,7 @@
+diff a/tests/apps/test_app.py b/tests/apps/test_app.py	(rejected hunks)
+@@ -2,3 +2,5 @@ def test_importing_app():
+     # this will raise an exception if pydantic model validation fails for th app
+     from nomad_nomad_dtu_nanolab_plugin.apps import myapp
+ 
++    assert myapp.app.label == 'MyApp'
++

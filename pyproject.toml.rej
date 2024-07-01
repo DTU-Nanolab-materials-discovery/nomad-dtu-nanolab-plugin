@@ -1,0 +1,26 @@
+diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
+@@ -16,7 +16,7 @@ classifiers = [
+ name = "nomad-nomad-dtu-nanolab-plugin"
+ description = "A plugin for the schemas, parsers,"
+ version = "0.1.0"
+-readme = "README.rst"
++readme = "README.md"
+ requires-python = ">=3.9"
+ authors = [
+     { name = "Lena Mittman", email = "LeAnMi@users.noreply.github.com" },
+@@ -25,7 +25,7 @@ maintainers = [
+     { name = "Lena Mittman", email = "LeAnMi@users.noreply.github.com" },
+ ]
+ license = { file = "LICENSE" }
+-dependencies = ["nomad-lab>=1.2.2dev578"]
++dependencies = ["nomad-lab>=1.3.0"]
+ 
+ [project.urls]
+ Repository = "https://github.com/DTU-Nanolab-materials-discovery/nomad-nomad-dtu-nanolab-plugin"
+@@ -112,3 +112,6 @@ myparser = "nomad_nomad_dtu_nanolab_plugin.parsers:myparser"
+ mypackage = "nomad_nomad_dtu_nanolab_plugin.schema_packages:mypackage"
+ 
+ myapp = "nomad_nomad_dtu_nanolab_plugin.apps:myapp"
++[tool.cruft]
++# Avoid updating workflow files, this leads to permissions issues
++skip = [".github/*"]
