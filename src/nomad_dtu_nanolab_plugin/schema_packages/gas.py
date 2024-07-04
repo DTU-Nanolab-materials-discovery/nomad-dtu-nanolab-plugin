@@ -115,6 +115,7 @@ class DTUGasSupply(CompositeSystem, Schema):
 
 
 
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUGasSupply` class.
