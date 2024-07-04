@@ -80,7 +80,7 @@ class DTUGasSupply(CompositeSystem, Schema):
     )
     time_used_gas = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minutes'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
     gas_name = Quantity(
