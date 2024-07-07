@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from nomad.datamodel.data import Schema
 from nomad.datamodel.metainfo.basesections import CompositeSystem
-from nomad.metainfo import Datetime, Package, Quantity, Section
+from nomad.metainfo import Datetime, MEnum, Package, Quantity, Section
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
