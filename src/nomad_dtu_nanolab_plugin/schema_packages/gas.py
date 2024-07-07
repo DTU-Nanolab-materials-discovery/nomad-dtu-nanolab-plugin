@@ -110,7 +110,7 @@ class DTUGasSupply(CompositeSystem, Schema):
     test_var = Quantity(
         type=MEnum(['Gas', 'Gas2', 'Gas3']),
         default = 'Gas',
-        a_eln={'test_component': 'RadioEnumEditQuantity'}
+        a_eln={'component': 'RadioEnumEditQuantity'}
     )
 
 
