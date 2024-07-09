@@ -564,6 +564,11 @@ class DTUSputtering(SputterDeposition, Schema):
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Log file'},
     )
+    read_from_log_file = Quantity(
+        type=bool,
+        default=False,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+    )
     samples = SubSection(
         section_def=DTUsamples,
         repeats=True,
@@ -591,14 +596,17 @@ class DTUSputtering(SputterDeposition, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+
         super().normalize(archive, logger)
-        if self.log_file:
-                import os
-                #Extracting the sample name from the log file name
-                log_file_name = os.path.basename(self.log_file)
-                sample_id = log_file_name.split('_')[0]+'_'+log_file_name.split('_')[1]
-                #If lab_id is empty, assign the sample name to lab_id
-                if self.lab_id is None:
-                    self.lab_id = sample_id
+        if self.read_from_log_file is True:
+            if self.log_file:
+                    import os
+
+                    #Extracting the sample name from the log file name
+                    log_name = os.path.basename(self.log_file)
+                    sample_id = log_name.split('_')[0]+'_'+log_name.split('_')[1]
+                    #If lab_id is empty, assign the sample name to lab_id
+                    if self.lab_id is None:
+                        self.lab_id = sample_id
 
 m_package.__init_metainfo__()
