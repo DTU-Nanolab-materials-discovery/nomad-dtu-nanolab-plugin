@@ -53,19 +53,6 @@ class DTUGasSupply(CompositeSystem, Schema):
         type=str,
         a_eln={'component': 'StringEditQuantity'},
     )
-    molecular_formula = Quantity(
-        type=str,
-        a_eln={'component': 'StringEditQuantity'},
-    )
-    molecular_mass = Quantity(
-        type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit' : 'Da'},
-        unit='g',
-    )
-    cas_number = Quantity(
-        type=str,
-        a_eln={'component': 'StringEditQuantity'},
-    )
     supplier_id = Quantity(
         type=str,
         a_eln={'component': 'StringEditQuantity'},
@@ -93,7 +80,6 @@ class DTUGasSupply(CompositeSystem, Schema):
     )
     time_used_gas = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
@@ -125,33 +111,6 @@ class DTUGasSupply(CompositeSystem, Schema):
         type=MEnum(['Gas', 'Gas2', 'Gas3']),
         default = 'Gas',
         a_eln={'component': 'RadioEnumEditQuantity'}
-    )
-
-
-
-    gas_name = Quantity(
-        type=str,
-        a_eln={'component': 'StringEditQuantity'},
-    )
-    iupac_name = Quantity(
-        type=str,
-        a_eln={'component': 'StringEditQuantity'},
-    )
-    inchi = Quantity(
-        type=str,
-        a_eln={'component': 'StringEditQuantity'},
-    )
-    inchi_key = Quantity(
-        type=str,
-        a_eln={'component': 'StringEditQuantity'},
-    )
-    smiles = Quantity(
-        type=str,
-        a_eln={'component': 'StringEditQuantity'},
-    )
-    canonical_smiles = Quantity(
-        type=str,
-        a_eln={'component': 'StringEditQuantity'},
     )
 
 
