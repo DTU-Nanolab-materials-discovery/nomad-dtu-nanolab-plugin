@@ -639,10 +639,12 @@ class DTUSputtering(SputterDeposition, Schema):
         temp=self.DTUsteps.DTUsputter_parameters.Substrate.set_point_temperature
         r_temp=self.DTUsteps.DTUsputter_parameters.Substrate.corrected_real_temperature
         if temp is not None and r_temp is None:
-            r_temp = temp*0.905+12
+            rT = temp*0.905+12
+            self.DTUsteps.DTUsputter_parameters.Substrate.corrected_real_temperature=rT
 
         #ToDos:
         #next test to autofill all lab_id fields from their respective references
+        #check on the derived temperature again. Sth is not working.
 
         #check sample parameters in Steps: unnamed quantity (dropdown heatign)
         #check heater subsection in steps (it is empty right now)
