@@ -450,7 +450,7 @@ class DepositionParameters(ArchiveSection):
         a_eln={
             'component': 'NumberEditQuantity',
             'defaultDisplayUnit': 'cm^3/minute',
-            'lable':'Ar flow',
+            'label':'Ar flow',
             },
         unit='m^3/s',
     )
@@ -459,7 +459,7 @@ class DepositionParameters(ArchiveSection):
         a_eln={
             'component': 'NumberEditQuantity',
             'defaultDisplayUnit': 'mtorr',
-            'lable':'Ar partial pressure',
+            'label':'Ar partial pressure',
             },
         unit='kg/(m*s^2)',
     )
@@ -482,7 +482,7 @@ class DepositionParameters(ArchiveSection):
         a_eln={
             'component': 'NumberEditQuantity',
             'defaultDisplayUnit': 'mtorr',
-            'lable':'H2S partial pressure',
+            'label':'H2S partial pressure',
             },
         unit='kg/(m*s^2)',
     )
@@ -505,7 +505,7 @@ class DepositionParameters(ArchiveSection):
         a_eln={
             'component': 'NumberEditQuantity',
             'defaultDisplayUnit': 'mtorr',
-            'lable':'PH3 partial pressure',
+            'label':'PH3 partial pressure',
             },
         unit='kg/(m*s^2)',
     )
@@ -639,7 +639,7 @@ class DTUSputtering(SputterDeposition, Schema):
                     #If lab_id is empty, assign the sample name to lab_id
                     if self.lab_id is None:
                         self.lab_id = sample_id
-
+        # derived quantities
         p_ok=False
         if self.deposition_parameters.ar_flow  is not None :
             flow = self.deposition_parameters.ar_flow
@@ -658,6 +658,11 @@ class DTUSputtering(SputterDeposition, Schema):
             self.deposition_parameters.ar_partial_pressure = total_ar
             self.deposition_parameters.h2s_partial_pressure = h2s*0.1/flow*p
             self.deposition_parameters.ph3_partial_pressure = ph3*0.1/flow*p
+
+        temp=self.DTUsteps.DTUsputter_parameters.Substrate.set_point_temperature
+        real_temp=self.DTUsteps.DTUsputter_parameters.Substrate.corrected_real_temperature
+        if temp is not None and real_temp is None:
+            real_temp = temp*0.905+12
 
 
 m_package.__init_metainfo__()
