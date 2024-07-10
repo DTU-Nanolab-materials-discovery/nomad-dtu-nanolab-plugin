@@ -92,6 +92,10 @@ class DTUSubstrate(CompositeSystem, Schema):
         type=str,
         a_eln={'component': 'RichTextEditQuantity'},
     )
+    edx_data_file = Quantity(
+        type=str,
+        a_eln={'component': 'FileEditQuantity', 'label': 'EDX file'},
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """

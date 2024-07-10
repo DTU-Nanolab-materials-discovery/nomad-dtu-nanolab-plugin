@@ -20,12 +20,15 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
+from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
+                                                        GasFlow)
 from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
-from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
+from nomad_material_processing.vapor_deposition.pvd.sputtering import \
+    SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -636,6 +639,12 @@ class DTUSputtering(SputterDeposition, Schema):
         if temp is not None and real_temp is None:
             real_temp = temp*0.905+12
 
-        #next test to autofill all lab_id fields from their respective references
+        #ToDos:
+        # next test to autofill all lab_id fields from their respective references
+        #move adjuste instrument parameters to the instrument subsection
+        #move mask information to sample subsection
+        #check sample parameters in Steps: unnamed quantity (dropdown heatign)
+        #add gas reference in gasflow subsection (autofill fromthere later)
+        #check heater subsection in steps (it is empty right now)
 
 m_package.__init_metainfo__()
