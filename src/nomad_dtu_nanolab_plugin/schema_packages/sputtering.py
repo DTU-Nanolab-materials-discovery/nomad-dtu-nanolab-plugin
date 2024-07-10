@@ -20,15 +20,17 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
-from nomad.datamodel.metainfo.basesections import (
-    CompositeSystemReference,
-    InstrumentReference,
-)
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.basesections import (CompositeSystem,
+                                                   CompositeSystemReference,
+                                                   Instrument)
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
+from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
+                                                        GasFlow)
 from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
-from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
+from nomad_material_processing.vapor_deposition.pvd.sputtering import \
+    SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -280,6 +282,10 @@ class DTUGasFlow(GasFlow, ArchiveSection):
     m_def = Section()
     gas_supply = Quantity(
         type=DTUGasSupply,
+    )
+    used_gas_supply = Quantity(
+        type=CompositeSystem,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -641,8 +647,6 @@ class DTUSputtering(SputterDeposition, Schema):
 
         #ToDos:
         # next test to autofill all lab_id fields from their respective references
-        #move adjuste instrument parameters to the instrument subsection
-        #move mask information to sample subsection
         #check sample parameters in Steps: unnamed quantity (dropdown heatign)
         #add gas reference in gasflow subsection (autofill fromthere later)
         #check heater subsection in steps (it is empty right now)

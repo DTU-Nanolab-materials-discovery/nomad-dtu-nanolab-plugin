@@ -142,7 +142,7 @@ class DTUSubstrate(CompositeSystem, Schema):
 
             import pandas as pd
 
-            df = pd.read_csv(os.path.join(archive._folder, self.edx_data_file))
+            df = pd.read_csv(os.path(self.edx_data_file))
             if df is not None:
                 self.avg_S = 1
                 #self.avg_S = df['S'].mean()
