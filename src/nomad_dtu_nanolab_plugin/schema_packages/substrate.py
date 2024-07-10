@@ -136,15 +136,13 @@ class DTUSubstrate(CompositeSystem, Schema):
         """
         super().normalize(archive, logger)
 
-        df= None
-        if self.edx_data_file is not None:
-            import os
+        #df= None
+        #if self.edx_data_file is not None:
+            #import os
+            #import pandas as pd
 
-            import pandas as pd
-
-            df = pd.read_csv(os.path(self.edx_data_file))
-            if df is not None:
-                self.avg_S = 1
+            #df = pd.read_csv(os.path(self.edx_data_file))
+            #if df is not None:
                 #self.avg_S = df['S'].mean()
                 #self.avg_P = df['P'].mean()
                 #self.avg_M1 = df['M1'].mean()

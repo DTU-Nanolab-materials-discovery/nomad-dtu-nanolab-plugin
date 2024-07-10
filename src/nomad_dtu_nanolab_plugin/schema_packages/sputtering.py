@@ -126,7 +126,7 @@ class Substrate(ArchiveSection):
     )
     corrected_real_temperature = Quantity(
         type=np.float64,
-        a_eln={'defaultDisplayUnit': 'degC'},
+        a_eln={'component': 'NumberEditQuantity','defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
 
@@ -638,16 +638,16 @@ class DTUSputtering(SputterDeposition, Schema):
             self.deposition_parameters.h2s_partial_pressure = h2s*0.1/flow*p
             self.deposition_parameters.ph3_partial_pressure = ph3*0.1/flow*p
 
-        #temperature correction
         temp=self.DTUsteps.DTUsputter_parameters.Substrate.set_point_temperature
-        real_temp=self.DTUsteps.DTUsputter_parameters.Substrate.corrected_real_temperature
-        if temp is not None and real_temp is None:
-            real_temp = temp*0.905+12
+        r_temp=self.DTUsteps.DTUsputter_parameters.Substrate.corrected_real_temperature
+        if temp is not None and r_temp is None:
+            r_temp = temp*0.905+12
 
         #ToDos:
         # next test to autofill all lab_id fields from their respective references
+
         #check sample parameters in Steps: unnamed quantity (dropdown heatign)
-        #add gas reference in gasflow subsection (autofill fromthere later)
         #check heater subsection in steps (it is empty right now)
+        #nothing changed on our side. Ask Hampus!
 
 m_package.__init_metainfo__()
