@@ -457,7 +457,6 @@ class DepositionParameters(ArchiveSection):
     ar_partial_pressure = Quantity(
         type=np.float64,
         a_eln={
-            'component': 'NumberEditQuantity',
             'defaultDisplayUnit': 'mtorr',
             'label':'Ar partial pressure',
             },
@@ -664,5 +663,6 @@ class DTUSputtering(SputterDeposition, Schema):
         if temp is not None and real_temp is None:
             real_temp = temp*0.905+12
 
+        #next autofill all lab_id fields with the lab_id  and remove name field
 
 m_package.__init_metainfo__()
