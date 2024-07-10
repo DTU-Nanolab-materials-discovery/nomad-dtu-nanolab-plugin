@@ -96,6 +96,34 @@ class DTUSubstrate(CompositeSystem, Schema):
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'EDX file'},
     )
+    avg_S = Quantity(
+        type=np.float64,
+        description="""
+            The average S atomic percent from the EDX measurement
+                            """,
+        a_eln={'component': 'NumberEditQuantity'},
+    )
+    avg_P = Quantity(
+        type=np.float64,
+        description="""
+            The average P atomic percent from the EDX measurement
+                            """,
+        a_eln={'component': 'NumberEditQuantity'},
+    )
+    avg_M1 = Quantity(
+        type=np.float64,
+        description="""
+            The average M1 atomic percent from the EDX measurement
+                            """,
+        a_eln={'component': 'NumberEditQuantity'},
+    )
+    avg_M2 = Quantity(
+        type=np.float64,
+        description="""
+            The average M2 atomic percent from the EDX measurement
+                            """,
+        a_eln={'component': 'NumberEditQuantity'},
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -107,6 +135,22 @@ class DTUSubstrate(CompositeSystem, Schema):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
+
+        df= None
+        if self.edx_data_file is not None:
+            import os
+
+            import pandas as pd
+
+            df = pd.read_csv(os.path.join(archive._folder, self.edx_data_file))
+            if df is not None:
+                self.avg_S = df['S'].mean()
+                self.avg_P = df['P'].mean()
+                #self.avg_M1 = df['M1'].mean()
+                #self.avg_M2 = df['M2'].mean()
+            #Extracting the atomic percent from the EDX file, average and populate
+
+
 
 
 m_package.__init_metainfo__()
