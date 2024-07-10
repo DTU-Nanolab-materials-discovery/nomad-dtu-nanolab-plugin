@@ -144,8 +144,9 @@ class DTUSubstrate(CompositeSystem, Schema):
 
             df = pd.read_csv(os.path.join(archive._folder, self.edx_data_file))
             if df is not None:
-                self.avg_S = df['S'].mean()
-                self.avg_P = df['P'].mean()
+                self.avg_S = 1
+                #self.avg_S = df['S'].mean()
+                #self.avg_P = df['P'].mean()
                 #self.avg_M1 = df['M1'].mean()
                 #self.avg_M2 = df['M2'].mean()
             #Extracting the atomic percent from the EDX file, average and populate
