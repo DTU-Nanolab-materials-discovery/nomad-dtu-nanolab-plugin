@@ -445,12 +445,25 @@ class DepositionParameters(ArchiveSection):
         default = '-P-S',
         a_eln={'component': 'StringEditQuantity'},
     )
-    Ar_flow = Quantity(
+    ar_flow = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm^3/minute'},
+        a_eln={
+            'component': 'NumberEditQuantity',
+            'defaultDisplayUnit': 'cm^3/minute',
+            'lable':'Ar flow'
+            },
         unit='m^3/s',
     )
-    H2S_in_Ar_flow = Quantity(
+    ar_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln={
+            'component': 'NumberEditQuantity',
+            'defaultDisplayUnit': 'mtorr',
+            'lable':'Ar partial pressure'
+            },
+        unit='kg/(m*s^2)',
+    )
+    h2s_in_Ar_flow = Quantity(
         type=np.float64,
         description="""
             Flow of 10% H2S in Ar in equivalent flow at standard conditions 0, i.e.
@@ -464,7 +477,16 @@ class DepositionParameters(ArchiveSection):
         },
         unit='m^3/s',
     )
-    PH3_in_Ar_flow = Quantity(
+    h2s_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln={
+            'component': 'NumberEditQuantity',
+            'defaultDisplayUnit': 'mtorr',
+            'lable':'H2S partial pressure'
+            },
+        unit='kg/(m*s^2)',
+    )
+    ph3_in_Ar_flow = Quantity(
         type=np.float64,
         description="""
             Flow of 10% PH3 in Ar in equivalent flow at standard conditions 0, i.e.
@@ -477,6 +499,15 @@ class DepositionParameters(ArchiveSection):
               'label': 'PH3 in Ar flow',
               },
         unit='m^3/s',
+    )
+    ph3_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln={
+            'component': 'NumberEditQuantity',
+            'defaultDisplayUnit': 'mtorr',
+            'lable':'PH3 partial pressure'
+            },
+        unit='kg/(m*s^2)',
     )
     heating_procedure_description = Quantity(
         type=str,
@@ -608,5 +639,24 @@ class DTUSputtering(SputterDeposition, Schema):
                     #If lab_id is empty, assign the sample name to lab_id
                     if self.lab_id is None:
                         self.lab_id = sample_id
+                    if self.deposition_parameters.Ar_flow  is not None :
+                        flow = self.deposition_parameters.Ar_flow
+                        ar=self.deposition_parameters.Ar_flow
+                        if self.deposition_parameters.H2S_in_Ar_flow is not None:
+                            flow += self.deposition_parameters.H2S_in_Ar_flow
+                            h2s=self.deposition_parameters.H2S_in_Ar_flow
+                            if self.deposition_parameters.PH3_in_Ar_flow is not None:
+                                flow += self.deposition_parameters.PH3_in_Ar_flow
+                                ph3=self.deposition_parameters.PH3_in_Ar_flow
+                                p_ok=True
+
+                    if self.deposition_parameters.sputter_pressure is not None and p_ok:
+                        p=self.deposition_parameters.sputter_pressure
+                        total_ar = ar/flow*p+h2s*0.9/flow*p+ph3*0.9/flow*p
+                        self.deposition_parameters.Ar_partial_pressure = total_ar
+                        self.deposition_parameters.H2S_partial_pressure = h2s*0.1/flow*p
+                        self.deposition_parameters.PH3_partial_pressure = ph3*0.1/flow*p
+
+
 
 m_package.__init_metainfo__()
