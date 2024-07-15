@@ -20,16 +20,17 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
-from nomad.datamodel.metainfo.basesections import (
-    CompositeSystem,
-    CompositeSystemReference,
-    InstrumentReference,
-)
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.basesections import (CompositeSystem,
+                                                   CompositeSystemReference,
+                                                   InstrumentReference)
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
+from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
+                                                        GasFlow)
 from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
-from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
+from nomad_material_processing.vapor_deposition.pvd.sputtering import \
+    SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -126,9 +127,25 @@ class Substrate(ArchiveSection):
     )
     corrected_real_temperature = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity','defaultDisplayUnit': 'degC'},
+        a_eln={'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `DTUSputtering` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+
+        super().normalize(archive, logger)
+        temp=self.set_point_temperature
+        r_temp=self.corrected_real_temperature
+        if temp is not None and r_temp is None:
+            rT=temp*0.905+12
+            self.corrected_real_temperature=rT
 
 
 class SCracker(ArchiveSection):
@@ -636,11 +653,6 @@ class DTUSputtering(SputterDeposition, Schema):
             self.deposition_parameters.h2s_partial_pressure = h2s*0.1/flow*p
             self.deposition_parameters.ph3_partial_pressure = ph3*0.1/flow*p
 
-        temp=self.DTUsteps.DTUsputter_parameters.Substrate.set_point_temperature
-        r_temp=self.DTUsteps.DTUsputter_parameters.Substrate.corrected_real_temperature
-        if temp is not None and r_temp is None:
-            rT=temp*0.905+12
-            self.DTUsteps.DTUsputter_parameters.Substrate.corrected_real_temperature=rT
 
         #ToDos:
         #next test to autofill all lab_id fields from their respective references
