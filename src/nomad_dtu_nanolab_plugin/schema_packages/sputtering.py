@@ -20,16 +20,17 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
-from nomad.datamodel.metainfo.basesections import (
-    CompositeSystem,
-    CompositeSystemReference,
-    InstrumentReference,
-)
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.basesections import (CompositeSystem,
+                                                   CompositeSystemReference,
+                                                   InstrumentReference)
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
+from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
+                                                        GasFlow)
 from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
-from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
+from nomad_material_processing.vapor_deposition.pvd.sputtering import \
+    SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -140,11 +141,7 @@ class Substrate(ArchiveSection):
         """
 
         super().normalize(archive, logger)
-        temp=self.set_point_temperature
-        r_temp=self.corrected_real_temperature
-        if temp is not None and r_temp is None:
-            rT=temp*0.905+12
-            self.corrected_real_temperature=rT
+        self.corrected_real_temperature=self.set_point_temperature*0.905+12
 
 
 class SCracker(ArchiveSection):
