@@ -126,7 +126,7 @@ class Substrate(ArchiveSection):
     )
     corrected_real_temperature = Quantity(
         type=np.float64,
-        a_eln={'defaultDisplayUnit': 'degC'},
+        a_eln={'component': 'NumberEditQuantity','defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
