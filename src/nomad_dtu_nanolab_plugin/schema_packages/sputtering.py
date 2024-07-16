@@ -140,7 +140,7 @@ class Substrate(ArchiveSection):
         """
         super().normalize(archive, logger)
         if self.set_point_temperature  is not None :
-            self.corrected_real_temperature=(self.set_point_temperature*0.905)+12
+            self.corrected_real_temperature=(int(self.set_point_temperature)*0.905)+12
 
 
 
