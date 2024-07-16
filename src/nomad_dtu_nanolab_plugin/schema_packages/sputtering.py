@@ -20,16 +20,17 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
-from nomad.datamodel.metainfo.basesections import (
-    CompositeSystem,
-    CompositeSystemReference,
-    InstrumentReference,
-)
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.basesections import (CompositeSystem,
+                                                   CompositeSystemReference,
+                                                   InstrumentReference)
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
+from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
+                                                        GasFlow)
 from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
-from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
+from nomad_material_processing.vapor_deposition.pvd.sputtering import \
+    SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -120,27 +121,28 @@ class Substrate(ArchiveSection):
     m_def = Section()
     set_point_temperature = Quantity(
         type=np.float64,
-        default =300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
     corrected_real_temperature = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity','defaultDisplayUnit': 'degC'},
+        a_eln={'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `DTUSputtering` class.
+        The normalizer for the `Substrate` class.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-
         super().normalize(archive, logger)
-        self.corrected_real_temperature=self.set_point_temperature*0.905+12
+        if self.set_point_temperature  is not None :
+            self.corrected_real_temperature=(self.set_point_temperature*0.905)+12
+
 
 
 class SCracker(ArchiveSection):
