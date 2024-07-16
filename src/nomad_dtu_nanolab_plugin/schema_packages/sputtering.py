@@ -20,16 +20,17 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
-from nomad.datamodel.metainfo.basesections import (
-    CompositeSystem,
-    CompositeSystemReference,
-    InstrumentReference,
-)
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.basesections import (CompositeSystem,
+                                                   CompositeSystemReference,
+                                                   InstrumentReference)
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
+from nomad_material_processing.vapor_deposition import (ChamberEnvironment,
+                                                        GasFlow)
 from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
-from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
+from nomad_material_processing.vapor_deposition.pvd.sputtering import \
+    SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -140,7 +141,12 @@ class Substrate(ArchiveSection):
         """
         super().normalize(archive, logger)
         if self.set_point_temperature  is not None :
-            self.corrected_real_temperature=(int(self.set_point_temperature)*0.905)+12
+            # Convert set_point_temperature to 'kelvin' explicitly and get its magnitude
+            set_point_temp_in_kelvin = self.set_point_temperature.to('kelvin').magnitude
+            # Perform the calculation using the magnitude
+            corrected_temp = (set_point_temp_in_kelvin * 0.905) + 12
+            # Assign the result back to corrected_real_temperature, ensuring it's a Quantity with 'kelvin' unit
+            self.corrected_real_temperature = corrected_temp * self.set_point_temperature.u
 
 
 
