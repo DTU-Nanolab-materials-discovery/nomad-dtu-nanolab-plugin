@@ -688,8 +688,6 @@ class DTUSputtering(SputterDeposition, Schema):
 
         #ToDos:
         #next test to autofill all lab_id fields from their respective references
-        #check on the derived temperature again as sth is not working
-
 
         #check sample parameters in Steps: unnamed quantity (dropdown heatign)
         #check heater subsection in steps (it is empty right now)
