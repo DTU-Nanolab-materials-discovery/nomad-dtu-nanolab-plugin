@@ -618,11 +618,6 @@ class DTUSputtering(SputterDeposition, Schema):
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Log file'},
     )
-    read_from_log_file = Quantity(
-        type=bool,
-        default=False,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
-    )
     samples = SubSection(
         section_def=DTUsamples,
         repeats=True,
