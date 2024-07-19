@@ -143,7 +143,7 @@ class DTUSubstrate(CompositeSystem, Schema):
 
 
             with archive.m_context.raw_file(self.edx_data_file, 'r') as edx:
-                df = pd.read_csv(edx, delimiter='\t')
+                df = pd.read_csv(edx, delimiter='\t', encoding='UTF-16 LE')
                 if df is not None:
                     self.avg_S = df['Layer 1 S Atomic%'].mean()
                     self.avg_P = df['Layer 1 P Atomic%'].mean()
