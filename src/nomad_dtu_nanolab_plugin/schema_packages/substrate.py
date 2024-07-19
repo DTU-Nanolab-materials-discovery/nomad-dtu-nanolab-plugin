@@ -143,12 +143,12 @@ class DTUSubstrate(CompositeSystem, Schema):
 
             import pandas as pd
 
-            #with archive.m_context.raw_file(self.edx_data_file, 'r') as edx:
-            df = pd.read_csv(self.edx_data_file, delimiter='\t', encoding='UTF-16 LE')
-            self.avg_S = df['Layer 1 S Atomic%'].mean()
-            self.avg_P = df['Layer 1 P Atomic%'].mean()
-            self.avg_M1 = df['Layer 1 Cu Atomic%'].mean()
-            self.avg_M2 = 0
+            with archive.m_context.raw_file(self.edx_data_file, 'r') as edx:
+                df = pd.read_csv(edx, delimiter='\t', encoding='UTF-16 LE')
+                self.avg_S = df['Layer 1 S Atomic%'].mean()
+                self.avg_P = df['Layer 1 P Atomic%'].mean()
+                self.avg_M1 = df['Layer 1 Cu Atomic%'].mean()
+                self.avg_M2 = 0
             #Extracting the atomic percent from the EDX file, average and populate
 
 
