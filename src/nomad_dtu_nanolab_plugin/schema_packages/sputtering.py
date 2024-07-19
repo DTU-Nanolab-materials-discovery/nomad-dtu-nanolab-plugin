@@ -88,17 +88,18 @@ class DTUsamples(CompositeSystemReference, ArchiveSection):
 
         if self.Substrate_position_x is None and self.Substrate_position_y is None:
             if self.relative_position == 'BL':
-                self.Substrate_position_x = -2
-                self.Substrate_position_y = 3.5
+                self.Substrate_position_x = -0.02
+                self.Substrate_position_y = 0.035
             elif self.relative_position == 'BR':
-                self.Substrate_position_x = 2
-                self.Substrate_position_y = 3.5
+                self.Substrate_position_x = 0.02
+                self.Substrate_position_y = 0.035
             elif self.relative_position == 'FL':
-                self.Substrate_position_x = -2
-                self.Substrate_position_y = -0.5
+                self.Substrate_position_x = -0.02
+                self.Substrate_position_y = -0.005
             elif self.relative_position == 'FR':
-                self.Substrate_position_x = 2
-                self.Substrate_position_y = -0.5
+                self.Substrate_position_x = 0.02
+                self.Substrate_position_y = -0.005
+
 
 
 
@@ -714,7 +715,7 @@ class DTUSputtering(SputterDeposition, Schema):
         if self.run_id is not None and self.DTUsamples.relative_position is not None:
             if self.DTUsamples.name is None:
                 name = str(self.run_id) + str(self.DTUsamples.relative_position)
-                self.DTUsamples.name = name
+                self.DTUsamples.lab_id = name
         #ToDos:
         #next test to autofill all lab_id fields from their respective references
 
