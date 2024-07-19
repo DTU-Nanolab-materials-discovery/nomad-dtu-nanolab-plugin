@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import Schema
+from nomad.datamodel.metainfo.annotations import BrowserAnnotation
 from nomad.datamodel.metainfo.basesections import CompositeSystem
 from nomad.metainfo import MEnum, Package, Quantity, Section
 
@@ -94,6 +95,7 @@ class DTUSubstrate(CompositeSystem, Schema):
     )
     edx_data_file = Quantity(
         type=str,
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
         a_eln={'component': 'FileEditQuantity', 'label': 'EDX file'},
     )
     avg_S = Quantity(
