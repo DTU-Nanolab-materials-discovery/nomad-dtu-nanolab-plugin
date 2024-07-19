@@ -712,9 +712,9 @@ class DTUSputtering(SputterDeposition, Schema):
 
 
 
-        if self.run_id is not None and self.DTUsamples.relative_position is not None:
-            if self.DTUsamples.name is None:
-                name = str(self.run_id) + str(self.DTUsamples.relative_position)
+        if self.lab_id is not None and self.DTUsamples.relative_position is not None:
+            if self.DTUsamples.lab_id is None:
+                name = str(self.lab_id) + str(self.DTUsamples.relative_position)
                 self.DTUsamples.lab_id = name
         #ToDos:
         #next test to autofill all lab_id fields from their respective references
