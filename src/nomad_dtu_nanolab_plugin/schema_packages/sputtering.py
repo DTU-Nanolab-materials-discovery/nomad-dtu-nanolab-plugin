@@ -595,6 +595,38 @@ class DepositionParameters(ArchiveSection):
         repeats=True,
     )
 
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `DepositionParameters` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+
+        super().normalize(archive, logger)
+        #derived quantities
+        #partial pressures without the S-cracker taken into account
+        p_ok=False
+        if self.ar_flow  is not None :
+            flow = self.ar_flow.magnitude
+            ar=self.ar_flow.magnitude
+            if self.h2s_in_Ar_flow is not None:
+                flow += self.h2s_in_Ar_flow.magnitude
+                h2s=self.h2s_in_Ar_flow.magnitude
+                if self.ph3_in_Ar_flow is not None:
+                    flow += self.ph3_in_Ar_flow.magnitude
+                    ph3=self.ph3_in_Ar_flow.magnitude
+                    p_ok=True
+
+        if self.sputter_pressure is not None and p_ok:
+            p=self.sputter_pressure.to('kg/(m*s^2)').magnitude
+            total_ar = ar/flow*p+h2s*0.9/flow*p+ph3*0.9/flow*p
+            self.ar_partial_pressure = total_ar*self.sputter_pressure.u
+            self.h2s_partial_pressure = h2s*0.1/flow*p*self.sputter_pressure.u
+            self.ph3_partial_pressure = ph3*0.1/flow*p*self.sputter_pressure.u
+
 
 class DTUSputtering(SputterDeposition, Schema):
     """
@@ -658,27 +690,6 @@ class DTUSputtering(SputterDeposition, Schema):
                     if self.lab_id is None:
                         self.lab_id = sample_id
 
-
-        #derived quantities
-        #partial pressures without the S-cracker taken into account
-        p_ok=False
-        if self.deposition_parameters.ar_flow  is not None :
-            flow = self.deposition_parameters.ar_flow
-            ar=self.deposition_parameters.ar_flow
-            if self.deposition_parameters.h2s_in_Ar_flow is not None:
-                flow += self.deposition_parameters.h2s_in_Ar_flow
-                h2s=self.deposition_parameters.h2s_in_Ar_flow
-                if self.deposition_parameters.ph3_in_Ar_flow is not None:
-                    flow += self.deposition_parameters.ph3_in_Ar_flow
-                    ph3=self.deposition_parameters.ph3_in_Ar_flow
-                    p_ok=True
-
-        if self.deposition_parameters.sputter_pressure is not None and p_ok:
-            p=self.deposition_parameters.sputter_pressure
-            total_ar = ar/flow*p+h2s*0.9/flow*p+ph3*0.9/flow*p
-            self.deposition_parameters.ar_partial_pressure = total_ar
-            self.deposition_parameters.h2s_partial_pressure = h2s*0.1/flow*p
-            self.deposition_parameters.ph3_partial_pressure = ph3*0.1/flow*p
 
 
         #ToDos:
