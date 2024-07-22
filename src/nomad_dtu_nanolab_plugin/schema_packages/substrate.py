@@ -144,7 +144,7 @@ class DTUSubstrate(CompositeSystem, Schema):
             import pandas as pd
 
             with archive.m_context.raw_file(self.edx_data_file, 'r') as edx:
-                df = pd.read_csv(edx, delimiter=',')
+                df = pd.read_excel(edx, sheet_name=0, header=0, engine='openpyxl')
 
                 self.avg_S = df['Layer 1 S Atomic %'].mean()
                 self.avg_P = df['Layer 1 P Atomic %'].mean()
