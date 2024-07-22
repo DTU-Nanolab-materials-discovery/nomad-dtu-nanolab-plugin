@@ -140,13 +140,24 @@ class DTUSubstrate(CompositeSystem, Schema):
         if self.edx_data_file:
             import pandas as pd
 
-            with archive.m_context.raw_file(self.edx_data_file, 'r') as edx:
-                #df = pd.read_excel(edx, sheet_name=0, header=0, engine='openpyxl')
-                df = pd.read_csv(edx, sep='\t', header=0)
+            columns = [
+                'Spectrum Label',
+                'X (mm)',
+                'Y (mm)',
+                'Substrate Si Atomic %',
+                'Layer 1 Density (g/cm³)',
+                'Layer 1 Thickness (nm)',
+                'Layer 1 P Atomic %',
+                'Layer 1 S Atomic %',
+                'Layer 1 Cu Atomic %']
 
-            self.avg_S = df['Layer 1 S Atomic %'].mean()
-            self.avg_P = df['Layer 1 P Atomic %'].mean()
-            self.avg_M1 = df['Layer 1 Cu Atomic %'].mean()
+            with archive.m_context.raw_file(self.edx_data_file, 'r') as edx:
+                #df_data = pd.read_excel(edx, header=0)
+                df = pd.read_csv(edx, sep='\t', header=0, names=columns )
+
+            self.avg_S = df_data['Layer 1 S Atomic %'].mean()
+            self.avg_P = df_data['Layer 1 P Atomic %'].mean()
+            self.avg_M1 = df_data['Layer 1 Cu Atomic %'].mean()
             self.avg_M2 = 0
             #Extracting the atomic percent from the EDX file, average and populate
 
