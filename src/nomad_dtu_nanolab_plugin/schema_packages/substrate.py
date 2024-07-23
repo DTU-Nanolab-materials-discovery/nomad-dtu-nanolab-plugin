@@ -44,17 +44,17 @@ class DTUSubstrate(CompositeSystem, Schema):
     )
     supplier_id = Quantity(
         type=str,
-        default = 'Siegert Wafer',
+        default='Siegert Wafer',
         a_eln={'component': 'StringEditQuantity'},
     )
     substrate_polishing = Quantity(
         type=MEnum(['1 sided', '2 sided', 'none']),
-        default = '1 sided',
+        default='1 sided',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
     doping_type_of_substrate = Quantity(
         type=MEnum(['n', 'p', 'none']),
-        default = 'n',
+        default='n',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
     doping_of_substrate = Quantity(
@@ -62,30 +62,33 @@ class DTUSubstrate(CompositeSystem, Schema):
         description="""
             The doping of the substrate measured as the electrical resistivity.
         """,
-        default = 0.2,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'ohm*cm',},
+        default=0.2,
+        a_eln={
+            'component': 'NumberEditQuantity',
+            'defaultDisplayUnit': 'ohm*cm',
+        },
         unit='(kg*m^3)/(A^2*s^3)',
     )
     doping_elements = Quantity(
         type=str,
-        default = 'P',
+        default='P',
         a_eln={'component': 'StringEditQuantity'},
     )
     length = Quantity(
         type=np.float64,
-        default = 0.04,
+        default=0.04,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
         unit='m',
     )
     width = Quantity(
         type=np.float64,
-        default = 0.04,
+        default=0.04,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
         unit='m',
     )
     thickness = Quantity(
         type=np.float64,
-        default = 0.000675,
+        default=0.000675,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
         unit='m',
     )
@@ -140,17 +143,6 @@ class DTUSubstrate(CompositeSystem, Schema):
         if self.edx_data_file:
             import pandas as pd
 
-            columns = [
-                'Spectrum Label',
-                'X (mm)',
-                'Y (mm)',
-                'Substrate Si Atomic %',
-                'Layer 1 Density (g/cm³)',
-                'Layer 1 Thickness (nm)',
-                'Layer 1 P Atomic %',
-                'Layer 1 S Atomic %',
-                'Layer 1 Cu Atomic %']
-
             with archive.m_context.raw_file(self.edx_data_file, 'rb') as edx:
                 df_data = pd.read_excel(edx, header=0)
 
@@ -158,9 +150,7 @@ class DTUSubstrate(CompositeSystem, Schema):
             self.avg_P = df_data['Layer 1 P Atomic %'].mean()
             self.avg_M1 = df_data['Layer 1 Cu Atomic %'].mean()
             self.avg_M2 = 0
-            #Extracting the atomic percent from the EDX file, average and populate
-
-
+            # Extracting the atomic percent from the EDX file, average and populate
 
 
 m_package.__init_metainfo__()
