@@ -702,16 +702,26 @@ class DTUSputtering(SputterDeposition, Schema):
         """
 
         super().normalize(archive, logger)
-        if self.read_from_log_file is True:
-            if self.log_file:
-                    import os
 
-                    #Extracting the sample name from the log file name
-                    log_name = os.path.basename(self.log_file)
-                    sample_id = log_name.split('_')[0]+'_'+log_name.split('_')[1]
-                    #If lab_id is empty, assign the sample name to lab_id
-                    if self.lab_id is None:
-                        self.lab_id = sample_id
+        if self.log_file:
+                import os
+
+                import pandas as pd
+
+                #Extracting the sample name from the log file name
+                log_name = os.path.basename(self.log_file)
+                sample_id = log_name.split('_')[0]+'_'+log_name.split('_')[1]
+                #If lab_id is empty, assign the sample name to lab_id
+                if self.lab_id is None:
+                    self.lab_id = sample_id
+
+                with archive.m_context.raw_file(self.log_file, 'r') as log:
+                    log_data=pd.read_csv(log, sep='.', header=0)
+
+                if log_data is not None:
+                    #Extracting the relevant data from the log file
+                    #and assigning it to the respective fields
+                    self.location= 'worked'
 
 
 
