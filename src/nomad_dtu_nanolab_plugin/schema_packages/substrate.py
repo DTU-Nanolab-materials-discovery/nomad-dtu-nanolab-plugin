@@ -120,35 +120,36 @@ class DTUSubstrate(CompositeSystem, Schema):
         description="""
             The average S atomic percent from the EDX measurement
                             """,
-        a_eln={'component': 'NumberEditQuantity'},
+        a_eln={'component': 'NumberEditQuantity', 'label': 'average S in atomic %'},
     )
     avg_P = Quantity(
         type=np.float64,
         description="""
             The average P atomic percent from the EDX measurement
                             """,
-        a_eln={'component': 'NumberEditQuantity'},
+        a_eln={'component': 'NumberEditQuantity', 'label': 'average P in atomic %'},
     )
     avg_M1 = Quantity(
         type=np.float64,
         description="""
             The average M1 atomic percent from the EDX measurement
                             """,
-        a_eln={'component': 'NumberEditQuantity'},
+        a_eln={'component': 'NumberEditQuantity', 'label': 'average M1 in atomic %'},
     )
     avg_M2 = Quantity(
         type=np.float64,
         description="""
             The average M2 atomic percent from the EDX measurement
                             """,
-        a_eln={'component': 'NumberEditQuantity'},
+        a_eln={'component': 'NumberEditQuantity', 'label': 'average M2 in atomic %'},
     )
     avg_layer_thickness = Quantity(
         type=np.float64,
         description="""
             The average layer thickness from the EDX measurement
                             """,
-        a_eln={'component': 'NumberEditQuantity'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit':'nm'},
+        unit='m',
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -166,21 +167,24 @@ class DTUSubstrate(CompositeSystem, Schema):
 
             with archive.m_context.raw_file(self.edx_data_file, 'rb') as edx:
                 df_data = pd.read_excel(edx, header=0)
-            self.avg_layer_thickness = df_data['Layer 1 Thickness (nm)'].mean()
-            self.avg_S = df_data['Layer 1 S Atomic %'].mean()
-            self.avg_P = df_data['Layer 1 P Atomic %'].mean()
+
+            thickness=round(df_data['Layer 1 Thickness (nm)'].mean(), 2)*0.000000001
+            self.avg_layer_thickness = thickness
+            self.avg_S = round(df_data['Layer 1 S Atomic %'].mean(), 2)
+            self.avg_P = round(df_data['Layer 1 P Atomic %'].mean(), 2)
 
             if self.M1_used is not None:
                 element_M1 = self.M1_used
                 pattern_M1 = f'Layer 1 {element_M1} Atomic %'
-                self.avg_M1 = df_data[pattern_M1].mean()
+                self.avg_M1 = round(df_data[pattern_M1].mean(), 2)
 
             if self.M2_used is not None:
                 element_M2 = self.M2_used
                 pattern_M2 = f'Layer 1 {element_M2} Atomic %'
-                self.avg_M2 = df_data[pattern_M2].mean()
+                self.avg_M2 = round(df_data[pattern_M2].mean(), 2)
 
             # Extracting the atomic percent from the EDX file, average and populate
 
 
 m_package.__init_metainfo__()
+
