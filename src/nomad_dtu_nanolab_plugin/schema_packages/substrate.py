@@ -96,6 +96,20 @@ class DTUSubstrate(CompositeSystem, Schema):
         type=str,
         a_eln={'component': 'RichTextEditQuantity'},
     )
+    M1_used = Quantity(
+        type=str,
+        description="""
+            The element symbol of the used Metal-1
+                            """,
+        a_eln={'component': 'StringEditQuantity'},
+    )
+    M2_used = Quantity(
+        type=str,
+        description="""
+            The element symbol of the used Metal-2
+                            """,
+        a_eln={'component': 'StringEditQuantity'},
+    )
     edx_data_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
@@ -129,6 +143,13 @@ class DTUSubstrate(CompositeSystem, Schema):
                             """,
         a_eln={'component': 'NumberEditQuantity'},
     )
+    avg_layer_thickness = Quantity(
+        type=np.float64,
+        description="""
+            The average layer thickness from the EDX measurement
+                            """,
+        a_eln={'component': 'NumberEditQuantity'},
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -145,11 +166,20 @@ class DTUSubstrate(CompositeSystem, Schema):
 
             with archive.m_context.raw_file(self.edx_data_file, 'rb') as edx:
                 df_data = pd.read_excel(edx, header=0)
-
+            self.avg_layer_thickness = df_data['Layer 1 Thickness (nm)'].mean()
             self.avg_S = df_data['Layer 1 S Atomic %'].mean()
             self.avg_P = df_data['Layer 1 P Atomic %'].mean()
-            self.avg_M1 = df_data['Layer 1 Cu Atomic %'].mean()
-            self.avg_M2 = 0
+
+            if self.M1_used is not None:
+                element_M1 = self.M1_used
+                pattern_M1 = f'Layer 1 {element_M1} Atomic %'
+                self.avg_M1 = df_data[pattern_M1].mean()
+
+            if self.M2_used is not None:
+                element_M2 = self.M2_used
+                pattern_M2 = f'Layer 1 {element_M2} Atomic %'
+                self.avg_M2 = df_data[pattern_M2].mean()
+
             # Extracting the atomic percent from the EDX file, average and populate
 
 
