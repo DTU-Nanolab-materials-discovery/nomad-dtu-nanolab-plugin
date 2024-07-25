@@ -496,7 +496,7 @@ class UsedGas(GasFlow, ArchiveSection):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        self.gas.substance_name = self.used_gas_supply.substance_name
+        self.gas.name = self.used_gas_supply.name
 
 
 class DepositionParameters(ArchiveSection):
