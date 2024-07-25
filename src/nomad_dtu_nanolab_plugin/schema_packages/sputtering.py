@@ -444,6 +444,18 @@ class AdjustedInstrumentParameters(InstrumentReference, ArchiveSection):
         default = 'heating',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `AdjustedInstrumentParameters` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        super().normalize(archive, logger)
+        self.lab_id = self.instrument.lab_id
+        self.name = self.instrument.name
 
 class GunOverview(ArchiveSection):
     """
@@ -605,10 +617,15 @@ class DepositionParameters(ArchiveSection):
             },
         unit='kg/(m*s^2)',
     )
-    target_image = Quantity(
+    target_image_before = Quantity(
         type=str,
         a_eln={'component': 'FileEditQuantity',
-               'label': 'Image of target after deposition'},
+               'label': 'Image of target before the deposition'},
+    )
+    target_image_after = Quantity(
+        type=str,
+        a_eln={'component': 'FileEditQuantity',
+               'label': 'Image of target after the deposition'},
     )
     heating_procedure_description = Quantity(
         type=str,
@@ -719,6 +736,15 @@ class DTUSputtering(SputterDeposition, Schema):
         """
 
         super().normalize(archive, logger)
+
+        sample_number = len(self.samples)
+        j=0
+        for j in range(sample_number):
+            sample_name = str(self.name) + '_' + str(self.samples[j].relative_position)
+            self.samples[j].name = sample_name
+            self.samples[j].lab_id = sample_name
+
+
 
         if self.log_file:
                 import os
