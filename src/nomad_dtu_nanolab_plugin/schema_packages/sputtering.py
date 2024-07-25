@@ -454,8 +454,8 @@ class AdjustedInstrumentParameters(InstrumentReference, ArchiveSection):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        self.lab_id = self.instrument.lab_id
-        self.name = self.instrument.name
+        self.lab_id = self.reference.lab_id
+        self.name = self.reference.name
 
 class GunOverview(ArchiveSection):
     """
