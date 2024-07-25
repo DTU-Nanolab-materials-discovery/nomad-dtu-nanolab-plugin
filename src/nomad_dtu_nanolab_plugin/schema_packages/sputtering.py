@@ -507,8 +507,8 @@ class UsedGas(GasFlow, ArchiveSection):
         self.gas.molecular_mass = self.used_gas_supply.molecular_mass
         self.gas.inchi = self.used_gas_supply.inchi
         self.gas.inchi_key = self.used_gas_supply.inchi_key
-        self.gas.smile = self.used_gas_supply.smile
-        self.gas.canonical_smile = self.used_gas_supply.canonical_smile
+        self.gas.smile = self.used_gas_supply.smiles
+        self.gas.canonical_smile = self.used_gas_supply.canonical_smiles
         self.gas.cas_number = self.used_gas_supply.cas_number
 
 
