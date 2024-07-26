@@ -115,13 +115,13 @@ class DTUTarget(CompositeSystem, Schema):
         number = len(df_data)
         j=0
         for j in range(number):
-            self.component[j].name= str(df_data[0, j]) + ' impurity'
-            if df_data[2, j] =='ppm':
-                self.component[j].mass_fraction = df_data[1,j]/1000000
-            elif df_data[2, j] =='wt%':
-                self.component[j].mass_fraction = df_data[1,j]/100
-            elif df_data[2, j] == 'ppb':
-                self.component[j].mass_fraction = df_data[1,j]/1000000000
+            self.component[j].name= str(df_data.iloc[0, j]) + ' impurity'
+            if df_data.iloc[2, j] =='ppm':
+                self.component[j].mass_fraction = df_data.iloc[1,j]/1000000
+            elif df_data.iloc[2, j] =='wt%':
+                self.component[j].mass_fraction = df_data.iloc[1,j]/100
+            elif df_data.iloc[2, j] == 'ppb':
+                self.component[j].mass_fraction = df_data.iloc[1,j]/1000000000
 
 
 
