@@ -104,21 +104,26 @@ class DTUTarget(CompositeSystem, Schema):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
+
         if self.impurity_file:
-            import numpy as np
-            array = []
+            import pandas as pd
+
+            with archive.m_context.raw_file(self.impurity_file, 'r') as impurity:
+                df_data = pd.read_csv(impurity, delimiter='\t', header=0)
+                self.impurities = df_data.to_string(index=False)
+
+        number = len(df_data)
+        j=0
+        for j in range(number):
+            self.component[j].name= str(df_data[0, j]) + ' impurity'
+            if df_data[2, j] =='ppm':
+                self.component[j].mass_fraction = df_data[1,j]/1000000
+            elif df_data[2, j] =='wt%':
+                self.component[j].mass_fraction = df_data[1,j]/100
+            elif df_data[2, j] == 'ppb':
+                self.component[j].mass_fraction = df_data[1,j]/1000000000
 
 
-            with open(self.impurity_file) as txt:
-                for line in txt:
-                    inner_list = [elt.strip() for elt in line.split(' ')]
-                    array.append(inner_list)
-
-            array = np.array(array)
-
-            for row in array:
-                formatted_row = ' '.join(map(str, row))
-                self.impurities += formatted_row + '\n'
 
 
 m_package.__init_metainfo__()
