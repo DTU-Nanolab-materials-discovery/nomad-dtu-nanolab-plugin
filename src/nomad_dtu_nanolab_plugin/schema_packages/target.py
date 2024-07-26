@@ -20,7 +20,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from nomad.datamodel.metainfo.annotations import (
+    BrowserAnnotation,
+    ELNAnnotation,
+    ELNComponentEnum,
+)
 from nomad.datamodel.metainfo.basesections import CompositeSystem
 from nomad.metainfo import Datetime, Package, Quantity, Section
 
@@ -51,6 +55,15 @@ class DTUTarget(CompositeSystem, Schema):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity'},
     )
+    impurity_file = Quantity(
+        type=str,
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
+        description="""
+        Upload a text file specifying the impurities here.
+        File has to be created with a seperate code.
+        """,
+        a_eln={'component': 'FileEditQuantity', 'label': 'file with impurities'},
+    )
     impurities = Quantity(
         type=str,
         a_eln={'component': 'RichTextEditQuantity'},
@@ -76,7 +89,7 @@ class DTUTarget(CompositeSystem, Schema):
     )
     time_used = Quantity(
         type=np.float64,
-        description='The time the target or cracker has been used in the system.',
+        description='The time the target or cracker has been used in the system',
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
@@ -91,6 +104,21 @@ class DTUTarget(CompositeSystem, Schema):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
+        if self.impurity_file:
+            import numpy as np
+            array = []
+
+
+            with open(self.impurity_file) as txt:
+                for line in txt:
+                    inner_list = [elt.strip() for elt in line.split(' ')]
+                    array.append(inner_list)
+
+            array = np.array(array)
+
+            for row in array:
+                formatted_row = ' '.join(map(str, row))
+                self.impurities += formatted_row + '\n'
 
 
 m_package.__init_metainfo__()
