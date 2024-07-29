@@ -25,7 +25,7 @@ from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
 )
-from nomad.datamodel.metainfo.basesections import CompositeSystem
+from nomad.datamodel.metainfo.basesections import Component, CompositeSystem
 from nomad.metainfo import Datetime, Package, Quantity, Section
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -109,21 +109,22 @@ class DTUTarget(CompositeSystem, Schema):
             import pandas as pd
 
             with archive.m_context.raw_file(self.impurity_file, 'r') as impurity:
-                df_data = pd.read_csv(impurity, delimiter='\t', header=0)
+                df_data = pd.read_csv(impurity, delimiter=' ', header=0)
                 imp_str = df_data.to_string(index=False, header=False)
                 self.impurities = 'Impurities of this target\n\n' + imp_str
 
 
-        number = len(df_data)
-        j=0
-        for j in range(number):
-            self.component[j].name= str(df_data.iloc[0, j]) + ' impurity'
-            if df_data.iloc[2, j] =='ppm':
-                self.component[j].mass_fraction = df_data.iloc[1,j]/1000000
-            elif df_data.iloc[2, j] =='wt%':
-                self.component[j].mass_fraction = df_data.iloc[1,j]/100
-            elif df_data.iloc[2, j] == 'ppb':
-                self.component[j].mass_fraction = df_data.iloc[1,j]/1000000000
+        self.components = [Component() for _ in range(len(df_data))]
+        df_data = df_data.replace({'<': ''}, regex=True)
+
+        for i in range(len(self.components)):
+            self.components[i].name = str(df_data.iloc[i,0]) + ' impurity'
+            if df_data.iloc[i,2] == 'ppm':
+                self.components[i].mass_fraction = float(df_data.iloc[i,1]) / 1000000
+            elif df_data.iloc[i,2] == 'wt%':
+                self.components[i].mass_fraction = float(df_data.iloc[i,1]) / 100
+            elif df_data.iloc[i,2] == 'ppb':
+                self.components[i].mass_fraction=float(df_data.iloc[i,1])/1000000000
 
 
 
