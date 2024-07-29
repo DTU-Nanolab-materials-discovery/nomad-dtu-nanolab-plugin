@@ -26,11 +26,10 @@ from nomad.datamodel.metainfo.annotations import (
     ELNComponentEnum,
 )
 from nomad.datamodel.metainfo.basesections import (
-    ArchiveSection,
     Component,
     CompositeSystem,
 )
-from nomad.metainfo import Datetime, Package, Quantity, Section, SubSection
+from nomad.metainfo import Datetime, Package, Quantity, Section
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
