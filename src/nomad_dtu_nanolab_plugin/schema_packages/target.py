@@ -110,8 +110,9 @@ class DTUTarget(CompositeSystem, Schema):
 
             with archive.m_context.raw_file(self.impurity_file, 'r') as impurity:
                 df_data = pd.read_csv(impurity, delimiter='\t', header=0)
-                self.impurities = df_data.to_string(index=False)
+                self.impurities=df_data.to_csv(sep=' ',index=False,line_terminator='\n')
 
+"""
         number = len(df_data)
         j=0
         for j in range(number):
@@ -122,7 +123,7 @@ class DTUTarget(CompositeSystem, Schema):
                 self.component[j].mass_fraction = df_data.iloc[1,j]/100
             elif df_data.iloc[2, j] == 'ppb':
                 self.component[j].mass_fraction = df_data.iloc[1,j]/1000000000
-
+"""
 
 
 
