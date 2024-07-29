@@ -110,8 +110,9 @@ class DTUTarget(CompositeSystem, Schema):
 
             with archive.m_context.raw_file(self.impurity_file, 'r') as impurity:
                 df_data = pd.read_csv(impurity, delimiter='\t', header=0)
-                imp_str=df_data.to_csv(sep=' ',index=False,line_terminator='\n')
-                self.impurities= 'Impurities of this target'+ '\n' + '\n' + imp_str
+                imp_str = df_data.to_string(index=False, header=False)
+                imp_str = imp_str.replace('\n', '\n')
+                self.impurities = 'Impurities of this target\n\n' + imp_str
 
 """
         number = len(df_data)
