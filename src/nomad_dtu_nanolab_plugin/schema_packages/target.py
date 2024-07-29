@@ -20,15 +20,10 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import Schema
-from nomad.datamodel.metainfo.annotations import (
-    BrowserAnnotation,
-    ELNAnnotation,
-    ELNComponentEnum,
-)
-from nomad.datamodel.metainfo.basesections import (
-    Component,
-    CompositeSystem,
-)
+from nomad.datamodel.metainfo.annotations import (BrowserAnnotation,
+                                                  ELNAnnotation,
+                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.basesections import Component, CompositeSystem
 from nomad.metainfo import Datetime, Package, Quantity, Section
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -121,6 +116,8 @@ class DTUTarget(CompositeSystem, Schema):
                 self.components[i].mass_fraction = float(df_data.iloc[i,1]) / 100
             elif df_data.iloc[i,2] == 'ppb':
                 self.components[i].mass_fraction=float(df_data.iloc[i,1])/1000000000
+            else :
+                raise ValueError('The impurity unit is not recognized')
 
 
 
