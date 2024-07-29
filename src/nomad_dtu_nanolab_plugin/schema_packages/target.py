@@ -25,8 +25,12 @@ from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
 )
-from nomad.datamodel.metainfo.basesections import Component, CompositeSystem
-from nomad.metainfo import Datetime, Package, Quantity, Section
+from nomad.datamodel.metainfo.basesections import (
+    ArchiveSection,
+    Component,
+    CompositeSystem,
+)
+from nomad.metainfo import Datetime, Package, Quantity, Section, SubSection
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
@@ -36,6 +40,9 @@ if TYPE_CHECKING:
 
 m_package = Package(name='DTU customised Target scheme')
 
+
+class Impurity(Component, ArchiveSection):
+    m_def = Section()
 
 class DTUTarget(CompositeSystem, Schema):
     """
@@ -64,10 +71,6 @@ class DTUTarget(CompositeSystem, Schema):
         """,
         a_eln={'component': 'FileEditQuantity', 'label': 'file with impurities'},
     )
-    impurities = Quantity(
-        type=str,
-        a_eln={'component': 'RichTextEditQuantity'},
-    )
     thickness = Quantity(
         type=np.float64,
         default = 0.00635,
@@ -93,6 +96,10 @@ class DTUTarget(CompositeSystem, Schema):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
+    impurities = SubSection(
+        section_def = Impurity,
+        repeats = True,
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -110,21 +117,18 @@ class DTUTarget(CompositeSystem, Schema):
 
             with archive.m_context.raw_file(self.impurity_file, 'r') as impurity:
                 df_data = pd.read_csv(impurity, delimiter=' ', header=0)
-                imp_str = df_data.to_string(index=False, header=False)
-                self.impurities = 'Impurities of this target\n\n' + imp_str
 
-
-        self.components = [Component() for _ in range(len(df_data))]
+        self.impurities = [Impurity() for _ in range(len(df_data))]
         df_data = df_data.replace({'<': ''}, regex=True)
 
-        for i in range(len(self.components)):
-            self.components[i].name = str(df_data.iloc[i,0]) + ' impurity'
+        for i in range(len(self.impurities)):
+            self.impurities[i].name = str(df_data.iloc[i,0]) + ' impurity'
             if df_data.iloc[i,2] == 'ppm':
-                self.components[i].mass_fraction = float(df_data.iloc[i,1]) / 1000000
+                self.impurities[i].mass_fraction = float(df_data.iloc[i,1]) / 1000000
             elif df_data.iloc[i,2] == 'wt%':
-                self.components[i].mass_fraction = float(df_data.iloc[i,1]) / 100
+                self.impurities[i].mass_fraction = float(df_data.iloc[i,1]) / 100
             elif df_data.iloc[i,2] == 'ppb':
-                self.components[i].mass_fraction=float(df_data.iloc[i,1])/1000000000
+                self.impurities[i].mass_fraction=float(df_data.iloc[i,1])/1000000000
 
 
 
