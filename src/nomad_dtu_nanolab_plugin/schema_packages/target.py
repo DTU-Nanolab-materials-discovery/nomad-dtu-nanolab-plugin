@@ -124,7 +124,7 @@ class DTUTarget(CompositeSystem, Schema):
                 self.component[j].mass_fraction = df_data.iloc[1,j]/100
             elif df_data.iloc[2, j] == 'ppb':
                 self.component[j].mass_fraction = df_data.iloc[1,j]/1000000000
-            j=j+1
+
 
 
 
