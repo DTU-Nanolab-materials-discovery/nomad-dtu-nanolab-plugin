@@ -198,21 +198,38 @@ class EDXMeasurement(Measurement, PlotSection):
         )
 
         for q in quantifications:
-            fig = go.Figure(
-                data=go.Scatter(
-                    x=x,
-                    y=y,
-                    mode='markers',
-                    marker=dict(
-                        size=10,
-                        color=quantifications[q],  # Set color to atomic fraction values
-                        colorscale='Viridis',  # Choose a colorscale
-                        colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
-                    ),
-                    customdata=quantifications[q],  # Add thickness data to customdata
-                    hovertemplate=f'<b>Atomic fraction of {q}:</b> %{{customdata}} nm',
-                )
+            # Create a grid for the heatmap
+            xi = np.linspace(min(x), max(x), 100)
+            yi = np.linspace(min(y), max(y), 100)
+            xi, yi = np.meshgrid(xi, yi)
+            zi = griddata((x, y), quantifications[q], (xi, yi), method='linear')
+
+            # Create a scatter plot
+            scatter = go.Scatter(
+                x=x,
+                y=y,
+                mode='markers',
+                marker=dict(
+                    size=10,
+                    color=quantifications[q],  # Set color to atomic fraction values
+                    colorscale='Viridis',  # Choose a colorscale
+                    colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
+                ),
+                customdata=quantifications[q],  # Add atomic fraction data to customdata
+                hovertemplate=f'<b>Atomic fraction of {q}:</b> %{{customdata}}',
             )
+
+            # Create a heatmap
+            heatmap = go.Heatmap(
+                x=xi[0],
+                y=yi[:, 0],
+                z=zi,
+                colorscale='Viridis',
+                colorbar=dict(title=f'{q} Atomic Fraction'),
+            )
+
+            # Combine scatter plot and heatmap
+            fig = go.Figure(data=[heatmap, scatter])
 
             # Update layout
             fig.update_layout(
