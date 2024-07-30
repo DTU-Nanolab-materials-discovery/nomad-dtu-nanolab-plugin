@@ -16,6 +16,7 @@ from nomad.datamodel.metainfo.basesections import Measurement, MeasurementResult
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
+from scipy.interpolate import griddata
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
@@ -141,22 +142,39 @@ class EDXMeasurement(Measurement, PlotSection):
                     quantification.atomic_fraction
                 )
 
+        # Create a grid for the heatmap
+        xi = np.linspace(min(x), max(x), 100)
+        yi = np.linspace(min(y), max(y), 100)
+        xi, yi = np.meshgrid(xi, yi)
+        zi = griddata((x, y), thickness, (xi, yi), method='linear')
+
         # Create a scatter plot
-        fig = go.Figure(
-            data=go.Scatter(
-                x=x,
-                y=y,
-                mode='markers',
-                marker=dict(
-                    size=10,
-                    color=thickness,  # Set color to thickness values
-                    colorscale='Viridis',  # Choose a colorscale
-                    colorbar=dict(title='Thickness (nm)'),  # Add a colorbar
-                ),
-                customdata=thickness,  # Add thickness data to customdata
-                hovertemplate='<b>Thickness:</b> %{customdata} nm',
-            )
+        scatter = go.Scatter(
+            x=x,
+            y=y,
+            mode='markers',
+            marker=dict(
+                size=10,
+                color=thickness,  # Set color to thickness values
+                colorscale='Viridis',  # Choose a colorscale
+                colorbar=dict(title='Thickness (nm)'),  # Add a colorbar
+            ),
+            customdata=thickness,  # Add thickness data to customdata
+            hovertemplate='<b>Thickness:</b> %{customdata} nm',
         )
+
+        # Create a heatmap
+        heatmap = go.Heatmap(
+            x=xi[0],
+            y=yi[:, 0],
+            z=zi,
+            colorscale='Viridis',
+            colorbar=dict(title='Thickness (nm)'),
+        )
+
+        # Combine scatter plot and heatmap
+        fig = go.Figure(data=[heatmap, scatter])
+
 
         # Update layout
         fig.update_layout(
