@@ -45,18 +45,18 @@ class Purge(ArchiveSection):
     )
     number_of_purge_cycles = Quantity(
         type=np.float64,
-        default = 5,
+        default=5,
         a_eln={'component': 'NumberEditQuantity'},
     )
     time_per_purge_cycles = Quantity(
         type=np.float64,
-        default = 100,
+        default=100,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
     pressure_during_purge = Quantity(
         type=np.float64,
-        default = 1,
+        default=1,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
         unit='kg/(m*s^2)',
     )
@@ -102,30 +102,30 @@ class NonToxicGasInlet(ArchiveSection):
     m_def = Section()
     non_toxic_gas_inlet_position_x = Quantity(
         type=np.float64,
-        default = 0,
+        default=0,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
         unit='m',
     )
     non_toxic_gas_inlet_position_y = Quantity(
         type=np.float64,
-        default = 0,
+        default=0,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
         unit='m',
     )
     non_toxic_gas_inlet_position_z = Quantity(
         type=np.float64,
-        default = 0,
+        default=0,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
         unit='m',
     )
     non_toxic_gas_inlet_direction = Quantity(
         type=str,
-        default = 'upwards',
+        default='upwards',
         a_eln={'component': 'StringEditQuantity'},
     )
     non_toxic_gas_inlet_pipe_diameter = Quantity(
         type=np.float64,
-        default = 0.025,
+        default=0.025,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
         unit='m',
     )
@@ -139,30 +139,30 @@ class ToxicGasInlet(ArchiveSection):
     m_def = Section()
     toxic_gas_inlet_position_x = Quantity(
         type=np.float64,
-        default = 0,
+        default=0,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
         unit='m',
     )
     toxic_gas_inlet_position_y = Quantity(
         type=np.float64,
-        default = 0,
+        default=0,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
         unit='m',
     )
     toxic_gas_inlet_position_z = Quantity(
         type=np.float64,
-        default = 0,
+        default=0,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
         unit='m',
     )
     toxic_gas_inlet_direction = Quantity(
         type=str,
-        default = 'downward',
+        default='downward',
         a_eln={'component': 'StringEditQuantity'},
     )
     toxic_gas_inlet_pipe_diameter = Quantity(
         type=np.float64,
-        default = 0.025,
+        default=0.025,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
         unit='m',
     )
@@ -190,19 +190,19 @@ class TaurusSource(ArchiveSection):
     )
     distance_to_substrate = Quantity(
         type=np.float64,
-        default = 0.209,
+        default=0.209,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
         unit='m',
     )
     set_angle = Quantity(
         type=np.float64,
-        default = 0.8726,
+        default=0.8726,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
     rotation = Quantity(
         type=np.float64,
-        default = 0,
+        default=0,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
@@ -234,19 +234,19 @@ class Magkeeper3Source(ArchiveSection):
     )
     distance_to_substrate = Quantity(
         type=np.float64,
-        default = 0.201,
+        default=0.201,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
         unit='m',
     )
     set_angle = Quantity(
         type=np.float64,
-        default = 0.8377,
+        default=0.8377,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
     rotation = Quantity(
         type=np.float64,
-        default = 0,
+        default=0,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
@@ -274,19 +274,19 @@ class Magkeeper4Source(ArchiveSection):
     )
     distance_to_substrate = Quantity(
         type=np.float64,
-        default = 0.201,
+        default=0.201,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
         unit='m',
     )
     set_angle = Quantity(
         type=np.float64,
-        default = 0.8377,
+        default=0.8377,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
     rotation = Quantity(
         type=np.float64,
-        default = 0,
+        default=0,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
@@ -314,19 +314,19 @@ class SCrackerSource(ArchiveSection):
     )
     distance_to_substrate = Quantity(
         type=np.float64,
-        default = 0.227,
+        default=0.227,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
         unit='m',
     )
     set_angle = Quantity(
         type=np.float64,
-        default = 1.1344,
+        default=1.1344,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
         unit='rad',
     )
     S_cracker_extension_into_chamber = Quantity(
         type=np.float64,
-        default = 0,
+        default=0,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm'},
         unit='m',
     )
@@ -348,7 +348,7 @@ class DTUInstrument(Instrument, Schema):
     )
     base_pressure = Quantity(
         type=np.float64,
-        default = 0.0000017,
+        default=0.0000017,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
         unit='kg/(m*s^2)',
     )

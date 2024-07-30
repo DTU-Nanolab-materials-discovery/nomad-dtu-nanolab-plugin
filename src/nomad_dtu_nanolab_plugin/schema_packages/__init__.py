@@ -80,3 +80,16 @@ instrument = InstrumentEntryPoint(
     name='Instrument',
     description='Schema package defined for instrument.',
 )
+
+
+class EDXEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.edx import m_package
+
+        return m_package
+
+
+edx = EDXEntryPoint(
+    name='EDX',
+    description='Schema package defined for EDX measurements.',
+)

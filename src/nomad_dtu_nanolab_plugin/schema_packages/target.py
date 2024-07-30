@@ -48,7 +48,7 @@ class DTUTarget(CompositeSystem, Schema):
     )
     supplier_id = Quantity(
         type=str,
-        default = 'Testbourne',
+        default='Testbourne',
         a_eln={'component': 'StringEditQuantity'},
     )
     purity = Quantity(
@@ -66,7 +66,7 @@ class DTUTarget(CompositeSystem, Schema):
     )
     thickness = Quantity(
         type=np.float64,
-        default = 0.00635,
+        default=0.00635,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
         unit='m',
     )
@@ -111,18 +111,17 @@ class DTUTarget(CompositeSystem, Schema):
         df_data = df_data.replace({'<': ''}, regex=True)
 
         for i in range(len(self.components)):
-            self.components[i].name = str(df_data.iloc[i,0]) + ' impurity'
-            if df_data.iloc[i,2] == 'ppm':
-                self.components[i].mass_fraction = float(df_data.iloc[i,1]) / 1000000
-            elif df_data.iloc[i,2] == 'wt%':
-                self.components[i].mass_fraction = float(df_data.iloc[i,1]) / 100
-            elif df_data.iloc[i,2] == 'ppb':
-                self.components[i].mass_fraction=float(df_data.iloc[i,1])/1000000000
-            else :
+            self.components[i].name = str(df_data.iloc[i, 0]) + ' impurity'
+            if df_data.iloc[i, 2] == 'ppm':
+                self.components[i].mass_fraction = float(df_data.iloc[i, 1]) / 1000000
+            elif df_data.iloc[i, 2] == 'wt%':
+                self.components[i].mass_fraction = float(df_data.iloc[i, 1]) / 100
+            elif df_data.iloc[i, 2] == 'ppb':
+                self.components[i].mass_fraction = (
+                    float(df_data.iloc[i, 1]) / 1000000000
+                )
+            else:
                 raise ValueError('The impurity unit is not recognized')
-
-
-
 
 
 m_package.__init_metainfo__()

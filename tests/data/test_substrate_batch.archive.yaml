@@ -1,0 +1,5 @@
+data:
+    m_def: nomad_dtu_nanolab_plugin.schema_packages.substrate.DTUSubstrateBatch
+    name: test_substrate_batch
+    number_of_substrates: 2
+    create_substrates: True
