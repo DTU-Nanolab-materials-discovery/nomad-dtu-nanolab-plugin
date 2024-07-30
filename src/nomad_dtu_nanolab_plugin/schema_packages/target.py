@@ -113,12 +113,12 @@ class DTUTarget(CompositeSystem, Schema):
         for i in range(len(self.components)):
             self.components[i].name = str(df_data.iloc[i, 0]) + ' impurity'
             if df_data.iloc[i, 2] == 'ppm':
-                self.components[i].mass_fraction = float(df_data.iloc[i, 1]) / 1000000
+                self.components[i].mass_fraction = float(df_data.iloc[i, 1]) *1e-6
             elif df_data.iloc[i, 2] == 'wt%':
-                self.components[i].mass_fraction = float(df_data.iloc[i, 1]) / 100
+                self.components[i].mass_fraction = float(df_data.iloc[i, 1]) *1e-2
             elif df_data.iloc[i, 2] == 'ppb':
                 self.components[i].mass_fraction = (
-                    float(df_data.iloc[i, 1]) / 1000000000
+                    float(df_data.iloc[i, 1]) *1e-9
                 )
             else:
                 raise ValueError('The impurity unit is not recognized')
