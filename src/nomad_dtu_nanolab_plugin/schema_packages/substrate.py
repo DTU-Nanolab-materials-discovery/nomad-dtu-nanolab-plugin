@@ -209,6 +209,27 @@ class DTUSubstrate(CrystallineSubstrate, Schema):
     )
 
 
+class Cleaning_step(Schema):
+    m_def = Section()
+    time = Quantity(
+        type=np.float64,
+        description='The time this cleaning step took.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
+        unit='s',
+    )
+    cleaning_agent = Quantity(
+        type=MEnum(['N2-gun', 'Ethanol', 'Acetone', 'IPA', 'H2O']),
+        default='N2-gun',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.RadioEnumEditQuantity),
+    )
+    sonication = Quantity(
+        type=bool,
+        default=False,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+    )
+
+
+
 class DTUSubstrateCleaning(Process, Schema):
     """
     Schema for substrate cleaning at the DTU Nanolab.
@@ -223,10 +244,81 @@ class DTUSubstrateCleaning(Process, Schema):
         description='The substrate batch that was cleaned.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
     )
+    cleaning_steps = SubSection(
+        section_def=Cleaning_step,
+        repeats=True,
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUSubstrateCleaning` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        self.samples = self.substrate_batch.entities
+        return super().normalize(archive, logger)
+
+class DTUSubstrateCutting(Process, Schema):
+    """
+    Schema for substrate cutting at the DTU Nanolab.
+    """
+
+    m_def = Section(
+        categories=[DTUNanolabCategory],
+        label='Substrate Cutting',
+    )
+    substrate_batch = Quantity(
+        type=DTUSubstrateBatch,
+        description='The substrate batch that was cut.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
+    )
+    Instrument_name = Quantity(
+        type=str,
+        default='microSTRUCT vario from the company 3D-Micromac AG',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
+    )
+    Laser_power = Quantity(
+        type=np.float64,
+        default=50,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
+        unit='W',
+    )
+    Laser_wafelength = Quantity(
+        type=np.float64,
+        default=532*1e-9,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='nm',
+              ),
+        unit='m',
+    )
+    repetition_rate = Quantity(
+        type=np.float64,
+        default=200,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
+        unit='Hz',
+    )
+    patter_repetitions = Quantity(
+        type=int,
+        default=6,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
+    )
+    writing_speed = Quantity(
+        type=np.float64,
+        default=50*1e-3,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm/s',
+        ),
+        unit='m/s',
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `DTUSubstrateCutting` class.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
