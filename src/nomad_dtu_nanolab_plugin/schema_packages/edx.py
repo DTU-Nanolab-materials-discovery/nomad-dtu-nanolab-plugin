@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from ase.data import chemical_symbols
-from nomad.datamodel.data import ArchiveSection
+from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
     ELNAnnotation,
@@ -104,10 +104,10 @@ class EDXResult(MeasurementResult):
             )
 
 
-class EDXMeasurement(Measurement, PlotSection):
+class EDXMeasurement(Measurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
-        label='EDX',
+        label='EDX Measurement',
     )
     edx_data_file = Quantity(
         type=str,
@@ -174,7 +174,6 @@ class EDXMeasurement(Measurement, PlotSection):
 
         # Combine scatter plot and heatmap
         fig = go.Figure(data=[heatmap, scatter])
-
 
         # Update layout
         fig.update_layout(
