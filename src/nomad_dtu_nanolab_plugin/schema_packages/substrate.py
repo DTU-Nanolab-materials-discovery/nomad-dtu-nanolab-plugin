@@ -167,7 +167,7 @@ class DTUSubstrateBatch(Collection, Schema):
 
             electronic_properties = ElectronicProperties()
             electronic_properties.conductivity_type = self.doping_type_of_substrate
-            electronic_properties.resistivity = self.doping_of_substrate
+            electronic_properties.electrical_resistivity = self.doping_of_substrate
             substrate.electronic_properties = electronic_properties
 
             substrate.supplier = self.supplier
