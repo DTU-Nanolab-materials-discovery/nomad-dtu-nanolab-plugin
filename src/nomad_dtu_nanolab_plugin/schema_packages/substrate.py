@@ -25,6 +25,7 @@ from nomad.datamodel.metainfo.basesections import (
     Collection,
     CompositeSystemReference,
     Process,
+    ProcessStep,
     PubChemPureSubstanceSection,
     PureSubstanceComponent,
     ReadableIdentifiers,
@@ -55,7 +56,7 @@ class DTUSubstrateBatch(Collection, Schema):
 
     m_def = Section(
         categories=[DTUNanolabCategory],
-        label='Substrate',
+        label='Substrate Batch',
         a_template=dict(
             substrate_identifiers=dict(),
         ),
@@ -136,7 +137,7 @@ class DTUSubstrateBatch(Collection, Schema):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `DTUSubstrate` class.
+        The normalizer for the `DTUSubstrateBatch` class.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
@@ -145,6 +146,7 @@ class DTUSubstrateBatch(Collection, Schema):
         """
         super().normalize(archive, logger)
         if self.create_substrates:
+            self.entities = []
             substrate = DTUSubstrate()
 
             geometry = RectangleCuboid()
@@ -209,14 +211,8 @@ class DTUSubstrate(CrystallineSubstrate, Schema):
     )
 
 
-class Cleaning_step(Schema):
+class CleaningStep(ProcessStep):
     m_def = Section()
-    time = Quantity(
-        type=np.float64,
-        description='The time this cleaning step took.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
-        unit='s',
-    )
     cleaning_agent = Quantity(
         type=MEnum(['N2-gun', 'Ethanol', 'Acetone', 'IPA', 'H2O']),
         default='N2-gun',
@@ -227,7 +223,6 @@ class Cleaning_step(Schema):
         default=False,
         a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
-
 
 
 class DTUSubstrateCleaning(Process, Schema):
@@ -244,8 +239,8 @@ class DTUSubstrateCleaning(Process, Schema):
         description='The substrate batch that was cleaned.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
     )
-    cleaning_steps = SubSection(
-        section_def=Cleaning_step,
+    steps = SubSection(
+        section_def=CleaningStep,
         repeats=True,
     )
 
@@ -261,6 +256,7 @@ class DTUSubstrateCleaning(Process, Schema):
         self.samples = self.substrate_batch.entities
         return super().normalize(archive, logger)
 
+
 class DTUSubstrateCutting(Process, Schema):
     """
     Schema for substrate cutting at the DTU Nanolab.
@@ -275,24 +271,24 @@ class DTUSubstrateCutting(Process, Schema):
         description='The substrate batch that was cut.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
     )
-    Instrument_name = Quantity(
+    instrument_name = Quantity(
         type=str,
         default='microSTRUCT vario from the company 3D-Micromac AG',
         a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
     )
-    Laser_power = Quantity(
+    laser_power = Quantity(
         type=np.float64,
         default=50,
         a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
         unit='W',
     )
-    Laser_wafelength = Quantity(
+    laser_wavelength = Quantity(
         type=np.float64,
-        default=532*1e-9,
+        default=532 * 1e-9,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='nm',
-              ),
+        ),
         unit='m',
     )
     repetition_rate = Quantity(
@@ -301,14 +297,14 @@ class DTUSubstrateCutting(Process, Schema):
         a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
         unit='Hz',
     )
-    patter_repetitions = Quantity(
+    pattern_repetitions = Quantity(
         type=int,
         default=6,
         a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
     )
     writing_speed = Quantity(
         type=np.float64,
-        default=50*1e-3,
+        default=50 * 1e-3,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm/s',
