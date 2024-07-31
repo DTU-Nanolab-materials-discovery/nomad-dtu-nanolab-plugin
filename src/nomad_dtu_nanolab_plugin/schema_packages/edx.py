@@ -7,12 +7,11 @@ import pandas as pd
 import plotly.graph_objects as go
 from ase.data import chemical_symbols
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import (
-    BrowserAnnotation,
-    ELNAnnotation,
-    ELNComponentEnum,
-)
-from nomad.datamodel.metainfo.basesections import Measurement, MeasurementResult
+from nomad.datamodel.metainfo.annotations import (BrowserAnnotation,
+                                                  ELNAnnotation,
+                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.basesections import (Measurement,
+                                                   MeasurementResult)
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
@@ -154,10 +153,15 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
             y=y,
             mode='markers',
             marker=dict(
-                size=10,
+                size=15,
                 color=thickness,  # Set color to thickness values
                 colorscale='Viridis',  # Choose a colorscale
-                colorbar=dict(title='Thickness (nm)'),  # Add a colorbar
+                #colorbar=dict(title='Thickness (nm)'),  # Add a colorbar
+                showscale=False,  # Hide the colorbar for the scatter plot
+                line=dict(
+                    width=2,  # Set the width of the border
+                    color='DarkSlateGrey'  # Set the color of the border
+            )
             ),
             customdata=thickness,  # Add thickness data to customdata
             hovertemplate='<b>Thickness:</b> %{customdata} nm',
@@ -209,10 +213,15 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
                 y=y,
                 mode='markers',
                 marker=dict(
-                    size=10,
+                    size=15,
                     color=quantifications[q],  # Set color to atomic fraction values
                     colorscale='Viridis',  # Choose a colorscale
-                    colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
+                    #colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
+                    showscale=False,  # Hide the colorbar for the scatter plot
+                    line=dict(
+                        width=2,  # Set the width of the border
+                        color='DarkSlateGrey'  # Set the color of the border
+            )
                 ),
                 customdata=quantifications[q],  # Add atomic fraction data to customdata
                 hovertemplate=f'<b>Atomic fraction of {q}:</b> %{{customdata}}',
