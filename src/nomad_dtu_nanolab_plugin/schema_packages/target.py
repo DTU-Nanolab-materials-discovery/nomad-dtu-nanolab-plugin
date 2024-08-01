@@ -140,7 +140,7 @@ class DTUTarget(CompositeSystem, Schema):
                 )
 
             with archive.m_context.raw_file(self.impurity_file, 'r') as impurity:
-                df_data = pd.read_csv(impurity, delimiter=' ', header=0)
+                df_data = pd.read_csv(impurity, delimiter=' ', header=None)
 
             self.components = [Component() for _ in range(len(df_data))]
             df_data = df_data.replace({'<': ''}, regex=True)
