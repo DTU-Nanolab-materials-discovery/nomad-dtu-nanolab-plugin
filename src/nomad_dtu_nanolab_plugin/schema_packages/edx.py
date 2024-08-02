@@ -311,6 +311,7 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
                 )
             result.normalize(archive, logger)
             self.results.append(result)
+        self.figures = []
         self.plot()
 
 
