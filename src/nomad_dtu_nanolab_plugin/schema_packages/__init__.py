@@ -106,3 +106,16 @@ xrd = XRDEntryPoint(
     name='XRD',
     description='Schema package defined for XRD measurements.',
 )
+
+
+class SampleEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.sample import m_package
+
+        return m_package
+
+
+sample = SampleEntryPoint(
+    name='Sample',
+    description='Schema package defined for samples.',
+)
