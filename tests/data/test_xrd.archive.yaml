@@ -1,0 +1,5 @@
+data:
+  m_def: nomad_dtu_nanolab_plugin.schema_packages.xrd.DTUXRDMeasurement
+  data_files:
+    - ZnO_XRD_map/ZnO ALD training_001_1_0-000_0-000.rasx
+    - ZnO_XRD_map/ZnO ALD training_001_2_20-000_-20-000.rasx
