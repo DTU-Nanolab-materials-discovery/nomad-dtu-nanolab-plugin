@@ -93,3 +93,16 @@ edx = EDXEntryPoint(
     name='EDX',
     description='Schema package defined for EDX measurements.',
 )
+
+
+class XRDEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.xrd import m_package
+
+        return m_package
+
+
+xrd = XRDEntryPoint(
+    name='XRD',
+    description='Schema package defined for XRD measurements.',
+)
