@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+import pint
 import plotly.graph_objects as go
 from ase.data import chemical_symbols
 from nomad.datamodel.data import ArchiveSection, Schema
@@ -97,7 +98,9 @@ class EDXResult(MeasurementResult):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        if self.x_position and self.y_position:
+        if isinstance(self.x_position, pint.Quantity) and isinstance(
+            self.y_position, pint.Quantity
+        ):
             self.name = (
                 f'({self.x_position.to("mm").magnitude:.1f}, '
                 f'{self.y_position.to("mm").magnitude:.1f})'
@@ -133,10 +136,18 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
     def plot(self) -> None:
         x, y, thickness = [], [], []
         quantifications = defaultdict(list)
+        result: EDXResult
         for result in self.results:
+            if (
+                not isinstance(result.x_position, pint.Quantity)
+                or not isinstance(result.y_position, pint.Quantity)
+                or not isinstance(result.layer_thickness, pint.Quantity)
+            ):
+                continue
             x.append(result.x_position.to('mm').magnitude)
             y.append(result.y_position.to('mm').magnitude)
             thickness.append(result.layer_thickness.to('nm').magnitude)
+            quantification: EDXQuantification
             for quantification in result.quantifications:
                 quantifications[quantification.element].append(
                     quantification.atomic_fraction
@@ -157,12 +168,12 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
                 size=15,
                 color=thickness,  # Set color to thickness values
                 colorscale='Viridis',  # Choose a colorscale
-                #colorbar=dict(title='Thickness (nm)'),  # Add a colorbar
+                # colorbar=dict(title='Thickness (nm)'),  # Add a colorbar
                 showscale=False,  # Hide the colorbar for the scatter plot
                 line=dict(
                     width=2,  # Set the width of the border
-                    color='DarkSlateGrey'  # Set the color of the border
-            )
+                    color='DarkSlateGrey',  # Set the color of the border
+                ),
             ),
             customdata=thickness,  # Add thickness data to customdata
             hovertemplate='<b>Thickness:</b> %{customdata} nm',
@@ -217,12 +228,12 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
                     size=15,
                     color=quantifications[q],  # Set color to atomic fraction values
                     colorscale='Viridis',  # Choose a colorscale
-                    #colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
+                    # colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
                     showscale=False,  # Hide the colorbar for the scatter plot
                     line=dict(
                         width=2,  # Set the width of the border
-                        color='DarkSlateGrey'  # Set the color of the border
-            )
+                        color='DarkSlateGrey',  # Set the color of the border
+                    ),
                 ),
                 customdata=quantifications[q],  # Add atomic fraction data to customdata
                 hovertemplate=f'<b>Atomic fraction of {q}:</b> %{{customdata}}',
@@ -291,6 +302,7 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
             result.x_position = ureg.Quantity(row['X (mm)'], 'mm')
             result.y_position = ureg.Quantity(row['Y (mm)'], 'mm')
             result.layer_thickness = ureg.Quantity(row['Layer 1 Thickness (nm)'], 'nm')
+            result.quantifications = []
             for label in percentage_labels:
                 element = label.split(' ')[2]
                 atomic_fraction = row[label] * 1e-2
