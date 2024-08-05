@@ -199,6 +199,12 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+            ),
         )
 
         plot_json = fig.to_plotly_json()
@@ -259,6 +265,12 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
                 template='plotly_white',
                 hovermode='closest',
                 dragmode='zoom',
+                xaxis=dict(
+                    fixedrange=False,
+                ),
+                yaxis=dict(
+                    fixedrange=False,
+                ),
             )
 
             plot_json = fig.to_plotly_json()

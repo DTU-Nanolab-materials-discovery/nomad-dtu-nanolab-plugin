@@ -122,11 +122,18 @@ class DTUXRDMeasurement(XRayDiffraction, PlotSection, Schema):
         # Update layout
         fig.update_layout(
             title='XRD Patterns',
-            xaxis_title='2theta / deg',
-            yaxis_title='Intensity / a.u.',
+            xaxis_title='2<i>θ</i> / °',
+            yaxis_title='Intensity',
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                type='log',
+            ),
         )
 
         plot_json = fig.to_plotly_json()
@@ -212,14 +219,14 @@ class DTUXRDMeasurement(XRayDiffraction, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        file_data = []
-        for file_path in self.data_files:
-            with archive.m_context.raw_file(file_path) as file:
-                file_data.append(read_rigaku_rasx(file.name, logger))
-
-        self.write_xrd_data(file_data, archive, logger)
-        self.figures = []
-        self.plot()
+        if self.data_files:
+            file_data = []
+            for file_path in self.data_files:
+                with archive.m_context.raw_file(file_path) as file:
+                    file_data.append(read_rigaku_rasx(file.name, logger))
+            self.write_xrd_data(file_data, archive, logger)
+            self.figures = []
+            self.plot()
         super().normalize(archive, logger)
 
 
