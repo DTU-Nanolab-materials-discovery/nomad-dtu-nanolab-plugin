@@ -18,15 +18,13 @@
 
 from typing import TYPE_CHECKING, Any
 
-import numpy as np
-import pint
 import plotly.graph_objects as go
 from fairmat_readers_xrd import read_rigaku_rasx
-from nomad.datamodel.data import Quantity, Schema
+from nomad.datamodel.data import Schema
 from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
-from nomad.metainfo import Package, Section
+from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad_measurements.utils import merge_sections
 from nomad_measurements.xrd import (
     XRayDiffraction,
@@ -36,6 +34,7 @@ from nomad_measurements.xrd import (
 )
 from structlog.stdlib import BoundLogger
 
+from nomad_dtu_nanolab_plugin.basesections import MappingMeasurement, MappingResult
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
 if TYPE_CHECKING:
@@ -45,30 +44,8 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU XRD measurement schema')
 
 
-class XRDMappingResult(XRDResult1D):
+class XRDMappingResult(MappingResult, XRDResult1D):
     m_def = Section()
-    x_position = Quantity(
-        type=np.float64,
-        description="""
-        The x position of the EDX measurement.
-        """,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-        unit='m',
-    )
-    y_position = Quantity(
-        type=np.float64,
-        description="""
-        The y position of the EDX measurement.
-        """,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-        unit='m',
-    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -79,17 +56,15 @@ class XRDMappingResult(XRDResult1D):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+        # TODO: Add real code for calculating the relative positions of the measurements.
+        if self.x_absolute:
+            self.x_relative = self.x_absolute
+        if self.y_absolute:
+            self.y_relative = self.y_absolute
         super().normalize(archive, logger)
-        if isinstance(self.x_position, pint.Quantity) and isinstance(
-            self.y_position, pint.Quantity
-        ):
-            self.name = (
-                f'({self.x_position.to("mm").magnitude:.1f}, '
-                f'{self.y_position.to("mm").magnitude:.1f})'
-            )
 
 
-class DTUXRDMeasurement(XRayDiffraction, PlotSection, Schema):
+class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='XRD Measurement',
@@ -102,6 +77,11 @@ class DTUXRDMeasurement(XRayDiffraction, PlotSection, Schema):
             component=ELNComponentEnum.FileEditQuantity,
         ),
     )
+    results = SubSection(
+        section_def=XRDMappingResult,
+        description='The XRD results.',
+        repeats=True,
+    )
 
     def plot(self) -> None:
         fig = go.Figure()
@@ -113,8 +93,8 @@ class DTUXRDMeasurement(XRayDiffraction, PlotSection, Schema):
                     y=result.intensity.magnitude,
                     mode='lines',
                     name=(
-                        f'({result.x_position.to("mm").magnitude:.1f}, '
-                        f'{result.y_position.to("mm").magnitude:.1f})'
+                        f'({result.x_absolute.to("mm").magnitude:.1f}, '
+                        f'{result.y_absolute.to("mm").magnitude:.1f})'
                     ),
                 )
             )
@@ -181,8 +161,8 @@ class DTUXRDMeasurement(XRayDiffraction, PlotSection, Schema):
                 phi=xrd_dict.get('Phi', None),
                 scan_axis=metadata_dict.get('scan_axis', None),
                 integration_time=xrd_dict.get('countTime', None),
-                x_position=xrd_dict.get('X', None)[0],
-                y_position=xrd_dict.get('Y', None)[0],
+                x_absolute=xrd_dict.get('X', None)[0],
+                y_absolute=xrd_dict.get('Y', None)[0],
             )
             result.normalize(archive, logger)
             results.append(result)

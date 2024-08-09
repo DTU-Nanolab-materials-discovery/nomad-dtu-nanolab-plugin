@@ -13,12 +13,12 @@ from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
 )
-from nomad.datamodel.metainfo.basesections import Measurement, MeasurementResult
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from scipy.interpolate import griddata
 
+from nomad_dtu_nanolab_plugin.basesections import MappingMeasurement, MappingResult
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
 if TYPE_CHECKING:
@@ -48,30 +48,8 @@ class EDXQuantification(ArchiveSection):
     )
 
 
-class EDXResult(MeasurementResult):
+class EDXResult(MappingResult):
     m_def = Section()
-    x_position = Quantity(
-        type=np.float64,
-        description="""
-        The x position of the EDX measurement.
-        """,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-        unit='m',
-    )
-    y_position = Quantity(
-        type=np.float64,
-        description="""
-        The y position of the EDX measurement.
-        """,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-        unit='m',
-    )
     layer_thickness = Quantity(
         type=np.float64,
         description="""
@@ -98,16 +76,10 @@ class EDXResult(MeasurementResult):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        if isinstance(self.x_position, pint.Quantity) and isinstance(
-            self.y_position, pint.Quantity
-        ):
-            self.name = (
-                f'({self.x_position.to("mm").magnitude:.1f}, '
-                f'{self.y_position.to("mm").magnitude:.1f})'
-            )
+        # TODO: Add code for calculating the relative positions of the measurements.
 
 
-class EDXMeasurement(Measurement, PlotSection, Schema):
+class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='EDX Measurement',
