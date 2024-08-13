@@ -33,9 +33,11 @@ from nomad_material_processing.vapor_deposition.general import (
 )
 from nomad_material_processing.vapor_deposition.pvd.general import PVDSource, PVDStep
 from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
+from nomad_measurements.utils import merge_sections
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
+from nomad_dtu_nanolab_plugin.sputter_log_reader import read_logfile
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -737,6 +739,18 @@ class DTUSputtering(SputterDeposition, Schema):
         section_def=DepositionParameters,
     )
 
+    def write_log_data(self, log_data: dict, logger: 'BoundLogger') -> None:
+        """
+        Method for writing the log data to the respective sections.
+
+        Args:
+            log_data (dict): Dictionary containing the log data.
+            logger (BoundLogger): A structlog logger.
+        """
+
+        sputtering = DTUSputtering()
+        merge_sections(self, sputtering, logger)
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUSputtering` class.
@@ -759,8 +773,6 @@ class DTUSputtering(SputterDeposition, Schema):
         if self.log_file:
             import os
 
-            import pandas as pd
-
             # Extracting the sample name from the log file name
             log_name = os.path.basename(self.log_file)
             sample_id = log_name.split('_')[0] + '_' + log_name.split('_')[1]
@@ -769,12 +781,10 @@ class DTUSputtering(SputterDeposition, Schema):
                 self.lab_id = sample_id
 
             with archive.m_context.raw_file(self.log_file, 'r') as log:
-                log_data = pd.read_csv(log, sep='.', header=0)
+                log_data = read_logfile(log.name)
 
             if log_data is not None:
-                # Extracting the relevant data from the log file
-                # and assigning it to the respective fields
-                self.location = 'worked'
+                self.write_log_data(log_data)
 
             # to automate the take over of te references
             # for the further processing see in the respective sections
