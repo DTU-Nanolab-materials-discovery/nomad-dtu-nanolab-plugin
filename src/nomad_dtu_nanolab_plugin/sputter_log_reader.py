@@ -17,62 +17,7 @@ import pandas as pd
 from mendeleev import element
 
 # %%
-# ---------FILES LOCATIONS-------------
-
-# Logfile location
-logfile_dir = r'O:\Intern\Phosphosulfides\Data\deposition logs'
-logfile_name = 'mittma_0015_Cu_Recording Set 2024.08.02-10.52.28'
-logfile_extension = 'CSV'
-logfile_path = f'{logfile_dir}/{logfile_name}.{logfile_extension}'
-
-# %%
-# ---------REFERENCE VALUES-------------
-
-# Set of reference values used in different parts of the script
-
-# VERSION
-version = 'v0.0.20'
-
-# Eletrical current threshold above which a dc plasma is considered on
-current_threshold = 0.01  # miliamps
-# Bias threshold above which a rf plasma is considered on
-bias_threshold = 0.01  # volts
-# Power setpoint difference threshold above which a
-# plasma is considered ramping up
-power_setpoint_diff_threshold = 0.01  # watts
-# Temperature setpoint difference threshold above which the
-# substrate temp is considered ramping up
-temp_setpoint_diff_threshold = 0.11  # degrees
-# Temperature setpoint of cracker's zones above which the
-# the cracker is considered on
-cracker_zone1_min_temp = 70  # degrees
-cracker_zone2_min_temp = 150  # degrees
-cracker_zone3_min_temp = 200  # degrees
-# Temperature below which the deposition is considered room temperature
-rt_temp_threshold = 30  # degrees
-# Time for the qcm to stabilize after the Xtal 2 shutter opens
-stab_time = 30  # seconds
-# Threshold above which the flow of the mfc is considered on
-mfc_flow_threshold = 1  # sccm
-# Fraction of the length of the deposition dataframe to consider for the
-# beginning and end of the deposition voltage averaging
-fraq_rows_avg_voltage = 5  # %
-# Number of timesteps to consider for the continuity limit
-num_timestep = 3
-# Minimum size of a domain in terms of the average timestep
-min_domain_size = 3
-# Size of the temperature control domains above which we consider that the
-# temperature control was on
-min_temp_ctrl_size = 10
-# Max pressure to read the base pressure
-max_base_pressure = 1e-6  # Torr
-# variation in percent to consider that the cracker temperature is the same
-# as the cracker temperature during deposition to read the cracker induced
-# base pressure
-cracker_param = 5  # %
-
-# %%
-# ---------FUNCTION DEFINITIONS-------------
+# ---------HELPER FUNCTIONS DEFINITION------------
 
 
 # Function to convert timestamps to isoformat
@@ -102,6 +47,8 @@ def read_logfile(file_path):
         df['Time Stamp'] = pd.to_datetime(
             df['Time Stamp'], format='%b-%d-%Y %I:%M:%S.%f %p'
         )
+        # Ensure all timestamps in the log file and spectrum are tz-naive
+        df['Time Stamp'] = df['Time Stamp'].dt.tz_localize(None)
         return df
     except Exception:
         return None
@@ -207,7 +154,7 @@ def extract_domains(df, df2, timestamp_col='Time Stamp'):
     # Add the last continuous domain
     bounds.append((df[timestamp_col].iloc[start_idx], df[timestamp_col].iloc[-1]))
     # remove all the bounds that are less than a certain time
-    # interval so only keep big domains
+    # interval to only keep big domains
     bounds = [
         bound
         for bound in bounds
@@ -245,49 +192,18 @@ def make_timestamps_tz_naive(timestamps):
 def calculate_avg_true_temp(temp_1, temp_2):
     return 0.905 * (0.5 * (temp_1 + temp_2)) + 12
 
-
-# %%
-# ---------READ THE DATA-------------
-
-# Read the log file and spectrum data
-data = read_logfile(logfile_path)
-
-# Ensure all timestamps in the log file and spectrum are tz-naive
-data['Time Stamp'] = data['Time Stamp'].dt.tz_localize(None)
-
-# %%
-# ---------DEFINE DE CONDITIONS FOR DIFFERENT EVENTS-------------
-
-# Initialize dictionaries to store the ramp up, plasma on, and
-# presputtering conditions and corresponding data for each source
-source_ramp_up_cond_dict = {}
-data_source_ramp_up_dict = {}
-bounds_events_source_ramp_up_dict = {}
-num_events_source_ramp_up_dict = {}
-
-source_on_cond_dict = {}
-data_source_on_dict = {}
-bounds_events_source_on_dict = {}
-num_events_source_on_dict = {}
-
-source_presput_cond_dict = {}
-data_source_presput_dict = {}
-bounds_events_source_presput_dict = {}
-num_events_source_presput_dict = {}
-
-# ---------READING THE SOURCE USED--------
-
-# Get the source list automatically from the logfile
+# Function to get the source list automatically from the logfile
 # (Ex: source_list = [1, 3, 4])
-source_list = []
-for col in data.columns:
-    if col.startswith('PC Source') and col.endswith('Loaded Target'):
-        source_number = int(col.split()[2])
-        source_list.append(source_number)
+def get_source_list(data):
 
-# ---------CONNECTING THE SOURCES TO THE POWER SUPPLIES--------
+    source_list = []
+    for col in data.columns:
+        if col.startswith('PC Source') and col.endswith('Loaded Target'):
+            source_number = int(col.split()[2])
+            source_list.append(source_number)
+    return source_list
 
-# Read what source is connected to which power supply and creates column
+# Function to read what source is connected to which power supply and creates column
 # names that relate directly to the source instead of the power supply
 # Iterate over source numbers and perform column creation
 # (Ex: 'Power Supply 1 DC Bias' -> 'Source 4 DC Bias')
@@ -295,38 +211,55 @@ for col in data.columns:
 # is open and the source is switch at the same time
 # to ensure that the algorithm does think that we used a source if
 # we switched it on to a power supply by mistake
-for source_number in source_list:
-    shutter_col = f'PC Source {source_number} Shutter Open'
-    if f'PC Source {source_number} Switch-PDC-PWS1' in data.columns:
-        switch_columns = {
+def connect_source_to_power_supply(data, source_list):
+    for source_number in source_list:
+        shutter_col = f'PC Source {source_number} Shutter Open'
+        if f'PC Source {source_number} Switch-PDC-PWS1' in data.columns:
+            switch_columns = {
             f'PC Source {source_number} Switch-PDC-PWS1': 'Power Supply 1',
             f'PC Source {source_number} Switch-RF1-PWS2': 'Power Supply 2',
             f'PC Source {source_number} Switch-RF2-PWS3': 'Power Supply 3',
         }
-        for switch_col, power_supply in switch_columns.items():
-            condition_met = (data[switch_col] == 1) & (data[shutter_col] == 1)
-            if condition_met.any():
-                for col in data.columns:
-                    if col.startswith(power_supply):
-                        new_col = col.replace(power_supply, f'Source {source_number}')
-                        data[new_col] = data[col]
-    elif f'PC Source {source_number} Switch-PDC-PWS1' not in data.columns:
-        for power_supply in ['Power Supply 1', 'Power Supply 2', 'Power Supply 3']:
-            condition_met = (data[f'{power_supply} Enabled'] == 1) & (
+            for switch_col, power_supply in switch_columns.items():
+                condition_met = (data[switch_col] == 1) & (data[shutter_col] == 1)
+                if condition_met.any():
+                    for col in data.columns:
+                        if col.startswith(power_supply):
+                            new_col = col.replace(power_supply, f'Source {source_number}')
+                            data[new_col] = data[col]
+        elif f'PC Source {source_number} Switch-PDC-PWS1' not in data.columns:
+            for power_supply in ['Power Supply 1', 'Power Supply 2', 'Power Supply 3']:
+                condition_met = (data[f'{power_supply} Enabled'] == 1) & (
                 data[shutter_col] == 1
             )
-            if condition_met.any():
-                for col in data.columns:
-                    if col.startswith(power_supply):
-                        new_col = col.replace(power_supply, f'Source {source_number}')
-                        data[new_col] = data[col]
-    else:
-        print('No source found')
-        break
+                if condition_met.any():
+                    for col in data.columns:
+                        if col.startswith(power_supply):
+                            new_col = col.replace(power_supply, f'Source {source_number}')
+                            data[new_col] = data[col]
+        else:
+            print('No source found')
+            break
 
-# ---------CONDITIONS FOR THE PLASMA ON OR BEING RAMPED UP--------
+#Method to rename all 'Sulfur Cracker Control Setpoint' columns to
+#'Sulfur Cracker Control Setpoint Feedback' and all
+#'Sulfur Cracker Control Valve PulseWidth Setpoint' columns to
+#'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+#This allows to harmonize the column name for samples deposited
+# before the 12/08/2024, for which the column name was wrong and
+# cracker data is not logged properly
+def rename_cracker_columns(data):
+    if ('Sulfur Cracker Control Setpoint'
+        in data.columns) & (
+        'Sulfur Cracker Control Valve PulseWidth Setpoint'
+        in data.columns):
+        data.rename(columns={
+            'Sulfur Cracker Control Valve Setpoint':
+            'Sulfur Cracker Control Valve Setpoint Feedback',
+            'Sulfur Cracker Control Valve PulseWidth Setpoint':
+            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'},inplace=True)
 
-# For all the sources, we read the dataframe for columns that
+# For all the sources, method to read the dataframe for columns that
 # give indication#of the status of the source (current,
 # dc bias, output setpoint)#and create conditions for the
 # plasma being on and being ramped up
@@ -336,59 +269,72 @@ for source_number in source_list:
 # Because we have performed the previous step, we can now
 # directly use the source number to create the conditions if we handle
 # the case where the column does not exist in the dataframe
-for source_number in source_list:
-    enabled = (
+def filter_data_plasma_on_ramp_up(data, source_list):
+    # Initialize dictionaries to store the ramp up, plasma on
+    # conditions and corresponding data for each source
+    source_ramp_up_cond_dict = {}
+    data_source_ramp_up_dict = {}
+    bounds_source_ramp_up_dict = {}
+    events_source_ramp_up_dict = {}
+
+    source_on_cond_dict = {}
+    data_source_on_dict = {}
+    bounds_source_on_dict = {}
+    events_source_on_dict = {}
+
+    for source_number in source_list:
+        enabled = (
         data.get(f'Source {source_number} Enabled', pd.Series([0] * len(data))) != 0
     )
     # this syntax is used to handle cases where the column does
     # not exist in the dataframe. In that case, it returns a dataframe
     # of 0 (False) values of the same length as the original dataframe
-    current = (
+        current = (
         data.get(f'Source {source_number} Current', pd.Series([0] * len(data)))
         > current_threshold
     )
-    dc_bias = (
+        dc_bias = (
         data.get(f'Source {source_number} DC Bias', pd.Series([0] * len(data)))
         > bias_threshold
     )
-    setpoint_diff = (
+        setpoint_diff = (
         data.get(
             f'Source {source_number} Output Setpoint', pd.Series([0] * len(data))
         ).diff()
         > power_setpoint_diff_threshold
     )
     # Define conditions for the plasma being on
-    source_on_cond = enabled & (current | dc_bias)
+        source_on_cond = enabled & (current | dc_bias)
     # Define conditions for the plasma ramping up
-    source_ramp_up_cond = enabled & setpoint_diff
+        source_ramp_up_cond = enabled & setpoint_diff
     # In the folowing, we store each dataframe in a dictionary of
     # dataframes, where the key is the source number
     # Define conditions for specific plasma being on
-    source_on_cond_dict[f'source{source_number}'] = source_on_cond
+        source_on_cond_dict[f'source{source_number}'] = source_on_cond
     # Filter the data points where the plasma is on
-    data_source_on_dict[f'source{source_number}'] = data[source_on_cond]
+        data_source_on_dict[f'source{source_number}'] = data[source_on_cond]
     # Find the number of events where the plasma is on
-    if not data_source_on_dict[f'source{source_number}'].empty:
-        bounds_events_source_on_dict[f'source{source_number}'] = extract_domains(
+        if not data_source_on_dict[f'source{source_number}'].empty:
+            bounds_source_on_dict[f'source{source_number}'] = extract_domains(
             data_source_on_dict[f'source{source_number}'], data
         )
-        num_events_source_on_dict[f'source{source_number}'] = len(
-            bounds_events_source_on_dict[f'source{source_number}']
+            events_source_on_dict[f'source{source_number}'] = len(
+            bounds_source_on_dict[f'source{source_number}']
         )
-    else:
-        bounds_events_source_on_dict[f'source{source_number}'] = []
-        num_events_source_on_dict[f'source{source_number}'] = 0
+        else:
+            bounds_source_on_dict[f'source{source_number}'] = []
+            events_source_on_dict[f'source{source_number}'] = 0
     # Define conditions for the plasma ramping up
-    source_ramp_up_wo1stpoint_cond = enabled & setpoint_diff
-    source_ramp_up_cond = (
+        source_ramp_up_wo1stpoint_cond = enabled & setpoint_diff
+        source_ramp_up_cond = (
         source_ramp_up_wo1stpoint_cond
         | source_ramp_up_wo1stpoint_cond.shift(-1, fill_value=False)
     )
     # Filter the data points where the plasma is ramping up
-    data_source_ramp_up_dict[f'source{source_number}'] = data[source_ramp_up_cond]
+        data_source_ramp_up_dict[f'source{source_number}'] = data[source_ramp_up_cond]
     # Find the number of events where the plasma is ramping up
-    if not data_source_ramp_up_dict[f'source{source_number}'].empty:
-        bounds_events_source_ramp_up_dict[f'source{source_number}'] = extract_domains(
+        if not data_source_ramp_up_dict[f'source{source_number}'].empty:
+            bounds_source_ramp_up_dict[f'source{source_number}'] = extract_domains(
             data_source_ramp_up_dict[f'source{source_number}'], data
         )
         # Sometimes, we ramp up the sources in steps (Ex: 0->50->75)
@@ -397,29 +343,29 @@ for source_number in source_list:
         # is the same as the
         # first value of the next event and if so, we merge the two events
         # into one
-        i = 0
-        while i < len(bounds_events_source_ramp_up_dict[f'source{source_number}']) - 1:
+            i = 0
+            while i < len(bounds_source_ramp_up_dict[f'source{source_number}']) - 1:
             # find the timestamps of the end of the first event
             # and the start of the next event
-            end_timestamp = bounds_events_source_ramp_up_dict[f'source{source_number}'][
+                end_timestamp = bounds_source_ramp_up_dict[f'source{source_number}'][
                 i
             ][1]
-            start_timestamp_next = bounds_events_source_ramp_up_dict[
+                start_timestamp_next = bounds_source_ramp_up_dict[
                 f'source{source_number}'
             ][i + 1][0]
             # convert timestamps to integer indices
-            end_index = data_source_ramp_up_dict[f'source{source_number}'][
+                end_index = data_source_ramp_up_dict[f'source{source_number}'][
                 data_source_ramp_up_dict[f'source{source_number}']['Time Stamp']
                 == end_timestamp
             ].index[0]
-            start_index_next = data_source_ramp_up_dict[f'source{source_number}'][
+                start_index_next = data_source_ramp_up_dict[f'source{source_number}'][
                 data_source_ramp_up_dict[f'source{source_number}']['Time Stamp']
                 == start_timestamp_next
             ].index[0]
             # Ceck if the output setpoint power value of the first event
             # is the same as the output setpoint power value of the next
             # event
-            if (
+                if (
                 data_source_ramp_up_dict[f'source{source_number}'][
                     f'Source {source_number} Output Setpoint'
                 ].loc[end_index]
@@ -428,118 +374,127 @@ for source_number in source_list:
                 ].loc[start_index_next]
             ):
                 # If so, merge the two events
-                bounds_events_source_ramp_up_dict[f'source{source_number}'][i] = (
-                    bounds_events_source_ramp_up_dict[f'source{source_number}'][i][0],
-                    bounds_events_source_ramp_up_dict[f'source{source_number}'][i + 1][
+                    bounds_source_ramp_up_dict[f'source{source_number}'][i] = (
+                    bounds_source_ramp_up_dict[f'source{source_number}'][i][0],
+                    bounds_source_ramp_up_dict[f'source{source_number}'][i + 1][
                         1
                     ],
                 )
-                bounds_events_source_ramp_up_dict[f'source{source_number}'].pop(i + 1)
-            else:
-                i += 1  # Only increment i if no merge occurred
+                    bounds_source_ramp_up_dict[f'source{source_number}'].pop(i + 1)
+                else:
+                    i += 1  # Only increment i if no merge occurred
 
-        num_events_source_ramp_up_dict[f'source{source_number}'] = len(
-            bounds_events_source_ramp_up_dict[f'source{source_number}']
+            events_source_ramp_up_dict[f'source{source_number}'] = len(
+            bounds_source_ramp_up_dict[f'source{source_number}']
         )
-    else:
-        bounds_events_source_ramp_up_dict[f'source{source_number}'] = []
-        num_events_source_ramp_up_dict[f'source{source_number}'] = 0
-
-# ---------CONDITION FOR THE CRACKER BEING ON--------
+        else:
+            bounds_source_ramp_up_dict[f'source{source_number}'] = []
+            events_source_ramp_up_dict[f'source{source_number}'] = 0
+    return [
+    [data_source_on_dict,
+    source_on_cond_dict,
+    bounds_source_on_dict,
+    events_source_on_dict],
+    [data_source_ramp_up_dict,
+    source_ramp_up_cond,
+    bounds_source_ramp_up_dict,
+    events_source_ramp_up_dict],
+    ]
 
 # Define conditions for the cracker being on using the temperatures
 # of the different zones of the cracker and the control being enabled
-if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
-    cracker_on_cond = (
+def filter_data_cracker_on(data):
+    if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
+        cracker_on_cond = (
         (data['Sulfur Cracker Zone 1 Current Temperature'] > cracker_zone1_min_temp)
         & (data['Sulfur Cracker Zone 2 Current Temperature'] > cracker_zone2_min_temp)
         & (data['Sulfur Cracker Zone 3 Current Temperature'] > cracker_zone3_min_temp)
         & (data['Sulfur Cracker Control Enabled'] == 1)
     )
-else:
-    cracker_on_cond = pd.Series(False, index=data.index)
-data_cracker_on = data[cracker_on_cond]
+    else:
+        cracker_on_cond = pd.Series(False, index=data.index)
+    data_cracker_on = data[cracker_on_cond]
+    return data_cracker_on, cracker_on_cond
 
-# ---------CONDITION FOR THE TEMPERATURE CONTROL--------
 
 # Define conditions for the temperature control (when the temperature
 # setpoint is different from the actual temperature) and filter the data
-if 'Temperature Control Enabled' in data.columns:
-    temp_ctrl_cond = data['Temperature Control Enabled'] == 1
-else:
-    temp_ctrl_cond = (
+def filter_data_temp_ctrl(data):
+    if 'Temperature Control Enabled' in data.columns:
+        temp_ctrl_cond = data['Temperature Control Enabled'] == 1
+    else:
+        temp_ctrl_cond = (
         data['Substrate Heater Temperature Setpoint']
         != data['Substrate Heater Temperature']
     )
-data_temp_ctrl = data[temp_ctrl_cond]
+    data_temp_ctrl = data[temp_ctrl_cond]
 # There is a bug that sometimes the heater temp and the setpoint desagree
 # even though the temperature control is off. We need to check that the
 # size of the temperature control data is above a certain threshold or
 # the domains are not isolate points (if so, then extract_domains will
 # return an empty list). If the size is below the threshold or the domains
 # are isolated points, we set the data_temp_ctrl to an empty dataframe
-if (len(data_temp_ctrl) < min_temp_ctrl_size) or (
+    if (len(data_temp_ctrl) < min_temp_ctrl_size) or (
     extract_domains(data_temp_ctrl, data) == []
 ):
-    data_temp_ctrl = pd.DataFrame()
-
-# -----CONDITIONS FOR THE DIFFERENT GASES BEING FLOWN--------
-
+        data_temp_ctrl = pd.DataFrame()
+    return data_temp_ctrl,temp_ctrl_cond
 
 # Define conditions for the different gases being flown based on
 # the setpoint and flow of the MFCs being above a threshold defined
 # by mfc_flow_threshold
-ph3_cond = (data['PC MFC 4 Setpoint'] > mfc_flow_threshold) & (
+def gas_cond(data):
+    ph3_cond = (data['PC MFC 4 Setpoint'] > mfc_flow_threshold) & (
     data['PC MFC 4 Flow'] > mfc_flow_threshold
-)
+    )
 
-h2s_cond = (data['PC MFC 6 Setpoint'] > mfc_flow_threshold) & (
+    h2s_cond = (data['PC MFC 6 Setpoint'] > mfc_flow_threshold) & (
     data['PC MFC 6 Flow'] > mfc_flow_threshold
-)
+    )
 
-ar_cond = (data['PC MFC 1 Setpoint'] > mfc_flow_threshold) & (
+    ar_cond = (data['PC MFC 1 Setpoint'] > mfc_flow_threshold) & (
     data['PC MFC 1 Flow'] > mfc_flow_threshold
-)
+    )
+    return ph3_cond,h2s_cond,ar_cond
 
-# ---------COMPOSITE CONDITIONS FOR DIFFERENT EVENTS--------
-
-# Define composite conditions for different events by
+# We can also define composite conditions for different events by
 # combining the base condition (AND: & OR: | NOT: ~)
 
-# Define conditions for any plasma on or any source shutter open
-# Initialize two list of conditions to track the status of each source
-# either just being on, or being on and the open
-
-
-# ---------CONDITIONS FOR THE DEPOSITION--------
-
-# Define a list of condition containing each source being on and open
-# at the same time
-source_on_open_cond_list = [
+#Method to filter the data for the deposition as the substrate shutter
+# being open and any source being on and open at the same time
+def filter_data_deposition(data, source_list, source_on_cond_dict):
+    # Define a list of condition containing each source being on and open
+    # at the same time
+    source_on_open_cond_list = [
     source_on_cond_dict[f'source{source_number}']
     & (data[f'PC Source {source_number} Shutter Open'] == 1)
     for source_number in source_list
-]
+    ]
 # Define a list of conditions containing each source being on
-source_on_cond_list = [
+    source_on_cond_list = [
     source_on_cond_dict[f'source{source_number}'] for source_number in source_list
-]
+    ]
 # Combine the source conditions using OR (|) to get any source being on
 # and open and any source being on
-any_source_on_open_cond = reduce(operator.or_, source_on_open_cond_list)
-any_source_on_cond = reduce(operator.or_, source_on_cond_list)
+    any_source_on_open_cond = reduce(operator.or_, source_on_open_cond_list)
+    any_source_on_cond = reduce(operator.or_, source_on_cond_list)
 
 # Define deposition condition as te substrate shutter being open
 # and any source being on and open, as defined just above, and filtering
 # the data points where the deposition is happening
-deposition_cond = (data['PC Substrate Shutter Open'] == 1) & any_source_on_open_cond
-data_deposition = data[deposition_cond]
-bounds_events_deposition = extract_domains(data_deposition, data)
-num_events_deposition = len(bounds_events_deposition)
+    deposition_cond = (data['PC Substrate Shutter Open'] == 1) & any_source_on_open_cond
+    data_deposition = data[deposition_cond]
+    bounds_deposition = extract_domains(data_deposition, data)
+    events_deposition = len(bounds_deposition)
+    return [
+        [data_deposition,
+        deposition_cond,
+        bounds_deposition,
+        events_deposition],
+        any_source_on_open_cond
+    ]
 
-# ---------CONDITIONS FOR THE DIFFERENT SOURCES BEING PRESPUTTERED--------
-
-# Define conditions for the plasma being presputtered as:
+# Method for the conditions for the plasma being presputtered as:
 # - the source being on
 # - the event happening before the deposition and after the last
 # ramp up of the sources
@@ -548,29 +503,34 @@ num_events_deposition = len(bounds_events_deposition)
 # Note: this part may be improved as we may want to include presputtering
 # in P or S gases. We may also include postsputtering
 
+def filter_data_plasma_presput(current_threshold, bias_threshold, power_setpoint_diff_threshold, extract_domains, data, source_list, data_source_on_dict, data_source_ramp_up_dict, cracker_on_cond, ph3_cond, h2s_cond, data_deposition):
+    source_presput_cond_dict = {}
+    data_source_presput_dict = {}
+    bounds_source_presput_dict = {}
+    events_source_presput_dict = {}
 
-for source_number in source_list:
-    enabled = (
+    for source_number in source_list:
+        enabled = (
         data.get(f'Source {source_number} Enabled', pd.Series([0] * len(data))) != 0
     )
-    current = (
+        current = (
         data.get(f'Source {source_number} Current', pd.Series([0] * len(data)))
         > current_threshold
     )
-    dc_bias = (
+        dc_bias = (
         data.get(f'Source {source_number} DC Bias', pd.Series([0] * len(data)))
         > bias_threshold
     )
-    setpoint_diff = (
+        setpoint_diff = (
         data.get(
             f'Source {source_number} Output Setpoint', pd.Series([0] * len(data))
         ).diff()
         > power_setpoint_diff_threshold
     )
-    source_on_cond = enabled & (current | dc_bias)
-    source_ramp_up_cond = enabled & setpoint_diff
-    if not data_source_on_dict[f'source{source_number}'].empty:
-        source_presput_cond_dict[f'source{source_number}'] = (
+        source_on_cond = enabled & (current | dc_bias)
+        source_ramp_up_cond = enabled & setpoint_diff
+        if not data_source_on_dict[f'source{source_number}'].empty:
+            source_presput_cond_dict[f'source{source_number}'] = (
             source_on_cond
             & (data['Time Stamp'] < data_deposition['Time Stamp'].iloc[0])
             & (
@@ -584,33 +544,38 @@ for source_number in source_list:
             & ~source_ramp_up_cond
             & ~(ph3_cond | h2s_cond | cracker_on_cond)
         )
-        data_source_presput_dict[f'source{source_number}'] = data[
+            data_source_presput_dict[f'source{source_number}'] = data[
             source_presput_cond_dict[f'source{source_number}']
         ]
-        if not data_source_presput_dict[f'source{source_number}'].empty:
-            bounds_events_source_presput_dict[f'source{source_number}'] = (
+            if not data_source_presput_dict[f'source{source_number}'].empty:
+                bounds_source_presput_dict[f'source{source_number}'] = (
                 extract_domains(
                     data_source_presput_dict[f'source{source_number}'], data
                 )
             )
-            num_events_source_presput_dict[f'source{source_number}'] = len(
-                bounds_events_source_presput_dict[f'source{source_number}']
+                events_source_presput_dict[f'source{source_number}'] = len(
+                bounds_source_presput_dict[f'source{source_number}']
             )
-        else:
-            bounds_events_source_presput_dict[f'source{source_number}'] = []
-            num_events_source_presput_dict[f'source{source_number}'] = 0
+            else:
+                bounds_source_presput_dict[f'source{source_number}'] = []
+                events_source_presput_dict[f'source{source_number}'] = 0
+    return [data_source_presput_dict,
+        source_presput_cond_dict,
+        bounds_source_presput_dict,
+        events_source_presput_dict]
 
-# ---------CONDITIONS FOR THE S CRACKER PRESSURE--------
-
-# Condition for measurement of the Sulfur Cracker induced base_pressure, as:
+# Method to define the condition for measurement of the
+# Sulfur Cracker induced base_pressure, as:
 # - the cracker is on and open
 # - no gas (h2s,ph2, or ar) is flown
 # - the time is before the deposition
 # - the cracker temperature and parameters
 # are within cracker_param of the deposition conditions
 
-if not data_cracker_on.empty:
-    cracker_base_pressure_cond = (
+def filter_data_cracker_pressure(data, data_deposition, data_cracker_on, cracker_on_cond,
+                                ph3_cond, h2s_cond, ar_cond):
+    if not data_cracker_on.empty:
+        cracker_base_pressure_cond = (
         cracker_on_cond
         & (data['Time Stamp'] < data_deposition['Time Stamp'].iloc[0])
         & ~h2s_cond
@@ -647,63 +612,65 @@ if not data_cracker_on.empty:
             * data_deposition['Sulfur Cracker Zone 3 Current Temperature'].mean()
         )
         & (
-            data['Sulfur Cracker Control Valve PulseWidth Setpoint']
+            data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback']
             < (1 + 0.01 * cracker_param)
-            * data_deposition['Sulfur Cracker Control Valve PulseWidth Setpoint'].mean()
+            * data_deposition['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'].mean()
         )
         & (
-            data['Sulfur Cracker Control Valve Setpoint']
+            data['Sulfur Cracker Control Valve Setpoint Feedback']
             < (1 + 0.01 * cracker_param)
-            * data_deposition['Sulfur Cracker Control Valve Setpoint'].mean()
+            * data_deposition['Sulfur Cracker Control Valve Setpoint Feedback'].mean()
         )
         & (data['Sulfur Cracker Control Enabled'] == 1)
     )
-    data_cracker_base_pressure = data[cracker_base_pressure_cond]
-    if not data_cracker_base_pressure.empty:
-        bounds_events_cracker_base_pressure = extract_domains(
+        data_cracker_base_pressure = data[cracker_base_pressure_cond]
+        if not data_cracker_base_pressure.empty:
+            bounds_cracker_base_pressure = extract_domains(
             data_cracker_base_pressure, data
         )
-        num_events_cracker_base_pressure = len(bounds_events_cracker_base_pressure)
-    else:
-        bounds_events_cracker_base_pressure = []
-        num_events_cracker_base_pressure = 0
-
-
-# ---------CONDITIONS FOR THE DEPOSITION RATE MEASUREMENT--------
+            events_cracker_base_pressure = len(bounds_cracker_base_pressure)
+        else:
+            bounds_cracker_base_pressure = []
+            events_cracker_base_pressure = 0
+    return [data_cracker_base_pressure,
+        cracker_base_pressure_cond,
+        bounds_cracker_base_pressure,
+        events_cracker_base_pressure]
 
 # Condition of the deposition rate measurement is defined as the
 # Xtal2 substrate shutter being open from which we exclude the
 # data points just after the Xtal2 shutter opens, as the QCM
 # needs time to stabilize. The stab_time stabilization time
 # is defined in the reference values section
-if 'Xtal 2 Shutter Open' in data.columns:
-    data_xtal2_open_cond = data['Xtal 2 Shutter Open'] == 1
+def filter_data_film_dep_rate(data, cracker_on_cond, ph3_cond, h2s_cond, any_source_on_open_cond):
+    if 'Xtal 2 Shutter Open' in data.columns:
+        data_xtal2_open_cond = data['Xtal 2 Shutter Open'] == 1
     # Set a time window to exclude data points after
     # the Xtal shutter opens
     # Identify the indices where the shutter opens (transitions to 1)
-    xtal2_open_indices = data.index[data['Xtal 2 Shutter Open'].diff() == 1]
+        xtal2_open_indices = data.index[data['Xtal 2 Shutter Open'].diff() == 1]
     # Create a boolean mask to exclude points within stab_time seconds
     # after the shutter opens
-    mask = pd.Series(True, index=data.index)
-    for idx in xtal2_open_indices:
+        mask = pd.Series(True, index=data.index)
+        for idx in xtal2_open_indices:
         # Find the time of the shutter opening event
-        open_time = data.at[idx, 'Time Stamp']
+            open_time = data.at[idx, 'Time Stamp']
         # Find points within stab_time seconds after the shutter opening
-        within_stab_time = (data['Time Stamp'] > open_time) & (
+            within_stab_time = (data['Time Stamp'] > open_time) & (
             data['Time Stamp'] <= open_time + pd.Timedelta(seconds=stab_time)
         )
         # Update the mask to exclude these points
-        mask &= ~within_stab_time
+            mask &= ~within_stab_time
     # Apply the mask to filter the data
-    data_deprate2_meas_cond = mask & data_xtal2_open_cond
-else:
-    data_deprate2_meas_cond = pd.Series(False, index=data.index)
+        data_deprate2_meas_cond = mask & data_xtal2_open_cond
+    else:
+        data_deprate2_meas_cond = pd.Series(False, index=data.index)
 
 # Define the condition for the Metal-P-S film deposition rate measurement
 # as the condition just above, with the addition of S or P being flown
 # or the cracker being on and the material used as refereced by the QCM
 # not being Sulfur
-data_deprate2_film_meas_cond = (
+    data_deprate2_film_meas_cond = (
     data_deprate2_meas_cond
     & any_source_on_open_cond
     & (cracker_on_cond | h2s_cond)
@@ -711,24 +678,25 @@ data_deprate2_film_meas_cond = (
     & data['Thickness Active Material']
     != 'Sulfur'
 )
-data_deprate2_meas = data[data_deprate2_meas_cond]
-data_deprate2_film_meas = data[data_deprate2_film_meas_cond]
+    data_deprate2_meas = data[data_deprate2_meas_cond]
+    data_deprate2_film_meas = data[data_deprate2_film_meas_cond]
+    return data_deprate2_film_meas
 
-# ---CONDITIONS FOR THE SUBSTRATE TEMPERATURE RAMPING UP OR DOWN-----
 
-if (
-    not data_temp_ctrl.empty
-    or (
-        data_deposition['Substrate Heater Temperature Setpoint'] > rt_temp_threshold
-    ).all()
-):
-    # Define conditions and filtering the data
-    # for the substrate temperature was ramping up as:
+ # Method to filter the data for the substrate temperature was ramping up as:
     # - the temperature control is enabled
     # - the event is not a deposition
     # - the temperature setpoint is increasing faster than the threshold
     # defined in the reference values
-    ramp_up_temp_ctrl_cond = (
+def filter_data_temp_ramp_up_down(data,
+                            cracker_on_cond, data_temp_ctrl,
+                            temp_ctrl_cond, ph3_cond, h2s_cond,
+                            data_deposition, deposition_cond):
+    if not data_temp_ctrl.empty or (
+    data_deposition['Substrate Heater Temperature Setpoint'] > rt_temp_threshold
+    ).all():
+
+        ramp_up_temp_ctrl_cond = (
         temp_ctrl_cond
         & ~deposition_cond
         & (
@@ -736,10 +704,10 @@ if (
             > temp_setpoint_diff_threshold
         )
     )
-    data_ramp_up_temp_ctrl = data[ramp_up_temp_ctrl_cond]
+        data_ramp_up_temp_ctrl = data[ramp_up_temp_ctrl_cond]
     # Define conditions and filtereing the data
     # for the substrate temperature was ramping down in a similar fashion
-    ramp_down_temp_ctrl_cond = (
+        ramp_down_temp_ctrl_cond = (
         temp_ctrl_cond
         & ~deposition_cond
         & (
@@ -748,7 +716,7 @@ if (
         )
         & (data['Substrate Heater Temperature Setpoint'] > 1)
     )
-    data_ramp_down_temp_ctrl = data[ramp_down_temp_ctrl_cond]
+        data_ramp_down_temp_ctrl = data[ramp_down_temp_ctrl_cond]
     # In the following, we distinguish betweem to phases of the ramp down:
     # 1/ the high temperature phase where we flow H2S, PH3 or the cracker is on
     # to prevent the film loosing P or S
@@ -758,19 +726,167 @@ if (
     # Define the ramp down high temperature condition as a events after
     # the beginning of the ramp down of the temperature ramp down
     # where we flow H2S, PH3 or the cracker is on
-    ramp_down_high_temp_cond = (
+        ramp_down_high_temp_cond = (
         (data['Time Stamp'] > data_ramp_down_temp_ctrl['Time Stamp'].iloc[0])
         & (h2s_cond | cracker_on_cond)
         & ph3_cond
     )
-    data_ramp_down_high_temp = data[ramp_down_high_temp_cond]
+        data_ramp_down_high_temp = data[ramp_down_high_temp_cond]
     # Define the ramp down low temperature condition as a events after
     # the beginning of the ramp down of the temperature ramp down
     # where we do not flow H2S, PH3 or the cracker is off
-    ramp_down_low_temp_cond = (
+        ramp_down_low_temp_cond = (
         data['Time Stamp'] > data_ramp_down_temp_ctrl['Time Stamp'].iloc[0]
     ) & ~(h2s_cond | cracker_on_cond | ph3_cond)
-    data_ramp_down_low_temp = data[ramp_down_low_temp_cond]
+        data_ramp_down_low_temp = data[ramp_down_low_temp_cond]
+    return [
+    data_ramp_up_temp_ctrl,
+    data_ramp_down_temp_ctrl,
+    data_ramp_down_high_temp,
+    data_ramp_down_low_temp
+    ]
+
+
+#---------------MAIN-----------
+
+# %%
+# ---------FILES LOCATIONS-------------
+
+# Logfile location
+logfile_dir = r'O:\Intern\Phosphosulfides\Data\deposition logs'
+logfile_name = 'mittma_0015_Cu_Recording Set 2024.08.02-10.52.28'
+logfile_extension = 'CSV'
+logfile_path = f'{logfile_dir}/{logfile_name}.{logfile_extension}'
+
+# %%
+# ---------REFERENCE VALUES-------------
+
+# Set of reference values used in different parts of the script
+
+# VERSION
+version = 'v0.0.20'
+
+# Eletrical current threshold above which a dc plasma is considered on
+current_threshold = 0.01  # miliamps
+# Bias threshold above which a rf plasma is considered on
+bias_threshold = 0.01  # volts
+# Power setpoint difference threshold above which a
+# plasma is considered ramping up
+power_setpoint_diff_threshold = 0.01  # watts
+# Temperature setpoint difference threshold above which the
+# substrate temp is considered ramping up
+temp_setpoint_diff_threshold = 0.11  # degrees
+# Temperature setpoint of cracker's zones above which the
+# the cracker is considered on
+cracker_zone1_min_temp = 70  # degrees
+cracker_zone2_min_temp = 150  # degrees
+cracker_zone3_min_temp = 200  # degrees
+# Temperature below which the deposition is considered room temperature
+rt_temp_threshold = 30  # degrees
+# Time for the qcm to stabilize after the Xtal 2 shutter opens
+stab_time = 30  # seconds
+# Threshold above which the flow of the mfc is considered on
+mfc_flow_threshold = 1  # sccm
+# Fraction of the length of the deposition dataframe to consider for the
+# beginning and end of the deposition voltage averaging
+fraq_rows_avg_voltage = 5  # %
+# Number of timesteps to consider for the continuity limit
+num_timestep = 3
+# Minimum size of a domain in terms of the average timestep
+min_domain_size = 3
+# Size of the temperature control domains above which we consider that the
+# temperature control was on
+min_temp_ctrl_size = 10
+# Max pressure to read the base pressure
+max_base_pressure = 1e-6  # Torr
+# variation in percent to consider that the cracker temperature is the same
+# as the cracker temperature during deposition to read the cracker induced
+# base pressure
+cracker_param = 5  # %
+
+# %%
+# ---------READ THE DATA-------------
+
+# Read the log file and spectrum data
+
+data = read_logfile(logfile_path)
+
+# Fix the cracker column names if needed
+
+rename_cracker_columns(data)
+
+# ---------READING THE SOURCE USED--------
+
+# Get the source list automatically from the logfile
+
+source_list = get_source_list(data)
+
+# %%
+
+# ---------CONNECTING THE SOURCES TO THE POWER SUPPLIES--------
+
+# Read what source is connected to which power supply and
+# create column names that relate directly to the source instead
+# of the power supply
+connect_source_to_power_supply(data, source_list)
+
+# ---------DEFINE DE CONDITIONS FOR DIFFERENT EVENTS-------------
+
+# ---------1/CONDITIONS FOR THE PLASMA ON OR BEING RAMPED UP--------
+
+# Filter the data for the plasma being on, ramping up
+[plasma_on, plasma_ramp_up] = filter_data_plasma_on_ramp_up(data, source_list)
+# Unpack the data
+data_source_on_dict, source_on_cond_dict, bounds_source_on_dict, events_source_on_dict = plasma_on
+data_source_ramp_up_dict, source_ramp_up_cond, bounds_source_ramp_up_dict, events_source_ramp_up_dict = plasma_ramp_up
+
+# ---------2/CONDITION FOR THE CRACKER BEING ON--------
+
+data_cracker_on, cracker_on_cond = filter_data_cracker_on(data)
+
+# ---------3/CONDITION FOR THE TEMPERATURE CONTROL--------
+
+data_temp_ctrl, temp_ctrl_cond = filter_data_temp_ctrl(data)
+
+# ----- 4/CONDITIONS FOR THE DIFFERENT GASES BEING FLOWN--------
+
+ph3_cond, h2s_cond, ar_cond = gas_cond(data)
+
+# ---------5/CONDITIONS FOR THE DEPOSITION--------
+
+# Filter the data for the deposition
+deposition, any_source_on_open_cond = filter_data_deposition(data, source_list, source_on_cond_dict)
+# Unpack the data
+data_deposition, deposition_cond, bounds_deposition, events_deposition = deposition
+# ---------6/CONDITIONS FOR THE DIFFERENT SOURCES BEING PRESPUTTERED--------
+
+# Filter the data for the plasma being presputtered
+presput = filter_data_plasma_presput(current_threshold, bias_threshold, power_setpoint_diff_threshold, extract_domains, data, source_list, data_source_on_dict, data_source_ramp_up_dict, cracker_on_cond, ph3_cond, h2s_cond, data_deposition)
+# Unpack the data
+data_source_presput_dict, source_presput_cond_dict, bounds_source_presput_dict, events_source_presput_dict = presput
+
+# ---------7/CONDITIONS FOR THE S CRACKER PRESSURE--------
+
+#Filter the data for the S Cracker pressure
+cracker_base_pressure = (
+    filter_data_cracker_pressure(data, data_deposition, data_cracker_on,
+                                 cracker_on_cond, ph3_cond, h2s_cond, ar_cond))
+# Unpack the data
+data_cracker_base_pressure, cracker_base_pressure_cond, bounds_cracker_base_pressure, events_cracker_base_pressure = cracker_base_pressure
+
+# ---------8/CONDITIONS FOR THE DEPOSITION RATE MEASUREMENT--------
+
+data_deprate2_film_meas = filter_data_film_dep_rate(data, cracker_on_cond, ph3_cond, h2s_cond, any_source_on_open_cond)
+
+# ---9/CONDITIONS FOR THE SUBSTRATE TEMPERATURE RAMPING UP OR DOWN-----
+
+# Filter the data for the substrate temperature ramping up or down
+data_ramp_up_down = (filter_data_temp_ramp_up_down(data,
+                            cracker_on_cond, data_temp_ctrl,
+                            temp_ctrl_cond, ph3_cond, h2s_cond,
+                            data_deposition, deposition_cond))
+# Unpack the data
+data_ramp_up_temp_ctrl, data_ramp_down_temp_ctrl, data_ramp_down_high_temp, data_ramp_down_low_temp = data_ramp_up_down
 
 
 # %%
@@ -931,14 +1047,14 @@ if derived_quant['deposition']['cracker']['enabled']:
         'Sulfur Cracker Zone 3 Current Temperature'
     ].mean()
     derived_quant['deposition']['cracker']['pulse_width'] = data_deposition[
-        'Sulfur Cracker Control Valve PulseWidth Setpoint'
+        'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
     ].mean()
     derived_quant['deposition']['cracker']['pulse_freq'] = data_deposition[
-        'Sulfur Cracker Control Valve Setpoint'
+        'Sulfur Cracker Control Valve Setpoint Feedback'
     ].mean()
 
 # Extract the number of deposition events
-derived_quant['deposition']['num_events'] = num_events_deposition
+derived_quant['deposition']['num_events'] = events_deposition
 
 # Extract start and end time of the deposition
 derived_quant['deposition']['start_time'] = data_deposition['Time Stamp'].iloc[0]
@@ -1012,10 +1128,10 @@ for source_number in source_list:
             presput_time = pd.Timedelta(0)
             # Secondly, or all the presputtering events, we calculate the
             # duration and add it to the total presputtering time
-            for i in range(num_events_source_presput_dict[f'source{source_number}']):
+            for i in range(events_source_presput_dict[f'source{source_number}']):
                 presput_time += (
-                    bounds_events_source_presput_dict[f'source{source_number}'][i][1]
-                    - bounds_events_source_presput_dict[f'source{source_number}'][i][0]
+                    bounds_source_presput_dict[f'source{source_number}'][i][1]
+                    - bounds_source_presput_dict[f'source{source_number}'][i][0]
                 )
             derived_quant['source_presput'][f'source{source_number}']['duration'] = (
                 presput_time
@@ -1043,14 +1159,14 @@ for source_number in source_list:
 
         # Extract the number of ramp up events
         derived_quant['source_ramp_up'][f'source{source_number}']['num_events'] = (
-            num_events_source_ramp_up_dict[f'source{source_number}']
+            events_source_ramp_up_dict[f'source{source_number}']
         )
         # Extract the plasma ignition power as the power at which
         # the plasma really ignites
         # We first filter only the last [-1] source ramp up event with the
         # event filter function
         last_ramp_up_bounds = list(
-            bounds_events_source_ramp_up_dict[f'source{source_number}'][-1]
+            bounds_source_ramp_up_dict[f'source{source_number}'][-1]
         )
         # Then we adjust the bounds to include the all the
         # times until deposition
@@ -1315,11 +1431,11 @@ if not derived_quant['deposition']['rt']:
             )
             derived_quant['sub_ramp_up']['cracker']['pulse_width'] = (
                 data_ramp_up_temp_ctrl[
-                    'Sulfur Cracker Control Valve PulseWidth Setpoint'
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                 ].mean()
             )
             derived_quant['sub_ramp_up']['cracker']['pulse_freq'] = (
-                data_ramp_up_temp_ctrl['Sulfur Cracker Control Valve Setpoint'].mean()
+                data_ramp_up_temp_ctrl['Sulfur Cracker Control Valve Setpoint Feedback'].mean()
             )
         else:
             derived_quant['sub_ramp_up']['cracker']['enabled'] = False
@@ -1330,12 +1446,12 @@ if not derived_quant['deposition']['rt']:
     derived_quant['sub_ramp_down']['num_events'] = len(
         extract_domains(data_ramp_down_temp_ctrl, data)
     )
-    derived_quant['sub_ramp_down']['num_events_high_temp'] = (
+    derived_quant['sub_ramp_down']['events_high_temp'] = (
         len(extract_domains(data_ramp_down_high_temp, data))
         if not data_ramp_down_high_temp.empty
         else 0
     )
-    derived_quant['sub_ramp_down']['num_events_low_temp'] = (
+    derived_quant['sub_ramp_down']['events_low_temp'] = (
         len(extract_domains(data_ramp_down_low_temp, data))
         if not data_ramp_down_low_temp.empty
         else 0
@@ -1442,11 +1558,11 @@ if not derived_quant['deposition']['rt']:
             )
             derived_quant['sub_ramp_down']['cracker']['pulse_width'] = (
                 data_ramp_down_high_temp[
-                    'Sulfur Cracker Control Valve PulseWidth Setpoint'
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                 ].mean()
             )
             derived_quant['sub_ramp_down']['cracker']['pulse_freq'] = (
-                data_ramp_down_high_temp['Sulfur Cracker Control Valve Setpoint'].mean()
+                data_ramp_down_high_temp['Sulfur Cracker Control Valve Setpoint Feedback'].mean()
             )
         else:
             derived_quant['sub_ramp_down']['cracker']['enabled'] = False
@@ -1543,11 +1659,11 @@ j += 1
 # Plot the sources ramp up step
 for source_number in source_list:
     if derived_quant['deposition'][f'source{source_number}']['enabled']:
-        for k in range(num_events_source_ramp_up_dict[f'source{source_number}']):
-            source_ramp_up_start = bounds_events_source_ramp_up_dict[
+        for k in range(events_source_ramp_up_dict[f'source{source_number}']):
+            source_ramp_up_start = bounds_source_ramp_up_dict[
                 f'source{source_number}'
             ][k][0]
-            source_ramp_up_end = bounds_events_source_ramp_up_dict[
+            source_ramp_up_end = bounds_source_ramp_up_dict[
                 f'source{source_number}'
             ][k][1]
             ax.axvspan(
@@ -1560,11 +1676,11 @@ for source_number in source_list:
                 label=f'Source {source_number} Ramp Up',
             )
             j += 1
-        for k in range(num_events_source_presput_dict[f'source{source_number}']):
-            source_presput_start = bounds_events_source_presput_dict[
+        for k in range(events_source_presput_dict[f'source{source_number}']):
+            source_presput_start = bounds_source_presput_dict[
                 f'source{source_number}'
             ][k][0]
-            source_presput_end = bounds_events_source_presput_dict[
+            source_presput_end = bounds_source_presput_dict[
                 f'source{source_number}'
             ][k][1]
             ax.axvspan(
@@ -1577,11 +1693,11 @@ for source_number in source_list:
                 label=f'Source {source_number} Pre-Sputter',
             )
         j += 1
-        for k in range(num_events_source_on_dict[f'source{source_number}']):
-            source_on_start = bounds_events_source_on_dict[f'source{source_number}'][k][
+        for k in range(events_source_on_dict[f'source{source_number}']):
+            source_on_start = bounds_source_on_dict[f'source{source_number}'][k][
                 0
             ]
-            source_on_end = bounds_events_source_on_dict[f'source{source_number}'][k][1]
+            source_on_end = bounds_source_on_dict[f'source{source_number}'][k][1]
             ax.axvspan(
                 source_on_start,
                 source_on_end,
