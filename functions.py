@@ -3,12 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import re
+import os
 from scipy.interpolate import griddata
 from scipy.signal import find_peaks
 import seaborn as sns
 from lmfit.models import PseudoVoigtModel, SplineModel,LinearModel, GaussianModel
 from lmfit import Parameters
 from scipy.signal import savgol_filter
+import plotly.graph_objects as go
+import pickle
 
 
 ##########################
@@ -1215,6 +1218,104 @@ def heatmap(data, datatype, title = None, datatype_select = None, datatype_selec
         sns.heatmap(dfPlot_nans, annot=False, fmt=".4f", cbar = False, cmap = "mako")
     plt.title(title)
 
+def new_heatmap(datatype, data=None, filepath = None, savepath=None, title=None):
+    "plot heatmaps with interpolated background, like in Nomad, if savepath ends with .png, it will save as png, if it ends with .html, it will save as html (interactive)"
+
+    if filepath is not None:
+        raw_data = pd.read_excel(filepath, header=0)
+        x = raw_data["X (mm)"].values
+        y = raw_data["Y (mm)"].values
+        z = raw_data[datatype].values
+
+    if data is not None: 
+        xy = MI_to_grid(data).drop_duplicates(ignore_index=True)
+        x = xy["x"].values
+        y = xy["y"].values
+        z = data.iloc[:, data.columns.get_level_values(1)==datatype].values.flatten()
+
+    xi = np.linspace(min(x), max(x), 100)
+    yi = np.linspace(min(y), max(y), 100)
+    xi, yi = np.meshgrid(xi, yi)
+    zi = griddata((x, y), z, (xi, yi), method='linear')
+
+    scatter = go.Scatter(
+            x=x,
+            y=y,
+            mode='markers',
+            marker=dict(
+                size=15,
+                color=z,  # Set color to thickness values
+                colorscale='Viridis',  # Choose a colorscale
+                showscale=False,  # Hide the colorbar for the scatter plot
+                line=dict(
+                    width=2,  # Set the width of the border
+                    color='DarkSlateGrey'  # Set the color of the border
+            ) ),
+        )
+    if datatype == "Layer 1 Thickness (nm)":
+        cbar_title = "Thickness (nm)"
+    elif datatype == "Layer 1 P Atomic %":
+        cbar_title = "P Atomic %"
+    elif datatype == "Layer 1 S Atomic %":
+        cbar_title = "S Atomic %"
+    elif datatype == "Layer 1 Cu Atomic %":
+        cbar_title = "Cu Atomic %"
+    elif datatype == "Layer 1 Zr Atomic %":
+        cbar_title = "Zr Atomic %"
+
+    heatmap = go.Heatmap(
+    x=xi[0],
+    y=yi[:, 0],
+    z=zi,
+    colorscale='Viridis',
+    colorbar=dict(title=cbar_title),
+    #zmin = 10, zmax = 60
+    )
+
+    fig = go.Figure(data=[heatmap, scatter])
+
+    if title == None:
+        title = datatype
+    
+    fig.update_layout(title=title,
+    xaxis_title='X Position (mm)',
+    yaxis_title='Y Position (mm)',
+    template='plotly_white',
+    autosize =False,
+    width = 600,
+    height = 500)
+
+    if savepath:
+        if savepath.endswith(".png"):
+            fig.write_image(savepath, scale=2)
+        
+        if savepath.endswith(".html"):
+            fig.write_html(savepath)
+    
+    fig.show()
+
+def lp_translate_excel(filepath, new_path):
+    """Creates a new excel file with translated coordinates, given the coordinates 
+    of the corners in Sheet2, assuming they are stored rightafter the statistics"""
+    first_data = pd.read_excel(filepath, sheet_name = "Sheet1")
+
+    first_x = first_data["X (mm)"]
+    first_y = first_data["Y (mm)"]
+    first_coords = [first_x, first_y]
+
+    corners = pd.read_excel(filepath, sheet_name = "Sheet2", usecols=(6,7))
+
+    trans_x = corners.iloc[[0,1],0].mean()
+    trans_y = corners.iloc[[0,1],1].mean()
+
+    new_x = first_x - trans_x
+    new_y = first_y - trans_y
+
+    new_data = first_data.copy()
+    new_data["X (mm)"] = new_x
+    new_data["Y (mm)"] = new_y
+
+    new_data.to_excel(new_path, index = False)
 
 def plot_scatter_colormap(data, datatype_x, datatype_y, datatype_z, x = "all", y = "all",datatype_select = None,datatype_select_value = None,min_limit = None, max_limit = None,plotscale = "linear", title = "auto",colormap_label = None):
     '''Creates a XY plot/scatter plot based on datatype'''
@@ -1425,3 +1526,4 @@ def load_data(filepath, separator = "\t"):
     dataframe = pd.read_csv(filepath, sep=separator, header=[0, 1])
     dataframe.columns.rename(["Coordinate", "Data type"], level=[0, 1], inplace = True)
     return dataframe
+# %%
