@@ -731,11 +731,11 @@ def xrd_fit(data,Peaks,dataRangeMin, dataRangeMax,knots, withplots = True,plotsc
         peakOutput = pd.DataFrame(data=peakData, columns=XRD_peaks_header)
 
         #extract fit and theta
-        XRD_data_header = pd.MultiIndex.from_product([[col_theta[i][0]],['2θ','Measured intensity','Fit intensity']],names=['Coordinate','Data type'])
+        XRD_data_header = pd.MultiIndex.from_product([[col_theta[i][0]],['2θ','Measured intensity','Fit intensity', 'Background']],names=['Coordinate','Data type'])
         if remove_background_fit != False:
-            fitData = np.vstack((x,y,out.best_fit-comps['bkg_'])).T
+            fitData = np.vstack((x,y,out.best_fit-comps['bkg_'], comps['bkg_'])).T
         else:
-            fitData = np.vstack((x,y,out.best_fit)).T
+            fitData = np.vstack((x,y,out.best_fit, comps['bkg_'])).T
         fitOutput = pd.DataFrame(data=fitData, columns=XRD_data_header)
         XRDoutFrame = pd.concat([XRDoutFrame, fitOutput, peakOutput], axis = 1)
 
@@ -743,6 +743,7 @@ def xrd_fit(data,Peaks,dataRangeMin, dataRangeMax,knots, withplots = True,plotsc
         if withplots == 1:
             plt.plot(x,y, label = 'data')
             plt.plot(x, out.best_fit, label='best fit')
+            plt.plot(x, comps['bkg_'],'--', label='background')
             plt.xlabel(col_theta[i][1])
             plt.ylabel(col_counts[i][1])
             plt.title(col_counts[i][0])
@@ -754,6 +755,70 @@ def xrd_fit(data,Peaks,dataRangeMin, dataRangeMax,knots, withplots = True,plotsc
 
 
     return XRDoutFrame
+
+
+def XRD_background(data,peaks, cut_range=2, order=4,window_length=10, Si_cut=True, withplots= True ):
+    data_out = data.copy()
+    headerlength = len(data.columns.get_level_values(1).unique())
+    col_theta = data.columns.values[::2]
+    col_counts = data.columns.values[1::2]
+    peaks_theta = peaks.columns.values[::2]
+
+    k=0
+
+    for i in range(0, len(col_theta)):
+        cut_intensity=[]
+
+        two_theta = data[col_theta[i]]
+        intensity = data[col_counts[i]]
+        idx_range = np.where(two_theta >= 20+cut_range)[0][0]
+
+        # Cut data around peaks
+        for j in range(len(intensity)):
+            if data[col_theta[i]][j] in peaks[peaks_theta[i]].values:
+                start_index = max(0, j-idx_range)
+                end_index = min(len(data), j+idx_range)
+                data_out[col_counts[i]][start_index:end_index] = np.nan #cut data intensity around peaks in data_out
+
+        if Si_cut==True:
+            idx_Si = np.where((two_theta >= 60) & (two_theta<= 70))[0]
+            data_out[col_counts[i]][idx_Si] = np.nan
+
+        cut_intensity = data_out[col_counts[i]]
+
+        # Smooth the data for better peak detection
+        smoothed_intensity = savgol_filter(intensity, window_length=window_length, polyorder=3)
+        # Filter out NaN values (they exist because we cut the data) before fitting
+        mask = ~np.isnan(cut_intensity)
+        filtered_two_theta = two_theta[mask]
+        filtered_intensity = intensity[mask]
+
+        # Perform polynomial fitting with filtered data
+        background_poly_coeffs = np.polyfit(filtered_two_theta, filtered_intensity, order)
+        background = np.polyval(background_poly_coeffs, two_theta)
+
+        # Subtract background
+        corrected_intensity = smoothed_intensity - background
+
+        data_out.insert(headerlength*(i+1)+k, "{}".format(data.columns.get_level_values(0).unique()[i]), background, allow_duplicates=True)
+        data_out.rename(columns={'': 'Background'}, inplace = True)
+        data_out.insert(headerlength*(i+1)+k+1, "{}".format(data.columns.get_level_values(0).unique()[i]), corrected_intensity, allow_duplicates=True)
+        data_out.rename(columns={'': 'Corrected Intensity'}, inplace = True)
+        k=k+2
+
+        if withplots==True:
+            plt.figure()
+            coord= data_out.columns.get_level_values(0).unique()[i]
+            plt.plot(two_theta, intensity, label='Original Data')
+            plt.plot(filtered_two_theta, filtered_intensity, label='filtered Data')
+            plt.plot(two_theta, background, label='Background, order='+str(order), linestyle='--')
+            plt.plot(two_theta, corrected_intensity, label='Corrected Data')
+            plt.title('XRD data at {}'.format(coord))
+            plt.legend()
+            plt.show()
+    display(data_out)
+    
+    return data_out
 
 def raman_fit(data,Peaks,dataRangeMin, dataRangeMax,knots, withplots = True,plotscale = 'log',remove_background_fit = False):
     '''Fit data using models from lmfit. Gaussian for peaks, based on thePeaks output from initial_peaks, and 
@@ -1262,6 +1327,8 @@ def new_heatmap(datatype, data=None, filepath = None, savepath=None, title=None)
         cbar_title = "Cu Atomic %"
     elif datatype == "Layer 1 Zr Atomic %":
         cbar_title = "Zr Atomic %"
+    else:
+        cbar_title = datatype
 
     heatmap = go.Heatmap(
     x=xi[0],
@@ -1526,4 +1593,272 @@ def load_data(filepath, separator = "\t"):
     dataframe = pd.read_csv(filepath, sep=separator, header=[0, 1])
     dataframe.columns.rename(["Coordinate", "Data type"], level=[0, 1], inplace = True)
     return dataframe
+
+def rename_SE_images(folderpath):
+    # Define the directory containing the images
+    directory = folderpath  # Replace with the path to your folder
+
+    # Function to extract the number from the filename
+    def extract_number(filename):
+        match = re.search(r'Electron Image (\d+)\.bmp', filename)
+        return int(match.group(1)) if match else None
+
+    # Get a list of all .bmp files in the directory
+    files = [f for f in os.listdir(directory) if f.endswith('.bmp')]
+
+    # Sort the files by their extracted number
+    files.sort(key=extract_number)
+
+    # Rename the files sequentially
+    for i, filename in enumerate(files, start=1):
+        new_name = f'Electron Image {i}.bmp'
+        old_file_path = os.path.join(directory, filename)
+        new_file_path = os.path.join(directory, new_name)
+        
+        os.rename(old_file_path, new_file_path)
+        print(f'Renamed: {filename} -> {new_name}')
+
+    print("Renaming completed.")
+
+def EDS_coordinates(ncolumns, nrows, mag, spacing, filepath, new_path):
+
+    # Calculate the effective area size in the x-direction, considering magnification, 
+    # assuming the x/y ratio is constant 4.1 : 2.8
+    areax = 4.1 * 100 / mag
+    # Calculate the spacing , gridlength and starting x-coordinate for the grid in x-direction (assuming the grid is centered)
+    space_x = areax * spacing / 100
+    gridlength = (ncolumns - 1) * (space_x + areax) + areax
+    startx = -gridlength / 2 + (areax / 2)
+
+    # do the same for the y-direction
+    areay= 2.8*100/mag
+    space_y = areay*spacing/100
+    gridheight= (nrows-1)*(space_y+ areay) + areay
+    starty = -gridheight/2 + (areay/2)
+
+    # Check if the grid dimensions exceed the maximum allowed size (31x31 mm)
+    # if so, reduce the spacing by 10% and try again 
+    if gridlength >= 31 or gridheight >= 31:
+        print("Spacing is too large for the map")
+
+        new_spacing = np.round(spacing - spacing * 0.1, 0)
+        print("New spacing is", new_spacing)
+
+        return EDS_coordinates(ncolumns, nrows, mag, new_spacing)
+
+    # Create a list to hold grid parameters (input of the grid function)
+    grid_input = [ncolumns, nrows,np.round(-startx*2, 2), np.round(-starty*2, 2), np.round(startx, 2), np.round(starty, 2)]
+
+    # Generate coordinates for each column
+    coord_x = np.round(np.linspace(startx, -startx, ncolumns), 2)
+    coord_y = np.round(np.linspace(starty, -starty, nrows), 2)
+    X=[]
+    Y=[]
+    for j in range(0, ncolumns):
+        for i in range(0, nrows):
+            Y.append(coord_y[i])
+            X.append(coord_x[j])
+
+    first_data = pd.read_excel(filepath, sheet_name = "Sheet1")
+
+    first_x = first_data["X (mm)"]
+    first_y = first_data["Y (mm)"]
+
+    new_data = first_data.copy()
+    new_data["X (mm)"] = X
+    new_data["Y (mm)"] = Y
+
+    new_data.to_excel(new_path, index = False)
+
+    return X,Y, grid_input, areax, areay
+
+def read_CRAIC(file_path, header_lines=10, print_header= True):
+    header =[]
+    with open(file_path, "r") as file:
+        for _ in range(header_lines):
+            #file.readline()
+            header.append(file.readline().strip())
+        wavelengths_line = file.readline().strip().split("\t")
+        intensities_line = file.readline().strip().split("\t")
+    wavelengths = [float(w) for w in wavelengths_line]
+    intensities = [float(i) for i in intensities_line]
+
+    data = pd.DataFrame({"Wavelength": wavelengths, "Intensity": intensities})
+
+    if print_header==True:
+        print("Header Lines:")
+
+        for line in header:
+            print(line)
+    return data
+
+def snake_grid(x, y): # x and y are lists of coordinates you should take note of 
+    X_snake = []
+    Y_snake = []
+
+    # Loop through each y-coordinate from bottom to top
+    for i, y_val in enumerate(y):
+
+        if i % 2 == 0: 
+            X_snake.extend(x) # Even row: left to right ( add x normally)
+        else: 
+            X_snake.extend(x[::-1]) # Odd row: right to left (add x in reverse)
+        Y_snake.extend([y_val] * len(x)) # add as many y values as x values
+
+    grid_snake = pd.DataFrame({"x": X_snake, "y": Y_snake})
+    return grid_snake
+    
+def CRAIC_map(folder, background, reflection_name, transmission_name, grid, unit= "nm", with_plots=True, savepath=None):
+    # x axis is taken from the background file, maybe check that it is always the same
+    data = pd.DataFrame()
+    npoints = len(grid)
+    background = read_CRAIC(os.path.join(folder, background), print_header=False)
+    fig, ax = plt.subplots(3,1, figsize=(10, 10))
+
+    if unit == "nm":
+        x_axis = background["Wavelength"]
+        x_label = "Wavelength (nm)"
+
+    elif unit == "eV":
+        h = 4.135*10**-15
+        c = 3*10**8
+        wavelength_ev = (h*c)/(background["Wavelength"]*10**-9)
+
+        x_axis = wavelength_ev
+        x_label = "Energy (eV)"
+
+    for i in range(1, npoints+1):
+            
+        file_refl = f"{reflection_name}-{i}.msp"
+        file_transl = f"{transmission_name}-{i}.msp"
+
+        data_R = read_CRAIC(os.path.join(folder, file_refl), print_header=False)
+        data_T = read_CRAIC(os.path.join(folder, file_transl), print_header=False)
+
+        data_R["Intensity"] = data_R["Intensity"] - background["Intensity"]
+        #calculate absorption coefficient
+        data_A = -(np.log(data_T["Intensity"]/(100-data_R["Intensity"])))*10**5 
+
+        if with_plots == True:
+            ax[0].plot(x_axis, data_R["Intensity"], label=f" {i}") 
+            ax[1].plot(x_axis, data_T["Intensity"], label=f" {i}")
+            ax[2].plot(x_axis, data_A, label=f" {i}")
+
+            ax[0].legend(bbox_to_anchor=(1, 1), loc='upper right')
+            ax[1].legend(bbox_to_anchor=(1, 1), loc='upper right')
+            ax[2].legend(bbox_to_anchor=(1, 1), loc='upper right')
+
+            ax[0].set_ylabel("R %")
+            ax[1].set_ylabel("T %")
+            ax[2].set_ylabel(r"$\alpha$ (cm$^{-1}$)")
+
+            for ax_ in ax:
+                ax_.set_xlabel(x_label)
+            
+        plt.tight_layout()
+        if savepath: 
+            plt.savefig(savepath, dpi=300)
+    
+        # save data in a multiindex dataframe
+
+        data_R["Intensity"].rename(f"R", inplace=True)
+        data_T["Intensity"].rename(f"T", inplace=True)
+        data_A.rename(f"A", inplace=True)
+        data = pd.concat([data, data_R["Wavelength"]], axis=1, ignore_index=False)
+        data = pd.concat([data, data_R["Intensity"]], axis=1, ignore_index=False)
+        data = pd.concat([data, data_T["Intensity"]], axis=1, ignore_index=False)
+        data = pd.concat([data, data_A], axis=1, ignore_index=False)
+
+    coord_header = grid_to_MIheader(grid) # check how the points are collected and build the grid accordingly
+    df_header = pd.MultiIndex.from_product([coord_header, data.columns[0:4]],names=['Coordinate','Data type'])
+    data_MI = pd.DataFrame(data.values, columns=df_header)
+
+    return data_MI
+
+
+def plot_XRD_shift_subplots(data, datatype_x, datatype_y, x, y_list, shift, title, material_guess, nrows, ncols, figsize=(12, 10), save=True):
+    """
+    Plots XRD shift for multiple y-coordinates in subplots.
+
+    Parameters:
+    - data: DataFrame containing the data
+    - datatype_x: str, type of data for x-axis
+    - datatype_y: str, type of data for y-axis
+    - x: list, list of x-coordinates
+    - y_list: list of lists, each sublist contains y-coordinates for a subplot
+    - shift: float, value by which to shift the y-axis data
+    - title: str, title of the entire figure
+    - ref_lines: array, reference lines to be plotted
+    - nrows: int, number of rows of subplots
+    - ncols: int, number of columns of subplots
+    - figsize: tuple, size of the figure
+    - save: bool, whether to save the figure as a file
+
+    Returns:
+    - plots the XRD data for multiple y-coordinates in subplots
+    """
+    with open (os.path.join("XRD", "reflections", "reflections.pkl"), "rb") as file:
+        ref_peaks_df = pickle.load(file)
+
+    ref_peaks = ref_peaks_df[material_guess]
+    ref_lines = ref_peaks["Peak 2theta"][ref_peaks["Peak 2theta"].notna()].values
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+    axes = axes.flatten()
+
+    for idx, pos in enumerate(y_list):
+        ax = axes[idx]
+        for i in range(len(x)):
+            #print('x =', x[i], 'y =', pos[i])
+            x_data = get_data(data, datatype_x, x[i], pos[i], printinfo=False, drop_nan=False)
+            y_data = get_data(data, datatype_y, x[i], pos[i], printinfo=False, drop_nan=False)
+            lab = "{:.1f},{:.1f}".format(x[i], pos[i])
+
+            ax.plot(x_data, y_data + shift * i, label=lab)
+
+        ax.set_title(f'Y = {pos[0]}')
+        ax.legend(bbox_to_anchor=(1.01, 1), loc='upper left')
+
+        if ref_lines is not None:
+            for line in ref_lines:
+                ax.axvline(x=line, linestyle='--', alpha=0.5, color='grey')
+
+
+    axes[-1].plot(ref_peaks["2theta"], ref_peaks["I"], label=str(material_guess)) 
+    #axes[-1].axvline(x=ref_lines.values, linestyle='--', alpha=0.5, color='grey')      
+    axes[-1].legend(bbox_to_anchor=(1.01, 1), loc='upper left')
+    plt.suptitle(title)
+    plt.tight_layout(rect=[0, 0, 1, 0.97])
+
+    if save:
+        plt.savefig(f'{title}_XRD_shift_subplots.png', dpi=120, bbox_inches='tight')
+
+    plt.show()
+# %%
+
+def plot_XRD_shift(data,datatype_x, datatype_y,  shift,x=all,y=all, title=None, savepath= False): #x, y = list of points to plot]
+    x_data = []
+    y_data = []
+    labels = []
+    plt.figure(figsize = (12,5))
+    for i in range(len(x)):
+        x_data.append(get_data(data, datatype_x, x[i], y[i], False,False))
+        y_data.append(get_data(data, datatype_y, x[i], y[i], False,False))
+        if x[0] == "all" and y[0] == "all":
+            labels = data.columns.get_level_values(0).unique().values
+        else:
+            grid = MI_to_grid(data)
+            xcoord, ycoord = closest_coord(grid, x[i], y[i])
+            labels.append('{:.1f},{:.1f}'.format(xcoord, ycoord))
+
+        plt.plot(x_data[i], y_data[i]+ shift*i, label = labels[i])
+    plt.xlabel(datatype_x)
+    plt.ylabel(datatype_y)
+    plt.title(title)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    if savepath:
+        path = os.path.join('plots', title + 'shift.png')
+        plt.savefig(path, dpi=120, bbox_inches='tight')
+        
+    plt.show()
 # %%
