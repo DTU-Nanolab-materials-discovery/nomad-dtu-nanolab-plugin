@@ -291,7 +291,6 @@ def filter_data_plasma_on_ramp_up(data, source_list):
     source_on = {'data': {},'name':{}, 'cond': {}, 'bounds': {}, 'events': {}}
 
     for source_number in source_list:
-        print(f'Processing Source {source_number}')
         enabled = (
         data.get(f'Source {source_number} Enabled', pd.Series([0] * len(data))) != 0
     )
