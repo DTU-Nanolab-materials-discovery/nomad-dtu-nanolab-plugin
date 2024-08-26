@@ -2080,9 +2080,10 @@ def read_spectrum(file_path):
         f'y{i+1}': timestamp
         for i, timestamp in enumerate(reshaped_data['Timestamp'].unique())}
 
-    # Step 10: Make the timestamp tz-naive
+    # Step 10: Make the timestamps tz-naive
     for key in timestamp_map:
-        timestamp_map[key] = timestamp_map[key].tz_localize(None)
+        if timestamp_map[key].tzinfo is not None:
+            timestamp_map[key] = timestamp_map[key].tz_localize(None)
 
     return result_df, timestamp_map
 
