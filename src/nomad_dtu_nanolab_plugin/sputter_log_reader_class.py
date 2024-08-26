@@ -9,23 +9,22 @@ Created on Fri Jun  7 10:46:17 2024
 
 import operator
 import os
+import re
 from functools import reduce
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
-from mendeleev import element
-import re
-import plotly.graph_objects as go
 import plotly.express as px
+from mendeleev import element
 
 ##------EVENT CLASS DEFINITION------
 
 class Lf_Event:
-    def __init__(self, name: str, data: pd.DataFrame):
+    def __init__(self, name: str):
         self.source = None
         self.name = name
-        self.raw_data = data
+        self.avg_timestep = None
         self.cond = pd.DataFrame()
         self._data = pd.DataFrame()
         self._bounds = []
@@ -40,7 +39,7 @@ class Lf_Event:
     @data.setter
     def data(self, value):
         self._data = value
-        self._bounds = extract_domains(self._data, self.raw_data)
+        self._bounds = extract_domains(self._data, self.avg_timestep)
         self._update_events_and_separated_data()
 
     @property
@@ -78,6 +77,7 @@ class Lf_Event:
         self.name = name
 
     def set_data(self, data):
+        self.avg_timestep=cal_avg_timestep(data)
         self.data = data
 
     def set_bounds(self, bounds):
@@ -85,7 +85,7 @@ class Lf_Event:
 
     def filter_data(self, data):
         if self.cond is not None:
-            self.raw_data = data
+            self.avg_timestep=cal_avg_timestep(data)
             self.data = data[self.cond]
         else:
             print(f'Error: Unable to filter. No condition set for event {self.name}')
@@ -93,21 +93,30 @@ class Lf_Event:
     def stitch_source_ramp_up_events(self):
             i = 0
             while i < len(self.bounds) - 1:
-                # Find the timestamps of the end of the first event and the start of the next event
+                # Find the timestamps of the end of the first event and the start of
+                # the next event
                 end_timestamp = self.bounds[i][1]
                 start_timestamp_next = self.bounds[i + 1][0]
 
                 # Convert timestamps to integer indices
                 try:
-                    end_index = self.data[self.data['Time Stamp'] == end_timestamp].index[0]
-                    start_index_next = self.data[self.data['Time Stamp'] == start_timestamp_next].index[0]
+                    end_index = self.data[
+                        self.data['Time Stamp'] == end_timestamp
+                        ].index[0]
+                    start_index_next = self.data[
+                        self.data['Time Stamp'] == start_timestamp_next
+                        ].index[0]
                 except IndexError:
-                    print(f"Error: 'Time Stamp' value {end_timestamp} or {start_timestamp_next} not found in data.")
+                    print(f"Error: Unable to stitch events for {self.name}")
                     return
 
-                # Check if the output setpoint power value of the first event is the same as the next event
-                if self.data[f'Source {self.source} Output Setpoint'].loc[end_index] == \
-                self.data[f'Source {self.source} Output Setpoint'].loc[start_index_next]:
+                # Check if the output setpoint power value of the first event is the
+                #  same as the next event
+                if self.data[
+                    f'Source {self.source} Output Setpoint'
+                    ].loc[end_index] == self.data[
+                        f'Source {self.source} Output Setpoint'
+                        ].loc[start_index_next]:
                     # If so, merge the two events
                     self.bounds[i] = (
                         self.bounds[i][0],
@@ -119,7 +128,8 @@ class Lf_Event:
             self._update_events_and_separated_data()
 
     def _update_events_and_separated_data(self):
-        """Helper method to update events, sep_data, sep_name, and sep_bounds after bounds change."""
+        """Helper method to update events, sep_data, sep_name, and sep_bounds after
+        bounds change."""
         self._events = len(self._bounds)
         self._sep_data = self._generate_sep_data()
         self._sep_name = self._generate_sep_name()
@@ -181,15 +191,15 @@ def print_derived_quantities(quantities, indent=''):
             print_derived_quantities(value, indent + '  ')
         else:
             if isinstance(value, pd.Timestamp):
-                if key == 'log_start_time' or key == 'log_end_time':
-                    value = value.strftime('%Y-%m-%d %H:%M:%S')
+                if key in {'log_start_time', 'log_end_time'}:
+                    time_value = value.strftime('%Y-%m-%d %H:%M:%S')
                 else:
-                    value = value.strftime('%H:%M:%S')
+                    time_value = value.strftime('%H:%M:%S')
             elif isinstance(value, pd.Timedelta):
                 total_seconds = int(value.total_seconds())
                 hours, remainder = divmod(total_seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
-                value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
+                time_value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
             print(f'{indent}{key}: {value}')
 
 
@@ -202,15 +212,15 @@ def write_derived_quantities(quantities, indent=''):
             output.append(write_derived_quantities(value, indent + '  '))
         else:
             if isinstance(value, pd.Timestamp):
-                if key == 'log_start_time' or key == 'log_end_time':
-                    value = value.strftime('%Y-%m-%d %H:%M:%S')
+                if key in {'log_start_time', 'log_end_time'}:
+                    time_value = value.strftime('%Y-%m-%d %H:%M:%S')
                 else:
-                    value = value.strftime('%H:%M:%S')
+                    time_value = value.strftime('%H:%M:%S')
             elif isinstance(value, pd.Timedelta):
                 total_seconds = int(value.total_seconds())
                 hours, remainder = divmod(total_seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
-                value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
+                time_value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
             output.append(f'{indent}{key}: {value}')
     return '\n'.join(output)
 
@@ -236,7 +246,7 @@ def cal_avg_timestep(df, timestamp_col='Time Stamp'):
 
 
 # Function to extract continuous domains based on time continuity
-def extract_domains(df, df2, timestamp_col='Time Stamp'):
+def extract_domains(df, avg_timestep, timestamp_col='Time Stamp'):
     """
     This function extracts the bounds of continuous time domains in a
     DataFrame based on the time continuity
@@ -250,8 +260,6 @@ def extract_domains(df, df2, timestamp_col='Time Stamp'):
     else:
         # work on a copy of the DataFrame
         df3 = pd.DataFrame()
-        # Calculate the average time step of df2
-        avg_timestep = cal_avg_timestep(df2, timestamp_col)
         # Set the continuity limit as NUM_TIMESTEP the average time step
         continuity_limit = NUM_TIMESTEP * avg_timestep
         # Parse the timestamps in df
@@ -354,7 +362,8 @@ def connect_source_to_power_supply(data, source_list):
                 if condition_met.any():
                     for col in data.columns:
                         if col.startswith(power_supply):
-                            new_col = col.replace(power_supply, f'Source {source_number}')
+                            new_col = col.replace(power_supply,
+                                f'Source {source_number}')
                             data[new_col] = data[col]
         elif f'PC Source {source_number} Switch-PDC-PWS1' not in data.columns:
             for power_supply in ['Power Supply 1', 'Power Supply 2', 'Power Supply 3']:
@@ -364,7 +373,8 @@ def connect_source_to_power_supply(data, source_list):
                 if condition_met.any():
                     for col in data.columns:
                         if col.startswith(power_supply):
-                            new_col = col.replace(power_supply, f'Source {source_number}')
+                            new_col = col.replace(power_supply,
+                                f'Source {source_number}')
                             data[new_col] = data[col]
         else:
             print('No source found')
@@ -433,7 +443,7 @@ def filter_data_plasma_on_ramp_up(data, source_list):
         # dataframes, where the key is the source number
 
         #Initiate source_on[f'{source_number}'] as a Lf_Event object
-        source_on[f'{source_number}'] = Lf_Event(f'Source {source_number} On',data)
+        source_on[f'{source_number}'] = Lf_Event(f'Source {source_number} On')
         source_on[f'{source_number}'].set_source(source_number)
         # Define conditions for the plasma being on
         source_on_cond = enabled_cond & (current_cond | dc_bias_cond)
@@ -442,7 +452,7 @@ def filter_data_plasma_on_ramp_up(data, source_list):
         source_on[f'{source_number}'].filter_data(data)
 
         #Initiate source_ramp_up[f'{source_number}'] as a Lf_Event object
-        source_ramp_up[f'{source_number}'] = Lf_Event(f'Source {source_number} Ramp Up',data)
+        source_ramp_up[f'{source_number}'] = Lf_Event(f'Source {source_number} Ramp Up')
         source_ramp_up[f'{source_number}'].set_source(source_number)
         # Define conditions for the plasma ramping up
         source_ramp_up_wo1stpoint_cond = enabled_cond & setpoint_diff_cond
@@ -453,9 +463,7 @@ def filter_data_plasma_on_ramp_up(data, source_list):
         source_ramp_up[f'{source_number}'].set_condition(source_ramp_up_w1stpoint_cond)
         # Filter the data points where the plasma is ramping up
         source_ramp_up[f'{source_number}'].filter_data(data)
-        print(source_ramp_up[f'{source_number}'].events)
         source_ramp_up[f'{source_number}'].stitch_source_ramp_up_events()
-        print(source_ramp_up[f'{source_number}'].events)
         # Sometimes, we ramp up the sources in steps (Ex: 0->50->75)
         # In that case, the same event is counted as two events
         # We check if the last output setpoint power value of one event
@@ -468,7 +476,7 @@ def filter_data_plasma_on_ramp_up(data, source_list):
 # of the different zones of the cracker and the control being enabled
 def filter_data_cracker_on_open(data):
 
-    cracker_on_open = Lf_Event('Cracker On Open',data)
+    cracker_on_open = Lf_Event('Cracker On Open')
 
     if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
         cracker_on_open_cond = (
@@ -488,7 +496,7 @@ def filter_data_cracker_on_open(data):
 # setpoint is different from the actual temperature) and filter the data
 def filter_data_temp_ctrl(data):
 
-    temp_ctrl = Lf_Event('Temperature Ctrl.',data)
+    temp_ctrl = Lf_Event('Temperature Ctrl.')
 
     if 'Temperature Control Enabled' in data.columns:
         temp_ctrl_cond = data['Temperature Control Enabled'] == 1
@@ -516,9 +524,9 @@ def filter_data_temp_ctrl(data):
 # the setpoint and flow of the MFCs being above a threshold defined
 # by MFC_FLOW_THRESHOLD
 def filter_gas(data):
-    ph3 = Lf_Event('PH3 On',data)
-    h2s = Lf_Event('H2S On',data)
-    ar = Lf_Event('Ar On',data)
+    ph3 = Lf_Event('PH3 On')
+    h2s = Lf_Event('H2S On')
+    ar = Lf_Event('Ar On')
 
     ph3_cond = (data['PC MFC 4 Setpoint'] > MFC_FLOW_THRESHOLD) & (
     data['PC MFC 4 Flow'] > MFC_FLOW_THRESHOLD)
@@ -544,9 +552,9 @@ def filter_gas(data):
 # being open and any source being on and open at the same time
 def filter_data_deposition(data, source_list, source_on):
 
-    any_source_on = Lf_Event('Any Source On',data)
-    any_source_on_open = Lf_Event('Any Source On and Open',data)
-    deposition = Lf_Event('Deposition',data)
+    any_source_on = Lf_Event('Any Source On')
+    any_source_on_open = Lf_Event('Any Source On and Open')
+    deposition = Lf_Event('Deposition')
 
     # Define a list of condition containing each source being on and open
     # at the same time
@@ -618,7 +626,8 @@ def filter_data_plasma_presput(data, source_list,
             & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
         )
 
-            source_presput[f'{source_number}'] = Lf_Event(f'Source {source_number} Presput',data)
+            source_presput[f'{source_number}'] = Lf_Event(
+                f'Source {source_number} Presput')
             source_presput[f'{source_number}'].set_source(source_number)
             source_presput[f'{source_number}'].set_condition(source_presput_cond)
             source_presput[f'{source_number}'].filter_data(data)
@@ -634,7 +643,7 @@ def filter_data_plasma_presput(data, source_list,
 # and the pressure)
 def filter_data_cracker_pressure(data, cracker_on_open,
                                 ph3, h2s, ar, deposition):
-    cracker_base_pressure = Lf_Event('Cracker Pressure Meas',data)
+    cracker_base_pressure = Lf_Event('Cracker Pressure Meas')
     if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
         cracker_temp_cond = (
         within_range(data['Sulfur Cracker Zone 1 Current Temperature'],
@@ -655,12 +664,14 @@ def filter_data_cracker_pressure(data, cracker_on_open,
     )
 
         valve_cond = (
-            within_range(data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
+            within_range(
+                data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
                 deposition.data[
                 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                 ].mean(),
                 CRACKER_DIFF_PARAM)
-            & within_range(data['Sulfur Cracker Control Valve Setpoint Feedback'],
+            & within_range(
+                data['Sulfur Cracker Control Valve Setpoint Feedback'],
                 deposition.data[
                 'Sulfur Cracker Control Valve Setpoint Feedback'
                 ].mean(),
@@ -692,14 +703,15 @@ def filter_data_cracker_pressure(data, cracker_on_open,
 # data points just after the Xtal2 shutter opens, as the QCM
 # needs time to stabilize. The STAB_TIME stabilization time
 # is defined in the reference values section
-def filter_data_film_dep_rate(data, deposition, source_list, cracker_on_open, ph3, h2s, any_source_on_open):
-    xtal2_open = Lf_Event('Xtal 2 Shutter Open',data)
+def filter_data_film_dep_rate(data, deposition, source_list, cracker_on_open,
+        ph3, h2s, any_source_on_open):
+    xtal2_open = Lf_Event('Xtal 2 Shutter Open')
 
-    deprate2_meas = Lf_Event('Deposition Rate Measurement',data)
+    deprate2_meas = Lf_Event('Deposition Rate Measurement')
 
     deprate2_film_meas = {}
 
-    deprate2_sulfur_meas = Lf_Event('S Dep Rate Meas',data)
+    deprate2_sulfur_meas = Lf_Event('S Dep Rate Meas')
 
     if 'Xtal 2 Shutter Open' in data.columns:
         xtal2_open_cond=data['Xtal 2 Shutter Open'] == 1
@@ -762,7 +774,8 @@ def filter_data_film_dep_rate(data, deposition, source_list, cracker_on_open, ph
             & power_cond
             & pressure_cond
             )
-            deprate2_film_meas[f'{source_number}'] = Lf_Event(f'Source {source_number} MePS Dep Rate Meas',data)
+            deprate2_film_meas[f'{source_number}'] = Lf_Event(
+                f'Source {source_number} MePS Dep Rate Meas')
             deprate2_film_meas[f'{source_number}'].set_source(source_number)
             deprate2_film_meas[f'{source_number}'].set_condition(deprate2_film_meas_cond)
             deprate2_film_meas[f'{source_number}'].filter_data(data)
@@ -792,7 +805,8 @@ def filter_data_film_dep_rate(data, deposition, source_list, cracker_on_open, ph
     )
 
         valve_cond = (
-            within_range(data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
+            within_range(
+                data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
                 deposition.data[
                 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                 ].mean(),
@@ -841,10 +855,10 @@ def filter_data_temp_ramp_up_down(data,
                             cracker_on_open,temp_ctrl,
                             ph3, h2s, deposition):
 
-    ramp_up_temp = Lf_Event('Sub Temp Ramp Up',data)
-    ramp_down_temp = Lf_Event('Sub Temp Ramp Down',data)
-    ramp_down_high_temp = Lf_Event('Sub High Temp Ramp Down',data)
-    ramp_down_low_temp = Lf_Event('Sub Low Temp Ramp Down',data)
+    ramp_up_temp = Lf_Event('Sub Temp Ramp Up')
+    ramp_down_temp = Lf_Event('Sub Temp Ramp Down')
+    ramp_down_high_temp = Lf_Event('Sub High Temp Ramp Down')
+    ramp_down_low_temp = Lf_Event('Sub Low Temp Ramp Down')
 
     if not temp_ctrl.data.empty or (
     deposition.data['Substrate Heater Temperature Setpoint'] > RT_TEMP_THRESHOLD
@@ -951,7 +965,8 @@ def extract_rt_bool(derived_quant, temp_ctrl, deposition):
         derived_quant['deposition']['rt'] = False
     return derived_quant
 
-def extract_source_used_deposition(derived_quant, source_list, deposition, source_presput):
+def extract_source_used_deposition(derived_quant, source_list,
+        deposition, source_presput):
     # Extract the source used for deposition
     # For all sources, we check if the source is enabled during deposition
     # and if it is, we set the source as the source enabled for deposition
@@ -1181,7 +1196,6 @@ def extract_source_ramp_up_params(derived_quant, source_list, source_ramp_up, da
             # Then we adjust the bounds to include the all the
             # times until deposition
             last_ramp_up_bounds[1] = derived_quant['deposition']['start_time']
-            data_last_ramp_up_event = event_filter(data, last_ramp_up_bounds)
             current_series = data.get(
                 f'Source {source_number} Current', pd.Series([0] * len(data))
             )
@@ -1217,110 +1231,215 @@ def extract_source_ramp_up_params(derived_quant, source_list, source_ramp_up, da
 
     return derived_quant
 
-def extract_source_deposition_params(derived_quant, source_list, deposition, deprate2_film_meas):
-    # Here, we interate over the sources to extract many relevant parameters
+# def extract_source_deposition_params(derived_quant, source_list,
+#         deposition, deprate2_film_meas):
+#     # Here, we interate over the sources to extract many relevant parameters
+#     for source_number in source_list:
+#         # We check if the source is enabled during deposition
+#         if derived_quant['deposition'][f'{source_number}']['enabled']:
+#             # initialize the elements list for the material space extraction
+#             elements = []
+
+#             # Extract average ouput power during deposition
+#             derived_quant['deposition'][f'{source_number}']['avg_output_power'] = (
+#             deposition.data[f'Source {source_number} Output Setpoint'].mean()
+#         )
+#             # Extract the plasma type by checking what power supply was used¨
+#             # during deposition, which can be done by checking if relevant
+#             # columns are present in the dataframe for each source
+#             enable_col = f'Source {source_number} Enabled'
+#             dc_current_col = f'Source {source_number} Current'
+#             rf_bias_col = f'Source {source_number} DC Bias'
+#             pulse_enable_col = f'Source {source_number} Pulse Enabled'
+#             if dc_current_col in deposition.data:
+#                 if deposition.data[dc_current_col].all() > CURRENT_THRESHOLD:
+#                     (derived_quant['deposition'][f'{source_number}']['dc']) = True
+#                     (derived_quant['deposition'][f'{source_number}']['rf']) = False
+#                     if (
+#                     pulse_enable_col in deposition.data
+#                     and (deposition.data[pulse_enable_col].all()) == 1
+#                 ):
+#                         (
+#                         derived_quant['deposition'][f'{source_number}']['pulsed']
+#                     ) = True
+#                         derived_quant['deposition']
+#                         [f'{source_number}']['pulse_frequency'] = deposition.data[
+#                         f'Source {source_number} Pulse Frequency'
+#                     ].mean()
+#                     # Extract the dc pulse frequency and reverse time
+#                         derived_quant['deposition'][f'{source_number}'][
+#                         'dead_time'
+#                     ] = deposition.data[f'Source {source_number} Reverse Time'].mean()
+#                     elif (
+#                     pulse_enable_col in deposition.data
+#                     and (deposition.data[pulse_enable_col].all()) == 0
+#                 ):
+#                         (
+#                         derived_quant['deposition'][f'{source_number}']['pulsed']
+#                     ) = False
+#             elif rf_bias_col in deposition.data:
+#                 if deposition.data[rf_bias_col].all() > BIAS_THRESHOLD:
+#                     (derived_quant['deposition'][f'{source_number}']['rf']) = True
+#                     (derived_quant['deposition'][f'{source_number}']['dc']) = False
+#             # Extract the deposition voltage for each source
+#             # by distinguishing the rf and dc cases
+#             if derived_quant['deposition'][f'{source_number}']['dc']:
+#                 derived_quant['deposition'][f'{source_number}']['start_voltage'] = (
+#                 int(
+#                     deposition.data[f'Source {source_number} Voltage']
+#                     .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data)))]
+#                     .mean()
+#                 )
+#             )
+#                 derived_quant['deposition'][f'{source_number}']['end_voltage'] = (
+#                 deposition.data[f'Source {source_number} Voltage']
+#                 .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data))) :]
+#                 .mean()
+#             )
+#                 derived_quant['deposition'][f'{source_number}']['avg_voltage'] = (
+#                 deposition.data[f'Source {source_number} Voltage'].mean()
+#             )
+#             elif derived_quant['deposition'][f'{source_number}']['rf']:
+#                 derived_quant['deposition'][f'{source_number}']['start_voltage'] = (
+#                 deposition.data[f'Source {source_number} DC Bias']
+#                 .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data)))]
+#                 .mean()
+#             )
+#                 derived_quant['deposition'][f'{source_number}']['end_voltage'] = (
+#                 deposition.data[f'Source {source_number} DC Bias']
+#                 .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data))) :]
+#                 .mean()
+#             )
+#                 derived_quant['deposition'][f'{source_number}']['avg_voltage'] = (
+#                 deposition.data[f'Source {source_number} DC Bias'].mean()
+#             )
+#             # Extract the deposition rate of the Metal-P-S film
+#             if not deprate2_film_meas[f'{source_number}'].data.empty:
+#                 derived_quant['deposition'][f'{source_number}']['deposition_rate'] = (
+#                     deprate2_film_meas[f'{source_number}'].data[
+#                     'Thickness Rate'
+#                     ].mean())
+#                 derived_quant['deposition'][
+#                     f'{source_number}']['deposition_rate_mat'] = (
+#                     deprate2_film_meas[f'{source_number}'].data[
+#                     'Thickness Active Material'
+#                     ].iloc[0])
+
+#         # Extract source material and target id and add the element to the
+#         # elements list for the material space extraction
+#             source_element = str(
+#             deposition.data[f'PC Source {source_number} Material'].iloc[0]
+#         )
+#             derived_quant['deposition'][f'{source_number}']['material'] = element(
+#             source_element
+#         ).symbol
+#             derived_quant['deposition'][f'{source_number}']['target_id'] = (
+#             deposition.data[f'PC Source {source_number} Loaded Target'].iloc[0]
+#         )
+#             elements = elements + [element(source_element).symbol]
+
+def extract_source_deposition_params(derived_quant, source_list,
+    deposition, deprate2_film_meas):
     for source_number in source_list:
-        # We check if the source is enabled during deposition
         if derived_quant['deposition'][f'{source_number}']['enabled']:
-            # initialize the elements list for the material space extraction
             elements = []
-
-            # Extract average ouput power during deposition
-            derived_quant['deposition'][f'{source_number}']['avg_output_power'] = (
-            deposition.data[f'Source {source_number} Output Setpoint'].mean()
-        )
-            # Extract the plasma type by checking what power supply was used¨
-            # during deposition, which can be done by checking if relevant
-            # columns are present in the dataframe for each source
-            enable_col = f'Source {source_number} Enabled'
-            dc_current_col = f'Source {source_number} Current'
-            rf_bias_col = f'Source {source_number} DC Bias'
-            pulse_enable_col = f'Source {source_number} Pulse Enabled'
-            if dc_current_col in deposition.data:
-                if deposition.data[dc_current_col].all() > CURRENT_THRESHOLD:
-                    (derived_quant['deposition'][f'{source_number}']['dc']) = True
-                    (derived_quant['deposition'][f'{source_number}']['rf']) = False
-                    if (
-                    pulse_enable_col in deposition.data
-                    and (deposition.data[pulse_enable_col].all()) == 1
-                ):
-                        (
-                        derived_quant['deposition'][f'{source_number}']['pulsed']
-                    ) = True
-                        derived_quant['deposition']
-                        [f'{source_number}']['pulse_frequency'] = deposition.data[
-                        f'Source {source_number} Pulse Frequency'
-                    ].mean()
-                    # Extract the dc pulse frequency and reverse time
-                        derived_quant['deposition'][f'{source_number}'][
-                        'dead_time'
-                    ] = deposition.data[f'Source {source_number} Reverse Time'].mean()
-                    elif (
-                    pulse_enable_col in deposition.data
-                    and (deposition.data[pulse_enable_col].all()) == 0
-                ):
-                        (
-                        derived_quant['deposition'][f'{source_number}']['pulsed']
-                    ) = False
-            elif rf_bias_col in deposition.data:
-                if deposition.data[rf_bias_col].all() > BIAS_THRESHOLD:
-                    (derived_quant['deposition'][f'{source_number}']['rf']) = True
-                    (derived_quant['deposition'][f'{source_number}']['dc']) = False
-            # Extract the deposition voltage for each source
-            # by distinguishing the rf and dc cases
-            if derived_quant['deposition'][f'{source_number}']['dc']:
-                derived_quant['deposition'][f'{source_number}']['start_voltage'] = (
-                int(
-                    deposition.data[f'Source {source_number} Voltage']
-                    .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data)))]
-                    .mean()
-                )
-            )
-                derived_quant['deposition'][f'{source_number}']['end_voltage'] = (
-                deposition.data[f'Source {source_number} Voltage']
-                .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data))) :]
-                .mean()
-            )
-                derived_quant['deposition'][f'{source_number}']['avg_voltage'] = (
-                deposition.data[f'Source {source_number} Voltage'].mean()
-            )
-            elif derived_quant['deposition'][f'{source_number}']['rf']:
-                derived_quant['deposition'][f'{source_number}']['start_voltage'] = (
-                deposition.data[f'Source {source_number} DC Bias']
-                .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data)))]
-                .mean()
-            )
-                derived_quant['deposition'][f'{source_number}']['end_voltage'] = (
-                deposition.data[f'Source {source_number} DC Bias']
-                .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data))) :]
-                .mean()
-            )
-                derived_quant['deposition'][f'{source_number}']['avg_voltage'] = (
-                deposition.data[f'Source {source_number} DC Bias'].mean()
-            )
-            # Extract the deposition rate of the Metal-P-S film
-            if not deprate2_film_meas[f'{source_number}'].data.empty:
-                derived_quant['deposition'][f'{source_number}']['deposition_rate'] = (
-                deprate2_film_meas[f'{source_number}'].data[
-                'Thickness Rate'
-            ].mean())
-                derived_quant['deposition'][f'{source_number}']['deposition_rate_mat'] = (
-                deprate2_film_meas[f'{source_number}'].data[
-                'Thickness Active Material'
-            ].iloc[0])
-
-        # Extract source material and target id and add the element to the
-        # elements list for the material space extraction
+            extract_avg_output_power(derived_quant, source_number, deposition)
+            determine_plasma_type(derived_quant, source_number, deposition)
+            extract_deposition_voltage(derived_quant, source_number, deposition)
+            extract_deposition_rate(derived_quant, source_number,
+                deprate2_film_meas)
+            extract_source_material_and_target(derived_quant,
+                source_number, deposition, elements)
+            #Extract source material and target id and add the element to the
+            # elements list for the material space extraction
             source_element = str(
             deposition.data[f'PC Source {source_number} Material'].iloc[0]
-        )
+            )
             derived_quant['deposition'][f'{source_number}']['material'] = element(
             source_element
-        ).symbol
+            ).symbol
             derived_quant['deposition'][f'{source_number}']['target_id'] = (
             deposition.data[f'PC Source {source_number} Loaded Target'].iloc[0]
-        )
+            )
             elements = elements + [element(source_element).symbol]
+
+def extract_avg_output_power(derived_quant, source_number, deposition):
+    derived_quant['deposition'][f'{source_number}']['avg_output_power'] = (
+        deposition.data[f'Source {source_number} Output Setpoint'].mean()
+    )
+
+def determine_plasma_type(derived_quant, source_number, deposition):
+    dc_current_col = f'Source {source_number} Current'
+    rf_bias_col = f'Source {source_number} DC Bias'
+    pulse_enable_col = f'Source {source_number} Pulse Enabled'
+
+    if dc_current_col in deposition.data and (
+            deposition.data[dc_current_col].all() > CURRENT_THRESHOLD):
+        derived_quant['deposition'][f'{source_number}']['dc'] = True
+        derived_quant['deposition'][f'{source_number}']['rf'] = False
+        if pulse_enable_col in deposition.data:
+            derived_quant['deposition'][f'{source_number}']['pulsed'] = (
+                deposition.data[pulse_enable_col].all() == 1)
+            if derived_quant['deposition'][f'{source_number}']['pulsed']:
+                derived_quant['deposition'][f'{source_number}']['pulse_frequency'] = (
+                    deposition.data[f'Source {source_number} Pulse Frequency'].mean())
+                derived_quant['deposition'][f'{source_number}']['dead_time'] = (
+                    deposition.data[f'Source {source_number} Reverse Time'].mean())
+    elif rf_bias_col in deposition.data and (
+        deposition.data[rf_bias_col].all() > BIAS_THRESHOLD):
+        derived_quant['deposition'][f'{source_number}']['rf'] = True
+        derived_quant['deposition'][f'{source_number}']['dc'] = False
+
+def extract_deposition_voltage(derived_quant, source_number, deposition):
+    if derived_quant['deposition'][f'{source_number}']['dc']:
+        derived_quant['deposition'][f'{source_number}']['start_voltage'] = (
+            deposition.data[f'Source {source_number} Voltage']
+            .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data)))]
+            .mean()
+        )
+        derived_quant['deposition'][f'{source_number}']['end_voltage'] = (
+            deposition.data[f'Source {source_number} Voltage']
+            .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data))) :]
+            .mean()
+        )
+        derived_quant['deposition'][f'{source_number}']['avg_voltage'] = (
+            deposition.data[f'Source {source_number} Voltage'].mean()
+        )
+    elif derived_quant['deposition'][f'{source_number}']['rf']:
+        derived_quant['deposition'][f'{source_number}']['start_voltage'] = (
+            deposition.data[f'Source {source_number} DC Bias']
+            .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data)))]
+            .mean()
+        )
+        derived_quant['deposition'][f'{source_number}']['end_voltage'] = (
+            deposition.data[f'Source {source_number} DC Bias']
+            .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data))) :]
+            .mean()
+        )
+        derived_quant['deposition'][f'{source_number}']['avg_voltage'] = (
+            deposition.data[f'Source {source_number} DC Bias'].mean()
+        )
+
+def extract_deposition_rate(derived_quant, source_number, deprate2_film_meas):
+    if not deprate2_film_meas[f'{source_number}'].data.empty:
+        derived_quant['deposition'][f'{source_number}']['deposition_rate'] = (
+            deprate2_film_meas[f'{source_number}'].data['Thickness Rate'].mean()
+        )
+        derived_quant['deposition'][f'{source_number}']['deposition_rate_mat'] = (
+            deprate2_film_meas[f'{source_number}']
+            .data['Thickness Active Material']
+            .iloc[0]
+        )
+
+def extract_source_material_and_target(derived_quant, source_number,
+        deposition, elements):
+    source_element = str(
+        deposition.data[f'PC Source {source_number} Material'].iloc[0])
+    derived_quant['deposition'][f'{source_number}']['material'] = (
+        element(source_element).symbol)
+    derived_quant['deposition'][f'{source_number}']['target_id'] = (
+        deposition.data[f'PC Source {source_number} Loaded Target'].iloc[0])
+    elements.append(element(source_element).symbol)
 
     # Extract the material space as the elements used during deposition
     if derived_quant['deposition']['avg_ph3_flow'] > MFC_FLOW_THRESHOLD:
@@ -1340,7 +1459,8 @@ def extract_end_of_process(derived_quant,data):
     # Extract the end of process temperature as the last temperature logged
     # Note: this part can be improved by extracting the temperature at
     # the vent recipe step
-    derived_quant['end_of_process_temp'] = data['Substrate Heater Temperature'].iloc[-1]
+    derived_quant['end_of_process_temp'] = (
+        data['Substrate Heater Temperature'].iloc[-1])
 
     # Extract the time in chamber after deposition as the time difference
     # between end of logging and end of deposition time
@@ -1375,7 +1495,8 @@ def extract_sub_ramp_up_params(derived_quant, ramp_up_temp, data):
         time_interval_minutes = (
             derived_quant['sub_ramp_up']['duration'].total_seconds() / 60
         )
-        derived_quant['sub_ramp_up']['temp_slope'] = temp_diff / time_interval_minutes
+        derived_quant['sub_ramp_up']['temp_slope'] = (
+            temp_diff / time_interval_minutes)
         # Extract the time plateau as the time difference between the
         # start of the deposition and the end of the ramp up (i.e. the time at
         # constant high temperature before the deposition)
@@ -1453,7 +1574,8 @@ def extract_sub_ramp_up_params(derived_quant, ramp_up_temp, data):
                     ].mean()
                 )
                 derived_quant['sub_ramp_up']['cracker']['pulse_freq'] = (
-                    ramp_up_temp.data['Sulfur Cracker Control Valve Setpoint Feedback'].mean()
+                    ramp_up_temp.data[
+                    'Sulfur Cracker Control Valve Setpoint Feedback'].mean()
                 )
             else:
                 derived_quant['sub_ramp_up']['cracker']['enabled'] = False
@@ -1461,13 +1583,17 @@ def extract_sub_ramp_up_params(derived_quant, ramp_up_temp, data):
             derived_quant['sub_ramp_up']['cracker']['enabled'] = False
     return derived_quant
 
-def extract_sub_ramp_down_params(derived_quant, ramp_down_temp, ramp_down_high_temp, ramp_down_low_temp):
+def extract_sub_ramp_down_params(derived_quant, ramp_down_temp,
+        ramp_down_high_temp, ramp_down_low_temp):
     if not derived_quant['deposition']['rt']:
         # ------Extract the substrate ramp down parameters------
         # Extract the number of ramp down events
-        derived_quant['sub_ramp_down']['events'] = ramp_down_temp.events
-        derived_quant['sub_ramp_down']['events_high_temp'] = ramp_down_high_temp.events
-        derived_quant['sub_ramp_down']['events_low_temp'] = ramp_down_low_temp.events
+        derived_quant['sub_ramp_down']['events'] = (
+            ramp_down_temp.events)
+        derived_quant['sub_ramp_down']['events_high_temp'] = (
+            ramp_down_high_temp.events)
+        derived_quant['sub_ramp_down']['events_low_temp'] = (
+            ramp_down_low_temp.events)
 
         # Extract the slope from when the temp in controled,
         # assuming linear ramp up
@@ -1481,7 +1607,8 @@ def extract_sub_ramp_down_params(derived_quant, ramp_down_temp, ramp_down_high_t
             - ramp_down_temp.data['Substrate Heater Temperature Setpoint'].iloc[0]
         )
         time_interval_minutes = time_interval.total_seconds() / 60
-        derived_quant['sub_ramp_down']['temp_slope'] = temp_diff / time_interval_minutes
+        derived_quant['sub_ramp_down']['temp_slope'] = (
+            temp_diff / time_interval_minutes)
         # Now we distinguish between the high temp and low temp ramp down phase
         # Extract the start time of the ramp down as the first time of
         # the high temperature ramp down and the end time as the last time of
@@ -1538,17 +1665,25 @@ def extract_sub_ramp_down_params(derived_quant, ramp_down_temp, ramp_down_high_t
         # Extract if the cracker has been used during ramp down
         if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
             if (
-                (ramp_down_high_temp.data['Sulfur Cracker Control Enabled'] == 1).all()
+                (ramp_down_high_temp.data[
+                    'Sulfur Cracker Control Enabled'
+                    ] == 1).all()
                 and (
-                    ramp_down_high_temp.data['Sulfur Cracker Zone 1 Current Temperature']
+                    ramp_down_high_temp.data[
+                        'Sulfur Cracker Zone 1 Current Temperature'
+                        ]
                     > CRACKER_ZONE_1_MIN_TEMP
                 ).all()
                 and (
-                    ramp_down_high_temp.data['Sulfur Cracker Zone 2 Current Temperature']
+                    ramp_down_high_temp.data[
+                        'Sulfur Cracker Zone 2 Current Temperature'
+                        ]
                     > CRACKER_ZONE_2_MIN_TEMP
                 ).all()
                 and (
-                    ramp_down_high_temp.data['Sulfur Cracker Zone 3 Current Temperature']
+                    ramp_down_high_temp.data[
+                        'Sulfur Cracker Zone 3 Current Temperature'
+                        ]
                     > CRACKER_ZONE_3_MIN_TEMP
                 ).all()
             ):
@@ -1575,7 +1710,9 @@ def extract_sub_ramp_down_params(derived_quant, ramp_down_temp, ramp_down_high_t
                     ].mean()
                 )
                 derived_quant['sub_ramp_down']['cracker']['pulse_freq'] = (
-                    ramp_down_high_temp.data['Sulfur Cracker Control Valve Setpoint Feedback'].mean()
+                    ramp_down_high_temp.data[
+                        'Sulfur Cracker Control Valve Setpoint Feedback'
+                    ].mean()
                 )
             else:
                 derived_quant['sub_ramp_down']['cracker']['enabled'] = False
@@ -1584,7 +1721,9 @@ def extract_sub_ramp_down_params(derived_quant, ramp_down_temp, ramp_down_high_t
         # Extract the anion input cutoff temperature as the last temperature of
         # the high temperature ramp down
         derived_quant['sub_ramp_down']['anion_input_cutoff_temp'] = (
-            ramp_down_high_temp.data['Substrate Heater Temperature Setpoint'].iloc[-1]
+            ramp_down_high_temp.data[
+                'Substrate Heater Temperature Setpoint'
+                ].iloc[-1]
         )
         derived_quant['sub_ramp_down']['anion_input_cutoff_time'] = (
             ramp_down_high_temp.data['Time Stamp'].iloc[-1]
@@ -1617,7 +1756,7 @@ def plot_matplotlib_timeline(logfile_name, data, source_used_list,
     bottom_steps = [step for step in bottom_steps if step.bounds]
 
     #The non_source_steps are Lf_Event objects
-    non_source_steps = [step for step in other_steps if type(step) == Lf_Event]
+    non_source_steps = [step for step in other_steps if isinstance(step,Lf_Event)]
 
     #Remove the non_source_steps that have empty bounds
     non_source_steps = [step for step in non_source_steps if step.bounds]
@@ -1629,7 +1768,7 @@ def plot_matplotlib_timeline(logfile_name, data, source_used_list,
     all_non_source_steps = bottom_steps + non_source_steps
 
     #The source steps are dictorionaries with the source number as key
-    source_steps = [step for step in other_steps if type(step) == dict]
+    source_steps = [step for step in other_steps if isinstance(step,dict)]
 
     #Remove the source_steps that have empty bounds
     for source_number in source_used_list:
@@ -1652,7 +1791,7 @@ def plot_matplotlib_timeline(logfile_name, data, source_used_list,
                 steps_plot['bounds'].append(step[f'{source_number}'].bounds)
 
     # Print a message to the console
-    print('Generating the matplotlib plot')
+
 
     #initialize the figure
     timeline = plt.figure(figsize=(8, 3))
@@ -1691,7 +1830,8 @@ def plot_matplotlib_timeline(logfile_name, data, source_used_list,
             ymin=j/(len(steps_plot['name'])-number_step_bottom+1),
             ymax=(j+1)/(len(steps_plot['name'])-number_step_bottom+1),
             color=step_colors[steps_plot['name'][i]],
-            label=steps_plot['name'][i] if not label_added else "",  # Add label only if not already added
+             # Add label only if not already added
+            label=steps_plot['name'][i] if not label_added else "",
             )
             label_added = True  # Set the flag to True after adding the label
         i += 1
@@ -1725,53 +1865,6 @@ def save_report_as_text(derived_quant, logfile_dir, logfile_name):
     )
         txt_file.write(write_derived_quantities(derived_quant))
 
-def steps_to_nomad(steps_list,source_list):
-    '''
-    Function to convert the list of steps to the NOMAD format, which is a list of
-    dictionaries with the following keys
-    - name: str
-        Name of the step
-    - data: pd.DataFrame
-        Dataframe containing the data of the step
-    - bounds: tuple
-        Tuple containing the start and end time of the step
-    args:
-        steps_list: list of steps to be converted to the NOMAD compatible format
-        source_list: list of sources in the raw data during the process
-    The function also sorts the steps by the start time
-    The consequence is that the definintion only expect non overlapping steps
-    '''
-    #Initialize the list to store the nomad steps
-    nomad_steps_list = []
-    for step in steps_list:
-        #If the step is not source dependent, then the name is a string
-        if type(step['name']) == str:
-            #We iterate over the number of events in the step
-            for i in range(step['events']):
-                filtered_step = {}
-                #Filter the data to only include the data within the bounds
-                filtered_step['data'] = event_filter(step['data'], step['bounds'][i])
-                #We name the step as the name of the step with the event number
-                filtered_step['name'] = f'{step[f'name']}({i})'
-                #We add the bounds of the step
-                filtered_step['bounds'] = step['bounds'][i]
-                #We append the filtered step to the nomad steps list
-                nomad_steps_list.append(filtered_step)
-        #If the step is source dependent, then the name is a dictionary
-        elif type(step['name']) == dict:
-            #see comments above
-            for source_number in source_list:
-                for i in range (step['events'][f'{source_number}']):
-                    filtered_step = {}
-                    filtered_step['data'] = event_filter(step[f'{source_number}'].data, step['bounds'][f'{source_number}'][i])
-                    filtered_step['name'] = f'{step[f'name'][f'{source_number}']}({i})'
-                    filtered_step['bounds'] = step['bounds'][f'{source_number}'][i]
-                    nomad_steps_list.append(filtered_step)
-    #We order the steps by the start time
-    sorted_nomad_steps_list = sorted(nomad_steps_list, key=lambda x: x['bounds'][0])
-
-    return sorted_nomad_steps_list
-
 
 def plot_plotly_extimeline(logfile_name, data, source_used_list, steps_to_plot,
                             step_colors):
@@ -1795,20 +1888,19 @@ def plot_plotly_extimeline(logfile_name, data, source_used_list, steps_to_plot,
             in the plot
     '''
 
-    # Printing that the plot is being generated
-    print('Generating the plotly plot')
+
 
     #Format the steps to be plotted for the plotly timeline
     rows = []
     for step in steps_to_plot:
-        if type(step) == Lf_Event:
+        if isinstance(step, Lf_Event):
             for bounds in step.bounds:
                 rows.append({
                     'Event': step.name,
                     'Start': bounds[0],
                     'End': bounds[1]
                 })
-        elif type(step) == dict:
+        elif isinstance(step, dict):
             for source_number in source_used_list:
                 for bounds in step[f'{source_number}'].bounds:
                     rows.append({
@@ -1822,12 +1914,13 @@ def plot_plotly_extimeline(logfile_name, data, source_used_list, steps_to_plot,
     # Determine the timeline duration
     min_start_time = df['Start'].min()
     max_end_time = df['End'].max()
-    timeline_duration = (max_end_time - min_start_time).total_seconds() / 3600  # Duration in hours
+    # Duration in hours
+    timeline_duration = (max_end_time - min_start_time).total_seconds() / 3600
 
     # Calculate dynamic width and height
     num_events = len(df['Event'].unique())
     width = max(900, timeline_duration * 50)  # Minimum width 800px, scale with duration
-    height = max(500, num_events * 30)  # Minimum height 600px, scale with number of events
+    height = max(500, num_events * 30)  # Minimum height 600px,scale with num. of events
     # Create the plot with plotly express.timeline
     fig = px.timeline(df, x_start='Start', x_end='End', y='Event', color='Event',
                       color_discrete_map=step_colors,
@@ -1843,7 +1936,7 @@ def plot_plotly_extimeline(logfile_name, data, source_used_list, steps_to_plot,
         ),
         template='plotly_white',  # Use a white background template
         title=dict(
-            text=f'Process Timeline',  # Title text
+            text='Process Timeline',  # Title text
             x=0.5,  # Center the title horizontally
             y=0.85,  # Position the title vertically
             xanchor='center',  # Anchor the title at the center horizontally
@@ -1879,14 +1972,91 @@ def unfold_events(all_lf_events,data):
     all_sub_lf_events = []
     for step in all_lf_events:
         if 'Time Stamp' in step.data.columns:
-            if step.events > 1:
-                for i in range(step.events):
-                    new_step = Lf_Event(step.sep_name[i],data)
-                    new_step.set_data(step.sep_data[i])
-                    all_sub_lf_events.append(new_step)
-            else:
-                all_sub_lf_events.append(step)
+            for i in range(step.events):
+                new_step = Lf_Event(step.sep_name[i])
+                new_step.set_source(step.source)
+                new_step.set_data(step.sep_data[i])
+                all_sub_lf_events.append(new_step)
     return all_sub_lf_events
+
+def add_event_to_events(event, all_events):
+    '''
+    args:
+        all_events: list
+            List of all the events to which the event is to be added
+        event: Lf_Event, list of Lf_Event, or dict of Lf_Event
+            Event to be added to the list of all events
+    '''
+    if isinstance(event, list):
+        for item in event:
+            if isinstance(item, Lf_Event):
+                all_events.append(item)
+            elif isinstance(item, dict):
+                for key in item:
+                    all_events.append(item[key])
+    elif isinstance(event, dict):
+        for key in event:
+            all_events.append(event[key])
+    elif isinstance(event, Lf_Event):
+        all_events.append(event)
+    else:
+        raise ValueError(
+            'The event to be added to the list of all events is not of the right type'
+        )
+    return all_events
+
+#Definition to sort the events by the start time
+def sort_events_by_start_time(all_events):
+    '''
+    args:
+        all_events: list
+            List of all the events to be sorted by start time
+    '''
+    sorted_events = sorted(all_events, key=lambda x: x.bounds[0])
+    return sorted_events
+
+#Definition to place the ramp_up_temp, deposition, ramp_down_high_temp,
+# ramp_down_low_temp event first in the list of all events, in this order
+def place_deposition_ramp_up_down_events_first(all_events):
+    '''
+    args:
+        all_events: list
+            List of all the events to be sorted by start time
+    '''
+    # Initialize the list of events to be placed first
+    first_events = []
+    # Initialize the list of events to be placed last
+    last_events = []
+    # Initialize the list of events to be placed in the middle
+    source_events = {}
+    # Loop over all the events
+    for event in all_events:
+        # If the event is a ramp up temp event, add it to the first events
+        if re.match(r'Sub Temp Ramp Up(\(\d+\))?$', event.name):
+            first_events.append(event)
+        # If the event is a deposition event, add it to the first events
+        if re.match(r'Deposition(\(\d+\))?$', event.name):
+            first_events.append(event)
+        # If the event is a ramp down high temp event, add it to the first events
+        if re.match(r'Sub High Temp Ramp Down(\(\d+\))?$', event.name):
+            first_events.append(event)
+        # If the event is a ramp down low temp event, add it to the first events
+        if re.match(r'Sub Low Temp Ramp Down(\(\d+\))?$', event.name):
+            first_events.append(event)
+        # If the event is a source event, add it to the source events
+        elif event.source:
+            if f'{event.source}' not in source_events:
+                source_events[f'{event.source}'] = [event]
+            else:
+                source_events[f'{event.source}'].append(event)
+        # If the event is not one of the above, add it to the middle events
+        else:
+            last_events.append(event)
+    # Concatenate the first events with the middle events
+    all_events = first_events + last_events
+    for key in source_events:
+        all_events = all_events + source_events[key]
+    return all_events
 
 
 
@@ -1954,7 +2124,7 @@ STEP_COLORS = {
     'Source 1 On ': 'green',
     'Source 1 Presput': '#90EE90',  # Light Green
     'Source 1 MePS Dep Rate Meas':'#32CD32',  # Lime Green
-    'Cracker On Open': 'yellow',
+    'Cracker On Open': '#CCCC00',
     'H2S On': 'orange',
     'PH3 On': 'cyan',
     'Ar On': 'black',
@@ -1995,27 +2165,29 @@ for logfile_name in logfile_names:
     txt_file_path = os.path.join(txt_file_dir, txt_file_name)
 
     # Specify the path and filename for the matplotlib graph
-    matplotlib_graph_file_dir = os.path.join(logfile_dir, 'matplotlib_process_timeline_graphs')
+    matplotlib_graph_file_dir = os.path.join(logfile_dir,
+        'matplotlib_process_timeline_graphs')
     matplotlib_graph_file_name = f'{logfile_name}_matplotlib_timeline.png'
-    matplotlib_graph_file_path = os.path.join(matplotlib_graph_file_dir, matplotlib_graph_file_name)
+    matplotlib_graph_file_path = os.path.join(matplotlib_graph_file_dir,
+                                              matplotlib_graph_file_name)
 
     #Same for the plotly graph
-    plotly_graph_file_dir = os.path.join(logfile_dir, 'plotly_process_timeline_graphs')
+    plotly_graph_file_dir = os.path.join(logfile_dir,
+        'plotly_process_timeline_graphs')
     plotly_graph_file_name = f'{logfile_name}_plotly_timeline.png'
-    plotly_graph_file_path = os.path.join(plotly_graph_file_dir, plotly_graph_file_name)
+    plotly_graph_file_path = os.path.join(plotly_graph_file_dir,
+                                          plotly_graph_file_name)
 
     # ---------READ THE DATA-------------
 
     # Read the log file and spectrum data
 
-    print(f'Reading the logfile')
+    print('Reading the logfile')
     data = read_logfile(logfile_path)
-
-
 
     #---------FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING------------
 
-    print(f'Formatting the dataframe for conditional filtering')
+    print('Formatting the dataframe for conditional filtering')
 
    # ---------RENAME THE CRACKER COLUMNS OF THE DATAFRAME------------
     data=rename_cracker_columns(data)
@@ -2043,28 +2215,25 @@ for logfile_name in logfile_names:
     source_on, source_ramp_up = filter_data_plasma_on_ramp_up(
         data, source_list)
 
-    for source_number in source_list:
-        if source_on[f'{source_number}']:
-            all_lf_events.extend([source_on[f'{source_number}'],
-                                 source_ramp_up[f'{source_number}']])
+    add_event_to_events([source_on,source_ramp_up],all_lf_events)
 
     # ---------2/CONDITION FOR THE CRACKER BEING ON--------
 
     cracker_on_open = filter_data_cracker_on_open(data)
 
-    all_lf_events.append(cracker_on_open)
+    add_event_to_events(cracker_on_open,all_lf_events)
 
     # ---------3/CONDITION FOR THE TEMPERATURE CONTROL--------
 
     temp_ctrl = filter_data_temp_ctrl(data)
 
-    all_lf_events.append(temp_ctrl)
+    add_event_to_events(temp_ctrl,all_lf_events)
 
     # ----- 4/CONDITIONS FOR THE DIFFERENT GASES BEING FLOWN--------
 
     ph3, h2s, ar = filter_gas(data)
 
-    all_lf_events.extend([ph3, h2s, ar])
+    add_event_to_events([ph3, h2s, ar],all_lf_events)
 
     # ---------5/CONDITIONS FOR THE DEPOSITION--------
 
@@ -2072,7 +2241,8 @@ for logfile_name in logfile_names:
     filter_data_deposition(data, source_list, source_on)
     )
 
-    all_lf_events.extend([any_source_on, any_source_on_open, deposition])
+    add_event_to_events([any_source_on, any_source_on_open, deposition],
+        all_lf_events)
 
     # ---------6/CONDITIONS FOR THE DIFFERENT SOURCES BEING PRESPUTTERED--------
 
@@ -2080,8 +2250,7 @@ for logfile_name in logfile_names:
                             source_on, source_ramp_up,
                             cracker_on_open, ph3, h2s, deposition)
 
-    for source_number in source_used_list:
-        all_lf_events.append(source_presput[f'{source_number}'])
+    add_event_to_events(source_presput,all_lf_events)
 
     # ---------7/CONDITIONS FOR THE S CRACKER PRESSURE MEAS--------
 
@@ -2089,18 +2258,20 @@ for logfile_name in logfile_names:
     cracker_base_pressure = filter_data_cracker_pressure(
     data, cracker_on_open, ph3, h2s, ar, deposition)
 
-    all_lf_events.append(cracker_base_pressure)
-
+    add_event_to_events(cracker_base_pressure,all_lf_events)
 
     # ---------8/CONDITIONS FOR THE DEPOSITION RATE MEASUREMENT--------
+
+    print('Definiing the conditions and filtering the data')
 
     deprate2_film_meas, deprate2_meas, xtal2_open, deprate2_sulfur_meas = (
     filter_data_film_dep_rate(data, deposition, source_list,
                             cracker_on_open, ph3, h2s, any_source_on_open))
 
-    all_lf_events.extend([deprate2_meas, xtal2_open, deprate2_sulfur_meas])
-    for source_number in source_used_list:
-        all_lf_events.append(deprate2_film_meas[f'{source_number}'])
+    add_event_to_events([deprate2_meas,
+                        xtal2_open,
+                        deprate2_sulfur_meas,
+                        deprate2_film_meas],all_lf_events)
     # ---9/CONDITIONS FOR THE SUBSTRATE TEMPERATURE RAMPING UP OR DOWN-----
 
     # Filter the data for the substrate temperature ramping up or down
@@ -2108,10 +2279,19 @@ for logfile_name in logfile_names:
     filter_data_temp_ramp_up_down(data,cracker_on_open,temp_ctrl,
                             ph3, h2s, deposition))
 
-    all_lf_events.extend([ramp_up_temp, ramp_down_temp, ramp_down_high_temp, ramp_down_low_temp])
+    add_event_to_events([ramp_up_temp, ramp_down_temp,
+                        ramp_down_high_temp,
+                        ramp_down_low_temp],all_lf_events)
 
     #Remove the empty events from the all_lf_events
     all_lf_events = [event for event in all_lf_events if event.bounds]
+
+    #Sort the events by the start time
+    all_lf_events = sort_events_by_start_time(all_lf_events)
+
+    #Place the ramp_up_temp, deposition, ramp_down_high_temp, ramp_down_low_temp
+    # event first in the list of all events, in this particular order
+    all_lf_events = place_deposition_ramp_up_down_events_first(all_lf_events)
 
     #Unfold the all_lf_events to make a list of all subevents
     all_sub_lf_events = unfold_events(all_lf_events,data)
@@ -2126,13 +2306,17 @@ for logfile_name in logfile_names:
 
     # ---DEPOSITION PARAMETERS-----
 
+    print('Extracting useful parameters into a report dictionary')
+
     #Extract if the deposition is at room temperature
     derived_quant = extract_rt_bool(derived_quant, temp_ctrl, deposition)
     #Extract what sources are used during deposition
     derived_quant = extract_source_used_deposition(
     derived_quant, source_list, deposition, source_presput)
     #Extract the parameters of the S cracker during deposition
-    derived_quant = extract_cracker_params(derived_quant, data, deposition, cracker_base_pressure)
+    derived_quant = extract_cracker_params(derived_quant, data,
+                                           deposition,
+                                           cracker_base_pressure)
 
     #Extract some pressure parameters during deposition
     derived_quant = extract_pressure_params(derived_quant, data, deposition)
@@ -2142,21 +2326,34 @@ for logfile_name in logfile_names:
     derived_quant = extract_simple_deposition_params(derived_quant,deposition)
 
     #Extract the presputtering parameters for the sources
-    derived_quant = extract_source_presput_params(derived_quant, source_list, source_presput)
+    derived_quant = extract_source_presput_params(derived_quant,
+                                                   source_list,
+                                                   source_presput)
     #Extract the ramp up parameters for the sources
-    derived_quant = extract_source_ramp_up_params(derived_quant, source_list, source_ramp_up, data)
+    derived_quant = extract_source_ramp_up_params(derived_quant,
+                                                  source_list,
+                                                  source_ramp_up,
+                                                  data)
 
     #Extract the source dependent deposition parameters
-    dervied_quant = extract_source_deposition_params(derived_quant, source_list, deposition, deprate2_film_meas)
+    dervied_quant = extract_source_deposition_params(derived_quant,
+                                                     source_list,
+                                                     deposition,
+                                                     deprate2_film_meas)
 
     #Extract so called end of process parameters
     dervied_quant = extract_end_of_process(derived_quant,data)
 
     #Extract the substrate ramp up parameters
-    derived_quant = extract_sub_ramp_up_params(derived_quant, ramp_up_temp, data)
+    derived_quant = extract_sub_ramp_up_params(derived_quant,
+                                               ramp_up_temp,
+                                               data)
 
     #Extract the substrate ramp down parameters
-    derived_quant = extract_sub_ramp_down_params(derived_quant, ramp_down_temp, ramp_down_high_temp, ramp_down_low_temp)
+    derived_quant = extract_sub_ramp_down_params(derived_quant,
+                                                 ramp_down_temp,
+                                                 ramp_down_high_temp,
+                                                 ramp_down_low_temp)
 
 
     # --------PRINT DERIVED QUANTITIES REPORT-------------
@@ -2166,6 +2363,8 @@ for logfile_name in logfile_names:
 
 
     # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---
+
+    print('Saving the derived quantities report as a text file')
 
     save_report_as_text(derived_quant, logfile_dir, logfile_name)
 
@@ -2189,33 +2388,37 @@ for logfile_name in logfile_names:
 
     # Create the figure and axis
 
-    matplotlib_timeline = plot_matplotlib_timeline(logfile_name, data, source_used_list, bottom_steps,
-                            other_steps, STEP_COLORS)
-    # Save the graph as a png file
+    print('Generating the matplotlib plot')
+
+    matplotlib_timeline = plot_matplotlib_timeline(logfile_name,
+                                                data,
+                                                source_used_list,
+                                                bottom_steps,
+                                                other_steps,
+                                                STEP_COLORS)
 
     # Save the graph as a png file
 
-    matplotlib_timeline.savefig(matplotlib_graph_file_path, dpi=FIG_EXPORT_DPI, bbox_inches='tight')
+    matplotlib_timeline.savefig(matplotlib_graph_file_path,
+                                dpi=FIG_EXPORT_DPI, bbox_inches='tight')
 
     #Using plotly
 
-    # steps_to_plot = [ramp_up_temp, deposition, ramp_down_high_temp, ramp_down_low_temp,
-    #     cracker_on_open, h2s, ph3, ar,
-    #     deprate2_sulfur_meas, cracker_base_pressure,
-    #     source_ramp_up, source_on, source_presput, deprate2_film_meas]
-
-    steps_to_plot = all_lf_events
-
     # Create the figure
-    plotly_timeline = plot_plotly_extimeline(logfile_name, data, source_used_list, steps_to_plot,
-                            STEP_COLORS)
+
+    print('Generating the plotly plot')
+
+    plotly_timeline = plot_plotly_extimeline(logfile_name,
+                                            data,
+                                            source_used_list,
+                                            all_lf_events,
+                                            STEP_COLORS)
     # Save the graph as a png file
 
     #show the plot
-    # plotly_timeline.show()
+    plotly_timeline.show()
 
-    # plotly_timeline.write_image(plotly_graph_file_path, width=800, height=300, scale=1)
 
+    print('\n')
 
 #------TESTING GROUND--------
-

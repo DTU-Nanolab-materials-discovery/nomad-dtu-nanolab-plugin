@@ -9,15 +9,15 @@ Created on Fri Jun  7 10:46:17 2024
 
 import operator
 import os
+import re
 from functools import reduce
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
-from mendeleev import element
-import re
-import plotly.graph_objects as go
 import plotly.express as px
+import plotly.graph_objects as go
+from mendeleev import element
 
 # %%
 # ---------FUNCTIONS DEFINITION------------
@@ -1774,7 +1774,7 @@ def steps_to_nomad(steps_list,source_list):
                 #Filter the data to only include the data within the bounds
                 filtered_step['data'] = event_filter(step['data'], step['bounds'][i])
                 #We name the step as the name of the step with the event number
-                filtered_step['name'] = f'{step[f'name']}({i})'
+                filtered_step['name'] = f'{step['name']}({i})'
                 #We add the bounds of the step
                 filtered_step['bounds'] = step['bounds'][i]
                 #We append the filtered step to the nomad steps list
@@ -1786,7 +1786,7 @@ def steps_to_nomad(steps_list,source_list):
                 for i in range (step['events'][f'{source_number}']):
                     filtered_step = {}
                     filtered_step['data'] = event_filter(step['data'][f'{source_number}'], step['bounds'][f'{source_number}'][i])
-                    filtered_step['name'] = f'{step[f'name'][f'{source_number}']}({i})'
+                    filtered_step['name'] = f'{step['name'][f'{source_number}']}({i})'
                     filtered_step['bounds'] = step['bounds'][f'{source_number}'][i]
                     nomad_steps_list.append(filtered_step)
     #We order the steps by the start time
@@ -1794,7 +1794,6 @@ def steps_to_nomad(steps_list,source_list):
 
     return sorted_nomad_steps_list
 
-    import plotly.graph_objects as go
 def plot_plotly_timeline(logfile_name, data, source_used_list,
                          bottom_steps, non_source_steps, source_steps, step_colors):
     '''
@@ -1986,7 +1985,7 @@ def plot_plotly_extimeline(logfile_name, data, source_used_list,
         ),
         template='plotly_white',  # Use a white background template
         title=dict(
-            text=f'Process Timeline',  # Title text
+            text='Process Timeline',  # Title text
             x=0.5,  # Center the title horizontally
             y=0.85,  # Position the title vertically
             xanchor='center',  # Anchor the title at the center horizontally
