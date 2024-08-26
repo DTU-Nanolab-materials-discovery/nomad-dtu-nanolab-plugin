@@ -190,17 +190,19 @@ def print_derived_quantities(quantities, indent=''):
             print(f'{indent}{key}:')
             print_derived_quantities(value, indent + '  ')
         else:
+            formatted_value = value
             if isinstance(value, pd.Timestamp):
                 if key in {'log_start_time', 'log_end_time'}:
-                    time_value = value.strftime('%Y-%m-%d %H:%M:%S')
+                    formatted_value = value.strftime('%Y-%m-%d %H:%M:%S')
                 else:
-                    time_value = value.strftime('%H:%M:%S')
+                    formatted_value = value.strftime('%H:%M:%S')
             elif isinstance(value, pd.Timedelta):
                 total_seconds = int(value.total_seconds())
                 hours, remainder = divmod(total_seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
-                time_value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
-            print(f'{indent}{key}: {value}')
+                formatted_value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
+
+            print(f'{indent}{key}: {formatted_value}')
 
 
 # Function to write the derived quantities in a nested format
@@ -211,17 +213,18 @@ def write_derived_quantities(quantities, indent=''):
             output.append(f'{indent}{key}:')
             output.append(write_derived_quantities(value, indent + '  '))
         else:
+            formatted_value = value
             if isinstance(value, pd.Timestamp):
                 if key in {'log_start_time', 'log_end_time'}:
-                    time_value = value.strftime('%Y-%m-%d %H:%M:%S')
+                    formatted_value = value.strftime('%Y-%m-%d %H:%M:%S')
                 else:
-                    time_value = value.strftime('%H:%M:%S')
+                    formatted_value = value.strftime('%H:%M:%S')
             elif isinstance(value, pd.Timedelta):
                 total_seconds = int(value.total_seconds())
                 hours, remainder = divmod(total_seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
-                time_value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
-            output.append(f'{indent}{key}: {value}')
+                formatted_value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
+            output.append(f'{indent}{key}: {formatted_value}')
     return '\n'.join(output)
 
 
