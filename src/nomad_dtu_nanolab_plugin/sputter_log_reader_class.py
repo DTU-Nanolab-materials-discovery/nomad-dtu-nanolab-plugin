@@ -4,7 +4,6 @@ Created on Fri Jun  7 10:46:17 2024
 @author: eugbe
 
 """
-# %%
 # ---------PACKAGES-------------
 
 import operator
@@ -145,9 +144,17 @@ class Lf_Event:
         return [self.bounds[i] for i in range(self._events)]
 
 
-# %%
 # ---------FUNCTIONS DEFINITION------------
 
+# ---------HELPERS FUNCTIONS FOR REPORT GENERATION------------
+
+def save_report_as_text(derived_quant, txt_file_path, logfile_name):
+# Save the derived quantities report as a text file as
+    with open(txt_file_path, 'w') as txt_file:
+        txt_file.write(
+        f'Derived quantities report for logfile\n{logfile_name}:\n\n'
+    )
+        txt_file.write(write_derived_quantities(derived_quant))
 
 # Function to convert timestamps to isoformat
 def convert_timestamps(obj):
@@ -162,25 +169,6 @@ def convert_timestamps(obj):
     else:
         return obj
 
-
-# Function to read the IDOL combinatorial chamber CSV logfile
-def read_logfile(file_path):
-    """
-    This function reads a logfile and returns a DataFrame with the
-    'Time Stamp' column converted to datetime format.
-    All the logged values are stored in the DataFrame
-    as they are in the logfile.
-    """
-    try:
-        df = pd.read_csv(file_path, header=[1], skiprows=[0])
-        df['Time Stamp'] = pd.to_datetime(
-            df['Time Stamp'], format='%b-%d-%Y %I:%M:%S.%f %p'
-        )
-        # Ensure all timestamps in the log file and spectrum are tz-naive
-        df['Time Stamp'] = df['Time Stamp'].dt.tz_localize(None)
-        return df
-    except Exception:
-        return None
 
 
 # Function to print the derived quantities in a nested format
@@ -227,6 +215,28 @@ def write_derived_quantities(quantities, indent=''):
             output.append(f'{indent}{key}: {formatted_value}')
     return '\n'.join(output)
 
+#----------FUNCTION FOR READING THE LOGFILE------------
+
+# Function to read the IDOL combinatorial chamber CSV logfile
+def read_logfile(file_path):
+    """
+    This function reads a logfile and returns a DataFrame with the
+    'Time Stamp' column converted to datetime format.
+    All the logged values are stored in the DataFrame
+    as they are in the logfile.
+    """
+    try:
+        df = pd.read_csv(file_path, header=[1], skiprows=[0])
+        df['Time Stamp'] = pd.to_datetime(
+            df['Time Stamp'], format='%b-%d-%Y %I:%M:%S.%f %p'
+        )
+        # Ensure all timestamps in the log file and spectrum are tz-naive
+        df['Time Stamp'] = df['Time Stamp'].dt.tz_localize(None)
+        return df
+    except Exception:
+        return None
+
+#----------FUNCTIONS FOR HANDLING TIMESTAMPS------------
 
 # Function to calculate the average time step
 # between consecutive timestamps in a DataFrame
@@ -321,6 +331,8 @@ def make_timestamps_tz_naive(timestamps):
     return {key: timestamps.tz_localize(None) for key, timestamps in timestamps.items()}
 
 
+#----------CORE FUNCTIONS FOR DATA PROCESSING------------
+
 # Function to calculate the true temperature
 def calculate_avg_true_temp(temp_1, temp_2):
     return 0.905 * (0.5 * (temp_1 + temp_2)) + 12
@@ -331,7 +343,6 @@ def within_range(data_col, ref_col_mean, diff_param):
         (data_col > (1 - 0.01 * diff_param) * ref_col_mean) &
         (data_col < (1 + 0.01 * diff_param) * ref_col_mean)
     )
-
 
 # Function to get the source list automatically from the logfile
 # (Ex: source_list = [1, 3, 4])
@@ -662,7 +673,7 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
 # - no gas (h2s,ph2, or ar) is flown
 # - the time is before the deposition
 # - the cracker temperature and parameters
-# are within CRACKER_DIFF_PARAM of the deposition conditions (for the cracker, and
+# are within WITHIN_RANGE_PARAM of the deposition conditions (for the cracker, and
 # and the pressure)
 def filter_data_cracker_pressure(data, **kwargs):
 
@@ -685,17 +696,17 @@ def filter_data_cracker_pressure(data, **kwargs):
             deposition.data[
             'Sulfur Cracker Zone 1 Current Temperature'
             ].mean(),
-            CRACKER_DIFF_PARAM)
+            WITHIN_RANGE_PARAM)
         & within_range(data['Sulfur Cracker Zone 2 Current Temperature'],
             deposition.data[
             'Sulfur Cracker Zone 2 Current Temperature'
             ].mean(),
-            CRACKER_DIFF_PARAM)
+            WITHIN_RANGE_PARAM)
         & within_range(data['Sulfur Cracker Zone 3 Current Temperature'],
             deposition.data[
             'Sulfur Cracker Zone 3 Current Temperature'
             ].mean(),
-            CRACKER_DIFF_PARAM)
+            WITHIN_RANGE_PARAM)
     )
 
         valve_cond = (
@@ -704,13 +715,13 @@ def filter_data_cracker_pressure(data, **kwargs):
                 deposition.data[
                 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                 ].mean(),
-                CRACKER_DIFF_PARAM)
+                WITHIN_RANGE_PARAM)
             & within_range(
                 data['Sulfur Cracker Control Valve Setpoint Feedback'],
                 deposition.data[
                 'Sulfur Cracker Control Valve Setpoint Feedback'
                 ].mean(),
-                CRACKER_DIFF_PARAM)
+                WITHIN_RANGE_PARAM)
         )
 
         if not cracker_on_open.data.empty:
@@ -794,7 +805,7 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
     # not being Sulfur
     #We assume here that the deposition rate is not measured during deposition
     #We also include that the condition of the plasma are within the
-    #CRACKER_DIFF_PARAM of the deposition conditions
+    #WITHIN_RANGE_PARAM of the deposition conditions
 
     for source_number in source_list:
         if f'Source {source_number} Output Setpoint' in data.columns:
@@ -802,13 +813,13 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
                 within_range(data[f'Source {source_number} Output Setpoint'],
                             deposition.data[f'Source {source_number} Output Setpoint']
                             .mean(),
-                            CRACKER_DIFF_PARAM)
+                            WITHIN_RANGE_PARAM)
             )
 
             pressure_cond = (
                 within_range(data['PC Capman Pressure'],
                     deposition.data['PC Capman Pressure'].mean(),
-                    CRACKER_DIFF_PARAM)
+                    WITHIN_RANGE_PARAM)
                 )
 
             deprate2_film_meas_cond = (
@@ -831,24 +842,24 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
     #  with the material used as refereced by the QCM
     # being Sulfur
     #We also include the condition of the cracker are
-    #within the CRACKER_DIFF_PARAM of the deposition conditions¨
+    #within the WITHIN_RANGE_PARAM of the deposition conditions¨
     if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
         cracker_temp_cond = (
         within_range(data['Sulfur Cracker Zone 1 Current Temperature'],
             deposition.data[
             'Sulfur Cracker Zone 1 Current Temperature'
             ].mean(),
-            CRACKER_DIFF_PARAM)
+            WITHIN_RANGE_PARAM)
         & within_range(data['Sulfur Cracker Zone 2 Current Temperature'],
             deposition.data[
             'Sulfur Cracker Zone 2 Current Temperature'
             ].mean(),
-            CRACKER_DIFF_PARAM)
+            WITHIN_RANGE_PARAM)
         & within_range(data['Sulfur Cracker Zone 3 Current Temperature'],
             deposition.data[
             'Sulfur Cracker Zone 3 Current Temperature'
             ].mean(),
-            CRACKER_DIFF_PARAM)
+            WITHIN_RANGE_PARAM)
     )
 
         valve_cond = (
@@ -857,12 +868,12 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
                 deposition.data[
                 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                 ].mean(),
-                CRACKER_DIFF_PARAM)
+                WITHIN_RANGE_PARAM)
             & within_range(data['Sulfur Cracker Control Valve Setpoint Feedback'],
                 deposition.data[
                 'Sulfur Cracker Control Valve Setpoint Feedback'
                 ].mean(),
-                CRACKER_DIFF_PARAM)
+                WITHIN_RANGE_PARAM)
             )
 
         pressure_cond = (
@@ -870,7 +881,7 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
                 deposition.data[
                 'PC Capman Pressure'
                 ].mean(),
-                CRACKER_DIFF_PARAM)
+                WITHIN_RANGE_PARAM)
             )
 
 
@@ -994,7 +1005,7 @@ def init_derived_quant(source_list):
     return derived_quant
 
 # Extact sample name as the first 3 log file string when parsed by '_'
-def extract_overview(derived_quant,logfile_path, data):
+def extract_overview(derived_quant,logfile_name, data):
 
     # Extract sample name as the first 3 log file string when parsed by '_'
     derived_quant['sample_name'] = '_'.join(logfile_name.split('_')[:3])
@@ -1535,7 +1546,7 @@ def extract_sub_ramp_up_params(derived_quant, ramp_up_temp, data):
     return derived_quant
 
 def extract_sub_ramp_down_params(derived_quant, ramp_down_temp,
-        ramp_down_high_temp, ramp_down_low_temp):
+        ramp_down_high_temp, ramp_down_low_temp,data):
     if not derived_quant['deposition']['rt']:
         # ------Extract the substrate ramp down parameters------
         # Extract the number of ramp down events
@@ -1681,6 +1692,8 @@ def extract_sub_ramp_down_params(derived_quant, ramp_down_temp,
         )
     return derived_quant
 
+#-------PLOTTING DEFINITIONS------------
+
 def plot_matplotlib_timeline(logfile_name, data,
         source_used_list, step_colors, **kwargs):
 
@@ -1750,9 +1763,6 @@ def plot_matplotlib_timeline(logfile_name, data,
                 steps_plot['name'].append(step[f'{source_number}'].name)
                 steps_plot['bounds'].append(step[f'{source_number}'].bounds)
 
-    # Print a message to the console
-
-
     #initialize the figure
     timeline = plt.figure(figsize=(8, 3))
 
@@ -1816,16 +1826,6 @@ def plot_matplotlib_timeline(logfile_name, data,
 
     return timeline
 
-def save_report_as_text(derived_quant, logfile_dir, logfile_name):
-
-# Save the derived quantities report as a text file as
-    with open(txt_file_path, 'w') as txt_file:
-        txt_file.write(
-        f'Derived quantities report for logfile\n{logfile_name}:\n\n'
-    )
-        txt_file.write(write_derived_quantities(derived_quant))
-
-
 def plot_plotly_extimeline(logfile_name, data, source_used_list, steps_to_plot,
                             step_colors):
     '''
@@ -1847,8 +1847,6 @@ def plot_plotly_extimeline(logfile_name, data, source_used_list, steps_to_plot,
             Dictionary containing the colors to be used for each step
             in the plot
     '''
-
-
 
     #Format the steps to be plotted for the plotly timeline
     rows = []
@@ -1927,6 +1925,8 @@ def plot_plotly_extimeline(logfile_name, data, source_used_list, steps_to_plot,
     )
 
     return fig
+
+#-------HELPER FUNCTIONS TO MANIPULATE LISTS OF EVENTS--------
 
 def unfold_events(all_lf_events,data):
     all_sub_lf_events = []
@@ -2018,15 +2018,96 @@ def place_deposition_ramp_up_down_events_first(all_events):
         all_events = all_events + source_events[key]
     return all_events
 
+#-------ADDITIONAL FUNCTIONS FOR THE OPTIX SPECTRA------------
 
+# Function to read the OPTIX spectrum CSV file
+def read_spectrum(file_path):
+    """
+    Intended to read OPTIX spectrum
+    Reads a CSV file with spectrum data and returns a DataFrame
+    with columns 'x', 'y1', 'y2', etc.,
+    and a dictionary mapping each 'y' column to its corresponding timestamp.
 
-# %%
-#---------------MAIN-----------
+    You can access the timestamps of each spectrum by looking up the
+    timestamp_map dictionary. For example, timestamp_map['y1'] will give
+    you the timestamp for the first intensity spectrum,
+    timestamp_map['y2'] for the second, and so on
+
+    Parameters:
+    file_path (str): Path to the CSV file.
+
+    Returns:
+    result_df (DataFrame): A DataFrame with columns 'x', 'y1', 'y2', etc.
+    timestamp_map (dict): A dictionary mapping each 'y'
+    column to its corresponding timestamp.
+    """
+    # Step 1: Read the CSV file, specifying that the header is in the first row
+    df = pd.read_csv(file_path, header=None)
+
+    # Step 2: Extract the x wavelength values
+    # (from the first row, starting from the third column)
+    x_wavelengths = df.iloc[0, 2:].values
+
+    # Step 3: Process the rest of the data (from the second row onwards)
+    data = df.iloc[1:].copy()
+
+    # Step 4: Rename the columns to 'Timestamp', 'Triggered', and x wavelength values
+    data.columns = ['Timestamp', 'Triggered'] + list(x_wavelengths)
+    data.drop('Triggered', axis=1, inplace=True)
+
+    # Step 5: Convert the 'Timestamp' column to datetime
+    data['Timestamp'] = pd.to_datetime(data['Timestamp'])
+
+    # Step 6: Reshape the DataFrame to have columns 'x', 'y1', 'y2', etc.
+    reshaped_data = data.melt(
+        id_vars='Timestamp', var_name='x', value_name='Intensity')
+
+    # Step 7: Create a new DataFrame with columns 'x', 'y1', 'y2', etc.
+    result_df = reshaped_data.pivot(
+        index='x', columns='Timestamp', values='Intensity').reset_index()
+
+    # Rename the columns appropriately
+    result_df.columns.name = None
+    y_columns = [f'y{i+1}' for i in range(len(result_df.columns) - 1)]
+    result_df.columns = ['x'] + y_columns
+
+    # Step 8: Drop the first row if it is filled with NaNs
+    if result_df.iloc[0].isna().all():
+        result_df = result_df.drop(result_df.index[0])
+
+    # Step 9: Create a timestamp map
+    timestamp_map = {
+        f'y{i+1}': timestamp
+        for i, timestamp in enumerate(reshaped_data['Timestamp'].unique())}
+
+    # Step 10: Make the timestamp tz-naive
+    for key in timestamp_map:
+        timestamp_map[key] = timestamp_map[key].tz_localize(None)
+
+    return result_df, timestamp_map
+
+def filter_spectrum(spectrums, spectrums_timestamps, bounds):
+    """
+    This function filters in the Optix spectrums based on the conditions that they
+    have been recorded during the time bounds passed in the 'bounds' list.
+    """
+    filtered_spectrums = []
+    for bound in bounds:
+        start_time, end_time = bound
+        for timestamp_key, timestamp in spectrums_timestamps.items():
+            if start_time <= timestamp <= end_time:
+                filtered_spectrums.append(spectrums[['x', timestamp_key]])
+    return pd.concat(filtered_spectrums, axis=1).T.drop_duplicates().T
+
+def normalize_column(df, column_name):
+    df2=pd.DataFrame()
+    min_val = df[column_name].min()
+    max_val = df[column_name].max()
+    return (df[column_name] - min_val) / (max_val - min_val)
+
 
 # ---------REFERENCE VALUES-------------
-
 # Set of reference values used in different parts of the script
-
 # Eletrical current threshold above which a dc plasma is considered on
 CURRENT_THRESHOLD = 0.01  # miliamps
 # Bias threshold above which a rf plasma is considered on
@@ -2063,7 +2144,7 @@ MAX_BASE_PRESSURE = 1e-6  # Torr
 # variation in percent to consider that the cracker temperature is the same
 # as the cracker temperature during deposition to read the cracker induced
 # base pressure
-CRACKER_DIFF_PARAM = 10  # %
+WITHIN_RANGE_PARAM = 5  # %
 # Default dpi for the figures
 FIG_EXPORT_DPI = 300  # dpi
 # Define a dictionary for step colors in the timeline plot
@@ -2092,312 +2173,319 @@ STEP_COLORS = {
     'Cracker Pressure Meas': 'brown'
 }
 
-# ---------GET THE NAMES OF ALL THE LOGFILES IN THE DIRECTORY-------------
+#---------------MAIN-----------
 
-logfile_dir = r'O:\Intern\Phosphosulfides\Data\deposition logs'
-logfile_extension = 'CSV'
+def main():
 
-#Read all the logfiles in the directory
-# Read all the logfiles in the directory, removing only the .CSV extension
-logfile_names = [
-    re.sub(rf'\.{logfile_extension}$', '', file)
-    for file in os.listdir(logfile_dir)
-    if re.match(r'^\w+\d{4}\w+', file) and file.endswith(f'.{logfile_extension}')
-]
-#Remove mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07
-# from the logfile_names
-logfile_names.remove('mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07')
+    # ---------GET THE NAMES OF ALL THE LOGFILES IN THE DIRECTORY-------------
 
-# %%
-# Loop over all the logfiles in the directory
-# logfile_names= ['mittma_0005_Cu_RecordingSet 2024.05.24-12.21.19']
+    logfile_dir = r'O:\Intern\Phosphosulfides\Data\deposition logs'
+    logfile_extension = 'CSV'
 
-
-for logfile_name in logfile_names:
-    # Default Logfile location
-    print(f'Processing logfile: {logfile_name}')
-    logfile_path = f'{logfile_dir}/{logfile_name}.{logfile_extension}'
-
-    # ---------DEFAULT EXPORT LOCATIONS-------------
-    # Specify the path and filename for the report text file
-    txt_file_dir = os.path.join(logfile_dir, 'derived_quantities_txt_files')
-    txt_file_name = f'{logfile_name}_derived_quantities.txt'
-    txt_file_path = os.path.join(txt_file_dir, txt_file_name)
-
-    # Specify the path and filename for the matplotlib graph
-    matplotlib_graph_file_dir = os.path.join(logfile_dir,
-        'matplotlib_process_timeline_graphs')
-    matplotlib_graph_file_name = f'{logfile_name}_matplotlib_timeline.png'
-    matplotlib_graph_file_path = os.path.join(matplotlib_graph_file_dir,
-                                              matplotlib_graph_file_name)
-
-    #Same for the plotly graph
-    plotly_graph_file_dir = os.path.join(logfile_dir,
-        'plotly_process_timeline_graphs')
-    plotly_graph_file_name = f'{logfile_name}_plotly_timeline.png'
-    plotly_graph_file_path = os.path.join(plotly_graph_file_dir,
-                                          plotly_graph_file_name)
-
-    # ---------READ THE DATA-------------
-
-    # Read the log file and spectrum data
-
-    print('Reading the logfile')
-    data = read_logfile(logfile_path)
-
-    #---------FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING------------
-
-    print('Formatting the dataframe for conditional filtering')
-
-   # ---------RENAME THE CRACKER COLUMNS OF THE DATAFRAME------------
-    data=rename_cracker_columns(data)
-
-    # ---------READING THE SOURCE USED--------
-
-    # Get the source list automatically from the logfile
-    source_list = get_source_list(data)
-
-    # ---------CONNECTING THE SOURCES TO THE POWER SUPPLIES--------
-
-    # Read what source is connected to which power supply and
-    # create column names that relate directly to the source instead
-    # of the power supply
-
-    connect_source_to_power_supply(data, source_list)
-
-    # ---------DEFINE DE CONDITIONS FOR DIFFERENT EVENTS-------------
-
-    #Initialize the list of all events
-    all_lf_events = []
-
-    # ---------1/CONDITIONS FOR THE PLASMA ON OR BEING RAMPED UP--------
-
-    source_on, source_ramp_up = filter_data_plasma_on_ramp_up(
-        data, source_list)
-
-    add_event_to_events([source_on,source_ramp_up],all_lf_events)
-
-    # ---------2/CONDITION FOR THE CRACKER BEING ON--------
-
-    cracker_on_open = filter_data_cracker_on_open(data)
-
-    add_event_to_events(cracker_on_open,all_lf_events)
-
-    # ---------3/CONDITION FOR THE TEMPERATURE CONTROL--------
-
-    temp_ctrl = filter_data_temp_ctrl(data)
-
-    add_event_to_events(temp_ctrl,all_lf_events)
-
-    # ----- 4/CONDITIONS FOR THE DIFFERENT GASES BEING FLOWN--------
-
-    ph3, h2s, ar = filter_gas(data)
-
-    add_event_to_events([ph3, h2s, ar],all_lf_events)
-
-    # ---------5/CONDITIONS FOR THE DEPOSITION--------
-
-    any_source_on, any_source_on_open, deposition, source_used_list = (
-    filter_data_deposition(data, source_list, source_on=source_on)
-    )
-
-    add_event_to_events([any_source_on, any_source_on_open, deposition],
-        all_lf_events)
-
-    # ---------6/CONDITIONS FOR THE DIFFERENT SOURCES BEING PRESPUTTERED--------
-
-    source_presput = filter_data_plasma_presput(
-        data, source_list,
-        source_on = source_on,
-        source_ramp_up = source_ramp_up,
-        cracker_on_open = cracker_on_open,
-        ph3 = ph3,
-        h2s = h2s,
-        deposition = deposition)
-
-    add_event_to_events(source_presput,all_lf_events)
-
-    # ---------7/CONDITIONS FOR THE S CRACKER PRESSURE MEAS--------
-
-    #Filter the data for the S Cracker pressure
-    cracker_base_pressure = filter_data_cracker_pressure(data,
-        cracker_on_open = cracker_on_open,
-        ph3 = ph3,
-        h2s = h2s,
-        ar = ar,
-        deposition = deposition)
-
-    add_event_to_events(cracker_base_pressure,all_lf_events)
-
-    # ---------8/CONDITIONS FOR THE DEPOSITION RATE MEASUREMENT--------
-
-    print('Definiing the conditions and filtering the data')
-
-    deprate2_film_meas, deprate2_meas, xtal2_open, deprate2_sulfur_meas = (
-    filter_data_film_dep_rate(data, source_list,
-        deposition = deposition,
-        cracker_on_open = cracker_on_open,
-        ph3 = ph3,
-        h2s = h2s,
-        any_source_on_open = any_source_on_open))
-
-    add_event_to_events([deprate2_meas,
-                        xtal2_open,
-                        deprate2_sulfur_meas,
-                        deprate2_film_meas],all_lf_events)
-
-    # ---9/CONDITIONS FOR THE SUBSTRATE TEMPERATURE RAMPING UP OR DOWN-----
-
-    # Filter the data for the substrate temperature ramping up or down
-    ramp_up_temp, ramp_down_temp, ramp_down_high_temp, ramp_down_low_temp = (
-    filter_data_temp_ramp_up_down(data,
-        cracker_on_open = cracker_on_open,
-        temp_ctrl = temp_ctrl,
-        ph3 = ph3,
-        h2s = h2s,
-        deposition = deposition))
-
-    add_event_to_events([ramp_up_temp, ramp_down_temp,
-                        ramp_down_high_temp,
-                        ramp_down_low_temp],all_lf_events)
-
-    #Remove the empty events from the all_lf_events
-    all_lf_events = [event for event in all_lf_events if event.bounds]
-
-    #Sort the events by the start time
-    all_lf_events = sort_events_by_start_time(all_lf_events)
-
-    #Place the ramp_up_temp, deposition, ramp_down_high_temp, ramp_down_low_temp
-    # event first in the list of all events, in this particular order
-    all_lf_events = place_deposition_ramp_up_down_events_first(all_lf_events)
-
-    #Unfold the all_lf_events to make a list of all subevents
-    all_sub_lf_events = unfold_events(all_lf_events,data)
-
-    # ---EXTRACT DERIVED QUANTITIES IN A DICIONARY TO INPUT IN NOMAD----
-
-    # Initialize the nested dictionary to store derived quantities
-    derived_quant = init_derived_quant(source_list)
-
-    # Call the method to extract sample information
-    derived_quant = extract_overview(derived_quant, logfile_name, data)
-
-    # ---DEPOSITION PARAMETERS-----
-
-    print('Extracting useful parameters into a report dictionary')
-
-    #Extract if the deposition is at room temperature
-    derived_quant = extract_rt_bool(derived_quant, temp_ctrl, deposition)
-    #Extract what sources are used during deposition
-    derived_quant = extract_source_used_deposition(
-    derived_quant, source_list, deposition, source_presput)
-    #Extract the parameters of the S cracker during deposition
-    derived_quant = extract_cracker_params(derived_quant, data,
-                                           deposition,
-                                           cracker_base_pressure)
-
-    #Extract some pressure parameters during deposition
-    derived_quant = extract_pressure_params(derived_quant, data, deposition)
-
-
-    #Extract simple (non cource dependent) deposition parameters
-    derived_quant = extract_simple_deposition_params(derived_quant,deposition)
-
-    #Extract the presputtering parameters for the sources
-    derived_quant = extract_source_presput_params(derived_quant,
-                                                   source_list,
-                                                   source_presput)
-    #Extract the ramp up parameters for the sources
-    derived_quant = extract_source_ramp_up_params(derived_quant,
-                                                  source_list,
-                                                  source_ramp_up,
-                                                  data)
-
-    #Extract the source dependent deposition parameters
-    dervied_quant = extract_source_deposition_params(derived_quant,
-                                                     source_list,
-                                                     deposition,
-                                                     deprate2_film_meas)
-
-    #Extract so called end of process parameters
-    dervied_quant = extract_end_of_process(derived_quant,data)
-
-    #Extract the substrate ramp up parameters
-    derived_quant = extract_sub_ramp_up_params(derived_quant,
-                                               ramp_up_temp,
-                                               data)
-
-    #Extract the substrate ramp down parameters
-    derived_quant = extract_sub_ramp_down_params(derived_quant,
-                                                 ramp_down_temp,
-                                                 ramp_down_high_temp,
-                                                 ramp_down_low_temp)
-
-
-    # --------PRINT DERIVED QUANTITIES REPORT-------------
-
-    # print(f'Derived quantities report for logfile\n{logfile_name}:\n')
-    # print_derived_quantities(derived_quant)
-
-
-    # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---
-
-    print('Saving the derived quantities report as a text file')
-
-    save_report_as_text(derived_quant, logfile_dir, logfile_name)
-
-
-    # --------GRAPH THE DIFFERENT STEPS ON A TIME LINE------------
-
-    # Here we use the different bounds of the different events to plot them
-    # as thick horizontal lines on a time line, with the different events names
-
-    # Define the steps appearing at the bottom of the graph
-    bottom_steps = [
-    ramp_up_temp, deposition, ramp_down_high_temp, ramp_down_low_temp
+    #Read all the logfiles in the directory
+    # Read all the logfiles in the directory, removing only the .CSV extension
+    logfile_names = [
+        re.sub(rf'\.{logfile_extension}$', '', file)
+        for file in os.listdir(logfile_dir)
+        if re.match(r'^\w+\d{4}\w+', file) and file.endswith(f'.{logfile_extension}')
     ]
+    #Remove mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07
+    # from the logfile_names
+    logfile_names.remove('mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07')
 
-    other_steps = [
-    cracker_on_open, h2s, ph3, ar,
-    deprate2_sulfur_meas, cracker_base_pressure,
-    source_ramp_up, source_on, source_presput, deprate2_film_meas]
+    # Loop over all the logfiles in the directory
+    # logfile_names= ['mittma_0005_Cu_RecordingSet 2024.05.24-12.21.19']
 
-    #Using matplotlib
+    for logfile_name in logfile_names:
+        # Default Logfile location
+        print(f'Processing logfile: {logfile_name}')
+        logfile_path = f'{logfile_dir}/{logfile_name}.{logfile_extension}'
 
-    # Create the figure and axis
+        # ---------DEFAULT EXPORT LOCATIONS-------------
+        # Specify the path and filename for the report text file
+        txt_file_dir = os.path.join(logfile_dir, 'derived_quantities_txt_files')
+        txt_file_name = f'{logfile_name}_derived_quantities.txt'
+        txt_file_path = os.path.join(txt_file_dir, txt_file_name)
 
-    print('Generating the matplotlib plot')
+        # Specify the path and filename for the matplotlib graph
+        matplotlib_graph_file_dir = os.path.join(logfile_dir,
+            'matplotlib_process_timeline_graphs')
+        matplotlib_graph_file_name = f'{logfile_name}_matplotlib_timeline.png'
+        matplotlib_graph_file_path = os.path.join(matplotlib_graph_file_dir,
+                                                matplotlib_graph_file_name)
 
-    matplotlib_timeline = (
-        plot_matplotlib_timeline(logfile_name,
-            data,
-            source_used_list,
-            STEP_COLORS,
-            bottom_steps=bottom_steps,
-            other_steps=other_steps))
+        #Same for the plotly graph
+        plotly_graph_file_dir = os.path.join(logfile_dir,
+            'plotly_process_timeline_graphs')
+        plotly_graph_file_name = f'{logfile_name}_plotly_timeline.png'
+        plotly_graph_file_path = os.path.join(plotly_graph_file_dir,
+                                            plotly_graph_file_name)
 
-    # Save the graph as a png file
+        # ---------READ THE DATA-------------
 
-    matplotlib_timeline.savefig(matplotlib_graph_file_path,
-                                dpi=FIG_EXPORT_DPI, bbox_inches='tight')
+        # Read the log file and spectrum data
 
-    #Using plotly
+        print('Reading the logfile')
+        data = read_logfile(logfile_path)
 
-    # Create the figure
+        #-----FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING-------
 
-    print('Generating the plotly plot')
+        print('Formatting the dataframe for conditional filtering')
 
-    plotly_timeline = plot_plotly_extimeline(logfile_name,
-                                            data,
-                                            source_used_list,
-                                            all_lf_events,
-                                            STEP_COLORS)
-    # Save the graph as a png file
+        # -------RENAME THE CRACKER COLUMNS OF THE DATAFRAME---------
+        data=rename_cracker_columns(data)
 
-    #show the plot
-    plotly_timeline.show()
+        # ---------READING THE SOURCE USED--------
+
+        # Get the source list automatically from the logfile
+        source_list = get_source_list(data)
+
+        # ---------CONNECTING THE SOURCES TO THE POWER SUPPLIES--------
+
+        # Read what source is connected to which power supply and
+        # create column names that relate directly to the source instead
+        # of the power supply
+
+        connect_source_to_power_supply(data, source_list)
+
+        # ---------DEFINE DE CONDITIONS FOR DIFFERENT EVENTS-------------
+
+        #Initialize the list of all events
+        all_lf_events = []
+
+        # ---------1/CONDITIONS FOR THE PLASMA ON OR BEING RAMPED UP--------
+
+        source_on, source_ramp_up = filter_data_plasma_on_ramp_up(
+            data, source_list)
+
+        add_event_to_events([source_on,source_ramp_up],all_lf_events)
+
+        # ---------2/CONDITION FOR THE CRACKER BEING ON--------
+
+        cracker_on_open = filter_data_cracker_on_open(data)
+
+        add_event_to_events(cracker_on_open,all_lf_events)
+
+        # ---------3/CONDITION FOR THE TEMPERATURE CONTROL--------
+
+        temp_ctrl = filter_data_temp_ctrl(data)
+
+        add_event_to_events(temp_ctrl,all_lf_events)
+
+        # ----- 4/CONDITIONS FOR THE DIFFERENT GASES BEING FLOWN--------
+
+        ph3, h2s, ar = filter_gas(data)
+
+        add_event_to_events([ph3, h2s, ar],all_lf_events)
+
+        # ---------5/CONDITIONS FOR THE DEPOSITION--------
+
+        any_source_on, any_source_on_open, deposition, source_used_list = (
+        filter_data_deposition(data, source_list, source_on=source_on)
+        )
+
+        add_event_to_events([any_source_on, any_source_on_open, deposition],
+            all_lf_events)
+
+        # ---------6/CONDITIONS FOR THE DIFFERENT SOURCES BEING PRESPUTTERED--------
+
+        source_presput = filter_data_plasma_presput(
+            data, source_list,
+            source_on = source_on,
+            source_ramp_up = source_ramp_up,
+            cracker_on_open = cracker_on_open,
+            ph3 = ph3,
+            h2s = h2s,
+            deposition = deposition)
+
+        add_event_to_events(source_presput,all_lf_events)
+
+        # ---------7/CONDITIONS FOR THE S CRACKER PRESSURE MEAS--------
+
+        #Filter the data for the S Cracker pressure
+        cracker_base_pressure = filter_data_cracker_pressure(data,
+            cracker_on_open = cracker_on_open,
+            ph3 = ph3,
+            h2s = h2s,
+            ar = ar,
+            deposition = deposition)
+
+        add_event_to_events(cracker_base_pressure,all_lf_events)
+
+        # ---------8/CONDITIONS FOR THE DEPOSITION RATE MEASUREMENT--------
+
+        print('Defining the conditions and filtering the data')
+
+        deprate2_film_meas, deprate2_meas, xtal2_open, deprate2_sulfur_meas = (
+        filter_data_film_dep_rate(data, source_list,
+            deposition = deposition,
+            cracker_on_open = cracker_on_open,
+            ph3 = ph3,
+            h2s = h2s,
+            any_source_on_open = any_source_on_open))
+
+        add_event_to_events([deprate2_meas,
+                            xtal2_open,
+                            deprate2_sulfur_meas,
+                            deprate2_film_meas],all_lf_events)
+
+        # ---9/CONDITIONS FOR THE SUBSTRATE TEMPERATURE RAMPING UP OR DOWN-----
+
+        # Filter the data for the substrate temperature ramping up or down
+        ramp_up_temp, ramp_down_temp, ramp_down_high_temp, ramp_down_low_temp = (
+        filter_data_temp_ramp_up_down(data,
+            cracker_on_open = cracker_on_open,
+            temp_ctrl = temp_ctrl,
+            ph3 = ph3,
+            h2s = h2s,
+            deposition = deposition))
+
+        add_event_to_events([ramp_up_temp, ramp_down_temp,
+                            ramp_down_high_temp,
+                            ramp_down_low_temp],all_lf_events)
+
+        #Remove the empty events from the all_lf_events
+        all_lf_events = [event for event in all_lf_events if event.bounds]
+
+        #Sort the events by the start time
+        all_lf_events = sort_events_by_start_time(all_lf_events)
+
+        #Place the ramp_up_temp, deposition, ramp_down_high_temp, ramp_down_low_temp
+        # event first in the list of all events, in this particular order
+        all_lf_events = place_deposition_ramp_up_down_events_first(all_lf_events)
+
+        #Unfold the all_lf_events to make a list of all subevents
+        all_sub_lf_events = unfold_events(all_lf_events,data)
+
+        # ---EXTRACT DERIVED QUANTITIES IN A DICIONARY TO INPUT IN NOMAD----
+
+        # Initialize the nested dictionary to store derived quantities
+        derived_quant = init_derived_quant(source_list)
+
+        # Call the method to extract sample information
+        derived_quant = extract_overview(derived_quant, logfile_name, data)
+
+        # ---DEPOSITION PARAMETERS-----
+
+        print('Extracting useful parameters into a report dictionary')
+
+        #Extract if the deposition is at room temperature
+        derived_quant = extract_rt_bool(derived_quant, temp_ctrl, deposition)
+        #Extract what sources are used during deposition
+        derived_quant = extract_source_used_deposition(
+        derived_quant, source_list, deposition, source_presput)
+        #Extract the parameters of the S cracker during deposition
+        derived_quant = extract_cracker_params(derived_quant, data,
+                                            deposition,
+                                            cracker_base_pressure)
+
+        #Extract some pressure parameters during deposition
+        derived_quant = extract_pressure_params(derived_quant, data, deposition)
 
 
-    print('\n')
+        #Extract simple (non cource dependent) deposition parameters
+        derived_quant = extract_simple_deposition_params(derived_quant,deposition)
+
+        #Extract the presputtering parameters for the sources
+        derived_quant = extract_source_presput_params(derived_quant,
+                                                    source_list,
+                                                    source_presput)
+        #Extract the ramp up parameters for the sources
+        derived_quant = extract_source_ramp_up_params(derived_quant,
+                                                    source_list,
+                                                    source_ramp_up,
+                                                    data)
+
+        #Extract the source dependent deposition parameters
+        dervied_quant = extract_source_deposition_params(derived_quant,
+                                                        source_list,
+                                                        deposition,
+                                                        deprate2_film_meas)
+
+        #Extract so called end of process parameters
+        dervied_quant = extract_end_of_process(derived_quant,data)
+
+        #Extract the substrate ramp up parameters
+        derived_quant = extract_sub_ramp_up_params(derived_quant,
+                                                ramp_up_temp,
+                                                data)
+
+        #Extract the substrate ramp down parameters
+        derived_quant = extract_sub_ramp_down_params(derived_quant,
+                                                    ramp_down_temp,
+                                                    ramp_down_high_temp,
+                                                    ramp_down_low_temp,
+                                                    data)
+
+
+        # --------PRINT DERIVED QUANTITIES REPORT-------------
+
+        # print(f'Derived quantities report for logfile\n{logfile_name}:\n')
+        # print_derived_quantities(derived_quant)
+
+
+        # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---
+
+        print('Saving the derived quantities report as a text file')
+
+        save_report_as_text(derived_quant, txt_file_path,logfile_name)
+
+
+        # --------GRAPH THE DIFFERENT STEPS ON A TIME LINE------------
+
+        # Here we use the different bounds of the different events to plot them
+        # as thick horizontal lines on a time line, with the different events names
+
+        # Define the steps appearing at the bottom of the graph
+        bottom_steps = [
+        ramp_up_temp, deposition, ramp_down_high_temp, ramp_down_low_temp
+        ]
+
+        other_steps = [
+        cracker_on_open, h2s, ph3, ar,
+        deprate2_sulfur_meas, cracker_base_pressure,
+        source_ramp_up, source_on, source_presput, deprate2_film_meas]
+
+        #Using matplotlib
+
+        # Create the figure and axis
+
+        print('Generating the matplotlib plot')
+
+        matplotlib_timeline = (
+            plot_matplotlib_timeline(logfile_name,
+                data,
+                source_used_list,
+                STEP_COLORS,
+                bottom_steps=bottom_steps,
+                other_steps=other_steps))
+
+        # Save the graph as a png file
+
+        matplotlib_timeline.savefig(matplotlib_graph_file_path,
+                                    dpi=FIG_EXPORT_DPI, bbox_inches='tight')
+
+        #Using plotly
+
+        # Create the figure
+
+        print('Generating the plotly plot')
+
+        plotly_timeline = plot_plotly_extimeline(logfile_name,
+                                                data,
+                                                source_used_list,
+                                                all_lf_events,
+                                                STEP_COLORS)
+        # Save the graph as a png file
+
+        #show the plot
+        plotly_timeline.show()
+
+
+        print('\n')
+
+
+if __name__ == "__main__":
+    main()
 
 #------TESTING GROUND--------
