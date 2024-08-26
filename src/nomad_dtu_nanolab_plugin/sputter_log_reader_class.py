@@ -1681,8 +1681,17 @@ def extract_sub_ramp_down_params(derived_quant, ramp_down_temp,
         )
     return derived_quant
 
-def plot_matplotlib_timeline(logfile_name, data, source_used_list,
-                bottom_steps, other_steps, step_colors):
+def plot_matplotlib_timeline(logfile_name, data,
+        source_used_list, step_colors, **kwargs):
+
+    required_steps = ['bottom_steps', 'other_steps']
+
+    for step in required_steps:
+        if step not in kwargs:
+            raise ValueError(f'{step} is a required argument')
+
+    bottom_steps = kwargs['bottom_steps']
+    other_steps = kwargs['other_steps']
     '''
     args:
         logfile_name: str
@@ -2359,12 +2368,13 @@ for logfile_name in logfile_names:
 
     print('Generating the matplotlib plot')
 
-    matplotlib_timeline = plot_matplotlib_timeline(logfile_name,
-                                                data,
-                                                source_used_list,
-                                                bottom_steps,
-                                                other_steps,
-                                                STEP_COLORS)
+    matplotlib_timeline = (
+        plot_matplotlib_timeline(logfile_name,
+            data,
+            source_used_list,
+            STEP_COLORS,
+            bottom_steps=bottom_steps,
+            other_steps=other_steps))
 
     # Save the graph as a png file
 
