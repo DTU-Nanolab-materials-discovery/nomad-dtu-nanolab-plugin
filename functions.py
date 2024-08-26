@@ -1158,7 +1158,6 @@ def plot_data(data, datatype_x, datatype_y, x = "all", y = "all",datatype_select
     x_data = []
     y_data = []
     labels = []
-
     #extracts the specified data point by point
     for i in range(len(x)):
         x_data.append(get_data(data, datatype_x, x[i], y[i], False,False))
@@ -1169,6 +1168,8 @@ def plot_data(data, datatype_x, datatype_y, x = "all", y = "all",datatype_select
             grid = MI_to_grid(data)
             xcoord, ycoord = closest_coord(grid, x[i], y[i])
             labels.append('{:.1f},{:.1f}'.format(xcoord, ycoord))
+    
+    colors = plt.cm.jet(np.linspace(0, 1, len(labels))) #data.columns.get_level_values(0).unique().values
 
     #formating
     if len(labels) == 1:
@@ -1191,16 +1192,24 @@ def plot_data(data, datatype_x, datatype_y, x = "all", y = "all",datatype_select
         y_data = y_data.values[0]
         labels = datatype_select + ': ' + str(round(datatype_select_value,2))
 
-    #plots scatter plot if scatter_plot is not false, else line plot
-    if scatter_plot == False:
-        plt.plot(x_data, y_data, label = labels)
+#plots scatter plot if scatter_plot is not false, else line plot
+    if x[0] == "all" and y[0] == "all":
+        for idx, (x_val, y_val) in enumerate(zip(x_data.values.T, y_data.values.T)):
+            if scatter_plot:
+                plt.plot(x_val, y_val, 'o', color=colors[idx], label=labels[idx])
+            else:
+                plt.plot(x_val, y_val, color=colors[idx], label=labels[idx])
     else:
-        plt.plot(x_data, y_data,'o', label = labels)
+        for idx, (x_val, y_val) in enumerate(zip(x_data.T, y_data.T)):
+            if scatter_plot:
+                plt.plot(x_val, y_val, 'o', color=colors[idx], label=labels[idx])
+            else:
+                plt.plot(x_val, y_val, color=colors[idx], label=labels[idx])
     plt.xlabel(datatype_x)
     plt.ylabel(datatype_y)
     plt.yscale(plotscale)
     if legend == True:
-        plt.legend(loc='upper left')
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     if title == "auto":
         plt.title("{} over {}".format(datatype_y, datatype_x))
     else:
@@ -1283,7 +1292,7 @@ def heatmap(data, datatype, title = None, datatype_select = None, datatype_selec
         sns.heatmap(dfPlot_nans, annot=False, fmt=".4f", cbar = False, cmap = "mako")
     plt.title(title)
 
-def new_heatmap(datatype, data=None, filepath = None, savepath=None, title=None):
+def new_heatmap(datatype, data=None, filepath = None, exclude=None, savepath=None, title=None):
     "plot heatmaps with interpolated background, like in Nomad, if savepath ends with .png, it will save as png, if it ends with .html, it will save as html (interactive)"
 
     if filepath is not None:
@@ -1293,10 +1302,13 @@ def new_heatmap(datatype, data=None, filepath = None, savepath=None, title=None)
         z = raw_data[datatype].values
 
     if data is not None: 
+        if exclude != None:
+            for point in exclude:
+                data = data.drop(data.iloc[:,data.columns.get_level_values(0)==point], axis=1)
         xy = MI_to_grid(data).drop_duplicates(ignore_index=True)
         x = xy["x"].values
         y = xy["y"].values
-        z = data.iloc[:, data.columns.get_level_values(1)==datatype].values.flatten()
+        z = data.iloc[:, data.columns.get_level_values(1)==datatype].dropna().values.flatten()
 
     xi = np.linspace(min(x), max(x), 100)
     yi = np.linspace(min(y), max(y), 100)
@@ -1503,7 +1515,10 @@ def math_on_columns(data, type1, type2, operation = "/"):
     data = data.copy()
     for i in range(coordinatelength):
         val1 = data.iloc[:, data.columns.get_level_values(1)==type1].iloc[:,i]
-        val2 = data.iloc[:, data.columns.get_level_values(1)==type2].iloc[:,i]
+        if isinstance(type2, str):
+            val2 = data.iloc[:, data.columns.get_level_values(1)==type2].iloc[:,i]
+        if isinstance(type2, (int,float)):
+            val2= type2
         if operation == "+":
             resultval = val1 + val2
         elif operation == "-":
@@ -1833,9 +1848,9 @@ def plot_XRD_shift_subplots(data, datatype_x, datatype_y, x, y_list, shift, titl
         plt.savefig(f'{title}_XRD_shift_subplots.png', dpi=120, bbox_inches='tight')
 
     plt.show()
-# %%
 
-def plot_XRD_shift(data,datatype_x, datatype_y,  shift,x=all,y=all, title=None, savepath= False): #x, y = list of points to plot]
+
+def plot_XRD_shift(data,datatype_x, datatype_y,  shift,x,y, title=None, savepath= False): #x, y = list of points to plot]
     x_data = []
     y_data = []
     labels = []
@@ -1861,4 +1876,105 @@ def plot_XRD_shift(data,datatype_x, datatype_y,  shift,x=all,y=all, title=None, 
         plt.savefig(path, dpi=120, bbox_inches='tight')
         
     plt.show()
-# %%
+
+def fit_two_related_peaks(x, y):
+
+    # Initialize two Pseudo-Voigt models with prefixes to distinguish parameters
+    model1 = PseudoVoigtModel(prefix='p1_')
+    model2 = PseudoVoigtModel(prefix='p2_')
+
+    # Estimate initial parameters for the first peak
+    params = model1.guess(y, x=x)
+    
+    # Extract initial guesses
+    amplitude1 = params['p1_amplitude'].value
+    center1 = params['p1_center'].value
+    sigma1 = params['p1_sigma'].value
+    fraction1 = params['p1_fraction'].value
+
+    # Set constraints for the second peak based on the provided relations
+    #xpeak2 = 2 * np.arcsin((0.154439 / 0.1540562) * np.sin(center1 / 2))
+    xpeak2= (360/np.pi)* np.arcsin((0.154439 / 0.1540562) * np.sin(center1*np.pi /360))
+    
+    params.add('p2_center', expr='(360/pi)* arcsin((0.154439 / 0.1540562) * sin(p1_center*pi /360))')
+    params.add('p2_amplitude', expr='0.5 * p1_amplitude')
+    params.add('p2_sigma', expr='1 * p1_sigma')
+    params.add('p2_fraction', expr='1 * p1_fraction')
+
+    # Create a combined model by summing the two models
+    combined_model = model1 + model2
+
+    # Perform the fit
+    fit_result = combined_model.fit(y, params, x=x)
+
+    # Extract the fitted parameters for both peaks
+    amplitude1 = fit_result.params['p1_amplitude'].value
+    center1 = fit_result.params['p1_center'].value
+    sigma1 = fit_result.params['p1_sigma'].value
+    fraction1 = fit_result.params['p1_fraction'].value
+
+    amplitude2 = fit_result.params['p2_amplitude'].value
+    center2 = fit_result.params['p2_center'].value
+    sigma2 = fit_result.params['p2_sigma'].value
+    fraction2 = fit_result.params['p2_fraction'].value
+
+    # Calculate FWHM for both peaks
+    gamma1 = sigma1 / np.sqrt(2 * np.log(2))  # Convert sigma to gamma for Gaussian part
+    fwhm1 = (1 - fraction1) * (2 * gamma1) + fraction1 * (2 * sigma1)
+
+    gamma2 = sigma2 / np.sqrt(2 * np.log(2))
+    fwhm2 = (1 - fraction2) * (2 * gamma2) + fraction2 * (2 * sigma2)
+
+    return fit_result, amplitude1, fwhm1, center1, fraction1, amplitude2, fwhm2, center2, fraction2
+
+
+
+def fit_this_peak(data, peak_position, fit_range, withplots = True, printinfo = False):
+
+    cut_range = fit_range
+    peak_angle = peak_position
+
+    dat_theta = data.iloc[:,data.columns.get_level_values(1)=='2θ (°)']
+    dat_counts = data.iloc[:,data.columns.get_level_values(1)=='Corrected Intensity']
+
+    colors = plt.cm.jet(np.linspace(0, 1, len(dat_theta.columns)))
+
+    plt.figure(figsize=(8, 6))
+
+    df_fitted_peak = pd.DataFrame()
+
+    for i in range(0, len(dat_theta.columns)):
+        data_to_fit_x = dat_theta[dat_theta.columns[i]]
+        data_to_fit_y = dat_counts[dat_counts.columns[i]]
+
+        idx = np.where((data_to_fit_x >= peak_angle-cut_range) & (data_to_fit_x<=  peak_angle+cut_range))[0]
+        x_range = data_to_fit_x[idx].values
+        y_range = data_to_fit_y[idx].values
+
+        fit_result, amplitude1, fwhm1, center1, fraction1, amplitude2, fwhm2, center2, fraction2 = fit_two_related_peaks(x_range, y_range)
+
+        if printinfo == True:
+            print(dat_theta.columns[i][0])
+            print(f"Peak 1 - Amplitude: {amplitude1:.2f}, FWHM: {fwhm1:.2f}, Center: {center1:.2f}, Fraction: {fraction1:.2f}")
+            print(f"Peak 2 - Amplitude: {amplitude2:.2f}, FWHM: {fwhm2:.2f}, Center: {center2:.2f}, Fraction: {fraction2:.2f}")
+
+        if withplots==True:
+            plt.plot(x_range, y_range, 'o', color = colors[i], label=str(dat_theta.columns[i][0]))
+            plt.plot(x_range, fit_result.best_fit, '-', color = colors[i])
+            plt.xlabel('2θ')
+            plt.ylabel('Intensity')
+            plt.title(' Fit with two related PseudoVoigts at '+ str(peak_angle) + '°')
+
+        # store the information about the peak in a new dataframe 
+
+        peakData = np.vstack((center1, amplitude1, fwhm1,  fraction1)).T
+        peak_header = pd.MultiIndex.from_product([[dat_theta.columns[i][0]], ["Center","Amplitude", "FWHM", "Fraction"]], names = ["Coordinate", "Data type"])
+        df_peak_info=pd.DataFrame( data= peakData, columns = peak_header)
+        fitData = np.vstack((x_range, y_range, fit_result.best_fit)).T
+        fit_header = pd.MultiIndex.from_product([[dat_theta.columns[i][0]], ["range 2θ","range Intensity", "Fit"]], names = ["Coordinate", "Data type"])
+        df_fit_info = pd.DataFrame(data = fitData, columns = fit_header)
+        df_fitted_peak = pd.concat([df_fitted_peak, df_fit_info, df_peak_info], axis=1)
+
+    plt.legend()
+    display(df_fitted_peak)
+    return df_fitted_peak
