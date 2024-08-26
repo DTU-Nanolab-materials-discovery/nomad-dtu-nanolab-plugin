@@ -553,7 +553,14 @@ def filter_gas(data):
 
 #Method to filter the data for the deposition as the substrate shutter
 # being open and any source being on and open at the same time
-def filter_data_deposition(data, source_list, source_on):
+def filter_data_deposition(data, source_list,**kwargs):
+    source_on = kwargs.get('source_on')
+
+    required_keys = ['source_on']
+
+    for key in required_keys:
+        if key not in kwargs:
+            raise ValueError(f"Missing required argument: {key}")
 
     any_source_on = Lf_Event('Any Source On')
     any_source_on_open = Lf_Event('Any Source On and Open')
@@ -607,9 +614,22 @@ def filter_data_deposition(data, source_list, source_on):
 # - no P or S being flown or cracked
 # Note: this part may be improved as we may want to include presputtering
 # in P or S gases. We may also include postsputtering
-def filter_data_plasma_presput(data, source_list,
-                            source_on, source_ramp_up,
-                            cracker_on_open, ph3, h2s, deposition):
+def filter_data_plasma_presput(data, source_list, **kwargs):
+
+    required_keys = ['source_on', 'source_ramp_up',
+                     'cracker_on_open', 'ph3', 'h2s', 'deposition']
+
+    for key in required_keys:
+        if key not in kwargs:
+            raise ValueError(f"Missing required argument: {key}")
+
+    source_on = kwargs.get('source_on')
+    source_ramp_up = kwargs.get('source_ramp_up')
+    cracker_on_open = kwargs.get('cracker_on_open')
+    ph3 = kwargs.get('ph3')
+    h2s = kwargs.get('h2s')
+    deposition = kwargs.get('deposition')
+
     source_presput = {}
 
     for source_number in source_list:
@@ -644,8 +664,20 @@ def filter_data_plasma_presput(data, source_list,
 # - the cracker temperature and parameters
 # are within CRACKER_DIFF_PARAM of the deposition conditions (for the cracker, and
 # and the pressure)
-def filter_data_cracker_pressure(data, cracker_on_open,
-                                ph3, h2s, ar, deposition):
+def filter_data_cracker_pressure(data, **kwargs):
+
+    required_keys = ['cracker_on_open', 'ph3', 'h2s', 'ar', 'deposition']
+
+    for key in required_keys:
+        if key not in kwargs:
+            raise ValueError(f"Missing required argument: {key}")
+
+    cracker_on_open = kwargs.get('cracker_on_open')
+    ph3=kwargs.get('ph3')
+    h2s=kwargs.get('h2s')
+    ar=kwargs.get('ar')
+    deposition=kwargs.get('deposition')
+
     cracker_base_pressure = Lf_Event('Cracker Pressure Meas')
     if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
         cracker_temp_cond = (
@@ -706,8 +738,20 @@ def filter_data_cracker_pressure(data, cracker_on_open,
 # data points just after the Xtal2 shutter opens, as the QCM
 # needs time to stabilize. The STAB_TIME stabilization time
 # is defined in the reference values section
-def filter_data_film_dep_rate(data, deposition, source_list, cracker_on_open,
-        ph3, h2s, any_source_on_open):
+def filter_data_film_dep_rate(data, source_list, **kwargs):
+
+    required_keys = ['deposition',
+    'cracker_on_open', 'ph3', 'h2s', 'any_source_on_open']
+
+    for key in required_keys:
+        if key not in kwargs:
+            raise ValueError(f"Missing required argument: {key}")
+
+    deposition = kwargs.get('deposition')
+    cracker_on_open = kwargs.get('cracker_on_open')
+    ph3 = kwargs.get('ph3')
+    h2s = kwargs.get('h2s')
+    any_source_on_open = kwargs.get('any_source_on_open')
     xtal2_open = Lf_Event('Xtal 2 Shutter Open')
 
     deprate2_meas = Lf_Event('Deposition Rate Measurement')
@@ -854,9 +898,20 @@ def filter_data_film_dep_rate(data, deposition, source_list, cracker_on_open,
 # - the event is not a deposition
 # - the temperature setpoint is increasing faster than the threshold
 # defined in the reference values
-def filter_data_temp_ramp_up_down(data,
-                            cracker_on_open,temp_ctrl,
-                            ph3, h2s, deposition):
+def filter_data_temp_ramp_up_down(data, **kwargs):
+
+    required_keys = ['cracker_on_open', 'temp_ctrl',
+    'ph3', 'h2s', 'deposition']
+
+    for key in required_keys:
+        if key not in kwargs:
+            raise ValueError(f"Missing required argument: {key}")
+
+    cracker_on_open = kwargs.get('cracker_on_open')
+    temp_ctrl = kwargs.get('temp_ctrl')
+    ph3 = kwargs.get('ph3')
+    h2s = kwargs.get('h2s')
+    deposition = kwargs.get('deposition')
 
     ramp_up_temp = Lf_Event('Sub Temp Ramp Up')
     ramp_down_temp = Lf_Event('Sub Temp Ramp Down')
@@ -1233,113 +1288,6 @@ def extract_source_ramp_up_params(derived_quant, source_list, source_ramp_up, da
                 ] = False
 
     return derived_quant
-
-# def extract_source_deposition_params(derived_quant, source_list,
-#         deposition, deprate2_film_meas):
-#     # Here, we interate over the sources to extract many relevant parameters
-#     for source_number in source_list:
-#         # We check if the source is enabled during deposition
-#         if derived_quant['deposition'][f'{source_number}']['enabled']:
-#             # initialize the elements list for the material space extraction
-#             elements = []
-
-#             # Extract average ouput power during deposition
-#             derived_quant['deposition'][f'{source_number}']['avg_output_power'] = (
-#             deposition.data[f'Source {source_number} Output Setpoint'].mean()
-#         )
-#             # Extract the plasma type by checking what power supply was used¨
-#             # during deposition, which can be done by checking if relevant
-#             # columns are present in the dataframe for each source
-#             enable_col = f'Source {source_number} Enabled'
-#             dc_current_col = f'Source {source_number} Current'
-#             rf_bias_col = f'Source {source_number} DC Bias'
-#             pulse_enable_col = f'Source {source_number} Pulse Enabled'
-#             if dc_current_col in deposition.data:
-#                 if deposition.data[dc_current_col].all() > CURRENT_THRESHOLD:
-#                     (derived_quant['deposition'][f'{source_number}']['dc']) = True
-#                     (derived_quant['deposition'][f'{source_number}']['rf']) = False
-#                     if (
-#                     pulse_enable_col in deposition.data
-#                     and (deposition.data[pulse_enable_col].all()) == 1
-#                 ):
-#                         (
-#                         derived_quant['deposition'][f'{source_number}']['pulsed']
-#                     ) = True
-#                         derived_quant['deposition']
-#                         [f'{source_number}']['pulse_frequency'] = deposition.data[
-#                         f'Source {source_number} Pulse Frequency'
-#                     ].mean()
-#                     # Extract the dc pulse frequency and reverse time
-#                         derived_quant['deposition'][f'{source_number}'][
-#                         'dead_time'
-#                     ] = deposition.data[f'Source {source_number} Reverse Time'].mean()
-#                     elif (
-#                     pulse_enable_col in deposition.data
-#                     and (deposition.data[pulse_enable_col].all()) == 0
-#                 ):
-#                         (
-#                         derived_quant['deposition'][f'{source_number}']['pulsed']
-#                     ) = False
-#             elif rf_bias_col in deposition.data:
-#                 if deposition.data[rf_bias_col].all() > BIAS_THRESHOLD:
-#                     (derived_quant['deposition'][f'{source_number}']['rf']) = True
-#                     (derived_quant['deposition'][f'{source_number}']['dc']) = False
-#             # Extract the deposition voltage for each source
-#             # by distinguishing the rf and dc cases
-#             if derived_quant['deposition'][f'{source_number}']['dc']:
-#                 derived_quant['deposition'][f'{source_number}']['start_voltage'] = (
-#                 int(
-#                     deposition.data[f'Source {source_number} Voltage']
-#                     .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data)))]
-#                     .mean()
-#                 )
-#             )
-#                 derived_quant['deposition'][f'{source_number}']['end_voltage'] = (
-#                 deposition.data[f'Source {source_number} Voltage']
-#                 .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data))) :]
-#                 .mean()
-#             )
-#                 derived_quant['deposition'][f'{source_number}']['avg_voltage'] = (
-#                 deposition.data[f'Source {source_number} Voltage'].mean()
-#             )
-#             elif derived_quant['deposition'][f'{source_number}']['rf']:
-#                 derived_quant['deposition'][f'{source_number}']['start_voltage'] = (
-#                 deposition.data[f'Source {source_number} DC Bias']
-#                 .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data)))]
-#                 .mean()
-#             )
-#                 derived_quant['deposition'][f'{source_number}']['end_voltage'] = (
-#                 deposition.data[f'Source {source_number} DC Bias']
-#                 .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(deposition.data))) :]
-#                 .mean()
-#             )
-#                 derived_quant['deposition'][f'{source_number}']['avg_voltage'] = (
-#                 deposition.data[f'Source {source_number} DC Bias'].mean()
-#             )
-#             # Extract the deposition rate of the Metal-P-S film
-#             if not deprate2_film_meas[f'{source_number}'].data.empty:
-#                 derived_quant['deposition'][f'{source_number}']['deposition_rate'] = (
-#                     deprate2_film_meas[f'{source_number}'].data[
-#                     'Thickness Rate'
-#                     ].mean())
-#                 derived_quant['deposition'][
-#                     f'{source_number}']['deposition_rate_mat'] = (
-#                     deprate2_film_meas[f'{source_number}'].data[
-#                     'Thickness Active Material'
-#                     ].iloc[0])
-
-#         # Extract source material and target id and add the element to the
-#         # elements list for the material space extraction
-#             source_element = str(
-#             deposition.data[f'PC Source {source_number} Material'].iloc[0]
-#         )
-#             derived_quant['deposition'][f'{source_number}']['material'] = element(
-#             source_element
-#         ).symbol
-#             derived_quant['deposition'][f'{source_number}']['target_id'] = (
-#             deposition.data[f'PC Source {source_number} Loaded Target'].iloc[0]
-#         )
-#             elements = elements + [element(source_element).symbol]
 
 def extract_source_deposition_params(derived_quant, source_list,
     deposition, deprate2_film_meas):
@@ -2241,7 +2189,7 @@ for logfile_name in logfile_names:
     # ---------5/CONDITIONS FOR THE DEPOSITION--------
 
     any_source_on, any_source_on_open, deposition, source_used_list = (
-    filter_data_deposition(data, source_list, source_on)
+    filter_data_deposition(data, source_list, source_on=source_on)
     )
 
     add_event_to_events([any_source_on, any_source_on_open, deposition],
@@ -2249,17 +2197,26 @@ for logfile_name in logfile_names:
 
     # ---------6/CONDITIONS FOR THE DIFFERENT SOURCES BEING PRESPUTTERED--------
 
-    source_presput = filter_data_plasma_presput(data, source_list,
-                            source_on, source_ramp_up,
-                            cracker_on_open, ph3, h2s, deposition)
+    source_presput = filter_data_plasma_presput(
+        data, source_list,
+        source_on = source_on,
+        source_ramp_up = source_ramp_up,
+        cracker_on_open = cracker_on_open,
+        ph3 = ph3,
+        h2s = h2s,
+        deposition = deposition)
 
     add_event_to_events(source_presput,all_lf_events)
 
     # ---------7/CONDITIONS FOR THE S CRACKER PRESSURE MEAS--------
 
     #Filter the data for the S Cracker pressure
-    cracker_base_pressure = filter_data_cracker_pressure(
-    data, cracker_on_open, ph3, h2s, ar, deposition)
+    cracker_base_pressure = filter_data_cracker_pressure(data,
+        cracker_on_open = cracker_on_open,
+        ph3 = ph3,
+        h2s = h2s,
+        ar = ar,
+        deposition = deposition)
 
     add_event_to_events(cracker_base_pressure,all_lf_events)
 
@@ -2268,19 +2225,28 @@ for logfile_name in logfile_names:
     print('Definiing the conditions and filtering the data')
 
     deprate2_film_meas, deprate2_meas, xtal2_open, deprate2_sulfur_meas = (
-    filter_data_film_dep_rate(data, deposition, source_list,
-                            cracker_on_open, ph3, h2s, any_source_on_open))
+    filter_data_film_dep_rate(data, source_list,
+        deposition = deposition,
+        cracker_on_open = cracker_on_open,
+        ph3 = ph3,
+        h2s = h2s,
+        any_source_on_open = any_source_on_open))
 
     add_event_to_events([deprate2_meas,
                         xtal2_open,
                         deprate2_sulfur_meas,
                         deprate2_film_meas],all_lf_events)
+
     # ---9/CONDITIONS FOR THE SUBSTRATE TEMPERATURE RAMPING UP OR DOWN-----
 
     # Filter the data for the substrate temperature ramping up or down
     ramp_up_temp, ramp_down_temp, ramp_down_high_temp, ramp_down_low_temp = (
-    filter_data_temp_ramp_up_down(data,cracker_on_open,temp_ctrl,
-                            ph3, h2s, deposition))
+    filter_data_temp_ramp_up_down(data,
+        cracker_on_open = cracker_on_open,
+        temp_ctrl = temp_ctrl,
+        ph3 = ph3,
+        h2s = h2s,
+        deposition = deposition))
 
     add_event_to_events([ramp_up_temp, ramp_down_temp,
                         ramp_down_high_temp,
