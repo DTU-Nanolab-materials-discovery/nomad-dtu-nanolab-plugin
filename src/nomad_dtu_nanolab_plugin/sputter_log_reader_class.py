@@ -2080,25 +2080,26 @@ def read_spectrum(file_path):
         f'y{i+1}': timestamp
         for i, timestamp in enumerate(reshaped_data['Timestamp'].unique())}
 
-    # Step 10: Make the timestamps tz-naive
-    for key in timestamp_map:
-        if timestamp_map[key].tzinfo is not None:
-            timestamp_map[key] = timestamp_map[key].tz_localize(None)
+    timestamp_map_tz_naive = make_timestamps_tz_naive(timestamp_map)
 
-    return result_df, timestamp_map
+    return result_df, timestamp_map_tz_naive
 
 def filter_spectrum(spectrums, spectrums_timestamps, bounds):
     """
     This function filters in the Optix spectrums based on the conditions that they
     have been recorded during the time bounds passed in the 'bounds' list.
     """
+    spectrums_timestamps = make_timestamps_tz_naive(spectrums_timestamps)
     filtered_spectrums = []
+    filtered_timestamps = {}
     for bound in bounds:
         start_time, end_time = bound
         for timestamp_key, timestamp in spectrums_timestamps.items():
             if start_time <= timestamp <= end_time:
                 filtered_spectrums.append(spectrums[['x', timestamp_key]])
-    return pd.concat(filtered_spectrums, axis=1).T.drop_duplicates().T
+                filtered_timestamps[timestamp_key] = timestamp
+    filtered_spectrums_return = pd.concat(filtered_spectrums, axis=1).T.drop_duplicates().T
+    return filtered_spectrums_return, filtered_timestamps
 
 def normalize_column(df, column_name):
     df2=pd.DataFrame()
