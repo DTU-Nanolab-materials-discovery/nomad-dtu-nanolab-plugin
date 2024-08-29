@@ -22,52 +22,58 @@ from mendeleev import element
 ##------EVENT CLASS DEFINITION------
 
 class Lf_Event:
-    def __init__(self, name: str, source=None, category=None):
+    def __init__(self, name: str, source=None, category=None, step_number=None):
         self.name = name
-        self.source = source
         self.category = category
+        self.source = source
+        self.step_number = step_number
+        self.step_id = category
+        if source is not None:
+            self.step_id += f'_s{source}'
+        if step_number is not None:
+            self.step_id += f'_n{step_number}'
         self.avg_timestep = None
         self.cond = pd.DataFrame()
-        self._data = pd.DataFrame()
-        self._bounds = []
-        self._events = 0
-        self._sep_data = [pd.DataFrame()]
-        self._sep_name = ['']
+        self.data = pd.DataFrame()
+        self.bounds = []
+        self.events = 0
+        self.sep_data = [pd.DataFrame()]
+        self.sep_name = ['']
+        self.sep_bounds = []
 
-    @property
-    def data(self):
-        return self._data
+    def set_data(self, data, raw_data):
+        self.data = data
+        self.avg_timestep = cal_avg_timestep(raw_data)
+        self.bounds = extract_domains(self.data, self.avg_timestep)
+        self.update_events_and_separated_data()
 
-    @data.setter
-    def data(self, value):
-        self._data = value
-        self._bounds = extract_domains(self._data, self.avg_timestep)
-        self._update_events_and_separated_data()
+    def set_bounds(self, bounds):
+        self.bounds = bounds
+        self.update_events_and_separated_data()
 
-    @property
-    def bounds(self):
-        return self._bounds
+    def update_events_and_separated_data(self):
+        """Helper method to update events, sep_data, sep_name, and sep_bounds after
+        bounds change."""
+        self.events = len(self.bounds)
+        self.sep_data = [event_filter(self.data, bound) for bound in self.bounds]
+        self.sep_name = [f'{self.name}({i})' for i in range(self.events)]
+        self.sep_bounds = [self.bounds[i] for i in range(self.events)]
+    # def _generate_sep_data(self):
+    #     return
 
-    @bounds.setter
-    def bounds(self, value):
-        self._bounds = value
-        self._update_events_and_separated_data()
+    # def _generate_sep_name(self):
+    #     return [f'{self.name}({i})' for i in range(self._events)]
 
-    @property
-    def events(self):
-        return self._events
+    # def _generate_sep_bounds(self):
+    #     return [self._bounds[i] for i in range(self._events)]
 
-    @property
-    def sep_data(self):
-        return self._sep_data
-
-    @property
-    def sep_name(self):
-        return self._sep_name
-
-    @property
-    def sep_bounds(self):
-        return self._sep_bounds
+    def filter_data(self, raw_data):
+        if not self.cond.empty:
+            self.avg_timestep = cal_avg_timestep(raw_data)
+            filtered_data = raw_data[self.cond]
+            self.set_data(filtered_data, raw_data)
+        else:
+            print(f'Error: Unable to filter. No condition set for event {self.name}')
 
     def set_condition(self, condition):
         self.cond = condition
@@ -78,77 +84,284 @@ class Lf_Event:
     def set_name(self, name):
         self.name = name
 
-    def set_type(self, category):
+    def set_category(self, category):
         self.category = category
 
-    def set_data(self, data,raw_data):
-        self.avg_timestep=cal_avg_timestep(raw_data)
-        self.data = data
-
-    def set_bounds(self, bounds):
-        self.bounds = bounds  # This correctly sets the bounds
-
-    def filter_data(self, raw_data):
-        if self.cond is not None:
-            self.avg_timestep=cal_avg_timestep(raw_data)
-            self.data = data[self.cond]
-        else:
-            print(f'Error: Unable to filter. No condition set for event {self.name}')
-
     def stitch_source_ramp_up_events(self):
-            i = 0
-            while i < len(self.bounds) - 1:
-                # Find the timestamps of the end of the first event and the start of
-                # the next event
-                end_timestamp = self.bounds[i][1]
-                start_timestamp_next = self.bounds[i + 1][0]
+        i = 0
+        while i < len(self.bounds) - 1:
+            # Find the timestamps of the end of the first event and the start of
+            # the next event
+            end_timestamp = self.bounds[i][1]
+            start_timestamp_next = self.bounds[i + 1][0]
 
-                # Convert timestamps to integer indices
-                try:
-                    end_index = self.data[
-                        self.data['Time Stamp'] == end_timestamp
-                        ].index[0]
-                    start_index_next = self.data[
-                        self.data['Time Stamp'] == start_timestamp_next
-                        ].index[0]
-                except IndexError:
-                    print(f"Error: Unable to stitch events for {self.name}")
-                    return
+            # Convert timestamps to integer indices
+            try:
+                end_index = self._data[
+                    self.data['Time Stamp'] == end_timestamp
+                    ].index[0]
+                start_index_next = self._data[
+                    self.data['Time Stamp'] == start_timestamp_next
+                    ].index[0]
+            except IndexError:
+                print(f"Error: Unable to stitch events for {self.name}")
+                return
 
-                # Check if the output setpoint power value of the first event is the
-                #  same as the next event
-                if self.data[
+            # Check if the output setpoint power value of the first event is the
+            # same as the next event
+            if self.data[
+                f'Source {self.source} Output Setpoint'
+                ].loc[end_index] == self._data[
                     f'Source {self.source} Output Setpoint'
-                    ].loc[end_index] == self.data[
-                        f'Source {self.source} Output Setpoint'
-                        ].loc[start_index_next]:
-                    # If so, merge the two events
-                    self.bounds[i] = (
-                        self.bounds[i][0],
-                        self.bounds[i + 1][1],
-                    )
-                    self.bounds.pop(i + 1)
-                else:
-                    i += 1  # Only increment i if no merge occurred
-            self._update_events_and_separated_data()
+                    ].loc[start_index_next]:
+                # If so, merge the two events
+                self.bounds[i] = (
+                    self.bounds[i][0],
+                    self.bounds[i + 1][1],
+                )
+                self.bounds.pop(i + 1)
+            else:
+                i += 1  # Only increment i if no merge occurred
+        self.update_events_and_separated_data()
 
-    def _update_events_and_separated_data(self):
-        """Helper method to update events, sep_data, sep_name, and sep_bounds after
-        bounds change."""
-        self._events = len(self._bounds)
-        self._sep_data = self._generate_sep_data()
-        self._sep_name = self._generate_sep_name()
-        self._sep_bounds = self._generate_sep_bounds()
+    def extract_overview(self,raw_data,params=None):
+        if params is None:
+            params = {}
+        if 'overview' not in params:
+            params['overview'] = {}
 
-    def _generate_sep_data(self):
-        return [event_filter(self.data, bound) for bound in self.bounds]
+        # Extract sample name as the first 3 log file string when parsed by '_'
+        # params['overview']['sample_name'] =
 
-    def _generate_sep_name(self):
-        return [f'{self.name}({i})' for i in range(self._events)]
+        # Extract start and end time of the log file
+        params['overview']['log_start_time'] = raw_data['Time Stamp'].iloc[0]
+        params['overview']['log_end_time'] = raw_data['Time Stamp'].iloc[-1]
 
-    def _generate_sep_bounds(self):
-        return [self.bounds[i] for i in range(self._events)]
+        return params
 
+    def get_rt_bool(self,params=None):
+    # Extract if the deposition was done at room temperature as :
+    # - the temperature control is disabled or
+    # - the temperature control is enabled but the temperature setpoint
+    # is below the RT threshold defined in the reference values
+        if self.category != 'deposition':
+            raise ValueError
+
+        if params is None:
+            params = {}
+        if 'deposition' not in params:
+            params['deposition'] = {}
+
+        if (self.data
+            ['Substrate Heater Temperature Setpoint'] < RT_TEMP_THRESHOLD
+            ).all():
+                params['deposition']['rt'] = True
+        elif (
+        self.data['Substrate Heater Temperature Setpoint'] > RT_TEMP_THRESHOLD
+            ).all():
+            params['deposition']['rt'] = False
+        return params
+
+    def get_source_used_deposition(self, source_used_list,
+        params=None):
+    # Extract the source used for deposition
+    # For all sources, we check if the source is enabled during deposition
+    # and if it is, we set the source as the source enabled for deposition
+    # which implies that the source was also ramped up and presputtered
+        if self.category != 'deposition':
+            raise ValueError('This method is only available for the deposition event')
+
+        if params is None:
+            params = {}
+        if 'deposition' not in params:
+            params['deposition'] = {}
+
+        for source_number in source_used_list:
+                params['deposition'][f'{source_number}']['enabled'] = True
+        return params
+
+    def get_cracker_params(self, raw_data, params=None):
+    # Extract if the cracker has been used during deposition as the
+    # cracker control being enabled and the temperatures of the
+    # different zones being above the minimum temperatures
+    # defined in the reference values
+
+        if self.category != 'deposition':
+            raise ValueError('This method is only available for the deposition event')
+
+        if params is None:
+            params = {}
+        if 'deposition' not in params:
+            params['deposition'] = {}
+        if 'Sulfur Cracker Zone 1 Current Temperature' in raw_data.columns:
+            if (
+            (self.data['Sulfur Cracker Control Enabled'] == 1).all()
+            and (
+                self.data['Sulfur Cracker Zone 1 Current Temperature']
+                > CRACKER_ZONE_1_MIN_TEMP
+            ).all()
+            and (
+                self.data['Sulfur Cracker Zone 2 Current Temperature']
+                > CRACKER_ZONE_2_MIN_TEMP
+            ).all()
+            and (
+                self.data['Sulfur Cracker Zone 3 Current Temperature']
+                > CRACKER_ZONE_3_MIN_TEMP
+            ).all()
+                ):
+                params['deposition']['cracker']['enabled'] = True
+                params['deposition']['zone1_temp'] = self.data[
+                    'Sulfur Cracker Zone 1 Current Temperature'
+                ].mean()
+                params['deposition']['cracker']['zone2_temp'] = self.data[
+                    'Sulfur Cracker Zone 2 Current Temperature'
+                ].mean()
+                params['deposition']['cracker']['zone3_temp'] = self.data[
+                    'Sulfur Cracker Zone 3 Current Temperature'
+                ].mean()
+                params['deposition']['cracker']['pulse_width'] = self.data[
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ].mean()
+                params['deposition']['cracker']['pulse_freq'] = self.data[
+                    'Sulfur Cracker Control Setpoint Feedback'
+                ].mean()
+            else:
+                params['deposition']['cracker']['enabled'] = False
+        else:
+            params['deposition']['cracker']['enabled'] = False
+
+
+    def get_cracker_pressure(self, params=None):
+        if self.category != 'cracker_base_pressure':
+            raise ValueError
+
+        if params is None:
+            params = {}
+        if 'overview' not in params:
+            params['overview'] = {}
+
+        # Extract the S induced base pressure as the mean pressure during
+        # the cracker being on and no gas being flown
+        if not self.data.empty:
+            params['overview']['cracker_pressure_meas'] = True
+            params['overview']['cracker_pressure'] = self.data[
+            'PC Wide Range Gauge'].mean()
+        else:
+            params['cracker_pressure_meas'] = False
+        return params
+
+    def get_pressure_params(self, raw_data, param=None):
+    # Extract the some base pressure metric as the lowest positive
+    # pressure recorded before deposition (but only if
+    # it is below 1-6Torr). If the cracker is enabled, then this metric is not
+    # representative of the true base pressure and we set the
+    # true_base_pressure_meas to False to indicate that the true base
+    # pressure is not measured accurately: If the cracker is not enabled,
+    # then the base pressure is measured accurately and we set the
+    # true_base_pressure_meas to True
+
+        if self.category != 'deposition':
+            raise ValueError('This method is only available for the deposition event')
+
+        if 'deposition' not in params:
+            raise ValueError('Missing deposition info, run get_cracker_params first')
+
+        if params is None:
+            params = {}
+            if 'overview' not in params:
+                params['overview'] = {}
+
+        min_pressure_before_depostion = raw_data.loc[
+            pd.to_datetime(raw_data['Time Stamp'])
+            <= pd.to_datetime(self.data['Time Stamp'].iloc[0]),
+            'PC Wide Range Gauge',
+            ].min()
+
+        params['lower_pressure_before_deposition'] = min_pressure_before_depostion
+        if min_pressure_before_depostion < MAX_BASE_PRESSURE:
+            if not params['deposition']['cracker']['enabled']:
+                params['true_base_pressure_meas'] = True
+            elif params['deposition']['cracker']['enabled']:
+                params['true_base_pressure_meas'] = False
+        else:
+            params['true_base_pressure_meas'] = False
+
+        return params
+
+    def get_simple_deposition_params(self, params=None):
+        if self.category != 'deposition':
+            raise ValueError('This method is only available for the deposition event')
+
+        if params is None:
+            params = {}
+        if 'deposition' not in params:
+            params['deposition'] = {}
+
+        # Extract the platin position during deposition
+        if 'Substrate Rotation_Position' in self.data:
+            params['deposition']['platin_position'] = self.data[
+            'Substrate Rotation_Position'
+            ].mean()
+
+        # Extract start and end time of the deposition
+        params['deposition']['start_time'] = self.data['Time Stamp'].iloc[0]
+        params['deposition']['end_time'] = self.data['Time Stamp'].iloc[-1]
+        params['deposition']['duration'] = (
+        params['deposition']['end_time'] - self['deposition']['start_time']
+        )
+
+        # Extract average temperature during deposition
+        derived_quant['deposition']['avg_temp_1'] = deposition.data[
+        'Substrate Heater Temperature'
+        ].mean()
+        derived_quant['deposition']['avg_temp_2'] = deposition.data[
+        'Substrate Heater Temperature 2'
+        ].mean()
+        derived_quant['deposition']['avg_temp_setpoint'] = deposition.data[
+        'Substrate Heater Temperature Setpoint'
+        ].mean()
+
+        # Extract the average true temperature during deposition
+        derived_quant['deposition']['avg_true_temp'] = calculate_avg_true_temp(
+        derived_quant['deposition']['avg_temp_1'], derived_quant['deposition']['avg_temp_2']
+        )
+
+        # Extract average sputter PC Capman pressure during deposition
+        derived_quant['deposition']['avg_capman_pressure'] = deposition.data[
+        'PC Capman Pressure'
+        ].mean()
+
+        # Extract the MF1 Ar, MFC4 PH3 and MFC6 H2S flow during deposition
+        # only if the flow is above 1sccm, if not we set the flow to 0
+        derived_quant['deposition']['avg_ar_flow'] = (
+        deposition.data[deposition.data['PC MFC 1 Flow'] > MFC_FLOW_THRESHOLD][
+            'PC MFC 1 Flow'
+        ].mean()
+        if not deposition.data[deposition.data['PC MFC 1 Flow'] > MFC_FLOW_THRESHOLD][
+            'PC MFC 1 Flow'
+        ].empty
+        else 0
+        )
+        derived_quant['deposition']['avg_ph3_flow'] = (
+        deposition.data[deposition.data['PC MFC 4 Flow'] > MFC_FLOW_THRESHOLD][
+            'PC MFC 4 Flow'
+        ].mean()
+        if not deposition.data[deposition.data['PC MFC 4 Flow'] > MFC_FLOW_THRESHOLD][
+            'PC MFC 4 Flow'
+        ].empty
+        else 0
+        )
+        derived_quant['deposition']['avg_h2s_flow'] = (
+        deposition.data[deposition.data['PC MFC 6 Flow'] > MFC_FLOW_THRESHOLD][
+            'PC MFC 6 Flow'
+        ].mean()
+        if not deposition.data[deposition.data['PC MFC 6 Flow'] > MFC_FLOW_THRESHOLD][
+            'PC MFC 6 Flow'
+            ].empty
+            else 0
+        )
+
+    return derived_quant
 
 # ---------FUNCTIONS DEFINITION------------
 
@@ -450,8 +663,6 @@ def filter_data_plasma_on_ramp_up(data, source_list):
     source_on = {}
 
     for source_number in source_list:
-        print(f'Processing Source {source_number}')
-
         enabled_cond = (
         data.get(f'Source {source_number} Enabled', pd.Series([0] * len(data))) != 0
     )
@@ -1991,15 +2202,16 @@ def plot_plotly_extimeline(logfile_name, data, source_used_list, steps_to_plot,
 def unfold_events(all_lf_events,data):
     all_sub_lf_events = []
     for step in all_lf_events:
-        if 'Time Stamp' in step.data.columns:
-            for i in range(step.events):
-                new_step = Lf_Event(step.sep_name[i],
-                                    source=step.source,
-                                    category=step.category)
-                new_step.set_source(step.source)
-                new_step.set_data(step.sep_data[i],data)
+        for i in range(step.events):
+            new_step = Lf_Event(step.sep_name[i],
+                                source=step.source,
+                                category=step.category,
+                                step_number=i
+                                )
+            new_step.set_source(step.source)
+            new_step.set_data(step.sep_data[i],data)
+            all_sub_lf_events.append(new_step)
 
-                all_sub_lf_events.append(new_step)
     return all_sub_lf_events
 
 def add_event_to_events(event, all_events):
@@ -2017,11 +2229,12 @@ def add_event_to_events(event, all_events):
             elif isinstance(item, dict):
                 for key in item:
                     all_events.append(item[key])
+    elif isinstance(event, Lf_Event):
+        all_events.append(event)
     elif isinstance(event, dict):
         for key in event:
             all_events.append(event[key])
-    elif isinstance(event, Lf_Event):
-        all_events.append(event)
+
     else:
         raise ValueError(
             'The event to be added to the list of all events is not of the right type'
@@ -2039,14 +2252,28 @@ def add_event_to_variables(event, name, all_var):
     return all_var
 
 #Definition to sort the events by the start time
+#PROBLEM WITH THIS FUNCTION
 def sort_events_by_start_time(all_events):
     '''
     args:
         all_events: list
             List of all the events to be sorted by start time
     '''
-    sorted_events = sorted(all_events, key=lambda x: x.bounds[0])
-    return sorted_events
+    # Sort events by their start time using Python's sorted, which is stable
+    print('before sorting')
+    sorted_list = sorted(all_events, key=lambda event: event.bounds[0][0])
+    return sorted_list
+
+def filter_events_by_category(all_events, category):
+    '''
+    args:
+        all_events: list
+            List of all the events to be filtered by category
+        category: str
+            Category of the events to be filtered
+    '''
+    return all_events
+
 
 #Definition to place the ramp_up_temp, deposition, ramp_down_high_temp,
 # ramp_down_low_temp event first in the list of all events, in this order
@@ -2065,16 +2292,7 @@ def place_deposition_ramp_up_down_events_first(all_events):
     # Loop over all the events
     for event in all_events:
         # If the event is a ramp up temp event, add it to the first events
-        if re.match(r'Sub Temp Ramp Up(\(\d+\))?$', event.name):
-            first_events.append(event)
-        # If the event is a deposition event, add it to the first events
-        if re.match(r'Deposition(\(\d+\))?$', event.name):
-            first_events.append(event)
-        # If the event is a ramp down high temp event, add it to the first events
-        if re.match(r'Sub High Temp Ramp Down(\(\d+\))?$', event.name):
-            first_events.append(event)
-        # If the event is a ramp down low temp event, add it to the first events
-        if re.match(r'Sub Low Temp Ramp Down(\(\d+\))?$', event.name):
+        if event.category in ['ramp_up_temp', 'deposition', 'ramp_down_high_temp', 'ramp_down_low_temp']:
             first_events.append(event)
         # If the event is a source event, add it to the source events
         elif event.source:
@@ -2192,9 +2410,8 @@ def filter_spectrum(spectra, bounds):
 
 #------------------------CORE METHODS----------------------
 
-def read_events(data):
+def formating_logfile(data):
     #-----FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING-------
-    print('Formatting the dataframe for conditional filtering')
     # -------RENAME THE CRACKER COLUMNS OF THE DATAFRAME---------
     data=rename_cracker_columns(data)
     # ---------READING THE SOURCE USED--------
@@ -2205,6 +2422,14 @@ def read_events(data):
     # create column names that relate directly to the source instead
     # of the power supply
     connect_source_to_power_supply(data, source_list)
+    # ---------DEFINE DE CONDITIONS FOR DIFFERENT EVENTS-------------
+    #Initialize the list of all events
+    return data, source_list
+
+def read_events(data):
+    print('Formatting the dataframe for conditional filtering')
+    data, source_list = formating_logfile(data)
+
     # ---------DEFINE DE CONDITIONS FOR DIFFERENT EVENTS-------------
     #Initialize the list of all events
     events = []
@@ -2325,11 +2550,12 @@ def read_events(data):
 
     #Remove the empty events from the events
     events = [event for event in events if event.bounds]
-    #Sort the events by the start time
-    events = sort_events_by_start_time(events)
+
+
     #Place the ramp_up_temp, deposition, ramp_down_high_temp, ramp_down_low_temp
     # event first in the list of all events, in this particular order
     events = place_deposition_ramp_up_down_events_first(events)
+
     #Unfold the events to make a list of all subevents
     sub_events = unfold_events(events,data)
     #Sort the subevents by the start time
@@ -2438,9 +2664,9 @@ MFC_FLOW_THRESHOLD = 1  # sccm
 # beginning and end of the deposition voltage averaging
 FRAQ_ROWS_AVG_VOLTAGE = 5  # %
 # Number of timesteps to consider for the continuity limit
-NUM_TIMESTEP = 3
+NUM_TIMESTEP = 10
 # Minimum size of a domain in terms of the average timestep
-MIN_DOMAIN_SIZE = 3
+MIN_DOMAIN_SIZE = 20
 # Size of the temperature control domains above which we consider that the
 # temperature control was on
 MIN_TEMP_CTRL_SIZE = 10
@@ -2481,7 +2707,7 @@ STEP_COLORS = {
 #---------------MAIN-----------
 
 def main():
-    global data, deposition,events,sub_events,all_var,plotly_timeline,matplotlib_timeline
+    global data, deposition,events,sub_events,sorted_list,all_var,plotly_timeline,matplotlib_timeline
     logfile_dir = r'O:\Intern\Phosphosulfides\Data\deposition logs'
     logfile_extension = 'CSV'
 
@@ -2497,7 +2723,7 @@ def main():
     logfile_names.remove('mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07')
 
     #To test the script on a single logfile
-    # logfile_names= ['mittma_0017_Cu_RecordingSet 2024.08.12-12.00.17']
+    logfile_names= ['mittma_0017_Cu_RecordingSet 2024.08.12-12.00.17']
 
     # Loop over all the logfiles in the directory
     for logfile_name in logfile_names:
@@ -2534,7 +2760,8 @@ def main():
         #----HERE, STARTS THE NOMAD RELEVANT SCRIPT----
 
         # ----READ ALL THE EVENTS IN THE LOGFILE----
-        events, sub_events, all_var, source_list, source_used_list = read_events(data)
+        events, sub_events,all_var, source_list, source_used_list = (
+            read_events(data))
         # ---EXTRACT DERIVED QUANTITIES IN A DICIONARY TO INPUT IN NOMAD----
         derived_quant = extract_derived_quantities(
             logfile_name, data, source_list, all_var)
