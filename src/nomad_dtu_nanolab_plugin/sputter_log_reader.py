@@ -2108,6 +2108,7 @@ logfile_names = [
 # from the logfile_names
 logfile_names.remove('mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07')
 
+
 # %%
 # Loop over all the logfiles in the directory
 for logfile_name in logfile_names:
