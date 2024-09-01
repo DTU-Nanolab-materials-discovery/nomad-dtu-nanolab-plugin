@@ -201,13 +201,33 @@ class Lf_Event:
 
 
 
-    def select_last_event(self,raw_data,ref_time=None):
+    def select_event(self,raw_data,event_loc: int,ref_time=None):
+        event_list = []
         if ref_time is None:
             ref_time = self.data['Time Stamp'].iloc[-1]
             for i in range(self.events):
                 if self.bounds[i][1] < ref_time:
-                    last_data = self.sep_data[i]
-            self.set_data(last_data, raw_data)
+                    event_list.append(self.sep_data[i])
+            self.set_data(event_list[event_loc], raw_data)
+
+    def get_params(self,raw_data,source_list,params=None):
+        if self.category is 'deposition':
+            params = self.get_all_deposition_params(source_list,raw_data,params)
+        if self.category is 'ramp_up_temp':
+            params = self.get_sub_ramp_up_params(raw_data,params)
+        if self.category is 'ramp_down_high_temp':
+            params = self.get_sub_ramp_down_high_temp_params(raw_data,params)
+        if self.category is 'ramp_down_low_temp':
+            params = self.get_sub_ramp_down_low_temp_params(raw_data,params)
+        if self.category is 'source_presput':
+            params = self.get_source_presput_params(params)
+        if self.category is 'source_ramp_up':
+            params = self.get_source_ramp_up_params(raw_data,params)
+        if self.category is 'cracker_base_pressure':
+            params = self.get_cracker_pressure_params(raw_data,params)
+        if self.category is 'all_source_deprate2_film_meas':
+            params = self.get_deposition_rate_params(params)
+        return params
 
     def get_all_deposition_params(self, source_list, raw_data, params=None):
         if self.category != 'deposition':
@@ -540,7 +560,7 @@ class Lf_Event:
         return params, elements
 
 
-    def get_cracker_pressure(self, params=None):
+    def get_cracker_pressure_params(self, params=None):
         if self.category != 'cracker_base_pressure':
             raise ValueError
 
@@ -646,7 +666,7 @@ class Lf_Event:
         return params
 
     def get_sub_ramp_up_params(self, raw_data, params=None):
-        if self.category != 'sub_ramp_up':
+        if self.category != 'ramp_up_temp':
             raise ValueError('This method is only available for the substrate ramp up event')
 
         if 'deposition' not in params:
@@ -799,7 +819,7 @@ class Lf_Event:
 
 
     def get_sub_ramp_down_high_temp_params(self, params=None):
-        if self.category != 'sub_ramp_down_high_temp':
+        if self.category != 'ramp_down_high_temp':
             raise ValueError('This method is only available for the high temperature substrate ramp down event')
         if params is None:
             params = {}
@@ -916,13 +936,67 @@ class Lf_Event:
             )
         return params[self.step_id]
 
-    # def get_deposition_rate(self, params=None):
-    # list_allowed_catergories = [
-    #     s_deprate2_film_meas,
-    #     source_deprate2_film_meas,
-    #     all_source_deprate2_film_meas]
-    #     if self.category not in list_allowed_catergories:
-    #         raise ValueError('This method is only available for the film deposition rate event')
+    def get_sub_ramp_down_low_temp_params(self,params=None):
+        if self.category != 'ramp_down_low_temp':
+            raise ValueError('This method is only available for the low temperature substrate ramp down event')
+        if params is None:
+            params = {}
+        if self.step_id not in params:
+            params[self.step_id] = {}
+
+        if 'deposition' not in params:
+            raise ValueError('Missing deposition info, run get_rt_bool first')
+
+        if not params['deposition']['rt']:
+            params[self.step_id]['start'] = self.data[
+                'Time Stamp'
+            ].iloc[0]
+            params[self.step_id]['end_time'] = self.data[
+                'Time Stamp'
+            ].iloc[-1]
+
+
+
+
+    def get_sub_ramp_down_low_temp_params(self, raw_data, params=None):
+        return params
+
+
+    def get_deposition_rate_params(self, params=None):
+        list_allowed_catergories = [
+            's_deprate2_film_meas',
+            'source_deprate2_film_meas',
+            'all_source_deprate2_film_meas']
+        if self.category not in list_allowed_catergories:
+            raise ValueError('This method is only available for the film deposition rate event')
+
+        source_number = self.source
+
+        if params is None:
+            params = {}
+        if self.step_id not in params:
+            params[self.step_id] = {}
+        if self.source == None:
+            params[self.step_id]['source'] = 'all'
+        else:
+            params[self.step_id]['source'] = source_number
+        source_element = str(
+            self.data[f'PC Source {source_number} Material'].iloc[0])
+        source_element= re.split(r'\s+', source_element)[0]
+#         derived_quant['deposition'][f'{source_number}']['material'] = (
+    #     element(source_element).symbol)
+    # derived_quant['deposition'][f'{source_number}']['target_id'] = (
+    #     deposition.data[f'PC Source {source_number} Loaded Target'].iloc[0])
+        params[self.step_id]['material']= element(source_element).symbol
+        params[self.step_id]['dep_rate'] = self.data['Thickness Rate'].mean()
+        params
+        params[self.step_id]['dep_rate_ref_mat'] = element(
+            self.data['Thickness Active Material']
+            .iloc[0]).symbol
+        if params[self.step_id]['dep_rate_ref_mat'] == source_element:
+            params[self.step_id]['true_dep_rate'] = True
+        else:
+            params[self.step_id]['true_dep_rate'] = False
 
         # source + all+source + sulfur
 # ---------FUNCTIONS DEFINITION------------
@@ -1774,7 +1848,7 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
     # as the combination of al the film dep rate conditions above
 
     deprate2_ternary_meas_cond = reduce(operator.and_, deprate2_film_meas_cond_list)
-    deprate2_ternary_meas = Lf_Event('All Source Film Dep Rate Meas',
+    deprate2_ternary_meas = Lf_Event('All Source Film Dep Rate Meas',source=None,
                                      category='all_source_deprate2_film_meas')
     deprate2_ternary_meas.set_condition(deprate2_ternary_meas_cond)
     deprate2_ternary_meas.filter_data(data)
@@ -2777,7 +2851,7 @@ def plot_matplotlib_timeline(logfile_name, data,
 
     return timeline
 
-def plot_plotly_extimeline(logfile_name, data, source_used_list, steps_to_plot,
+def plot_plotly_extimeline(steps_to_plot,
                             step_colors):
     '''
     args:
@@ -2809,14 +2883,14 @@ def plot_plotly_extimeline(logfile_name, data, source_used_list, steps_to_plot,
                     'Start': bounds[0],
                     'End': bounds[1]
                 })
-        elif isinstance(step, dict):
-            for source_number in source_used_list:
-                for bounds in step[f'{source_number}'].bounds:
-                    rows.append({
-                        'Event': step[f'{source_number}'].name,
-                        'Start': bounds[0],
-                        'End': bounds[1]
-                    })
+        # elif isinstance(step, dict):
+        #     for source_number in source_used_list:
+        #         for bounds in step[f'{source_number}'].bounds:
+        #             rows.append({
+        #                 'Event': step[f'{source_number}'].name,
+        #                 'Start': bounds[0],
+        #                 'End': bounds[1]
+        #             })
 
     df = pd.DataFrame(rows)
 
@@ -3224,6 +3298,7 @@ def read_events(data):
                             'deprate2_film_meas',
                             'deprate2_ternary_meas'
                             ],all_var)
+
     # ---9/CONDITIONS FOR THE SUBSTRATE TEMPERATURE RAMPING UP OR DOWN-----
     # Filter the data for the substrate temperature ramping up or down
     ramp_up_temp, ramp_down_temp, ramp_down_high_temp, ramp_down_low_temp = (
@@ -3256,42 +3331,43 @@ def read_events(data):
     # in the future
     events_to_plot = events
 
-
     #To make a list sutable for making a report, we remove
     #all the events that do not match the categories_for_main_report
     categories_main_report = ['deposition','ramp_up_temp',
                                 'ramp_down_high_temp','ramp_down_low_temp',
                                 'source_presput','source_ramp_up',
-                                'cracker_base_pressure',
+                                'cracker_base_pressure','source_deprate2_film_meas',
                                 'all_source_deprate2_film_meas']
 
     events_for_main_report = [event for event in events if event.category in categories_main_report]
 
     #For all the events of the main report list, we also get the last_evennt before
-    #the deposition, using the select_last_event function, together with the
+    #the deposition, using the select_event function, -1 (last) event together with the
     #deposition first bounds
 
-    categories_last_event = ['all_source_deprate2_film_meas','source_presput',
-                             'source_ramp_up','cracker_base_pressure','ramp_up_temp']
+    categories_last_event = ['source_deprate2_film_meas','all_source_deprate2_film_meas','source_presput',
+                             'source_ramp_up','ramp_up_temp']
 
     for event in events_for_main_report:
-        event.select_last_event(event,data,deposition.bounds[0])
+        if event.category in categories_last_event:
+            event.select_event(event,data,-1,deposition.bounds[0][0])
 
     #for event in events_for_main_report, we apply the get_ methods for
     #the class Lf_Event to get the params dict
     main_params = get_overview(data)
-    main_params = get_end_of_process(data,main_params)
+    main_params = get_end_of_process(data, main_params)
     for event in events_for_main_report:
-        if event.category is 'deposition':
-            main_params =
+        main_params = event.get_params(data,source_list,main_params)
 
-
+    # unfold all the events to get sub_events
     sub_events = unfold_events(events,data)
+    # get the individual step params
+    for event in sub_events:
+        sub_params = event.get_params(data,source_list,sub_params)
     #Sort the subevents by the start time
     sub_events = sort_events_by_start_time(sub_events)
 
-    return events,sub_events,all_var,source_list,source_used_list
-
+    return events_to_plot,main_params,sub_events,sub_params, source_list,all_var
 
 
 
@@ -3424,7 +3500,7 @@ def main():
         #----HERE, STARTS THE NOMAD RELEVANT SCRIPT----
 
         # ----READ ALL THE EVENTS IN THE LOGFILE----
-        events, sub_events,all_var, source_list, source_used_list = (
+        events_to_plot,main_params,sub_events,sub_params, source_list, all_var = (
             read_events(data))
         # ---EXTRACT DERIVED QUANTITIES IN A DICIONARY TO INPUT IN NOMAD----
         derived_quant = extract_derived_quantities(
@@ -3436,10 +3512,7 @@ def main():
         # Create the figure
         print('Generating the plotly plot')
 
-        plotly_timeline = plot_plotly_extimeline(logfile_name,
-                                                data,
-                                                source_used_list,
-                                                events,
+        plotly_timeline = plot_plotly_extimeline(events_to_plot,
                                                 STEP_COLORS)
         # Save the graph as a png file
 
