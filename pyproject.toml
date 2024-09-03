@@ -26,9 +26,9 @@ maintainers = [
 ]
 license = { file = "LICENSE" }
 dependencies = [
-    "nomad-lab>=1.3.4",
-    "nomad-material-processing>=0.0.11.dev2",
-    "nomad-measurements>=0.0.5",
+    "nomad-lab>=1.3.6",
+    "nomad-material-processing>=0.1.0",
+    "nomad-measurements>=0.1.0",
     "fairmat-readers-xrd>=0.0.6",
 ]
 

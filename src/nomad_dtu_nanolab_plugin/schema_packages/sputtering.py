@@ -27,8 +27,11 @@ from nomad.datamodel.metainfo.basesections import (
     InstrumentReference,
 )
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing.vapor_deposition import ChamberEnvironment, GasFlow
-from nomad_material_processing.vapor_deposition.pvd import PVDSource, PVDStep
+from nomad_material_processing.vapor_deposition.general import (
+    ChamberEnvironment,
+    GasFlow,
+)
+from nomad_material_processing.vapor_deposition.pvd.general import PVDSource, PVDStep
 from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory

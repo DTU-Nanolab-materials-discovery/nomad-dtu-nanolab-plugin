@@ -26,7 +26,7 @@ from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad_measurements.utils import merge_sections
-from nomad_measurements.xrd import (
+from nomad_measurements.xrd.schema import (
     XRayDiffraction,
     XRayTubeSource,
     XRDResult1D,
@@ -56,7 +56,7 @@ class XRDMappingResult(MappingResult, XRDResult1D):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        # TODO: Add real code for calculating the relative positions of the measurements.
+        # TODO: Add real code for calculating the relative positions of the measurements
         if self.x_absolute:
             self.x_relative = self.x_absolute
         if self.y_absolute:
