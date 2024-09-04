@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 from nomad.datamodel.data import Schema
-from nomad.datamodel.datamodel import EntryArchive
+from nomad.datamodel.datamodel import (ELNAnnotation, ELNComponentEnum,
+                                       EntryArchive)
 from nomad.datamodel.metainfo.annotations import BrowserAnnotation
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
@@ -32,48 +33,48 @@ class PLMappingResult(MappingResult, Schema):
     position = Quantity(
         type=str,
         description='The position of the PL spectrum',
-        a_eln={
-            'component': 'StringEditQuantity',
-            'label': 'Position',
-        },
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.StringEditQuantity,
+            label='Position',
+        ),
     )
     peak_lambda = Quantity(
         type=np.float64,
         unit='m',
         description='Peak wavelength of the PL spectrum',
-        a_eln={
-            'component': 'NumberEditQuantity',
-            'defaultDisplayUnit': 'nm',
-            'label': 'Peak Lambda',
-        },
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='nm',
+            label='Peak Lambda',
+        ),
     )
     peak_intensity = Quantity(
         type=np.float64,
         unit='V',
         description='Peak intensity of the PL spectrum',
-        a_eln={
-            'component': 'NumberEditQuantity',
-            'defaultDisplayUnit': 'V',
-            'label': 'Peak Intensity',
-        },
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='V',
+            label='Peak Intensity',
+        ),
     )
     signal_intensity = Quantity(
         type=np.float64,
         description='Signal intensity of the PL spectrum',
-        a_eln={
-            'component': 'NumberEditQuantity',
-            'label': 'Peak Lambda',
-        },
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            label='Signal Intensity',
+        ),
     )
     peak_fwhm = Quantity(
         type=np.float64,
         unit='m',
         description='Peak full width at half maximum of the PL spectrum',
-                a_eln={
-            'component': 'NumberEditQuantity',
-            'defaultDisplayUnit': 'nm',
-            'label': 'Peak FWHM',
-        },
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='nm',
+            label='Peak FWHM',
+        ),
     )
 
 
@@ -95,73 +96,152 @@ class PLMetadata(Schema):
         type=np.float64,
         unit='m',
         description='The thickness the machine assumes for the sample',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='um',
+            label='assumed Sample thickness',
+        ),
     )
     wafer_diameter = Quantity(
         type=np.float64,
         unit='m',
         description='The diameter of the wafer',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            label='wafer holder size',
+        ),
     )
     scan_diameter = Quantity(
         type=np.float64,
         unit='m',
         description='The diameter of the scan',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            label='diamer of the scan',
+        ),
     )
     resolution = Quantity(
         type=np.float64,
         unit='m',
         description='The resolution of the scan',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            label='Resolution',
+        ),
     )
     scan_rate = Quantity(
         type=np.float64,
-        unit='pts/s',
-        description='The rate of the scan',
+        unit='m/s',
+        description='''
+        The rate of the scan.
+        The unit is points per second (pts/s)
+        and therefore only right as long as the resolution is 1mm''',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm/s',
+            label='scan rate',
+        ),
     )
     used_laser = Quantity(
         type =np.float64,
         unit='m',
         description='The wavelength of the laser used',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='nm',
+            label='Laser wavelength',
+        ),
     )
     used_power = Quantity(
         type=np.float64,
         unit='W',
         description='The power of the laser used',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mW',
+            label='Laser Power',
+        ),
     )
     used_filter = Quantity(
         type=str,
         description='The filter used for the measurement',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.StringEditQuantity,
+            label='used filter',
+        ),
     )
     gain_factor = Quantity(
         type=np.float64,
-        description='The gain factor used for the measurement',
+        description='''
+        The gain factor used for the measurement,
+        it is unitless and scales the signal intensity
+        ''',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            label='Gain Factor',
+        ),
+
     )
     temperature = Quantity(
         type=np.float64,
         unit='K',
-        description='The temperature of the measurement',
+        description='The temperature during the measurement',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='C',
+            label='Temperature',
+        ),
     )
     center_wafelength = Quantity(
         type=np.float64,
         unit='m',
         description='The center wavelength of the measurement',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='nm',
+            label='Center Wafelength',
+        ),
     )
     wavelength_range = Quantity(
         type= [np.float64],
         unit='m',
         description='The range of the wavelength',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='nm',
+            label='Wafelength Range',
+        ),
     )
     slit_width = Quantity(
         type=np.float64,
         unit='m',
         description='The slit width used for the measurement',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            label='Slit Width',
+        ),
     )
     gratings = Quantity(
         type=np.float64,
         unit= 'g/m',
         description='The gratings used for the measurement',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='g/mm',
+            label='Grating',
+        ),
     )
     detector = Quantity(
         type=str,
         description='The detector used for the measurement',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.StringEditQuantity,
+            label='Detector type',
+        ),
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -243,7 +323,7 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
             filtered_chars = [c for c in entry if c.isdigit() or c == '.']
             filtered_entry = ''.join(filtered_chars)
             scanrate = float(filtered_entry) if filtered_entry else None
-            self.metadata.scan_rate = ureg.Quantity(scanrate, 'pts/s')
+            self.metadata.scan_rate = ureg.Quantity(scanrate, 'mm/s')
 
         entry = metadata.get('Laser', None)
         if entry is not None and self.metadata.used_laser is None:
