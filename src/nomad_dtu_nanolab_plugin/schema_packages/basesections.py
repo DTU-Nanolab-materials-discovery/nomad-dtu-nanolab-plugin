@@ -23,12 +23,15 @@ import pint
 from nomad.datamodel.datamodel import ArchiveSection, EntryArchive
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import Measurement, MeasurementResult
-from nomad.metainfo import Quantity, Section, SubSection
+from nomad.metainfo import Package, Quantity, Section, SubSection
+from nomad.units import ureg
 from structlog.stdlib import BoundLogger
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
+
+m_package = Package()
 
 
 class MappingResult(MeasurementResult):
@@ -109,31 +112,37 @@ class AffineTransformation(ArchiveSection):
     m_def = Section()
     v1_before = Quantity(
         type=np.float64,
+        unit='m',
         description='The v1 vector of the sample before the transformation.',
         shape=[2],
     )
     v2_before = Quantity(
         type=np.float64,
+        unit='m',
         description='The v2 vector of the sample before the transformation.',
         shape=[2],
     )
     v3_before = Quantity(
         type=np.float64,
+        unit='m',
         description='The v3 vector of the sample before the transformation.',
         shape=[2],
     )
     v1_after = Quantity(
         type=np.float64,
+        unit='m',
         description='The v1 vector of the sample after the transformation.',
         shape=[2],
     )
     v2_after = Quantity(
         type=np.float64,
+        unit='m',
         description='The v2 vector of the sample after the transformation.',
         shape=[2],
     )
     v3_after = Quantity(
         type=np.float64,
+        unit='m',
         description='The v3 vector of the sample after the transformation.',
         shape=[2],
     )
@@ -144,6 +153,7 @@ class AffineTransformation(ArchiveSection):
     )
     translation_vector = Quantity(
         type=np.float64,
+        unit='m',
         description='The translation vector.',
         shape=[2],
     )
@@ -154,25 +164,68 @@ class AffineTransformation(ArchiveSection):
         sample alignment.
         """
         # Construct the matrix A and vector b for the system of equations
+
         a_matrix = np.array(
             [
-                [self.v1_before[0], self.v1_before[1], 1, 0, 0, 0],
-                [0, 0, 0, self.v1_before[0], self.v1_before[1], 1],
-                [self.v2_before[0], self.v2_before[1], 1, 0, 0, 0],
-                [0, 0, 0, self.v2_before[0], self.v2_before[1], 1],
-                [self.v3_before[0], self.v3_before[1], 1, 0, 0, 0],
-                [0, 0, 0, self.v3_before[0], self.v3_before[1], 1],
+                [
+                    self.v1_before[0].to('m').magnitude,
+                    self.v1_before[1].to('m').magnitude,
+                    1,
+                    0,
+                    0,
+                    0,
+                ],
+                [
+                    0,
+                    0,
+                    0,
+                    self.v1_before[0].to('m').magnitude,
+                    self.v1_before[1].to('m').magnitude,
+                    1,
+                ],
+                [
+                    self.v2_before[0].to('m').magnitude,
+                    self.v2_before[1].to('m').magnitude,
+                    1,
+                    0,
+                    0,
+                    0,
+                ],
+                [
+                    0,
+                    0,
+                    0,
+                    self.v2_before[0].to('m').magnitude,
+                    self.v2_before[1].to('m').magnitude,
+                    1,
+                ],
+                [
+                    self.v3_before[0].to('m').magnitude,
+                    self.v3_before[1].to('m').magnitude,
+                    1,
+                    0,
+                    0,
+                    0,
+                ],
+                [
+                    0,
+                    0,
+                    0,
+                    self.v3_before[0].to('m').magnitude,
+                    self.v3_before[1].to('m').magnitude,
+                    1,
+                ],
             ]
         )
 
         b_vector = np.array(
             [
-                self.v1_after[0],
-                self.v1_after[1],
-                self.v2_after[0],
-                self.v2_after[1],
-                self.v3_after[0],
-                self.v3_after[1],
+                self.v1_after[0].to('m').magnitude,
+                self.v1_after[1].to('m').magnitude,
+                self.v2_after[0].to('m').magnitude,
+                self.v2_after[1].to('m').magnitude,
+                self.v3_after[0].to('m').magnitude,
+                self.v3_after[1].to('m').magnitude,
             ]
         )
 
@@ -196,7 +249,9 @@ class AffineTransformation(ArchiveSection):
         Returns:
             np.ndarray: The vector after the transformation.
         """
-        return self.transformation_matrix @ vector + self.translation_vector
+        return (
+            self.transformation_matrix @ vector * ureg.meter + self.translation_vector
+        )
 
 
 class SampleAlignment(ArchiveSection):
@@ -249,18 +304,18 @@ class RectangularSampleAlignment(SampleAlignment):
         ),
         unit='m',
     )
-    x_bottom_right = Quantity(
+    x_lower_right = Quantity(
         type=np.float64,
-        description='The x position of the bottom right corner of the sample.',
+        description='The x position of the lower right corner of the sample.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm',
         ),
         unit='m',
     )
-    y_bottom_right = Quantity(
+    y_lower_right = Quantity(
         type=np.float64,
-        description='The y position of the bottom right corner of the sample.',
+        description='The y position of the lower right corner of the sample.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm',
@@ -268,29 +323,35 @@ class RectangularSampleAlignment(SampleAlignment):
         unit='m',
     )
 
-    def calculate_bottom_left(self) -> np.ndarray:
+    def calculate_lower_left(self) -> np.ndarray:
         """
-        Calculate the position of the bottom left corner of the sample.
+        Calculate the position of the lower left corner of the sample.
 
         Returns:
-            np.ndarray: The position of the bottom left corner of the sample.
+            np.ndarray: The position of the lower left corner of the sample.
         """
         if None in (
             self.width,
             self.height,
             self.x_upper_left,
             self.y_upper_left,
-            self.x_bottom_right,
-            self.y_bottom_right,
+            self.x_lower_right,
+            self.y_lower_right,
         ):
             return None
-        a = np.array([self.x_upper_left, self.y_upper_left])
-        b = np.array([self.x_bottom_right, self.y_bottom_right])
+        x0 = self.x_upper_left.to('m').magnitude
+        y0 = self.y_upper_left.to('m').magnitude
+        x1 = self.x_lower_right.to('m').magnitude
+        y1 = self.y_lower_right.to('m').magnitude
+        h = self.height.to('m').magnitude
+        w = self.width.to('m').magnitude
+        a = np.array([x0, y0])
+        b = np.array([x1, y1])
         ab = b - a
         d = np.linalg.norm(ab)
-        dy = self.height * (ab[0] * self.width - ab[1] * self.height) / d**2
-        dx = self.height * (ab[1] * self.width + ab[0] * self.height) / d**2
-        return a + np.array([dx, -dy])
+        dy = h * (ab[0] * w - ab[1] * h) / d**2
+        dx = h * (ab[1] * w + ab[0] * h) / d**2
+        return [x0 + dx, y0 - dy]
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -303,13 +364,20 @@ class RectangularSampleAlignment(SampleAlignment):
             logger (BoundLogger): A structlog logger.
         """
         if self.affine_transformation is None:
+            x0 = self.x_upper_left.to('m').magnitude
+            y0 = self.y_upper_left.to('m').magnitude
+            x1 = self.x_lower_right.to('m').magnitude
+            y1 = self.y_lower_right.to('m').magnitude
+            x2, y2 = self.calculate_lower_left()
+            h = self.height.to('m').magnitude
+            w = self.width.to('m').magnitude
             t = AffineTransformation(
-                v1_before=np.array([self.x_upper_left, self.y_upper_left]),
-                v2_before=self.calculate_bottom_left(),
-                v3_before=np.array([self.x_bottom_right, self.y_bottom_right]),
-                v1_after=np.array([-self.width / 2, self.height / 2]),
-                v2_after=np.array([-self.width / 2, -self.height / 2]),
-                v3_after=np.array([self.width / 2, -self.height / 2]),
+                v1_before=[x0, y0],
+                v2_before=[x2, y2],
+                v3_before=[x1, y1],
+                v1_after=[-w / 2, h / 2],
+                v2_after=[-w / 2, -h / 2],
+                v3_after=[w / 2, -h / 2],
             )
             t.calculate_affine_transformation()
             self.affine_transformation = t
@@ -329,3 +397,6 @@ class MappingMeasurement(Measurement):
         section_def=MappingResult,
         repeats=True,
     )
+
+
+m_package.__init_metainfo__()

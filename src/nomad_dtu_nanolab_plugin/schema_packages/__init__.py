@@ -17,6 +17,19 @@ mypackage = MySchemaPackageEntryPoint(
 )
 
 
+class BasesectionsEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.basesections import m_package
+
+        return m_package
+
+
+basesections = BasesectionsEntryPoint(
+    name='Basesections',
+    description='Schema package defined for base sections.',
+)
+
+
 class SputteringEntryPoint(SchemaPackageEntryPoint):
     def load(self):
         from nomad_dtu_nanolab_plugin.schema_packages.sputtering import m_package

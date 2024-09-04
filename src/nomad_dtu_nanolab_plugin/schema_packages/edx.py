@@ -18,8 +18,11 @@ from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from scipy.interpolate import griddata
 
-from nomad_dtu_nanolab_plugin.basesections import MappingMeasurement, MappingResult
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+    MappingMeasurement,
+    MappingResult,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive

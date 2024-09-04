@@ -18,6 +18,7 @@
 
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import plotly.graph_objects as go
 from fairmat_readers_xrd import read_rigaku_rasx
 from nomad.datamodel.data import Schema
@@ -34,8 +35,11 @@ from nomad_measurements.xrd.schema import (
 )
 from structlog.stdlib import BoundLogger
 
-from nomad_dtu_nanolab_plugin.basesections import MappingMeasurement, MappingResult
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+    MappingMeasurement,
+    MappingResult,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -56,11 +60,6 @@ class XRDMappingResult(MappingResult, XRDResult1D):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        # TODO: Add real code for calculating the relative positions of the measurements
-        if self.x_absolute:
-            self.x_relative = self.x_absolute
-        if self.y_absolute:
-            self.y_relative = self.y_absolute
         super().normalize(archive, logger)
 
 
@@ -207,6 +206,19 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             self.write_xrd_data(file_data, archive, logger)
             self.figures = []
             self.plot()
+        if self.sample_alignment:
+            for result in self.results:
+                x, y = self.sample_alignment.affine_transformation.transform_vector(
+                    np.array(
+                        [
+                            result.x_absolute.to('m').magnitude,
+                            result.y_absolute.to('m').magnitude,
+                        ]
+                    )
+                )
+                result.x_relative = x
+                result.y_relative = y
+                result.normalize(archive, logger)
         super().normalize(archive, logger)
 
 
