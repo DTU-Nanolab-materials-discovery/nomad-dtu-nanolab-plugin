@@ -1,6 +1,7 @@
 import logging
 
 from nomad.datamodel import EntryArchive
+
 from nomad_dtu_nanolab_plugin.parsers.myparser import MyParser
 
 
