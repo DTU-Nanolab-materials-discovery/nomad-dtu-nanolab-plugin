@@ -109,7 +109,7 @@ class DTUTarget(CompositeSystem, Schema):
             file_name = os.path.basename(self.impurity_file)
             file_information = file_name.split('_')
             self.lab_id = (
-                f"{file_information[2]} {file_information[3]} {file_information[4]}"
+                f'{file_information[2]} {file_information[3]} {file_information[4]}'
             )
 
             if file_information[3] == 'T':
@@ -131,12 +131,12 @@ class DTUTarget(CompositeSystem, Schema):
             df_elements = pd.DataFrame(data, columns=['Element', 'Quantity'])
             self.elemental_composition = [
                 ElementalComposition() for _ in range(len(df_elements))
-                ]
+            ]
             elem_total = df_elements['Quantity'].sum()
             for i in range(len(df_elements)):
                 self.elemental_composition[i].element = df_elements.iloc[i, 0]
                 self.elemental_composition[i].atomic_fraction = (
-                    df_elements.iloc[i, 1]/elem_total
+                    df_elements.iloc[i, 1] / elem_total
                 )
 
             with archive.m_context.raw_file(self.impurity_file, 'r') as impurity:

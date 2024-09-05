@@ -278,7 +278,6 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        super().normalize(archive, logger)
         if self.edx_data_file is None:
             return
         with archive.m_context.raw_file(self.edx_data_file, 'rb') as edx:
@@ -308,6 +307,9 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                 )
             result.normalize(archive, logger)
             self.results.append(result)
+
+        super().normalize(archive, logger)
+
         self.figures = []
         self.plot()
 
