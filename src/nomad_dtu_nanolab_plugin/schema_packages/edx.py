@@ -15,6 +15,7 @@ from nomad.datamodel.metainfo.annotations import (
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
+from nomad_measurements.utils import merge_sections
 from pint import Quantity as PintQuantity
 from scipy.interpolate import griddata
 
@@ -83,6 +84,30 @@ class EDXResult(MappingResult):
         # TODO: Add code for calculating the relative positions of the measurements.
 
 
+class DTUSampleAlignment(RectangularSampleAlignment):
+    m_def = Section()
+    width = Quantity(
+        type=np.float64,
+        default=0.04,
+        description='The width of the sample.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+        unit='m',
+    )
+    height = Quantity(
+        type=np.float64,
+        default=0.04,
+        description='The height of the sample.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+        unit='m',
+    )
+
+
 class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
@@ -109,7 +134,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         repeats=True,
     )
     sample_alignment = SubSection(
-        section_def=RectangularSampleAlignment,
+        section_def=DTUSampleAlignment,
         description='The alignment of the sample.',
     )
 
@@ -274,6 +299,64 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                 )
             )
 
+    def write_edx_data(
+        self,
+        df_data: pd.DataFrame,
+        df_alignment: pd.DataFrame,
+        archive: 'EntryArchive',
+        logger: 'BoundLogger',
+    ) -> None:
+        """
+        Write method for populating the `ELNXRayDiffraction` section from a dict.
+
+        Args:
+            xrd_dict (Dict[str, Any]): A dictionary with the XRD data.
+            archive (EntryArchive): The archive containing the section.
+            logger (BoundLogger): A structlog logger.
+        """
+        corner_x = ureg.Quantity(df_alignment['corner x'].dropna().values, 'mm')
+        corner_y = ureg.Quantity(df_alignment['corner y'].dropna().values, 'mm')
+        sample_alignment = DTUSampleAlignment(
+            x_upper_left=corner_x[0],
+            y_upper_left=corner_y[0],
+            x_lower_right=corner_x[1],
+            y_lower_right=corner_y[1],
+        )
+
+        avg_layer_thickness = ureg.Quantity(
+            df_data['Layer 1 Thickness (nm)'].mean(), 'nm'
+        )
+
+        pattern = r'Layer 1 [A-Z][a-z]? Atomic %'
+        percentage_labels = [
+            label for label in df_data.columns if re.match(pattern, label)
+        ]
+
+        results = []
+        for _, row in df_data.iterrows():
+            quantifications = []
+            for label in percentage_labels:
+                element = label.split(' ')[2]
+                atomic_fraction = row[label] * 1e-2
+                quantifications.append(
+                    EDXQuantification(element=element, atomic_fraction=atomic_fraction)
+                )
+            result = EDXResult(
+                x_absolute=ureg.Quantity(row['X (mm)'], 'mm'),
+                y_absolute=ureg.Quantity(row['Y (mm)'], 'mm'),
+                layer_thickness=ureg.Quantity(row['Layer 1 Thickness (nm)'], 'nm'),
+                quantifications=quantifications,
+            )
+            result.normalize(archive, logger)
+            results.append(result)
+        edx = EDXMeasurement(
+            results=results,
+            avg_layer_thickness=avg_layer_thickness,
+            sample_alignment=sample_alignment,
+        )
+        merge_sections(self, edx, logger)
+        self.sample_alignment.normalize(archive, logger)
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `EDXMeasurement` class.
@@ -287,45 +370,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             with archive.m_context.raw_file(self.edx_data_file, 'rb') as edx:
                 df_data = pd.read_excel(edx, sheet_name='Sheet1', header=0)
                 df_alignment = pd.read_excel(edx, sheet_name='Sheet2', header=0)
-
-            corner_x = ureg.Quantity(df_alignment['corner x'].dropna().values, 'mm')
-            corner_y = ureg.Quantity(df_alignment['corner y'].dropna().values, 'mm')
-            if self.sample_alignment is None:
-                self.sample_alignment = RectangularSampleAlignment()
-            self.sample_alignment.x_upper_left = corner_x[0]
-            self.sample_alignment.y_upper_left = corner_y[0]
-            self.sample_alignment.x_lower_right = corner_x[1]
-            self.sample_alignment.y_lower_right = corner_y[1]
-            self.sample_alignment.normalize(archive, logger)
-
-            self.avg_layer_thickness = ureg.Quantity(
-                df_data['Layer 1 Thickness (nm)'].mean(), 'nm'
-            )
-
-            pattern = r'Layer 1 [A-Z][a-z]? Atomic %'
-            percentage_labels = [
-                label for label in df_data.columns if re.match(pattern, label)
-            ]
-
-            self.results = []
-            for _, row in df_data.iterrows():
-                result = EDXResult()
-                result.x_absolute = ureg.Quantity(row['X (mm)'], 'mm')
-                result.y_absolute = ureg.Quantity(row['Y (mm)'], 'mm')
-                result.layer_thickness = ureg.Quantity(
-                    row['Layer 1 Thickness (nm)'], 'nm'
-                )
-                result.quantifications = []
-                for label in percentage_labels:
-                    element = label.split(' ')[2]
-                    atomic_fraction = row[label] * 1e-2
-                    result.quantifications.append(
-                        EDXQuantification(
-                            element=element, atomic_fraction=atomic_fraction
-                        )
-                    )
-                result.normalize(archive, logger)
-                self.results.append(result)
+            self.write_edx_data(df_data, df_alignment, archive, logger)
 
         super().normalize(archive, logger)
 
