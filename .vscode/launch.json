@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "nomad parse",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/.pyenv/bin/nomad",
+            "justMyCode": false,
+            "args": [
+                "parse",
+                "--show-archive",
+                "tests/data/test_xrd.archive.yaml",
+                ">",
+                "output.archive.json"
+            ]
+        }
+    ]
+}

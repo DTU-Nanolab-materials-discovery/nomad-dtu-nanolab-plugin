@@ -31,7 +31,7 @@ from nomad.datamodel.metainfo.basesections import (
     ReadableIdentifiers,
 )
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad_material_processing import (
+from nomad_material_processing.general import (
     CrystallineSubstrate,
     Dopant,
     ElectronicProperties,

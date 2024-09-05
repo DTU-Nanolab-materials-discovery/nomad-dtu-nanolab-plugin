@@ -12,13 +12,17 @@ from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
 )
-from nomad.datamodel.metainfo.basesections import Measurement, MeasurementResult
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
+from pint import Quantity as PintQuantity
 from scipy.interpolate import griddata
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+    MappingMeasurement,
+    MappingResult,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -47,30 +51,8 @@ class EDXQuantification(ArchiveSection):
     )
 
 
-class EDXResult(MeasurementResult):
+class EDXResult(MappingResult):
     m_def = Section()
-    x_position = Quantity(
-        type=np.float64,
-        description="""
-        The x position of the EDX measurement.
-        """,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-        unit='m',
-    )
-    y_position = Quantity(
-        type=np.float64,
-        description="""
-        The y position of the EDX measurement.
-        """,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-        unit='m',
-    )
     layer_thickness = Quantity(
         type=np.float64,
         description="""
@@ -97,14 +79,10 @@ class EDXResult(MeasurementResult):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        if self.x_position and self.y_position:
-            self.name = (
-                f'({self.x_position.to("mm").magnitude:.1f}, '
-                f'{self.y_position.to("mm").magnitude:.1f})'
-            )
+        # TODO: Add code for calculating the relative positions of the measurements.
 
 
-class EDXMeasurement(Measurement, PlotSection, Schema):
+class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='EDX Measurement',
@@ -133,10 +111,28 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
     def plot(self) -> None:
         x, y, thickness = [], [], []
         quantifications = defaultdict(list)
+        result: EDXResult
         for result in self.results:
-            x.append(result.x_position.to('mm').magnitude)
-            y.append(result.y_position.to('mm').magnitude)
+            if not isinstance(result.layer_thickness, PintQuantity):
+                continue
+            if isinstance(result.x_relative, PintQuantity) and isinstance(
+                result.y_relative, PintQuantity
+            ):
+                x.append(result.x_relative.to('mm').magnitude)
+                y.append(result.y_relative.to('mm').magnitude)
+                x_title = 'X Sample Position (mm)'
+                y_title = 'Y Sample Position (mm)'
+            elif isinstance(result.x_absolute, PintQuantity) and isinstance(
+                result.y_absolute, PintQuantity
+            ):
+                x.append(result.x_absolute.to('mm').magnitude)
+                y.append(result.y_absolute.to('mm').magnitude)
+                x_title = 'X Stage Position (mm)'
+                y_title = 'Y Stage Position (mm)'
+            else:
+                continue
             thickness.append(result.layer_thickness.to('nm').magnitude)
+            quantification: EDXQuantification
             for quantification in result.quantifications:
                 quantifications[quantification.element].append(
                     quantification.atomic_fraction
@@ -157,12 +153,12 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
                 size=15,
                 color=thickness,  # Set color to thickness values
                 colorscale='Viridis',  # Choose a colorscale
-                #colorbar=dict(title='Thickness (nm)'),  # Add a colorbar
+                # colorbar=dict(title='Thickness (nm)'),  # Add a colorbar
                 showscale=False,  # Hide the colorbar for the scatter plot
                 line=dict(
                     width=2,  # Set the width of the border
-                    color='DarkSlateGrey'  # Set the color of the border
-            )
+                    color='DarkSlateGrey',  # Set the color of the border
+                ),
             ),
             customdata=thickness,  # Add thickness data to customdata
             hovertemplate='<b>Thickness:</b> %{customdata} nm',
@@ -183,11 +179,17 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
         # Update layout
         fig.update_layout(
             title='Thickness Colormap',
-            xaxis_title='X Position (mm)',
-            yaxis_title='Y Position (mm)',
+            xaxis_title=x_title,
+            yaxis_title=y_title,
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+            ),
         )
 
         plot_json = fig.to_plotly_json()
@@ -217,12 +219,12 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
                     size=15,
                     color=quantifications[q],  # Set color to atomic fraction values
                     colorscale='Viridis',  # Choose a colorscale
-                    #colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
+                    # colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
                     showscale=False,  # Hide the colorbar for the scatter plot
                     line=dict(
                         width=2,  # Set the width of the border
-                        color='DarkSlateGrey'  # Set the color of the border
-            )
+                        color='DarkSlateGrey',  # Set the color of the border
+                    ),
                 ),
                 customdata=quantifications[q],  # Add atomic fraction data to customdata
                 hovertemplate=f'<b>Atomic fraction of {q}:</b> %{{customdata}}',
@@ -243,11 +245,17 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
             # Update layout
             fig.update_layout(
                 title=f'{q} Atomic Fraction Colormap',
-                xaxis_title='X Position (mm)',
-                yaxis_title='Y Position (mm)',
+                xaxis_title=x_title,
+                yaxis_title=y_title,
                 template='plotly_white',
                 hovermode='closest',
                 dragmode='zoom',
+                xaxis=dict(
+                    fixedrange=False,
+                ),
+                yaxis=dict(
+                    fixedrange=False,
+                ),
             )
 
             plot_json = fig.to_plotly_json()
@@ -288,9 +296,10 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
         self.results = []
         for _, row in df_data.iterrows():
             result = EDXResult()
-            result.x_position = ureg.Quantity(row['X (mm)'], 'mm')
-            result.y_position = ureg.Quantity(row['Y (mm)'], 'mm')
+            result.x_absolute = ureg.Quantity(row['X (mm)'], 'mm')
+            result.y_absolute = ureg.Quantity(row['Y (mm)'], 'mm')
             result.layer_thickness = ureg.Quantity(row['Layer 1 Thickness (nm)'], 'nm')
+            result.quantifications = []
             for label in percentage_labels:
                 element = label.split(' ')[2]
                 atomic_fraction = row[label] * 1e-2
@@ -299,6 +308,7 @@ class EDXMeasurement(Measurement, PlotSection, Schema):
                 )
             result.normalize(archive, logger)
             self.results.append(result)
+        self.figures = []
         self.plot()
 
 

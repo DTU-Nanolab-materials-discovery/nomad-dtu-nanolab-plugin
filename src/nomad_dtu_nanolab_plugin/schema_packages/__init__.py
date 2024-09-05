@@ -17,6 +17,19 @@ mypackage = MySchemaPackageEntryPoint(
 )
 
 
+class BasesectionsEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.basesections import m_package
+
+        return m_package
+
+
+basesections = BasesectionsEntryPoint(
+    name='Basesections',
+    description='Schema package defined for base sections.',
+)
+
+
 class SputteringEntryPoint(SchemaPackageEntryPoint):
     def load(self):
         from nomad_dtu_nanolab_plugin.schema_packages.sputtering import m_package
@@ -92,4 +105,30 @@ class EDXEntryPoint(SchemaPackageEntryPoint):
 edx = EDXEntryPoint(
     name='EDX',
     description='Schema package defined for EDX measurements.',
+)
+
+
+class XRDEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.xrd import m_package
+
+        return m_package
+
+
+xrd = XRDEntryPoint(
+    name='XRD',
+    description='Schema package defined for XRD measurements.',
+)
+
+
+class SampleEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.sample import m_package
+
+        return m_package
+
+
+sample = SampleEntryPoint(
+    name='Sample',
+    description='Schema package defined for samples.',
 )
