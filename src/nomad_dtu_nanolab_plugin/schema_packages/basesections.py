@@ -24,7 +24,6 @@ from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import Measurement, MeasurementResult
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
-from pint import Quantity as PintQuantity
 from structlog.stdlib import BoundLogger
 
 if TYPE_CHECKING:
@@ -100,15 +99,15 @@ class MappingResult(MeasurementResult):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        if isinstance(self.x_relative, PintQuantity) and isinstance(
-            self.y_relative, PintQuantity
+        if isinstance(self.x_relative, ureg.Quantity) and isinstance(
+            self.y_relative, ureg.Quantity
         ):
             self.name = (
                 f'({self.x_relative.to("mm").magnitude:.1f}, '
                 f'{self.y_relative.to("mm").magnitude:.1f})'
             )
-        elif isinstance(self.x_absolute, PintQuantity) and isinstance(
-            self.y_absolute, PintQuantity
+        elif isinstance(self.x_absolute, ureg.Quantity) and isinstance(
+            self.y_absolute, ureg.Quantity
         ):
             self.name = (
                 f'({self.x_absolute.to("mm").magnitude:.1f}, '
@@ -172,12 +171,12 @@ class AffineTransformation(ArchiveSection):
         sample alignment.
         """
         if (
-            not isinstance(self.v1_before, PintQuantity)
-            or not isinstance(self.v2_before, PintQuantity)
-            or not isinstance(self.v3_before, PintQuantity)
-            or not isinstance(self.v1_after, PintQuantity)
-            or not isinstance(self.v2_after, PintQuantity)
-            or not isinstance(self.v3_after, PintQuantity)
+            not isinstance(self.v1_before, ureg.Quantity)
+            or not isinstance(self.v2_before, ureg.Quantity)
+            or not isinstance(self.v3_before, ureg.Quantity)
+            or not isinstance(self.v1_after, ureg.Quantity)
+            or not isinstance(self.v2_after, ureg.Quantity)
+            or not isinstance(self.v3_after, ureg.Quantity)
         ):
             return
         # Construct the matrix A and vector b for the system of equations
@@ -375,12 +374,12 @@ class RectangularSampleAlignment(SampleAlignment):
             logger (BoundLogger): A structlog logger.
         """
         if (
-            isinstance(self.width, PintQuantity)
-            and isinstance(self.height, PintQuantity)
-            and isinstance(self.x_upper_left, PintQuantity)
-            and isinstance(self.y_upper_left, PintQuantity)
-            and isinstance(self.x_lower_right, PintQuantity)
-            and isinstance(self.y_lower_right, PintQuantity)
+            isinstance(self.width, ureg.Quantity)
+            and isinstance(self.height, ureg.Quantity)
+            and isinstance(self.x_upper_left, ureg.Quantity)
+            and isinstance(self.y_upper_left, ureg.Quantity)
+            and isinstance(self.x_lower_right, ureg.Quantity)
+            and isinstance(self.y_lower_right, ureg.Quantity)
         ):
             x0 = self.x_upper_left.to('m').magnitude
             y0 = self.y_upper_left.to('m').magnitude
@@ -433,8 +432,8 @@ class MappingMeasurement(Measurement):
         for result in self.results:
             if (
                 not isinstance(self.sample_alignment, SampleAlignment)
-                or not isinstance(result.y_absolute, PintQuantity)
-                or not isinstance(result.x_absolute, PintQuantity)
+                or not isinstance(result.y_absolute, ureg.Quantity)
+                or not isinstance(result.x_absolute, ureg.Quantity)
                 or not isinstance(
                     self.sample_alignment.affine_transformation,
                     AffineTransformation,

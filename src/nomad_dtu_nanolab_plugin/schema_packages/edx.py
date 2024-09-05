@@ -16,7 +16,6 @@ from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_measurements.utils import merge_sections
-from pint import Quantity as PintQuantity
 from scipy.interpolate import griddata
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -143,17 +142,17 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         quantifications = defaultdict(list)
         result: EDXResult
         for result in self.results:
-            if not isinstance(result.layer_thickness, PintQuantity):
+            if not isinstance(result.layer_thickness, ureg.Quantity):
                 continue
-            if isinstance(result.x_relative, PintQuantity) and isinstance(
-                result.y_relative, PintQuantity
+            if isinstance(result.x_relative, ureg.Quantity) and isinstance(
+                result.y_relative, ureg.Quantity
             ):
                 x.append(result.x_relative.to('mm').magnitude)
                 y.append(result.y_relative.to('mm').magnitude)
                 x_title = 'X Sample Position (mm)'
                 y_title = 'Y Sample Position (mm)'
-            elif isinstance(result.x_absolute, PintQuantity) and isinstance(
-                result.y_absolute, PintQuantity
+            elif isinstance(result.x_absolute, ureg.Quantity) and isinstance(
+                result.y_absolute, ureg.Quantity
             ):
                 x.append(result.x_absolute.to('mm').magnitude)
                 y.append(result.y_absolute.to('mm').magnitude)
