@@ -306,10 +306,12 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         logger: 'BoundLogger',
     ) -> None:
         """
-        Write method for populating the `ELNXRayDiffraction` section from a dict.
+        Write method for populating the `EDXMeasurement` section from a data and
+        an alignment pandas DataFrame.
 
         Args:
-            xrd_dict (Dict[str, Any]): A dictionary with the XRD data.
+            df_data (pd.DataFrame): A pandas DataFrame with the quantification results.
+            df_alignment (pd.DataFrame): A pandas DataFrame with the alignment data.
             archive (EntryArchive): The archive containing the section.
             logger (BoundLogger): A structlog logger.
         """
