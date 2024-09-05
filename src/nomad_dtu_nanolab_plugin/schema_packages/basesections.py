@@ -19,12 +19,12 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
-import pint
 from nomad.datamodel.datamodel import ArchiveSection, EntryArchive
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import Measurement, MeasurementResult
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
+from pint import Quantity as PintQuantity
 from structlog.stdlib import BoundLogger
 
 if TYPE_CHECKING:
@@ -100,15 +100,15 @@ class MappingResult(MeasurementResult):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        if isinstance(self.x_relative, pint.Quantity) and isinstance(
-            self.y_relative, pint.Quantity
+        if isinstance(self.x_relative, PintQuantity) and isinstance(
+            self.y_relative, PintQuantity
         ):
             self.name = (
                 f'({self.x_relative.to("mm").magnitude:.1f}, '
                 f'{self.y_relative.to("mm").magnitude:.1f})'
             )
-        elif isinstance(self.x_absolute, pint.Quantity) and isinstance(
-            self.y_absolute, pint.Quantity
+        elif isinstance(self.x_absolute, PintQuantity) and isinstance(
+            self.y_absolute, PintQuantity
         ):
             self.name = (
                 f'({self.x_absolute.to("mm").magnitude:.1f}, '
@@ -171,6 +171,15 @@ class AffineTransformation(ArchiveSection):
         Calculate the affine transformation matrix and translation vector from the
         sample alignment.
         """
+        if (
+            not isinstance(self.v1_before, PintQuantity)
+            or not isinstance(self.v2_before, PintQuantity)
+            or not isinstance(self.v3_before, PintQuantity)
+            or not isinstance(self.v1_after, PintQuantity)
+            or not isinstance(self.v2_after, PintQuantity)
+            or not isinstance(self.v3_after, PintQuantity)
+        ):
+            return
         # Construct the matrix A and vector b for the system of equations
 
         a_matrix = np.array(
@@ -257,6 +266,8 @@ class AffineTransformation(ArchiveSection):
         Returns:
             np.ndarray: The vector after the transformation.
         """
+        if self.transformation_matrix is None or self.translation_vector is None:
+            return None, None
         return (
             self.transformation_matrix @ vector * ureg.meter + self.translation_vector
         )
@@ -331,35 +342,27 @@ class RectangularSampleAlignment(SampleAlignment):
         unit='m',
     )
 
-    def calculate_lower_left(self) -> np.ndarray:
+    @staticmethod
+    def calculate_lower_left(
+        a: np.ndarray, b: np.ndarray, h: float, w: float
+    ) -> tuple[float, float]:
         """
-        Calculate the position of the lower left corner of the sample.
+        Calculate the coordinates of the lower left corner of a rectangle.
+
+        Args:
+            a (np.ndarray): The coordinates of the upper left corner.
+            b (np.ndarray): The coordinates of point B.
+            h (float): The height of the rectangle.
+            w (float): The width of the rectangle.
 
         Returns:
-            np.ndarray: The position of the lower left corner of the sample.
+            tuple[float, float]: The coordinates of the lower left corner.
         """
-        if None in (
-            self.width,
-            self.height,
-            self.x_upper_left,
-            self.y_upper_left,
-            self.x_lower_right,
-            self.y_lower_right,
-        ):
-            return None
-        x0 = self.x_upper_left.to('m').magnitude
-        y0 = self.y_upper_left.to('m').magnitude
-        x1 = self.x_lower_right.to('m').magnitude
-        y1 = self.y_lower_right.to('m').magnitude
-        h = self.height.to('m').magnitude
-        w = self.width.to('m').magnitude
-        a = np.array([x0, y0])
-        b = np.array([x1, y1])
         ab = b - a
         d = np.linalg.norm(ab)
         dy = h * (ab[0] * w - ab[1] * h) / d**2
         dx = h * (ab[1] * w + ab[0] * h) / d**2
-        return [x0 + dx, y0 - dy]
+        return (a[0] + dx, a[1] - dy)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -371,14 +374,23 @@ class RectangularSampleAlignment(SampleAlignment):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        if self.affine_transformation is None:
+        if (
+            isinstance(self.width, PintQuantity)
+            and isinstance(self.height, PintQuantity)
+            and isinstance(self.x_upper_left, PintQuantity)
+            and isinstance(self.y_upper_left, PintQuantity)
+            and isinstance(self.x_lower_right, PintQuantity)
+            and isinstance(self.y_lower_right, PintQuantity)
+        ):
             x0 = self.x_upper_left.to('m').magnitude
             y0 = self.y_upper_left.to('m').magnitude
             x1 = self.x_lower_right.to('m').magnitude
             y1 = self.y_lower_right.to('m').magnitude
-            x2, y2 = self.calculate_lower_left()
             h = self.height.to('m').magnitude
             w = self.width.to('m').magnitude
+            x2, y2 = self.calculate_lower_left(
+                np.array([x0, y0]), np.array([x1, y1]), h, w
+            )
             t = AffineTransformation(
                 v1_before=[x0, y0],
                 v2_before=[x2, y2],
@@ -405,6 +417,41 @@ class MappingMeasurement(Measurement):
         section_def=MappingResult,
         repeats=True,
     )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `MappingMeasurement` class.
+        Will normalize the sample alignment and the mapping results.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        super().normalize(archive, logger)
+        result: MappingResult
+        for result in self.results:
+            if (
+                not isinstance(self.sample_alignment, SampleAlignment)
+                or not isinstance(result.y_absolute, PintQuantity)
+                or not isinstance(result.x_absolute, PintQuantity)
+                or not isinstance(
+                    self.sample_alignment.affine_transformation,
+                    AffineTransformation,
+                )
+            ):
+                continue
+            x, y = self.sample_alignment.affine_transformation.transform_vector(
+                np.array(
+                    [
+                        result.x_absolute.to('m').magnitude,
+                        result.y_absolute.to('m').magnitude,
+                    ]
+                )
+            )
+            result.x_relative = x
+            result.y_relative = y
+            result.normalize(archive, logger)
 
 
 m_package.__init_metainfo__()

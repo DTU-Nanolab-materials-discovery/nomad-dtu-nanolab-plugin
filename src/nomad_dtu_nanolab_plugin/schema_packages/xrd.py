@@ -18,7 +18,6 @@
 
 from typing import TYPE_CHECKING, Any
 
-import numpy as np
 import plotly.graph_objects as go
 from fairmat_readers_xrd import read_rigaku_rasx
 from nomad.datamodel.data import Schema
@@ -33,7 +32,6 @@ from nomad_measurements.xrd.schema import (
     XRDResult1D,
     XRDSettings,
 )
-from pint import Quantity as PintQuantity
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -207,25 +205,6 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             self.write_xrd_data(file_data, archive, logger)
             self.figures = []
             self.plot()
-        if self.sample_alignment:
-            result: XRDMappingResult
-            for result in self.results:
-                if not isinstance(result.x_absolute, PintQuantity) or not isinstance(
-                    result.y_absolute, PintQuantity
-                ):
-                    continue
-                # TODO Check that the transformation is there
-                x, y = self.sample_alignment.affine_transformation.transform_vector(
-                    np.array(
-                        [
-                            result.x_absolute.to('m').magnitude,
-                            result.y_absolute.to('m').magnitude,
-                        ]
-                    )
-                )
-                result.x_relative = x
-                result.y_relative = y
-                result.normalize(archive, logger)
         super().normalize(archive, logger)
 
 
