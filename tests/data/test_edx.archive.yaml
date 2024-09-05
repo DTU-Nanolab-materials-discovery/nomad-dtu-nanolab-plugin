@@ -2,10 +2,6 @@ data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.edx.EDXMeasurement
   sample_alignment:
     m_def: nomad_dtu_nanolab_plugin.schema_packages.basesections.RectangularSampleAlignment
-    width: 0.05
-    height: 0.05
-    x_upper_left: 0.0005526
-    y_upper_left: 0.0003364
-    x_lower_right: 0.0505526
-    y_lower_right: -0.0496636
-  edx_data_file: results_0012_single.xlsx
+    width: 0.04
+    height: 0.04
+  edx_data_file: mittma_00012_FR.xlsx

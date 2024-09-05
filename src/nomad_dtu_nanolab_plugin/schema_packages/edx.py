@@ -22,6 +22,7 @@ from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
     MappingMeasurement,
     MappingResult,
+    RectangularSampleAlignment,
 )
 
 if TYPE_CHECKING:
@@ -106,6 +107,10 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
     results = SubSection(
         section_def=EDXResult,
         repeats=True,
+    )
+    sample_alignment = SubSection(
+        section_def=RectangularSampleAlignment,
+        description='The alignment of the sample.',
     )
 
     def plot(self) -> None:
@@ -278,35 +283,49 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        if self.edx_data_file is None:
-            return
-        with archive.m_context.raw_file(self.edx_data_file, 'rb') as edx:
-            df_data = pd.read_excel(edx, header=0)
+        if self.edx_data_file is not None:
+            with archive.m_context.raw_file(self.edx_data_file, 'rb') as edx:
+                df_data = pd.read_excel(edx, sheet_name='Sheet1', header=0)
+                df_alignment = pd.read_excel(edx, sheet_name='Sheet2', header=0)
 
-        self.avg_layer_thickness = ureg.Quantity(
-            df_data['Layer 1 Thickness (nm)'].mean(), 'nm'
-        )
+            corner_x = ureg.Quantity(df_alignment['corner x'].dropna().values, 'mm')
+            corner_y = ureg.Quantity(df_alignment['corner y'].dropna().values, 'mm')
+            if self.sample_alignment is None:
+                self.sample_alignment = RectangularSampleAlignment()
+            self.sample_alignment.x_upper_left = corner_x[0]
+            self.sample_alignment.y_upper_left = corner_y[0]
+            self.sample_alignment.x_lower_right = corner_x[1]
+            self.sample_alignment.y_lower_right = corner_y[1]
+            self.sample_alignment.normalize(archive, logger)
 
-        pattern = r'Layer 1 [A-Z][a-z]? Atomic %'
-        percentage_labels = [
-            label for label in df_data.columns if re.match(pattern, label)
-        ]
+            self.avg_layer_thickness = ureg.Quantity(
+                df_data['Layer 1 Thickness (nm)'].mean(), 'nm'
+            )
 
-        self.results = []
-        for _, row in df_data.iterrows():
-            result = EDXResult()
-            result.x_absolute = ureg.Quantity(row['X (mm)'], 'mm')
-            result.y_absolute = ureg.Quantity(row['Y (mm)'], 'mm')
-            result.layer_thickness = ureg.Quantity(row['Layer 1 Thickness (nm)'], 'nm')
-            result.quantifications = []
-            for label in percentage_labels:
-                element = label.split(' ')[2]
-                atomic_fraction = row[label] * 1e-2
-                result.quantifications.append(
-                    EDXQuantification(element=element, atomic_fraction=atomic_fraction)
+            pattern = r'Layer 1 [A-Z][a-z]? Atomic %'
+            percentage_labels = [
+                label for label in df_data.columns if re.match(pattern, label)
+            ]
+
+            self.results = []
+            for _, row in df_data.iterrows():
+                result = EDXResult()
+                result.x_absolute = ureg.Quantity(row['X (mm)'], 'mm')
+                result.y_absolute = ureg.Quantity(row['Y (mm)'], 'mm')
+                result.layer_thickness = ureg.Quantity(
+                    row['Layer 1 Thickness (nm)'], 'nm'
                 )
-            result.normalize(archive, logger)
-            self.results.append(result)
+                result.quantifications = []
+                for label in percentage_labels:
+                    element = label.split(' ')[2]
+                    atomic_fraction = row[label] * 1e-2
+                    result.quantifications.append(
+                        EDXQuantification(
+                            element=element, atomic_fraction=atomic_fraction
+                        )
+                    )
+                result.normalize(archive, logger)
+                self.results.append(result)
 
         super().normalize(archive, logger)
 
