@@ -214,6 +214,7 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
                     result.y_absolute, PintQuantity
                 ):
                     continue
+                # TODO Check that the transformation is there
                 x, y = self.sample_alignment.affine_transformation.transform_vector(
                     np.array(
                         [

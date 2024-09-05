@@ -91,7 +91,8 @@ class MappingResult(MeasurementResult):
         """
         The normalizer for the `MappingResult` class.
         Will set the name of the section to the relative position of the measurement in
-        mm.
+        mm. If the relative position is not available, the absolute position will be
+        used.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
@@ -105,6 +106,13 @@ class MappingResult(MeasurementResult):
             self.name = (
                 f'({self.x_relative.to("mm").magnitude:.1f}, '
                 f'{self.y_relative.to("mm").magnitude:.1f})'
+            )
+        elif isinstance(self.x_absolute, pint.Quantity) and isinstance(
+            self.y_absolute, pint.Quantity
+        ):
+            self.name = (
+                f'({self.x_absolute.to("mm").magnitude:.1f}, '
+                f'{self.y_absolute.to("mm").magnitude:.1f})'
             )
 
 

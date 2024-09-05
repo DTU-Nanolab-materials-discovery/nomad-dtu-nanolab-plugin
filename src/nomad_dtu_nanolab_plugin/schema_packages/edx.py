@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import pint
 import plotly.graph_objects as go
 from ase.data import chemical_symbols
 from nomad.datamodel.data import ArchiveSection, Schema
@@ -16,6 +15,7 @@ from nomad.datamodel.metainfo.annotations import (
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
+from pint import Quantity as PintQuantity
 from scipy.interpolate import griddata
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -113,14 +113,24 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         quantifications = defaultdict(list)
         result: EDXResult
         for result in self.results:
-            if (
-                not isinstance(result.x_position, pint.Quantity)
-                or not isinstance(result.y_position, pint.Quantity)
-                or not isinstance(result.layer_thickness, pint.Quantity)
-            ):
+            if not isinstance(result.layer_thickness, PintQuantity):
                 continue
-            x.append(result.x_position.to('mm').magnitude)
-            y.append(result.y_position.to('mm').magnitude)
+            if isinstance(result.x_relative, PintQuantity) and isinstance(
+                result.y_relative, PintQuantity
+            ):
+                x.append(result.x_relative.to('mm').magnitude)
+                y.append(result.y_relative.to('mm').magnitude)
+                x_title = 'X Sample Position (mm)'
+                y_title = 'Y Sample Position (mm)'
+            elif isinstance(result.x_absolute, PintQuantity) and isinstance(
+                result.y_absolute, PintQuantity
+            ):
+                x.append(result.x_absolute.to('mm').magnitude)
+                y.append(result.y_absolute.to('mm').magnitude)
+                x_title = 'X Stage Position (mm)'
+                y_title = 'Y Stage Position (mm)'
+            else:
+                continue
             thickness.append(result.layer_thickness.to('nm').magnitude)
             quantification: EDXQuantification
             for quantification in result.quantifications:
@@ -169,8 +179,8 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         # Update layout
         fig.update_layout(
             title='Thickness Colormap',
-            xaxis_title='X Position (mm)',
-            yaxis_title='Y Position (mm)',
+            xaxis_title=x_title,
+            yaxis_title=y_title,
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
@@ -235,8 +245,8 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             # Update layout
             fig.update_layout(
                 title=f'{q} Atomic Fraction Colormap',
-                xaxis_title='X Position (mm)',
-                yaxis_title='Y Position (mm)',
+                xaxis_title=x_title,
+                yaxis_title=y_title,
                 template='plotly_white',
                 hovermode='closest',
                 dragmode='zoom',
@@ -286,8 +296,8 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         self.results = []
         for _, row in df_data.iterrows():
             result = EDXResult()
-            result.x_position = ureg.Quantity(row['X (mm)'], 'mm')
-            result.y_position = ureg.Quantity(row['Y (mm)'], 'mm')
+            result.x_absolute = ureg.Quantity(row['X (mm)'], 'mm')
+            result.y_absolute = ureg.Quantity(row['Y (mm)'], 'mm')
             result.layer_thickness = ureg.Quantity(row['Layer 1 Thickness (nm)'], 'nm')
             result.quantifications = []
             for label in percentage_labels:
