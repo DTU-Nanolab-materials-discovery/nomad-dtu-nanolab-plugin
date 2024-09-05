@@ -90,10 +90,8 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
                     x=result.two_theta.to('deg').magnitude,
                     y=result.intensity.magnitude,
                     mode='lines',
-                    name=(
-                        f'({result.x_absolute.to("mm").magnitude:.1f}, '
-                        f'{result.y_absolute.to("mm").magnitude:.1f})'
-                    ),
+                    name=result.name,
+                    hoverlabel=dict(namelength=-1),
                 )
             )
 

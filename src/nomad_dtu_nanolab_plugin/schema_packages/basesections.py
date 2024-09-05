@@ -103,15 +103,15 @@ class MappingResult(MeasurementResult):
             self.y_relative, ureg.Quantity
         ):
             self.name = (
-                f'({self.x_relative.to("mm").magnitude:.1f}, '
-                f'{self.y_relative.to("mm").magnitude:.1f})'
+                f'Sample x = {self.x_relative.to("mm").magnitude:.1f} mm, '
+                f'y = {self.y_relative.to("mm").magnitude:.1f} mm'
             )
         elif isinstance(self.x_absolute, ureg.Quantity) and isinstance(
             self.y_absolute, ureg.Quantity
         ):
             self.name = (
-                f'({self.x_absolute.to("mm").magnitude:.1f}, '
-                f'{self.y_absolute.to("mm").magnitude:.1f})'
+                f'Stage x = {self.x_absolute.to("mm").magnitude:.1f} mm, '
+                f'y = {self.y_absolute.to("mm").magnitude:.1f} mm'
             )
 
 
