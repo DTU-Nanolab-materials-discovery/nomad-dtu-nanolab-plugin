@@ -208,7 +208,7 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             self.plot()
         if self.sample_alignment:
             for result in self.results:
-                if not result.x_absolute or not result.y_absolute:
+                if result.x_absolute is None or result.y_absolute is None:
                     continue
                 x, y = self.sample_alignment.affine_transformation.transform_vector(
                     np.array(
