@@ -203,9 +203,11 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
                 with archive.m_context.raw_file(file_path) as file:
                     file_data.append(read_rigaku_rasx(file.name, logger))
             self.write_xrd_data(file_data, archive, logger)
-            self.figures = []
-            self.plot()
+
         super().normalize(archive, logger)
+
+        self.figures = []
+        self.plot()
 
 
 m_package.__init_metainfo__()
