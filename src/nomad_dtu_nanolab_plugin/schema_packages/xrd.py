@@ -33,6 +33,7 @@ from nomad_measurements.xrd.schema import (
     XRDResult1D,
     XRDSettings,
 )
+from pint import Quantity as PintQuantity
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -207,8 +208,11 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             self.figures = []
             self.plot()
         if self.sample_alignment:
+            result: XRDMappingResult
             for result in self.results:
-                if result.x_absolute is None or result.y_absolute is None:
+                if not isinstance(result.x_absolute, PintQuantity) or not isinstance(
+                    result.y_absolute, PintQuantity
+                ):
                     continue
                 x, y = self.sample_alignment.affine_transformation.transform_vector(
                     np.array(
