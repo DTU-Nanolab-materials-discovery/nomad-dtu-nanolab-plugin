@@ -39,7 +39,7 @@ from nomad_measurements.utils import merge_sections
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
-from nomad_dtu_nanolab_plugin.sputter_log_reader import read_logfile
+from nomad_dtu_nanolab_plugin.sputter_log_reader import read_logfile, read_events
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -765,16 +765,41 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         )
 
-    def write_log_data(self, log_data: dict, logger: 'BoundLogger') -> None:
+    def write_log_data(self, params: dict, logger: 'BoundLogger') -> None:
         """
         Method for writing the log data to the respective sections.
 
         Args:
-            log_data (dict): Dictionary containing the log data.
+            main_params (dict): Dictionary containing the log data.
             logger (BoundLogger): A structlog logger.
         """
-
+        #Initializing a temporary DTUSputtering object
         sputtering = DTUSputtering()
+
+        #Writing overview
+        sputtering.datetime = params['overview']['log_start_time']
+        sputtering.end_time = params['overview']['log_end_time']
+
+        #Writing deposition parameters
+        sputtering.deposition_parameters.deposition_temperature = (
+            params['deposition']['avg_temp_1']
+        )
+        sputtering.deposition_parameters.deposition_time = (
+            params['deposition']['duration']
+        )
+        sputtering.deposition_parameters.sputter_pressure = (
+            params['deposition']['avg_capman_presssure']
+        )
+        sputtering.deposition_parameters.material_space = (
+            params['deposition']['material_space']
+        )
+
+        #Writing instruments
+        sputtering.instruments.platen_rotation = (
+            params['instruments']['platen_position']
+        )
+
+        #Merging the sputtering object with self
         merge_sections(self, sputtering, logger)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -808,9 +833,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             with archive.m_context.raw_file(self.log_file, 'r') as log:
                 log_data = read_logfile(log.name)
+                events_plot, params, _ = read_events(log_data)
 
-            if log_data is not None:
-                self.write_log_data(log_data)
+            if params is not None:
+                self.write_log_data(params)
 
             self.figures = []
             self.plot(archive, logger)
