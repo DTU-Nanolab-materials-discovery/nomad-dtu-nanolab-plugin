@@ -17,10 +17,17 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
 from mendeleev import element
+import plotly.io as pio
+import copy
+
+
 
 
 # ---------REFERENCE VALUES-------------
 # Set of reference values used in different parts of the script
+# Proportion of values needed to be above the threshold to consider the
+# plasma rf or dc
+TOLERANCE = 0.95
 # Eletrical current threshold above which a dc plasma is considered on
 CURRENT_THRESHOLD = 0.01  # miliamps
 # Bias threshold above which a rf plasma is considered on
@@ -47,11 +54,13 @@ MFC_FLOW_THRESHOLD = 1  # sccm
 FRAQ_ROWS_AVG_VOLTAGE = 5  # %
 # Number of timesteps to consider for the continuity limit
 NUM_TIMESTEP = 10
-# Minimum size of a domain in terms of the average timestep
-MIN_DOMAIN_SIZE = 20
+# Minimum size of a domain in terms of numbers of average timestep
+MIN_DOMAIN_SIZE = 10
+# Minimum size of a deposition in terms of numbers of average timestep
+MIN_DEPOSITION_SIZE = 40
 # Size of the temperature control domains above which we consider that the
-# temperature control was on
-MIN_TEMP_CTRL_SIZE = 10
+# temperature control makes a domain
+MIN_TEMP_CTRL_SIZE = 20
 # Max pressure to read the base pressure
 MAX_BASE_PRESSURE = 1e-6  # Torr
 # variation in percent to consider that the cracker temperature is the same
@@ -102,7 +111,7 @@ class Lf_Event:
         self.source = source
         self.step_number = step_number
         self.step_id = category
-        if category is not 'deposition':
+        if category != 'deposition':
             if source is not None:
                 self.step_id += f'_s{source}'
             if step_number is not None:
@@ -172,10 +181,10 @@ class Lf_Event:
 
             # Convert timestamps to integer indices
             try:
-                end_index = self._data[
+                end_index = self.data[
                     self.data['Time Stamp'] == end_timestamp
                     ].index[0]
-                start_index_next = self._data[
+                start_index_next = self.data[
                     self.data['Time Stamp'] == start_timestamp_next
                     ].index[0]
             except IndexError:
@@ -186,7 +195,7 @@ class Lf_Event:
             # same as the next event
             if self.data[
                 f'Source {self.source} Output Setpoint'
-                ].loc[end_index] == self._data[
+                ].loc[end_index] == self.data[
                     f'Source {self.source} Output Setpoint'
                     ].loc[start_index_next]:
                 # If so, merge the two events
@@ -199,35 +208,45 @@ class Lf_Event:
                 i += 1  # Only increment i if no merge occurred
         self.update_events_and_separated_data()
 
+    def filter_out_small_events(self,min_domain_size):
+        data_list = []
+        for i in range(self.events):
+            if len(self.sep_data[i]) > min_domain_size:
+                data_list.append(self.sep_data[i])
+
+        # Concatenate the list of DataFrames
+        data = pd.concat(data_list, ignore_index=True)
+        self.set_data(data, data)
 
 
     def select_event(self,raw_data,event_loc: int,ref_time=None):
         event_list = []
         if ref_time is None:
             ref_time = self.data['Time Stamp'].iloc[-1]
-            for i in range(self.events):
-                if self.bounds[i][1] < ref_time:
-                    event_list.append(self.sep_data[i])
-            self.set_data(event_list[event_loc], raw_data)
+        for i in range(self.events):
+            if self.bounds[i][1] < ref_time:
+                event_list.append(self.sep_data[i])
+        self.set_data(event_list[event_loc], raw_data)
 
     def get_params(self,raw_data,source_list,params=None):
-        if self.category is 'deposition':
-            params = self.get_all_deposition_params(source_list,raw_data,params)
-        if self.category is 'ramp_up_temp':
-            params = self.get_sub_ramp_up_params(raw_data,params)
-        if self.category is 'ramp_down_high_temp':
-            params = self.get_sub_ramp_down_high_temp_params(raw_data,params)
-        if self.category is 'ramp_down_low_temp':
-            params = self.get_sub_ramp_down_low_temp_params(raw_data,params)
-        if self.category is 'source_presput':
-            params = self.get_source_presput_params(params)
-        if self.category is 'source_ramp_up':
-            params = self.get_source_ramp_up_params(raw_data,params)
-        if self.category is 'cracker_base_pressure':
-            params = self.get_cracker_pressure_params(raw_data,params)
-        if self.category is 'all_source_deprate2_film_meas':
-            params = self.get_deposition_rate_params(params)
+        if self.category == 'deposition':
+            params = self.get_all_deposition_params(source_list,raw_data,params=params)
+        if self.category == 'ramp_up_temp':
+            params = self.get_sub_ramp_up_params(raw_data,params=params)
+        if self.category == 'ramp_down_high_temp':
+            params = self.get_sub_ramp_down_high_temp_params(params=params)
+        if self.category == 'ramp_down_low_temp':
+            params = self.get_sub_ramp_down_low_temp_params(raw_data,params=params)
+        if self.category == 'source_presput':
+            params = self.get_source_presput_params(params=params)
+        if self.category == 'source_ramp_up':
+            params = self.get_source_ramp_up_params(raw_data,params=params)
+        if self.category == 'cracker_base_pressure':
+            params = self.get_cracker_pressure_params(params=params)
+        if self.category == 'all_source_deprate2_film_meas':
+            params = self.get_deposition_rate_params(params=params)
         return params
+
 
     def get_all_deposition_params(self, source_list, raw_data, params=None):
         if self.category != 'deposition':
@@ -238,12 +257,12 @@ class Lf_Event:
         if self.step_id not in params:
             params[self.step_id] = {}
 
-        params = self.get_rt_bool(self, params)
-        params = self.get_source_used_deposition(self, source_list, params)
-        params = self.get_cracker_params(self, raw_data, params)
-        params = self.get_pressure_params(self, raw_data, params)
-        params = self.get_simple_deposition_params(self, params)
-        params = self.get_source_depostion_params(self, source_list, params)
+        params = self.get_rt_bool(params=params)
+        params = self.get_source_used_deposition(source_list, params=params)
+        params = self.get_cracker_params(params=params)
+        params = self.get_pressure_params(raw_data, params=params)
+        params = self.get_simple_deposition_params(params=params)
+        params = self.get_source_depostion_params(source_list, params=params)
         return params
 
     def get_rt_bool(self,params=None):
@@ -278,10 +297,18 @@ class Lf_Event:
         if self.category != 'deposition':
             raise ValueError('This method is only available for the deposition event')
 
+        if params is None:
+            params = {}
+        if self.step_id not in params:
+            params[self.step_id] = {}
+        for source_number in source_list:
+            if f'{source_number}' not in params[self.step_id]:
+                params[self.step_id][f'{source_number}'] = {}
+
         for source_number in source_list:
                 if (
                 not self.data.get(
-                    f'Source {source_number} Enabled', pd.Series([0] * len(deposition.data))
+                    f'Source {source_number} Enabled', pd.Series([0] * len(self.data))
                     ).all()
                     == 0
                     ):
@@ -292,7 +319,7 @@ class Lf_Event:
         return params
 
 
-    def get_cracker_params(self, raw_data, params=None):
+    def get_cracker_params(self, params=None):
     # Extract if the cracker has been used during deposition as the
     # cracker control being enabled and the temperatures of the
     # different zones being above the minimum temperatures
@@ -300,13 +327,14 @@ class Lf_Event:
 
         if self.category != 'deposition':
             raise ValueError('This method is only available for the deposition event')
-
         if params is None:
             params = {}
         if self.step_id not in params:
             params[self.step_id] = {}
+        if 'cracker' not in params[self.step_id]:
+            params[self.step_id]['cracker'] = {}
 
-        if 'Sulfur Cracker Zone 1 Current Temperature' in raw_data.columns:
+        if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
             if (
             (self.data['Sulfur Cracker Control Enabled'] == 1).all()
             and (
@@ -323,7 +351,7 @@ class Lf_Event:
             ).all()
                 ):
                 params[self.step_id]['cracker']['enabled'] = True
-                params[self.step_id]['zone1_temp'] = self.data[
+                params[self.step_id]['cracker']['zone1_temp'] = self.data[
                     'Sulfur Cracker Zone 1 Current Temperature'
                 ].mean()
                 params[self.step_id]['cracker']['zone2_temp'] = self.data[
@@ -342,9 +370,9 @@ class Lf_Event:
                 params[self.step_id]['cracker']['enabled'] = False
         else:
             params[self.step_id]['cracker']['enabled'] = False
+        return params
 
-
-    def get_pressure_params(self, raw_data, param=None):
+    def get_pressure_params(self, raw_data, params=None):
     # Extract the some base pressure metric as the lowest positive
     # pressure recorded before deposition (but only if
     # it is below 1-6Torr). If the cracker is enabled, then this metric is not
@@ -357,14 +385,13 @@ class Lf_Event:
         if self.category != 'deposition':
             raise ValueError('This method is only available for the deposition event')
 
+        if params is None:
+            params = {}
+        if 'overview' not in params:
+            params['overview'] = {}
         if 'deposition' not in params:
             raise ValueError('Missing deposition info, run get_cracker_params first')
 
-        ValueError('Several deposition events detected, failure')
-
-        params = {}
-        if 'overview' not in params:
-            params['overview'] = {}
 
         min_pressure_before_depostion = raw_data.loc[
             pd.to_datetime(raw_data['Time Stamp'])
@@ -372,7 +399,7 @@ class Lf_Event:
             'PC Wide Range Gauge',
             ].min()
 
-        params['lower_pressure_before_deposition'] = min_pressure_before_depostion
+        params['overview']['lower_pressure_before_deposition'] = min_pressure_before_depostion
         if min_pressure_before_depostion < MAX_BASE_PRESSURE:
             if not params[self.step_id]['cracker']['enabled']:
                 params['overview']['true_base_pressure_meas'] = True
@@ -402,7 +429,7 @@ class Lf_Event:
         params[self.step_id]['start_time'] = self.data['Time Stamp'].iloc[0]
         params[self.step_id]['end_time'] = self.data['Time Stamp'].iloc[-1]
         params[self.step_id]['duration'] = (
-        params[self.step_id]['end_time'] - self[self.step_id]['start_time']
+        params[self.step_id]['end_time'] - params[self.step_id]['start_time']
         )
 
         # Extract average temperature during deposition
@@ -469,11 +496,11 @@ class Lf_Event:
             params[self.step_id] = {}
         elements = []
         for source_number in source_list:
-            if params['deposition'][f'{source_number}']['enabled']:
-                params = self.get_avg_output_power(self, params, source_number)
-                params = self.get_plasma_type(self,params, source_number)
-                params = self.get_deposition_voltage(self,params, source_number)
-                params, elements = self.get_source_material_and_target(self, params, source_number, elements)
+            if params[self.step_id][f'{source_number}']['enabled']:
+                params = self.get_avg_output_power(params, source_number)
+                params = self.get_plasma_type(params, source_number)
+                params = self.get_deposition_voltage(params, source_number)
+                params, elements = self.get_source_material_and_target(params, source_number, elements)
                 #Extract source material and target id and add the element to the
                 # elements list for the material space extraction
         # Extract the material space as the elements used during deposition
@@ -484,7 +511,7 @@ class Lf_Event:
         ):
             elements = elements + ['S']
         # add the element as an hypen separated string
-        params[[self.step_id]['material_space']] = '-'.join(elements)
+        params[self.step_id]['material_space'] = '-'.join(elements)
         return params
 
     def get_avg_output_power(self, params, source_number):
@@ -497,9 +524,17 @@ class Lf_Event:
         dc_current_col = f'Source {source_number} Current'
         rf_bias_col = f'Source {source_number} DC Bias'
         pulse_enable_col = f'Source {source_number} Pulse Enabled'
+        fwd_power_col = f'Source {source_number} Fwd Power'
+        rfl_power_col = f'Source {source_number} Rfl Power'
 
+        #We tolerate a certain percentage of the data to be below the threshold
         if dc_current_col in self.data and (
-                self.data[dc_current_col].all() > CURRENT_THRESHOLD):
+            (self.data[dc_current_col] > CURRENT_THRESHOLD).astype(int).quantile(TOLERANCE) or
+            (
+                (self.data[fwd_power_col]
+                - self.data[rfl_power_col])
+                > POWER_FWD_REFL_THRESHOLD).astype(int).quantile(TOLERANCE)
+            ):
             params[self.step_id][f'{source_number}']['dc'] = True
             params[self.step_id][f'{source_number}']['rf'] = False
             if pulse_enable_col in self.data:
@@ -511,9 +546,17 @@ class Lf_Event:
                     params[self.step_id][f'{source_number}']['dead_time'] = (
                             self.data[f'Source {source_number} Reverse Time'].mean())
         elif rf_bias_col in self.data and (
-            self.data[rf_bias_col].all() > BIAS_THRESHOLD):
+            (self.data[rf_bias_col] > BIAS_THRESHOLD).astype(int).quantile(TOLERANCE) or
+            (
+            (self.data[fwd_power_col]
+            - self.data[rfl_power_col])
+            > POWER_FWD_REFL_THRESHOLD).astype(int).quantile(TOLERANCE)
+            ):
             params[self.step_id][f'{source_number}']['rf'] = True
             params[self.step_id][f'{source_number}']['dc'] = False
+        else:
+            print('Error: Plasma type not recognized')
+
         return params
 
     def get_deposition_voltage(self, params, source_number):
@@ -551,7 +594,7 @@ class Lf_Event:
         source_element = str(
             self.data[f'PC Source {source_number} Material'].iloc[0])
         source_element= re.split(r'\s+', source_element)[0]
-        params[self.step_id]['material'] = (
+        params[self.step_id][f'{source_number}']['material'] = (
             element(source_element).symbol)
         params[self.step_id][f'{source_number}']['target_id'] = (
             self.data[f'PC Source {source_number} Loaded Target'].iloc[0])
@@ -566,14 +609,14 @@ class Lf_Event:
 
         if params is None:
             params = {}
-        if 'overview' not in params:
-            params['overview'] = {}
+        if self.step_id not in params:
+            params[self.step_id] = {}
 
         # Extract the S induced base pressure as the mean pressure during
         # the cracker being on and no gas being flown
         if not self.data.empty:
-            params['overview']['cracker_pressure_meas'] = True
-            params['overview']['cracker_pressure'] = self.data[
+            params[self.step_id]['cracker_pressure_meas'] = True
+            params[self.step_id]['cracker_pressure'] = self.data[
             'PC Wide Range Gauge'].mean()
         else:
             params['cracker_pressure_meas'] = False
@@ -588,17 +631,20 @@ class Lf_Event:
             params = {}
         if self.step_id not in params:
             params[self.step_id] = {}
+
         source_number = self.source
         # We check if the source is enabled during deposition
         if params['deposition'][f'{source_number}']['enabled']:
             params[self.step_id]['source'] = source_number
             # ----source presputtering parameters-----
             # Extract the presputtering duration
+            presput_duration = 0
+            for i in range(len(self.bounds)):
+                presput_duration += (
+                    self.bounds[i][1] - self.bounds[i][0]
+                ).total_seconds()
 
-            params[self.step_id]['duration'] = (
-                self.bounds[0][1]
-                - self.bounds[0][0]
-            )
+            params[self.step_id]['duration'] = presput_duration
             # Extract the average output power during presputtering
             params[self.step_id][
                 'avg_output_power'
@@ -606,18 +652,18 @@ class Lf_Event:
                 f'Source {source_number} Output Setpoint'
             ].mean()
             # Extract the avg capman pressure during presputtering
-            params[self.step_id][f'{source_number}'][
+            params[self.step_id][
                 'avg_capman_pressure'
             ] = self.data[
                 'PC Capman Pressure'
             ].mean()
             # Extract the gas flows during presputtering
-            params[self.step_id][f'{source_number}']['avg_ar_flow'] = (
+            params[self.step_id]['avg_ar_flow'] = (
                 self.data['PC MFC 1 Flow'].mean()
                 )
         return params
 
-    def get_source_ramp_up_params(self, raw_data,params=None):
+    def get_source_ramp_up_params(self, raw_data, params=None):
     # Here, we interate over the sources to extract many relevant parameters
 
         if self.category != 'source_ramp_up':
@@ -639,23 +685,33 @@ class Lf_Event:
             # We first filter only the last [-1] source ramp up event with the
             # event filter function
             current_series = raw_data.get(
-                f'Source {source_number} Current', pd.Series([0] * len(data))
+                f'Source {source_number} Current', pd.Series([0] * len(raw_data))
             )
             bias_series = raw_data.get(
-                f'Source {source_number} DC Bias', pd.Series([0] * len(data))
+                f'Source {source_number} DC Bias', pd.Series([0] * len(raw_data))
+            )
+            fwd_power_series = raw_data.get(
+                f'Source {source_number} Fwd Power', pd.Series([0] * len(raw_data))
+            )
+            rfl_power_series = raw_data.get(
+                f'Source {source_number} Rfl Power', pd.Series([0] * len(raw_data))
             )
             # Create a boolean mask for the conditions
-            mask = (current_series > CURRENT_THRESHOLD) | (bias_series > BIAS_THRESHOLD)
+            mask =(
+            (current_series > CURRENT_THRESHOLD) |
+            (bias_series > BIAS_THRESHOLD)|
+            ((fwd_power_series - rfl_power_series) > POWER_FWD_REFL_THRESHOLD)
+            )
             # Apply the mask to get the moment where the plasma is on during
             # ramp up
-            data_ignition_time = raw_data.loc[mask]
+            data_ignition_time = self.data.loc[mask]
             # If the plasma turns on during ramp up, data_ignition_time should
             # not be empty
             if not data_ignition_time.empty:
                 ignition_time = data_ignition_time['Time Stamp'].iloc[0]
                 params[self.step_id]['source_ignition'] = True
                 params[self.step_id]['source_ignition_time'] = ignition_time
-                ignition_data = data[data['Time Stamp'] == ignition_time]
+                ignition_data = self.data[self.data['Time Stamp'] == ignition_time]
                 params[self.step_id]['source_ignition_power'] = (
                     ignition_data[f'Source {source_number} Output Setpoint'].iloc[0])
                 params[self.step_id]['source_ignition_pressure'] = (
@@ -673,6 +729,8 @@ class Lf_Event:
             raise ValueError('Missing deposition info, run get_rt_bool first')
         if self.step_id not in params:
             params[self.step_id] = {}
+        if 'cracker' not in params[self.step_id]:
+            params[self.step_id]['cracker'] = {}
 
         if not params['deposition']['rt']:
             # ------Extract the substrate ramp up parameters------
@@ -729,7 +787,7 @@ class Lf_Event:
             # Extract if the cracker has been used during ramp up
             # The column 'Sulfur Cracker Control Enabled' correspond to the
             # act of opening the cracker pulse valve (1 open, 0 closed)
-            if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
+            if 'Sulfur Cracker Zone 1 Current Temperature' in raw_data.columns:
                 if (
                     (self.data['Sulfur Cracker Control Enabled'] == 1).all()
                     and (
@@ -826,10 +884,16 @@ class Lf_Event:
         if self.step_id not in params:
             params[self.step_id] = {}
 
+        if 'cracker' not in params[self.step_id]:
+            params[self.step_id]['cracker'] = {}
+
         if 'deposition' not in params:
             raise ValueError('Missing deposition info, run get_rt_bool first')
 
         if not params['deposition']['rt']:
+            params[self.step_id]['start_time'] = self.data[
+                'Time Stamp'
+            ].iloc[0]
             params[self.step_id]['end_time'] = self.data[
                 'Time Stamp'
             ].iloc[-1]
@@ -839,6 +903,9 @@ class Lf_Event:
             params[self.step_id]['start_setpoint_temp'] = self.data[
                 'Substrate Heater Temperature Setpoint'
             ].iloc[0]
+            params[self.step_id]['end_setpoint_temp'] = self.data[
+                'Substrate Heater Temperature Setpoint'
+            ].iloc[-1]
 
             # Extract the gases used during the high substrate ramp down
             params[self.step_id]['avg_ar_flow'] = (
@@ -869,7 +936,7 @@ class Lf_Event:
                 else 0
             )
             # Extract if the cracker has been used during ramp down
-            if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
+            if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
                 if (
                     (self.data[
                         'Sulfur Cracker Control Enabled'
@@ -895,7 +962,7 @@ class Lf_Event:
                 ):
                     params[self.step_id]['cracker']['enabled'] = True
                     # if the crack has been used, extract the cracker parameters
-                    params[self.step_id]['zone1_temp'] = (
+                    params[self.step_id]['cracker']['zone1_temp'] = (
                         self.data[
                             'Sulfur Cracker Zone 1 Current Temperature'
                         ].mean()
@@ -934,7 +1001,7 @@ class Lf_Event:
             params[self.step_id]['anion_input_cutoff_time'] = (
                 self.data['Time Stamp'].iloc[-1]
             )
-        return params[self.step_id]
+        return params
 
     def get_sub_ramp_down_low_temp_params(self,params=None):
         if self.category != 'ramp_down_low_temp':
@@ -963,42 +1030,36 @@ class Lf_Event:
 
 
     def get_deposition_rate_params(self, params=None):
-        list_allowed_catergories = [
+        list_allowed_categories = [
             's_deprate2_film_meas',
             'source_deprate2_film_meas',
-            'all_source_deprate2_film_meas']
-        if self.category not in list_allowed_catergories:
+            'all_source_deprate2_film_meas',]
+        if self.category not in list_allowed_categories:
             raise ValueError('This method is only available for the film deposition rate event')
-
         source_number = self.source
 
         if params is None:
             params = {}
         if self.step_id not in params:
             params[self.step_id] = {}
+
         if self.source == None:
             params[self.step_id]['source'] = 'all'
-        else:
-            params[self.step_id]['source'] = source_number
-        source_element = str(
-            self.data[f'PC Source {source_number} Material'].iloc[0])
-        source_element= re.split(r'\s+', source_element)[0]
-#         derived_quant['deposition'][f'{source_number}']['material'] = (
-    #     element(source_element).symbol)
-    # derived_quant['deposition'][f'{source_number}']['target_id'] = (
-    #     deposition.data[f'PC Source {source_number} Loaded Target'].iloc[0])
-        params[self.step_id]['material']= element(source_element).symbol
-        params[self.step_id]['dep_rate'] = self.data['Thickness Rate'].mean()
-        params
-        params[self.step_id]['dep_rate_ref_mat'] = element(
-            self.data['Thickness Active Material']
-            .iloc[0]).symbol
-        if params[self.step_id]['dep_rate_ref_mat'] == source_element:
-            params[self.step_id]['true_dep_rate'] = True
-        else:
-            params[self.step_id]['true_dep_rate'] = False
 
-        # source + all+source + sulfur
+        elif self.source != None:
+            source_element = str(
+            self.data[f'PC Source {source_number} Material'].iloc[0])
+            params[self.step_id]['source'] = source_number
+            source_element= re.split(r'\s+', source_element)[0]
+            params[self.step_id]['material']= element(source_element).symbol
+
+        params[self.step_id]['dep_rate'] = self.data['Thickness Rate'].mean()
+        params[self.step_id]['dep_rate_ref_mat'] = (
+            self.data['Thickness Active Material']
+            .iloc[0])
+
+        return params
+
 # ---------FUNCTIONS DEFINITION------------
 
 # ---------HELPERS FUNCTIONS FOR REPORT GENERATION------------
@@ -1063,11 +1124,11 @@ def convert_timestamps(obj):
 
 
 # Function to print the derived quantities in a nested format
-def print_derived_quantities(quantities, indent=''):
+def print_params(quantities, indent=''):
     for key, value in quantities.items():
         if isinstance(value, dict):
             print(f'{indent}{key}:')
-            print_derived_quantities(value, indent + '  ')
+            print_params(value, indent + '  ')
         else:
             formatted_value = value
             if isinstance(value, pd.Timestamp):
@@ -1237,7 +1298,7 @@ def calculate_avg_true_temp(temp_1, temp_2):
 def within_range(data_col, ref_col_mean, diff_param):
     if ref_col_mean == 0:
         cond =(
-                (data_col > (-MFC_FLOW_THRESHOLD))
+                (data_col > (-MFC_FLOW_THRESHOLD)) &
                 (data_col < (+MFC_FLOW_THRESHOLD))
             )
     else:
@@ -1255,7 +1316,6 @@ def get_source_list(data):
         if col.startswith('PC Source') and col.endswith('Loaded Target'):
             source_number = int(col.split()[2])
             source_list.append(source_number)
-            print(source_list)
     return source_list
 
 # Function to read what source is connected to which power supply and creates column
@@ -1555,10 +1615,6 @@ def filter_data_deposition(data, source_list,**kwargs):
     deposition.set_condition(deposition_cond)
     deposition.filter_data(data)
 
-    if deposition.events != 1:
-        raise ValueError('The code has detected more than one deposition event,\
-                          or no deposition event. Try tuning the parameters')
-
     source_used_list = []
     for source_number in source_list:
         if (
@@ -1790,29 +1846,31 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
             deposition.data['PC MFC 6 Setpoint'].mean(),
             WITHIN_RANGE_PARAM)
     )
-
-    cracker_dep_cond = (
-        within_range(data['Sulfur Cracker Zone 1 Current Temperature'],
-            deposition.data['Sulfur Cracker Zone 1 Current Temperature']
-            .mean(),
-            WITHIN_RANGE_PARAM)
-        & within_range(data['Sulfur Cracker Zone 2 Current Temperature'],
-            deposition.data['Sulfur Cracker Zone 2 Current Temperature']
-            .mean(),
-            WITHIN_RANGE_PARAM)
-        & within_range(data['Sulfur Cracker Zone 3 Current Temperature'],
-            deposition.data['Sulfur Cracker Zone 3 Current Temperature']
-            .mean(),
-            WITHIN_RANGE_PARAM)
-        & within_range(data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
-            deposition.data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback']
-            .mean(),
-            WITHIN_RANGE_PARAM)
-        & within_range(data['Sulfur Cracker Control Setpoint Feedback'],
-            deposition.data['Sulfur Cracker Control Setpoint Feedback']
-            .mean(),
-            WITHIN_RANGE_PARAM)
-        )
+    if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
+        cracker_dep_cond = (
+            within_range(data['Sulfur Cracker Zone 1 Current Temperature'],
+                deposition.data['Sulfur Cracker Zone 1 Current Temperature']
+                .mean(),
+                WITHIN_RANGE_PARAM)
+            & within_range(data['Sulfur Cracker Zone 2 Current Temperature'],
+                deposition.data['Sulfur Cracker Zone 2 Current Temperature']
+                .mean(),
+                WITHIN_RANGE_PARAM)
+            & within_range(data['Sulfur Cracker Zone 3 Current Temperature'],
+                deposition.data['Sulfur Cracker Zone 3 Current Temperature']
+                .mean(),
+                WITHIN_RANGE_PARAM)
+            & within_range(data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
+                deposition.data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback']
+                .mean(),
+                WITHIN_RANGE_PARAM)
+            & within_range(data['Sulfur Cracker Control Setpoint Feedback'],
+                deposition.data['Sulfur Cracker Control Setpoint Feedback']
+                .mean(),
+                WITHIN_RANGE_PARAM)
+            )
+    else:
+        cracker_dep_cond = pd.Series(False, index=data.index)
 
     deprate2_film_meas_cond_list = []
     for source_number in source_list:
@@ -2190,8 +2248,9 @@ def extract_simple_deposition_params(derived_quant,deposition):
     ].mean()
 
     # Extract the average true temperature during deposition
-    derived_quant['deposition']['avg_true_temp'] = calculate_avg_true_temp(
-    derived_quant['deposition']['avg_temp_1'], derived_quant['deposition']['avg_temp_2']
+    if not derived_quant['deposition']['rt']:
+        derived_quant['deposition']['avg_true_temp'] = calculate_avg_true_temp(
+        derived_quant['deposition']['avg_temp_1'], derived_quant['deposition']['avg_temp_2']
     )
 
     # Extract average sputter PC Capman pressure during deposition
@@ -2851,7 +2910,7 @@ def plot_matplotlib_timeline(logfile_name, data,
 
     return timeline
 
-def plot_plotly_extimeline(steps_to_plot,
+def plot_plotly_extimeline(events_to_plot,
                             step_colors):
     '''
     args:
@@ -2875,7 +2934,7 @@ def plot_plotly_extimeline(steps_to_plot,
 
     #Format the steps to be plotted for the plotly timeline
     rows = []
-    for step in steps_to_plot:
+    for step in events_to_plot:
         if isinstance(step, Lf_Event):
             for bounds in step.bounds:
                 rows.append({
@@ -3032,39 +3091,40 @@ def filter_events_by_category(all_events, category):
 #Definition to place the ramp_up_temp, deposition, ramp_down_high_temp,
 # ramp_down_low_temp event first in the list of all events, in this order
 def place_deposition_ramp_up_down_events_first(all_events):
-    '''
-    args:
-        all_events: list
-            List of all the events to be sorted by start time
-    '''
-    # Initialize the list of events to be placed first
-    first_events = []
-    # Initialize the list of events to be placed last
-    last_events = []
-    # Initialize the list of events to be placed in the middle
-    source_events = {}
-    # Loop over all the events
+    # Define the categories that should be placed first
+    priority_categories = {'deposition', 'ramp_up_temp', 'ramp_down_high_temp', 'ramp_down_low_temp'}
+
+    # Separate events into priority categories and others
+    priority_events = []
+    other_events = []
+
     for event in all_events:
-        #If the event is a deposition event, add it to the first events
-        if event.category == 'deposition':
-            first_events.append(event)
-        # If the event is a ramp temp event, add it to the first events
-        if event.category in ['ramp_up_temp', 'ramp_down_high_temp', 'ramp_down_low_temp']:
-            first_events.append(event)
-        # If the event is a source event, add it to the source events
-        elif event.source:
-            if f'{event.source}' not in source_events:
-                source_events[f'{event.source}'] = [event]
-            else:
-                source_events[f'{event.source}'].append(event)
-        # If the event is not one of the above, add it to the middle events
+        if event.category in priority_categories:
+            priority_events.append(event)
         else:
-            last_events.append(event)
-    # Concatenate the first events with the middle events
-    all_events = first_events + last_events
-    for key in source_events:
-        all_events = all_events + source_events[key]
-    return all_events
+            other_events.append(event)
+
+    # Group the non-priority events by source if the source is not None
+    events_by_source = {}
+    no_source_events = []
+
+    for event in other_events:
+        if event.source is not None:
+            if event.source not in events_by_source:
+                events_by_source[event.source] = []
+            events_by_source[event.source].append(event)
+        else:
+            no_source_events.append(event)
+
+    # Flatten the grouped events and append to the result
+    sorted_events = priority_events
+
+    for source, events in events_by_source.items():
+        sorted_events.extend(events)
+
+    sorted_events.extend(no_source_events)
+    return sorted_events
+
 
 #-------ADDITIONAL FUNCTIONS FOR THE OPTIX SPECTRA------------
 
@@ -3237,6 +3297,8 @@ def read_events(data):
     any_source_on, any_source_on_open, deposition, source_used_list = (
     filter_data_deposition(data, source_list, source_on=source_on)
     )
+
+
     add_event_to_events([any_source_on, any_source_on_open, deposition],
         events)
 
@@ -3322,14 +3384,35 @@ def read_events(data):
     #Remove the empty events from the events
     events = [event for event in events if event.bounds]
 
-
     #Place the ramp_up_temp, deposition, ramp_down_high_temp, ramp_down_low_temp
     # event first in the list of all events, in this particular order
     events = place_deposition_ramp_up_down_events_first(events)
 
     #Getting the list of all events to pass it to the plotting function
     # in the future
-    events_to_plot = events
+    events_to_plot = copy.deepcopy(events)
+
+    for event in events:
+        if event.category == 'deposition':
+        # if a deposition event time between the bounds is lower
+        #than MIN_DEPOSITION_SIZE, we consider that the deposition
+        #event is not valid
+            if event.events == 0:
+                print('Error: More than no deposition event')
+            elif event.events > 1:
+                print('More than one deposition event detected.',
+                f'Removing deposition events smaller than {MIN_DEPOSITION_SIZE} steps')
+                print('Number of deposition before after filtering:',
+                event.events)
+                event.filter_out_small_events(MIN_DEPOSITION_SIZE)
+                print('Number of deposition events after filtering:',
+                event.events)
+                if event.events != 1:
+                    raise ValueError(
+                        'Error: Removal failed. The number of deposition events is not 1. '
+                        'Consider changing the MIN_DEPOSITION_SIZE parameter or other parameters'
+                    )
+
 
     #To make a list sutable for making a report, we remove
     #all the events that do not match the categories_for_main_report
@@ -3339,35 +3422,45 @@ def read_events(data):
                                 'cracker_base_pressure','source_deprate2_film_meas',
                                 'all_source_deprate2_film_meas']
 
-    events_for_main_report = [event for event in events if event.category in categories_main_report]
 
-    #For all the events of the main report list, we also get the last_evennt before
+    events_main_report = [copy.deepcopy(event) for event in events if event.category in categories_main_report]
+    #For all the events of the main report list, we also get the last_event before
     #the deposition, using the select_event function, -1 (last) event together with the
     #deposition first bounds
 
-    categories_last_event = ['source_deprate2_film_meas','all_source_deprate2_film_meas','source_presput',
+    # unfold all the events_main_report events to get sep_events
+    sep_events = unfold_events(copy.deepcopy(events_main_report),data)
+
+    categories_last_event = ['source_deprate2_film_meas','all_source_deprate2_film_meas',
                              'source_ramp_up','ramp_up_temp']
 
-    for event in events_for_main_report:
+    for event in events_main_report:
         if event.category in categories_last_event:
-            event.select_event(event,data,-1,deposition.bounds[0][0])
+            event.select_event(data,-1,deposition.bounds[0][0])
+
+    #Initialize the params dictionary for the main and sub report
+    main_params = {}
+    sep_params = {}
 
     #for event in events_for_main_report, we apply the get_ methods for
     #the class Lf_Event to get the params dict
     main_params = get_overview(data)
+    for event in events_main_report:
+        main_params = event.get_params(data,source_list,params=main_params)
     main_params = get_end_of_process(data, main_params)
-    for event in events_for_main_report:
-        main_params = event.get_params(data,source_list,main_params)
 
-    # unfold all the events to get sub_events
-    sub_events = unfold_events(events,data)
+
     # get the individual step params
-    for event in sub_events:
-        sub_params = event.get_params(data,source_list,sub_params)
-    #Sort the subevents by the start time
-    sub_events = sort_events_by_start_time(sub_events)
+    sep_params = get_overview(data)
+    for event in sep_events:
+        sep_params = event.get_params(data,source_list,params=sep_params)
+    sep_params = get_end_of_process(data, sep_params)
 
-    return events_to_plot,main_params,sub_events,sub_params, source_list,all_var
+    #Sort the subevents by the start time
+    sep_events = sort_events_by_start_time(sep_events)
+
+
+    return events_to_plot,main_params,sep_events,sep_params, source_list,all_var
 
 
 
@@ -3446,7 +3539,7 @@ def extract_derived_quantities(logfile_name, data, source_list, all_var):
 #---------------MAIN-----------
 
 def main():
-    global data, deposition,events,sub_events,sorted_list,all_var,plotly_timeline,matplotlib_timeline
+    global events_to_plot,main_params,sep_events,sep_params, source_list,all_var
     logfile_dir = r'O:\Intern\Phosphosulfides\Data\deposition logs'
     logfile_extension = 'CSV'
 
@@ -3462,7 +3555,7 @@ def main():
     logfile_names.remove('mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07')
 
     #To test the script on a single logfile
-    logfile_names= ['anait_0001_BaSZr_RecordingSet 2024.08.29-09.46.59']
+    # logfile_names= ['mittma_0017_Cu_RecordingSet 2024.08.12-12.00.17']
 
     # Loop over all the logfiles in the directory
     for logfile_name in logfile_names:
@@ -3486,7 +3579,7 @@ def main():
         #Same for the plotly graph
         plotly_graph_file_dir = os.path.join(logfile_dir,
             'plotly_process_timeline_graphs')
-        plotly_graph_file_name = f'{logfile_name}_plotly_timeline.png'
+        plotly_graph_file_name = f'{logfile_name}_plotly_timeline.html'
         plotly_graph_file_path = os.path.join(plotly_graph_file_dir,
                                             plotly_graph_file_name)
 
@@ -3495,16 +3588,15 @@ def main():
         # Read the log file and spectrum data
         print('Extracting all the events from the logfile')
         data = read_logfile(logfile_path)
-        print(logfile_path,data)
 
         #----HERE, STARTS THE NOMAD RELEVANT SCRIPT----
 
         # ----READ ALL THE EVENTS IN THE LOGFILE----
-        events_to_plot,main_params,sub_events,sub_params, source_list, all_var = (
+        events_to_plot,main_params,sep_events,sep_params, source_list,all_var = (
             read_events(data))
         # ---EXTRACT DERIVED QUANTITIES IN A DICIONARY TO INPUT IN NOMAD----
-        derived_quant = extract_derived_quantities(
-            logfile_name, data, source_list, all_var)
+        # derived_quant = extract_derived_quantities(
+        #     logfile_name, data, source_list, all_var)
 
         # --------GRAPH THE DIFFERENT STEPS ON A TIME LINE------------
 
@@ -3514,10 +3606,11 @@ def main():
 
         plotly_timeline = plot_plotly_extimeline(events_to_plot,
                                                 STEP_COLORS)
-        # Save the graph as a png file
 
-        #show the plot
-        plotly_timeline.show()
+        # Save the image as an interactive html file
+        plotly_timeline.write_html(plotly_graph_file_path)
+        # plotly_timeline.show()
+
 
         #----HERE STOPS THE NOMAD RELEVANT SCRIPT----
 
@@ -3526,58 +3619,58 @@ def main():
         # Here we use the different bounds of the different events to plot them
         # as thick horizontal lines on a time line, with the different events names
 
-        # Define the steps appearing at the bottom of the graph
-        bottom_steps = [
-        all_var['ramp_up_temp'],
-        all_var['deposition'],
-        all_var['ramp_down_high_temp'],
-        all_var['ramp_down_low_temp']
-        ]
+        # # Define the steps appearing at the bottom of the graph
+        # bottom_steps = [
+        # all_var['ramp_up_temp'],
+        # all_var['deposition'],
+        # all_var['ramp_down_high_temp'],
+        # all_var['ramp_down_low_temp']
+        # ]
 
 
-        other_steps = [
-        all_var['cracker_on_open'],
-        all_var['h2s'],
-        all_var['ph3'],
-        all_var['ar'],
-        all_var['deprate2_sulfur_meas'],
-        all_var['cracker_base_pressure'],
-        all_var['source_ramp_up'],
-        all_var['source_on'],
-        all_var['source_presput'],
-        all_var['deprate2_film_meas']
-        ]
+        # other_steps = [
+        # all_var['cracker_on_open'],
+        # all_var['h2s'],
+        # all_var['ph3'],
+        # all_var['ar'],
+        # all_var['deprate2_sulfur_meas'],
+        # all_var['cracker_base_pressure'],
+        # all_var['source_ramp_up'],
+        # all_var['source_on'],
+        # all_var['source_presput'],
+        # all_var['deprate2_film_meas']
+        # ]
 
 
-        # Create the figure and axis
+        # # Create the figure and axis
 
-        print('Generating the matplotlib plot')
+        # print('Generating the matplotlib plot')
 
-        matplotlib_timeline = (
-            plot_matplotlib_timeline(logfile_name,
-                data,
-                source_used_list,
-                STEP_COLORS,
-                bottom_steps=bottom_steps,
-                other_steps=other_steps))
+        # matplotlib_timeline = (
+        #     plot_matplotlib_timeline(logfile_name,
+        #         data,
+        #         source_used_list,
+        #         STEP_COLORS,
+        #         bottom_steps=bottom_steps,
+        #         other_steps=other_steps))
 
-        # Save the graph as a png file
+        # # Save the graph as a png file
 
-        matplotlib_timeline.savefig(matplotlib_graph_file_path,
-                                    dpi=FIG_EXPORT_DPI, bbox_inches='tight')
+        # matplotlib_timeline.savefig(matplotlib_graph_file_path,
+        #                             dpi=FIG_EXPORT_DPI, bbox_inches='tight')
 
 
 
         # --------PRINT DERIVED QUANTITIES REPORT-------------
 
         # print(f'Derived quantities report for logfile\n{logfile_name}:\n')
-        # print_derived_quantities(derived_quant)
+        # print_params(derived_quant)
 
         # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---
 
         print('Saving the derived quantities report as a text file')
 
-        save_report_as_text(derived_quant, txt_file_path,logfile_name)
+        save_report_as_text(main_params, txt_file_path,logfile_name)
 
         print('\n')
 
