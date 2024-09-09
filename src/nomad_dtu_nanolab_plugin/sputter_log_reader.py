@@ -64,11 +64,24 @@ MAX_BASE_PRESSURE = 1e-6  # Torr
 # as the cracker temperature during deposition to read the cracker induced
 # base pressure
 WITHIN_RANGE_PARAM = 5  # %
-# Default dpi for the figures
-FIG_EXPORT_DPI = 300  # dpi
 # FWD and RFL Power difference threshold above which the plasma is considered
 # on
 POWER_FWD_REFL_THRESHOLD = 10  # watts
+#Categories of events to be considered in the main report
+CATEGORIES_MAIN_REPORT = ['deposition','ramp_up_temp',
+                        'ramp_down_high_temp','ramp_down_low_temp',
+                        'source_presput','source_ramp_up',
+                        'cracker_base_pressure','source_deprate2_film_meas',
+                        'all_source_deprate2_film_meas']
+#Categories of events to select the last event before the deposition, if possible
+CATEGORIES_LAST_EVENT = ['source_deprate2_film_meas',
+        'all_source_deprate2_film_meas',
+        'source_ramp_up','ramp_up_temp']
+#Categories of events to put in the bottom of the timeline plot
+CATEGORIES_FIRST = {'deposition',
+        'ramp_up_temp',
+        'ramp_down_high_temp',
+        'ramp_down_low_temp'}
 # Define a dictionary for step colors in the timeline plot
 STEP_COLORS = {
     'Deposition': 'blue',
@@ -1113,6 +1126,12 @@ class Lf_Event:
         params[self.step_id]['dep_rate_ref_mat'] = (
             self.data['Thickness Active Material']
             .iloc[0])
+        if 'Thickness Material Density' in self.data.columns:
+            params[self.step_id]['dep_rate_ref_density'] = (
+                self.data['Thickness Material Density'].mean())
+        if 'Thickness Material Z' in self.data.columns:
+            params[self.step_id]['dep_rate_ref_z'] = (
+                self.data['Thickness Material Z'].mean())
 
         return params
 
@@ -2314,18 +2333,12 @@ def filter_events_by_category(all_events, category):
 #Definition to place the ramp_up_temp, deposition, ramp_down_high_temp,
 # ramp_down_low_temp event first in the list of all events, in this order
 def place_deposition_ramp_up_down_events_first(all_events):
-    # Define the categories that should be placed first
-    priority_categories = {'deposition',
-        'ramp_up_temp',
-        'ramp_down_high_temp',
-        'ramp_down_low_temp'}
-
     # Separate events into priority categories and others
     priority_events = []
     other_events = []
 
     for event in all_events:
-        if event.category in priority_categories:
+        if event.category in CATEGORIES_FIRST:
             priority_events.append(event)
         else:
             other_events.append(event)
@@ -2350,7 +2363,6 @@ def place_deposition_ramp_up_down_events_first(all_events):
 
     sorted_events.extend(no_source_events)
     return sorted_events
-
 
 #-------ADDITIONAL FUNCTIONS FOR THE OPTIX SPECTRA------------
 
@@ -2643,32 +2655,19 @@ def read_events(data):
 
     #To make a list sutable for making a report, we remove
     #all the events that do not match the categories_for_main_report
-    categories_main_report = ['deposition','ramp_up_temp',
-                                'ramp_down_high_temp','ramp_down_low_temp',
-                                'source_presput','source_ramp_up',
-                                'cracker_base_pressure','source_deprate2_film_meas',
-                                'all_source_deprate2_film_meas']
 
     events_main_report = [
         copy.deepcopy(event)
-        for event in events if event.category in categories_main_report
+        for event in events if event.category in CATEGORIES_MAIN_REPORT
         ]
+
     #For all the events of the main report list, we also get the last_event before
     #the deposition, using the select_event function, -1 (last) event together with the
     #deposition first bounds
+    events = select_last_event(events, data, deposition, CATEGORIES_LAST_EVENT)
 
-    # unfold all the events_main_report events to get sep_events
-    sep_events = unfold_events(copy.deepcopy(events_main_report),data)
-
-    categories_last_event = ['source_deprate2_film_meas',
-        'all_source_deprate2_film_meas',
-        'source_ramp_up','ramp_up_temp']
-
-    events = select_last_event(events, data, deposition, categories_last_event)
-
-    #Initialize the params dictionary for the main and sub report
+    #Initialize the params dictionary for the main report
     main_params = {}
-    sep_params = {}
 
     #for event in events_for_main_report, we apply the get_ methods for
     #the class Lf_Event to get the params dict
@@ -2677,6 +2676,11 @@ def read_events(data):
         main_params = event.get_params(data,source_list,params=main_params)
     main_params = get_end_of_process(data, main_params)
 
+    # unfold all the events_main_report events to get sep_events
+    sep_events = unfold_events(copy.deepcopy(events_main_report),data)
+
+    #Initialize the params dictionary for the sub report
+    sep_params = {}
 
     # get the individual step params
     sep_params = get_overview(data)
