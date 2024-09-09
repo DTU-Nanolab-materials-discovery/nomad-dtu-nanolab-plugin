@@ -37,9 +37,12 @@ from nomad_material_processing.vapor_deposition.pvd.general import PVDSource, PV
 from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
 from nomad_measurements.utils import merge_sections
 
+
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
 from nomad_dtu_nanolab_plugin.sputter_log_reader import read_events, read_logfile
+
+
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -777,26 +780,40 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering = DTUSputtering()
 
         #Writing overview
-        sputtering.datetime = params['overview']['log_start_time']
-        sputtering.end_time = params['overview']['log_end_time']
+        sputtering.datetime = (
+            params['overview']['log_start_time']
+        )
+
+        sputtering.end_time = (
+            params['overview']['log_end_time']
+        )
 
         #Writing deposition parameters
         sputtering.deposition_parameters.deposition_temperature = (
-            params['deposition']['avg_temp_1']
+            params['deposition']['avg_temp_1'] * ureg('degC')
         )
+
         sputtering.deposition_parameters.deposition_time = (
-            params['deposition']['duration']
+            params['deposition']['duration'] * ureg('minute')
         )
+
+        # sputtering.deposition_parameters.sputter_pressure = (
+        #     ureg.Quantity(
+        #     params['deposition']['avg_capman_presssure'], 'mtorr')
+        #     .to('kg/(m*s^2)').magnitude
+        # )
+
         sputtering.deposition_parameters.sputter_pressure = (
-            params['deposition']['avg_capman_presssure']
+            params['deposition']['avg_capman_presssure'] * ureg('mtorr')
         )
+
         sputtering.deposition_parameters.material_space = (
             params['deposition']['material_space']
         )
 
         #Writing instruments
         sputtering.instruments.platen_rotation = (
-            params['instruments']['platen_position']
+            params['instruments']['platen_position'] * ureg('degree')
         )
 
         #Merging the sputtering object with self
@@ -826,7 +843,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             # Extracting the sample name from the log file name
             log_name = os.path.basename(self.log_file)
-            sample_id = log_name.split('_')[0] + '_' + log_name.split('_')[1]
+            sample_id = '_'.join(log_name.split('.')[0:2])
             # If lab_id is empty, assign the sample name to lab_id
             if self.lab_id is None:
                 self.lab_id = sample_id
