@@ -6,14 +6,15 @@ Created on Fri Jun  7 10:46:17 2024
 """
 # ---------PACKAGES-------------
 
+import copy
 import operator
 import os
 import re
 from functools import reduce
+
 import pandas as pd
 import plotly.express as px
 from mendeleev import element
-import copy
 
 # ---------REFERENCE VALUES-------------
 # Set of reference values used in different parts of the script
@@ -261,8 +262,6 @@ class Lf_Event:
         # Concatenate the list of DataFrames
         data = pd.concat(data_list, ignore_index=True)
         self.set_data(data, data)
-
-
 
 
     def select_event(self,raw_data,event_loc: int,ref_time=None):
@@ -1066,7 +1065,8 @@ class Lf_Event:
 
     def get_sub_ramp_down_low_temp_params(self,params=None):
         if self.category != 'ramp_down_low_temp':
-            raise ValueError('This method is only available for the low temperature substrate ramp down event')
+            raise ValueError('This method is only available for',
+            'the low temperature substrate ramp down event')
         if params is None:
             params = {}
         if self.step_id not in params:
@@ -1734,13 +1734,17 @@ def filter_data_cracker_pressure(data, **kwargs):
 
         valve_cond = (
             within_range(
-                data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
+                data[
+                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ],
                 deposition.data[
                 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                 ].mean(),
                 WITHIN_RANGE_PARAM)
             & within_range(
-                data['Sulfur Cracker Control Setpoint Feedback'],
+                data[
+                'Sulfur Cracker Control Setpoint Feedback'
+                ],
                 deposition.data[
                 'Sulfur Cracker Control Setpoint Feedback'
                 ].mean(),
@@ -1767,243 +1771,26 @@ def filter_data_cracker_pressure(data, **kwargs):
 
     return cracker_base_pressure
 
+
 # Condition of the deposition rate measurement is defined as the
 # Xtal2 substrate shutter being open from which we exclude the
 # data points just after the Xtal2 shutter opens, as the QCM
 # needs time to stabilize. The STAB_TIME stabilization time
 # is defined in the reference values section
 def filter_data_film_dep_rate(data, source_list, **kwargs):
-
-    required_keys = ['deposition',
-    'cracker_on_open', 'ph3', 'h2s', 'source_on_open', 'any_source_on_open']
-
-    for key in required_keys:
-        if key not in kwargs:
-            raise ValueError(f"Missing required argument: {key}")
-
-    deposition = kwargs.get('deposition')
-    cracker_on_open = kwargs.get('cracker_on_open')
-    ph3 = kwargs.get('ph3')
-    h2s = kwargs.get('h2s')
-    source_on_open = kwargs.get('source_on_open')
-    any_source_on_open = kwargs.get('any_source_on_open')
-
-    xtal2_open = Lf_Event('Xtal 2 Shutter Open',
-                          category='xtal2_shutter_open'
-                          )
-    deprate2_meas = Lf_Event('Deposition Rate Measurement',
-                             category='deprate2_meas'
-                             )
-
-    deprate2_film_meas = {}
-
-    deprate2_sulfur_meas = Lf_Event('S Dep Rate Meas',
-                                    category='s_deprate2_film_meas'
-                                    )
-
-    if 'Xtal 2 Shutter Open' in data.columns:
-        xtal2_open_cond=data['Xtal 2 Shutter Open'] == 1
-        xtal2_open.set_condition(xtal2_open_cond)
-        xtal2_open.filter_data(data)
-
-        # Set a time window to exclude data points after
-        # the Xtal shutter opens
-        # Identify the indices where the shutter opens (transitions to 1)
-        xtal2_open_indices = data.index[data['Xtal 2 Shutter Open'].diff() == 1]
-        # Create a boolean mask to exclude points within STAB_TIME seconds
-        # after the shutter opens
-        mask = pd.Series(True, index=data.index)
-        for idx in xtal2_open_indices:
-        # Find the time of the shutter opening event
-            open_time = data.at[idx, 'Time Stamp']
-        # Find points within STAB_TIME seconds after the shutter opening
-            within_stab_time = (data['Time Stamp'] > open_time) & (
-            data['Time Stamp'] <= open_time + pd.Timedelta(seconds=STAB_TIME)
-        )
-        # Update the mask to exclude these points
-            mask &= ~within_stab_time
-    # Apply the mask to filter the data
-        deprate2_meas_cond= mask & xtal2_open.cond
-    else:
-        deprate2_meas_cond = pd.Series(False, index=data.index)
-    deprate2_meas.set_condition(deprate2_meas_cond)
-    deprate2_meas.filter_data(data)
-
-    # Define the condition for the Metal-P-S film deposition rate measurement
-    # as the condition just above, with the addition of S or P being flown
-    # or the cracker being on, and the material used as refereced by the QCM
-    # not being Sulfur
-    #We assume here that the deposition rate is not measured during deposition
-    #We also include that the condition of the plasma are within the
-    #WITHIN_RANGE_PARAM of the deposition conditions
-
-    pressure_cond = (
-        within_range(data['PC Capman Pressure'],
-            deposition.data['PC Capman Pressure'].mean(),
-            WITHIN_RANGE_PARAM)
-        )
-
-    ph3_dep_cond = (
-        within_range(data['PC MFC 4 Setpoint'],
-            deposition.data['PC MFC 4 Setpoint'].mean(),
-            WITHIN_RANGE_PARAM)
-    )
-
-    h2s_dep_cond = (
-        within_range(data['PC MFC 6 Setpoint'],
-            deposition.data['PC MFC 6 Setpoint'].mean(),
-            WITHIN_RANGE_PARAM)
-    )
-    if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
-        cracker_dep_cond = (
-            within_range(data['Sulfur Cracker Zone 1 Current Temperature'],
-                deposition.data['Sulfur Cracker Zone 1 Current Temperature']
-                .mean(),
-                WITHIN_RANGE_PARAM)
-            & within_range(data['Sulfur Cracker Zone 2 Current Temperature'],
-                deposition.data['Sulfur Cracker Zone 2 Current Temperature']
-                .mean(),
-                WITHIN_RANGE_PARAM)
-            & within_range(data['Sulfur Cracker Zone 3 Current Temperature'],
-                deposition.data['Sulfur Cracker Zone 3 Current Temperature']
-                .mean(),
-                WITHIN_RANGE_PARAM)
-            & within_range(data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
-                deposition.data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback']
-                .mean(),
-                WITHIN_RANGE_PARAM)
-            & within_range(data['Sulfur Cracker Control Setpoint Feedback'],
-                deposition.data['Sulfur Cracker Control Setpoint Feedback']
-                .mean(),
-                WITHIN_RANGE_PARAM)
-            )
-    else:
-        cracker_dep_cond = pd.Series(False, index=data.index)
-
-    deprate2_film_meas_cond_list = []
-    for source_number in source_list:
-        if f'Source {source_number} Output Setpoint' in data.columns:
-            power_cond = (
-                within_range(data[f'Source {source_number} Output Setpoint'],
-                            deposition.data[f'Source {source_number} Output Setpoint']
-                            .mean(),
-                            WITHIN_RANGE_PARAM)
-            )
-            deprate2_film_meas_cond = (
-            deprate2_meas_cond
-            & source_on_open[f'{source_number}'].cond
-            & (cracker_dep_cond | h2s_dep_cond)
-            & ph3_dep_cond
-            & (data['Thickness Active Material']!= 'Sulfur')
-            & ~deposition.cond
-            & power_cond
-            & pressure_cond
-            )
-            deprate2_film_meas_cond_list.append(deprate2_film_meas_cond)
-
-            deprate2_film_meas[f'{source_number}'] = Lf_Event(
-                f'Source {source_number} Film Dep Rate Meas',
-                source=source_number,
-                category='source_deprate2_film_meas')
-            deprate2_film_meas[f'{source_number}'].set_source(source_number)
-            deprate2_film_meas[f'{source_number}'].set_condition(deprate2_film_meas_cond)
-            deprate2_film_meas[f'{source_number}'].filter_data(data)
-
-    #We define the condition for the all sources film deposition rate measurement
-    # as the combination of al the film dep rate conditions above
-
-    deprate2_ternary_meas_cond = reduce(operator.and_, deprate2_film_meas_cond_list)
-    deprate2_ternary_meas = Lf_Event('All Source Film Dep Rate Meas',source=None,
-                                     category='all_source_deprate2_film_meas')
-    deprate2_ternary_meas.set_condition(deprate2_ternary_meas_cond)
-    deprate2_ternary_meas.filter_data(data)
-
-
-    # Define the condition for the onlt Sulfur film deposition rate measurement as:
-    #  with the material used as refereced by the QCM
-    # being Sulfur
-    #We also include the condition of the cracker are
-    #within the WITHIN_RANGE_PARAM of the deposition conditions¨
-    if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
-        cracker_temp_cond = (
-        within_range(data['Sulfur Cracker Zone 1 Current Temperature'],
-            deposition.data[
-            'Sulfur Cracker Zone 1 Current Temperature'
-            ].mean(),
-            WITHIN_RANGE_PARAM)
-        & within_range(data['Sulfur Cracker Zone 2 Current Temperature'],
-            deposition.data[
-            'Sulfur Cracker Zone 2 Current Temperature'
-            ].mean(),
-            WITHIN_RANGE_PARAM)
-        & within_range(data['Sulfur Cracker Zone 3 Current Temperature'],
-            deposition.data[
-            'Sulfur Cracker Zone 3 Current Temperature'
-            ].mean(),
-            WITHIN_RANGE_PARAM)
-    )
-
-        valve_cond = (
-            within_range(
-                data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
-                deposition.data[
-                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                ].mean(),
-                WITHIN_RANGE_PARAM)
-            & within_range(data['Sulfur Cracker Control Setpoint Feedback'],
-                deposition.data[
-                'Sulfur Cracker Control Setpoint Feedback'
-                ].mean(),
-                WITHIN_RANGE_PARAM)
-            )
-
-        pressure_cond = (
-            within_range(data['PC Capman Pressure'],
-                deposition.data[
-                'PC Capman Pressure'
-                ].mean(),
-                WITHIN_RANGE_PARAM)
-            )
-
-
-        deprate2_sulfur_meas_cond = (
-        deprate2_meas.cond
-        & ~any_source_on_open.cond
-        & cracker_on_open.cond
-        & ~(ph3.cond | h2s.cond)
-        & (data['Thickness Active Material'] == 'Sulfur')
-        & ~deposition.cond
-        & cracker_temp_cond
-        & valve_cond
-        & pressure_cond
-    )
-    else:
-        deprate2_sulfur_meas_cond = pd.Series(False, index=data.index)
-
-    deprate2_sulfur_meas.set_condition(deprate2_sulfur_meas_cond)
-    deprate2_sulfur_meas.filter_data(data)
-
-    return deprate2_ternary_meas, deprate2_film_meas, deprate2_meas, xtal2_open, deprate2_sulfur_meas
-
-# Condition of the deposition rate measurement is defined as the
-# Xtal2 substrate shutter being open from which we exclude the
-# data points just after the Xtal2 shutter opens, as the QCM
-# needs time to stabilize. The STAB_TIME stabilization time
-# is defined in the reference values section
-def filter_data_film_dep_rate_test(data, source_list, **kwargs):
-    required_keys = ['deposition',
-            'cracker_on_open', 'ph3', 'h2s', 'source_on_open', 'any_source_on_open']
+    required_keys = ['deposition','source_on_open',
+    'any_source_on_open','cracker_on_open', 'ph3', 'h2s']
 
     for key in required_keys:
         if key not in kwargs:
             raise ValueError(f"Missing required argument: {key}")
 
     deposition = kwargs.get('deposition')
+    source_on_open = kwargs.get('source_on_open')
+    any_source_on_open = kwargs.get('any_source_on_open')
     cracker_on_open = kwargs.get('cracker_on_open')
     ph3 = kwargs.get('ph3')
     h2s = kwargs.get('h2s')
-    source_on_open = kwargs.get('source_on_open')
-    any_source_on_open = kwargs.get('any_source_on_open')
 
     xtal2_open = Lf_Event('Xtal 2 Shutter Open',
                           category='xtal2_shutter_open')
@@ -2013,7 +1800,8 @@ def filter_data_film_dep_rate_test(data, source_list, **kwargs):
     deprate2_sulfur_meas = Lf_Event('S Dep Rate Meas',
                                     category='s_deprate2_film_meas')
 
-    xtal2_open, deprate2_meas = define_xtal2_open_conditions(data, xtal2_open,deprate2_meas)
+    xtal2_open, deprate2_meas = (
+        define_xtal2_open_conditions(data, xtal2_open,deprate2_meas))
 
     # Define the condition for the Metal-P-S film deposition rate measurement
     # as the condition just above, with the addition of S or P being flown
@@ -2023,13 +1811,38 @@ def filter_data_film_dep_rate_test(data, source_list, **kwargs):
     #We also include that the condition of the plasma are within the
     #WITHIN_RANGE_PARAM of the deposition conditions
 
-    pressure_cond, ph3_dep_cond, h2s_dep_cond, cracker_dep_cond = define_deposition_conditions(data, deposition)
+    pressure_cond, ph3_dep_cond, h2s_dep_cond, cracker_dep_cond = (
+        define_deposition_conditions(data, deposition))
 
-    deprate2_film_meas, deprate2_ternary_meas = define_film_meas_conditions(data, source_list, deprate2_meas, source_on_open, cracker_dep_cond, h2s_dep_cond, ph3_dep_cond, deposition, pressure_cond, deprate2_film_meas)
+    deprate2_film_meas, deprate2_ternary_meas = (
+        define_film_meas_conditions(
+            data,
+            source_list,
+            deprate2_meas = deprate2_meas,
+            source_on_open = source_on_open,
+            cracker_dep_cond = cracker_dep_cond,
+            h2s_dep_cond = h2s_dep_cond,
+            ph3_dep_cond = ph3_dep_cond,
+            deposition = deposition,
+            pressure_cond = pressure_cond,
+            deprate2_film_meas = deprate2_film_meas))
 
-    deprate2_sulfur_meas = define_sulfur_meas_conditions(data, deprate2_meas,deprate2_sulfur_meas, **kwargs)
+    deprate2_sulfur_meas = (
+        define_sulfur_meas_conditions(data,
+        deprate2_meas, deprate2_sulfur_meas,
+        deposition = deposition,
+        any_source_on_open = any_source_on_open,
+        cracker_on_open = cracker_on_open,
+        ph3 = ph3,
+        h2s = h2s))
 
-    return deprate2_ternary_meas, deprate2_film_meas, deprate2_meas, xtal2_open, deprate2_sulfur_meas
+    return (
+        deprate2_ternary_meas,
+        deprate2_film_meas,
+        deprate2_meas,
+        xtal2_open,
+        deprate2_sulfur_meas
+    )
 
 def define_xtal2_open_conditions(data, xtal2_open,deprate2_meas):
     if 'Xtal 2 Shutter Open' in data.columns:
@@ -2081,20 +1894,28 @@ def define_deposition_conditions(data, deposition):
     )
     if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
         cracker_dep_cond = (
-            within_range(data['Sulfur Cracker Zone 1 Current Temperature'],
+            within_range(
+                data['Sulfur Cracker Zone 1 Current Temperature'],
                 deposition.data['Sulfur Cracker Zone 1 Current Temperature']
                 .mean(),
                 WITHIN_RANGE_PARAM)
-            & within_range(data['Sulfur Cracker Zone 2 Current Temperature'],
+            & within_range(
+                data['Sulfur Cracker Zone 2 Current Temperature'],
                 deposition.data['Sulfur Cracker Zone 2 Current Temperature']
                 .mean(),
                 WITHIN_RANGE_PARAM)
-            & within_range(data['Sulfur Cracker Zone 3 Current Temperature'],
+            & within_range(
+                data['Sulfur Cracker Zone 3 Current Temperature'],
                 deposition.data['Sulfur Cracker Zone 3 Current Temperature']
                 .mean(),
                 WITHIN_RANGE_PARAM)
-            & within_range(data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
-                deposition.data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback']
+            & within_range(
+                data[
+                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ],
+                deposition.data[
+                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ]
                 .mean(),
                 WITHIN_RANGE_PARAM)
             & within_range(data['Sulfur Cracker Control Setpoint Feedback'],
@@ -2106,7 +1927,19 @@ def define_deposition_conditions(data, deposition):
         cracker_dep_cond = pd.Series(False, index=data.index)
     return pressure_cond, ph3_dep_cond, h2s_dep_cond, cracker_dep_cond
 
-def define_film_meas_conditions(data, source_list, deprate2_meas, source_on_open, cracker_dep_cond, h2s_dep_cond, ph3_dep_cond, deposition, pressure_cond, deprate2_film_meas):
+def define_film_meas_conditions(data, source_list,**kwargs):
+
+
+    deprate2_meas=kwargs.get('deprate2_meas')
+    source_on_open = kwargs.get('source_on_open')
+    cracker_dep_cond = kwargs.get('cracker_dep_cond')
+    h2s_dep_cond = kwargs.get('h2s_dep_cond')
+    ph3_dep_cond = kwargs.get('ph3_dep_cond')
+    deposition= kwargs.get('deposition')
+    pressure_cond = kwargs.get('pressure_cond')
+    deprate2_film_meas = kwargs.get('deprate2_film_meas')
+
+
     deprate2_film_meas_cond_list = []
     for source_number in source_list:
         if f'Source {source_number} Output Setpoint' in data.columns:
@@ -2122,7 +1955,6 @@ def define_film_meas_conditions(data, source_list, deprate2_meas, source_on_open
             & (cracker_dep_cond | h2s_dep_cond)
             & ph3_dep_cond
             & (data['Thickness Active Material']!= 'Sulfur')
-            & ~deposition.cond
             & power_cond
             & pressure_cond
             )
@@ -2135,8 +1967,9 @@ def define_film_meas_conditions(data, source_list, deprate2_meas, source_on_open
             deprate2_film_meas[f'{source_number}'].set_source(source_number)
             deprate2_film_meas[f'{source_number}'].set_condition(deprate2_film_meas_cond)
             deprate2_film_meas[f'{source_number}'].filter_data(data)
-            #We define the condition for the all sources film deposition rate measurement
-    # as the combination of al the film dep rate conditions above
+            #We define the condition for the all sources film
+            # deposition rate measurement
+            # as the combination of al the film dep rate conditions above
 
     deprate2_ternary_meas_cond = reduce(operator.and_, deprate2_film_meas_cond_list)
     deprate2_ternary_meas = Lf_Event('All Source Film Dep Rate Meas',source=None,
@@ -2146,7 +1979,7 @@ def define_film_meas_conditions(data, source_list, deprate2_meas, source_on_open
 
     return deprate2_film_meas, deprate2_ternary_meas
 
-def define_sulfur_meas_conditions(data, deprate2_meas,deprate2_sulfur_meas, **kwargs):
+def define_sulfur_meas_conditions(data, deprate2_meas, deprate2_sulfur_meas, **kwargs):
     deposition = kwargs.get('deposition')
     any_source_on_open = kwargs.get('any_source_on_open')
     cracker_on_open = kwargs.get('cracker_on_open')
@@ -2310,138 +2143,6 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
 
 #-------PLOTTING DEFINITIONS------------
 
-def plot_matplotlib_timeline(logfile_name, data,
-        source_used_list, step_colors, **kwargs):
-
-    required_steps = ['bottom_steps', 'other_steps']
-
-    for step in required_steps:
-        if step not in kwargs:
-            raise ValueError(f'{step} is a required argument')
-
-    bottom_steps = kwargs['bottom_steps']
-    other_steps = kwargs['other_steps']
-    '''
-    args:
-        logfile_name: str
-            Name of the logfile to be used in the title of the plot
-        data: pd.DataFrame
-            Dataframe containing the raw data
-        source_used_list: list
-            List of sources used during the process
-        bottom_steps: list
-            List of steps to be plotted at the bottom of the plot
-        non_source_steps: list
-            List of steps to be plotted above the bottom steps
-        source_steps: list
-            List of source dependent steps to be plotted
-            above the non_source_steps
-        step_colors: dict
-            Dictionary containing the colors to be used for each step
-            in the plot
-    '''
-
-    # Remove the steps in bottom_steps that have empty bounds
-    bottom_steps = [step for step in bottom_steps if step.bounds]
-
-    #The non_source_steps are Lf_Event objects
-    non_source_steps = [step for step in other_steps if isinstance(step,Lf_Event)]
-
-    #Remove the non_source_steps that have empty bounds
-    non_source_steps = [step for step in non_source_steps if step.bounds]
-
-    # Number of steps at the bottom of the graph
-    number_step_bottom = len(bottom_steps)
-
-    # Combine bottom_steps and non_source_steps
-    all_non_source_steps = bottom_steps + non_source_steps
-
-    #The source steps are dictorionaries with the source number as key
-    source_steps = [step for step in other_steps if isinstance(step,dict)]
-
-    #Remove the source_steps that have empty bounds
-    for source_number in source_used_list:
-        source_steps = [step for step in source_steps if (
-            step.get(f'{source_number}')) and step[f'{source_number}'].bounds]
-
-    steps_plot = {
-    'name': [],
-    'bounds': []
-    }
-    # Extract the variable names and bounds
-    for step in all_non_source_steps:
-        steps_plot['name'].append(step.name)
-        steps_plot['bounds'].append(step.bounds)
-
-    for source_number in source_used_list:
-        for step in source_steps:
-            if step[f'{source_number}'].bounds:
-                steps_plot['name'].append(step[f'{source_number}'].name)
-                steps_plot['bounds'].append(step[f'{source_number}'].bounds)
-
-    #initialize the figure
-    timeline = plt.figure(figsize=(8, 3))
-
-    # Create a figure and axis
-    ax = timeline.add_subplot(111)
-
-    # Set up the axis limits and labels
-    ax.set_xlim(data['Time Stamp'].iloc[0], data['Time Stamp'].iloc[-1])
-    ax.set_xlabel('Time', fontsize=12)
-
-    # Set time ticks format
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-
-    # Title of the plot
-    ax.set_title(f'Process Timeline for sample:\n{logfile_name}', #y=-0.5,
-    fontsize=12, pad=20)
-
-
-    # Defining to counters to keep track of the current step
-    # and when to start stacking events on top of each other
-    i,j = 0, 0
-    while i < len(steps_plot['name']):
-        label_added = False  # Flag to track if the label has been added
-        #let k iterate over the number of events in the step
-        for k in range(len(steps_plot['bounds'][i])):
-            # Get the bounds
-            start_time = steps_plot['bounds'][i][k][0]
-            end_time = steps_plot['bounds'][i][k][1]
-            # Plot the step as a horizontal line
-            ax.axvspan(
-            start_time,
-            end_time,
-            # Set the y position of the step to match the vertical
-            # extent of the graphs (0<y<2)
-            ymin=j/(len(steps_plot['name'])-number_step_bottom+1),
-            ymax=(j+1)/(len(steps_plot['name'])-number_step_bottom+1),
-            color=step_colors[steps_plot['name'][i]],
-             # Add label only if not already added
-            label=steps_plot['name'][i] if not label_added else "",
-            )
-            label_added = True  # Set the flag to True after adding the label
-        i += 1
-        #Only increment the counter responsible for stacking the events on top of each
-        # other after the step number NUMBER_STEPS_BOTTOM has been reached
-        if i > number_step_bottom-1:
-            j += 1
-
-    # Get the handles and labels from the current legend
-    handles, labels = ax.get_legend_handles_labels()
-
-    # Reverse the order of handles and labels
-    handles.reverse()
-    labels.reverse()
-
-    # Create the legend with the reversed order outside the graph
-    ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1, 1.3))
-
-    #  Remove the y axis ticks and labels
-    ax.set_yticks([])
-    ax.set_ylabel('')
-
-    return timeline
-
 def plot_plotly_extimeline(events_to_plot,
                             step_colors):
     '''
@@ -2587,16 +2288,6 @@ def add_event_to_events(event, all_events):
         )
     return all_events
 
-def add_event_to_variables(event, name, all_var):
-    '''
-    '''
-    if isinstance(event, list):
-        for i in range(len(event)):
-            all_var[name[i]]= event[i]
-    elif isinstance(event, Lf_Event) or isinstance(event, dict):
-        all_var[name] = event
-    return all_var
-
 #Definition to sort the events by the start time
 #PROBLEM WITH THIS FUNCTION
 def sort_events_by_start_time(all_events):
@@ -2624,7 +2315,10 @@ def filter_events_by_category(all_events, category):
 # ramp_down_low_temp event first in the list of all events, in this order
 def place_deposition_ramp_up_down_events_first(all_events):
     # Define the categories that should be placed first
-    priority_categories = {'deposition', 'ramp_up_temp', 'ramp_down_high_temp', 'ramp_down_low_temp'}
+    priority_categories = {'deposition',
+        'ramp_up_temp',
+        'ramp_down_high_temp',
+        'ramp_down_low_temp'}
 
     # Separate events into priority categories and others
     priority_events = []
@@ -2751,7 +2445,8 @@ def filter_spectrum(spectra, bounds):
                 filtered_spectra['timestamp_map'][timestamp_key] = timestamp
 
     if filtered_spectra['data']:
-        filtered_spectra['data'] = pd.concat(filtered_spectra['data'], axis=1).T.drop_duplicates().T
+        filtered_spectra['data'] = pd.concat(
+            filtered_spectra['data'], axis=1).T.drop_duplicates().T
     else:
         filtered_spectra['data'] = pd.DataFrame()
 
@@ -2759,7 +2454,6 @@ def filter_spectrum(spectra, bounds):
 
 # normalize the data in a column
 def normalize_column(df, column_name):
-    df2=pd.DataFrame() # type: ignore
     min_val = df[column_name].min()
     max_val = df[column_name].max()
     return (df[column_name] - min_val) / (max_val - min_val)
@@ -2783,6 +2477,58 @@ def formatting_logfile(data):
     #Initialize the list of all events
     return data, source_list
 
+def verify_deposition_unicity(events,raw_data):
+    for event in events:
+        if event.category == 'deposition':
+        # if a deposition event time between the bounds is lower
+        #than MIN_DEPOSITION_SIZE, we consider that the deposition
+        #event is not valid
+            if event.events == 0:
+                print('Error: More than no deposition event')
+            elif event.events > 1:
+                print('More than one deposition event detected.',
+                'Removing deposition events smaller than',
+                f'{MIN_DEPOSITION_SIZE} steps')
+                print('Number of deposition events before filtering:',
+                event.events,'\n')
+                for i in range(event.events):
+                    print(f'Deposition {i} start time: {event.bounds[i][0]}',
+                    f'Deposition {i} end time: {event.bounds[i][1]}')
+                event.filter_out_small_events(MIN_DEPOSITION_SIZE)
+                print('Number of deposition events after filtering:',
+                event.events)
+                for i in range(event.events):
+                    print(f'Deposition {i+1} start time: {event.bounds[i][0]}',
+                    f'Deposition {i+1} end time: {event.bounds[i][1]}')
+                if event.events != 1:
+                    print(
+                    'Removal failed. The number of deposition events is not 1.',
+                    'Increasing the continuity limit to',
+                    DEPOSITION_CONTINUITY_LIMIT)
+                    # We try to increase the continuity limit to
+                    # DEPOSITION_CONTINUITY_LIMIT)
+                    event.set_data(event.data, raw_data,
+                    continuity_limit=DEPOSITION_CONTINUITY_LIMIT)
+                    if event.events != 1:
+                        raise ValueError(
+                            'Error: The number of deposition events is not 1 ',
+                            'after increasing the continuity limit and fitlering ',
+                            'smaller events'
+                        )
+                    else:
+                        print('A unique deposition event was succesfully filtered')
+    return events
+
+def select_last_event(events, raw_data, deposition,categories):
+    for event in events:
+        if event.category in categories:
+            try:
+                event.select_event(raw_data, -1, deposition.bounds[0][0])
+            except Exception as e:
+                print("Warning: Failed to find any event before deposition for",
+                f"{event.step_id}. Error: {e}")
+    return events
+
 def read_events(data):
     print('Formatting the dataframe for conditional filtering')
     data, source_list = formatting_logfile(data)
@@ -2790,7 +2536,6 @@ def read_events(data):
     # ---------DEFINE DE CONDITIONS FOR DIFFERENT EVENTS-------------
     #Initialize the list of all events
     events = []
-    all_var = {}
 
     print('Defining the conditions and filtering the data')
 
@@ -2800,43 +2545,28 @@ def read_events(data):
 
     add_event_to_events([source_on,source_on_open,source_ramp_up],events)
 
-    add_event_to_variables([source_on,source_on_open,source_ramp_up],
-                           ['source_on','source_on_open','source_ramp_up'],
-                           all_var)
-
     # ---------2/CONDITION FOR THE CRACKER BEING ON--------
     cracker_on_open = filter_data_cracker_on_open(data)
 
     add_event_to_events(cracker_on_open,events)
-
-    add_event_to_variables(cracker_on_open,'cracker_on_open',all_var)
 
     # ---------3/CONDITION FOR THE TEMPERATURE CONTROL--------
     temp_ctrl = filter_data_temp_ctrl(data)
 
     add_event_to_events(temp_ctrl,events)
 
-    add_event_to_variables(temp_ctrl,'temp_ctrl',all_var)
-
     # ----- 4/CONDITIONS FOR THE DIFFERENT GASES BEING FLOWN--------
     ph3, h2s, ar = filter_gas(data)
 
     add_event_to_events([ph3, h2s, ar],events)
-
-    add_event_to_variables([ph3, h2s, ar],['ph3', 'h2s', 'ar'],all_var)
 
     # ---------5/CONDITIONS FOR THE DEPOSITION--------
     any_source_on, any_source_on_open, deposition, source_used_list = (
     filter_data_deposition(data, source_list, source_on=source_on)
     )
 
-
     add_event_to_events([any_source_on, any_source_on_open, deposition],
         events)
-
-    add_event_to_variables([any_source_on, any_source_on_open, deposition],
-        ['any_source_on', 'any_source_on_open', 'deposition'], all_var)
-
 
     # ---------6/CONDITIONS FOR THE DIFFERENT SOURCES BEING PRESPUTTERED--------
     source_presput = filter_data_plasma_presput(
@@ -2850,8 +2580,6 @@ def read_events(data):
 
     add_event_to_events(source_presput,events)
 
-    add_event_to_variables(source_presput, 'source_presput', all_var)
-
     # ---------7/CONDITIONS FOR THE S CRACKER PRESSURE MEAS--------
     #Filter the data for the S Cracker pressure
     cracker_base_pressure = filter_data_cracker_pressure(data,
@@ -2863,35 +2591,27 @@ def read_events(data):
 
     add_event_to_events(cracker_base_pressure,events)
 
-    add_event_to_variables(cracker_base_pressure,'cracker_base_pressure',all_var)
-
     # ---------8/CONDITIONS FOR THE DEPOSITION RATE MEASUREMENT--------
-    deprate2_ternary_meas, deprate2_film_meas, deprate2_meas, xtal2_open, deprate2_sulfur_meas = (
-    filter_data_film_dep_rate_test(data, source_list,
+
+    (deprate2_ternary_meas,
+    deprate2_film_meas,
+    deprate2_meas,
+    xtal2_open,
+    deprate2_sulfur_meas) = (filter_data_film_dep_rate(
+        data, source_list,
         deposition = deposition,
+        source_on_open = source_on_open,
+        any_source_on_open = any_source_on_open,
         cracker_on_open = cracker_on_open,
         ph3 = ph3,
-        h2s = h2s,
-        source_on_open = source_on_open,
-        any_source_on_open = any_source_on_open))
+        h2s = h2s
+    ))
 
     add_event_to_events([deprate2_meas,
                         xtal2_open,
                         deprate2_sulfur_meas,
                         deprate2_film_meas,
                         deprate2_ternary_meas],events)
-
-    add_event_to_variables([deprate2_meas,
-                            xtal2_open,
-                            deprate2_sulfur_meas,
-                            deprate2_film_meas,
-                            deprate2_ternary_meas],
-                            ['deprate2_meas',
-                            'xtal2_open',
-                            'deprate2_sulfur_meas',
-                            'deprate2_film_meas',
-                            'deprate2_ternary_meas'
-                            ],all_var)
 
     # ---9/CONDITIONS FOR THE SUBSTRATE TEMPERATURE RAMPING UP OR DOWN-----
     # Filter the data for the substrate temperature ramping up or down
@@ -2906,12 +2626,6 @@ def read_events(data):
                         ramp_down_high_temp,
                         ramp_down_low_temp],events)
 
-    add_event_to_variables([ramp_up_temp, ramp_down_temp,
-                            ramp_down_high_temp,
-                            ramp_down_low_temp],
-                            ['ramp_up_temp', 'ramp_down_temp',
-                            'ramp_down_high_temp','ramp_down_low_temp'],
-                            all_var)
 
     #Remove the empty events from the events
     events = [event for event in events if event.bounds]
@@ -2924,41 +2638,8 @@ def read_events(data):
     # in the future
     events_to_plot = copy.deepcopy(events)
 
-    for event in events:
-        if event.category == 'deposition':
-        # if a deposition event time between the bounds is lower
-        #than MIN_DEPOSITION_SIZE, we consider that the deposition
-        #event is not valid
-            if event.events == 0:
-                print('Error: More than no deposition event')
-            elif event.events > 1:
-                print('More than one deposition event detected.',
-                f'Removing deposition events smaller than {MIN_DEPOSITION_SIZE} steps')
-                print('Number of deposition events before filtering:',
-                event.events,'\n')
-                for i in range(event.events):
-                    print(f'Deposition {i} start time: {event.bounds[i][0]}',
-                    f'Deposition {i} end time: {event.bounds[i][1]}')
-                event.filter_out_small_events(MIN_DEPOSITION_SIZE)
-                print('Number of deposition events after filtering:',
-                event.events)
-                for i in range(event.events):
-                    print(f'Deposition {i+1} start time: {event.bounds[i][0]}',
-                    f'Deposition {i+1} end time: {event.bounds[i][1]}')
-                if event.events != 1:
-                    print('Removal failed. The number of deposition events is not 1.',
-                    'Increasing the continuity limit to', DEPOSITION_CONTINUITY_LIMIT)
-                    # We try to increase the continuity limit to DEPOSITION_CONTINUITY_LIMIT)
-                    event.set_data(event.data, data, continuity_limit=DEPOSITION_CONTINUITY_LIMIT)
-                    if event.events != 1:
-                        raise ValueError(
-                            'Error: The number of deposition events is not 1 ',
-                            'after increasing the continuity limit and fitlering ',
-                            'smaller events'
-                        )
-                    else:
-                        print('A unique deposition event was succesfully filtered')
-
+    #We verify the unicity of the deposition event
+    events = verify_deposition_unicity(events,data)
 
     #To make a list sutable for making a report, we remove
     #all the events that do not match the categories_for_main_report
@@ -2968,8 +2649,10 @@ def read_events(data):
                                 'cracker_base_pressure','source_deprate2_film_meas',
                                 'all_source_deprate2_film_meas']
 
-
-    events_main_report = [copy.deepcopy(event) for event in events if event.category in categories_main_report]
+    events_main_report = [
+        copy.deepcopy(event)
+        for event in events if event.category in categories_main_report
+        ]
     #For all the events of the main report list, we also get the last_event before
     #the deposition, using the select_event function, -1 (last) event together with the
     #deposition first bounds
@@ -2977,23 +2660,12 @@ def read_events(data):
     # unfold all the events_main_report events to get sep_events
     sep_events = unfold_events(copy.deepcopy(events_main_report),data)
 
-    categories_last_event = ['source_deprate2_film_meas','all_source_deprate2_film_meas',
-                             'source_ramp_up','ramp_up_temp']
-    catergories_first_event = ['ramp_down_high_temp','ramp_down_low_temp']
+    categories_last_event = ['source_deprate2_film_meas',
+        'all_source_deprate2_film_meas',
+        'source_ramp_up','ramp_up_temp']
 
-    for event in events_main_report:
-        if event.category in categories_last_event:
-            try:
-                event.select_event(data, -1, deposition.bounds[0][0])
-            except Exception as e:
-                print(f"Warning: Failed to find any event before deposition for",
-                f"{event.step_id}. Error: {e}")
-        if event.category in catergories_first_event:
-            try:
-                event.select_event(data, 0)
-            except Exception as e:
-                print(f"Warning: Failed to find any event after deposition for",
-                f"{event.step_id}. Error: {e}")
+    events = select_last_event(events, data, deposition, categories_last_event)
+
     #Initialize the params dictionary for the main and sub report
     main_params = {}
     sep_params = {}
@@ -3021,7 +2693,6 @@ def read_events(data):
 #---------------MAIN-----------
 
 def main():
-    global events_to_plot,main_params,sep_events,sep_params, source_list,all_var
     logfile_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\deposition logs'
     logfile_extension = 'CSV'
 
@@ -3031,12 +2702,14 @@ def main():
         for file in os.listdir(logfile_dir)
         if re.match(r'^\w+\d{4}\w+', file) and file.endswith(f'.{logfile_extension}')
     ]
-    #Remove mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07
+    #Remove mittma_0002_Cu_
     # from the logfile_names
-    logfile_names.remove('mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07')
+    logfile_names.remove(
+        'mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07'
+        )
 
     #To test the script on a single logfile
-    # logfile_names= ['eugbe_0004_Sb_Recording Set 2024.09.06-10.22.31']
+    logfile_names= ['eugbe_0004_Sb_Recording Set 2024.09.06-10.22.31']
 
     # Loop over all the logfiles in the directory
     for logfile_name in logfile_names:
@@ -3050,14 +2723,7 @@ def main():
         txt_file_name = f'{logfile_name}_derived_quantities.txt'
         txt_file_path = os.path.join(txt_file_dir, txt_file_name)
 
-        # Specify the path and filename for the matplotlib graph
-        matplotlib_graph_file_dir = os.path.join(logfile_dir,
-            'matplotlib_process_timeline_graphs')
-        matplotlib_graph_file_name = f'{logfile_name}_matplotlib_timeline.png'
-        matplotlib_graph_file_path = os.path.join(matplotlib_graph_file_dir,
-                                                matplotlib_graph_file_name)
-
-        #Same for the plotly graph
+        #Specify the plotly graph export location and file name
         plotly_graph_file_dir = os.path.join(logfile_dir,
             'plotly_process_timeline_graphs')
         plotly_graph_file_name = f'{logfile_name}_plotly_timeline.html'
@@ -3087,12 +2753,7 @@ def main():
         # Save the image as an interactive html file
         plotly_timeline.write_html(plotly_graph_file_path)
 
-
-
         #----HERE STOPS THE NOMAD RELEVANT SCRIPT----
-
-
-
         # --------PRINT DERIVED QUANTITIES REPORT-------------
 
         print(f'Derived quantities report for logfile\n{logfile_name}:\n')

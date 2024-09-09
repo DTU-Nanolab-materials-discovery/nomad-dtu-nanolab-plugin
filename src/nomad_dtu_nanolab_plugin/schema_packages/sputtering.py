@@ -39,7 +39,7 @@ from nomad_measurements.utils import merge_sections
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
-from nomad_dtu_nanolab_plugin.sputter_log_reader import read_logfile, read_events
+from nomad_dtu_nanolab_plugin.sputter_log_reader import read_events, read_logfile
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
