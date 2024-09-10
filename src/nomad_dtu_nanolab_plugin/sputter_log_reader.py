@@ -13,7 +13,6 @@ import re
 from functools import reduce
 
 import pandas as pd
-import numpy as np
 import plotly.express as px
 from mendeleev import element
 
@@ -644,51 +643,33 @@ class Lf_Event:
         return params
 
     def get_deposition_voltage(self, params, source_number):
-        if params[self.category][
-            f'{source_name[f'{source_number}']}'
-            ]['dc']:
-            params[self.category][
-                f'{source_name[f'{source_number}']}'
-                ]['start_voltage'] = (
-                self.data[f'Source {source_number} Voltage']
-                .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(self.data)))]
-                .mean()
-            )
-            params[self.category][
-                f'{source_name[f'{source_number}']}'
-                ]['end_voltage'] = (
-                self.data[f'Source {source_number} Voltage']
-                .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(self.data))) :]
-                .mean()
-            )
-            params[self.category][
-                f'{source_name[f'{source_number}']}'
-                ]['avg_voltage'] = (
-                self.data[f'Source {source_number} Voltage'].mean()
-            )
-        elif params['deposition'][
-            f'{source_name[f'{source_number}']}'
-            ]['rf']:
-            params[self.category][
-                f'{source_name[f'{source_number}']}'
-                ]['start_voltage'] = (
-                self.data[f'Source {source_number} DC Bias']
-                .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(self.data)))]
-                .mean()
-            )
-            params[self.category][
-                f'{source_name[f'{source_number}']}'
-                ]['end_voltage'] = (
-                self.data[f'Source {source_number} DC Bias']
-                .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(self.data))) :]
-                .mean()
-            )
-            params[self.category][
-                f'{source_name[f'{source_number}']}'
-                ]['avg_voltage'] = (
-                self.data[f'Source {source_number} DC Bias'].mean()
-            )
+        def extract_voltage_stats(data, key_prefix):
+            return {
+                'start_voltage': data.iloc[:int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(data))].mean(),
+                'end_voltage': data.iloc[-int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(data)):].mean(),
+                'avg_voltage': data.mean(),
+                'min_voltage': data.min(),
+                'max_voltage': data.max(),
+                'std_voltage': data.std()
+            }
+
+        source_key = f'{source_name[f"{source_number}"]}'
+        category = params[self.category][source_key]
+
+        if category['dc']:
+            voltage_data = self.data[f'Source {source_number} Voltage']
+        elif category['rf']:
+            voltage_data = self.data[f'Source {source_number} DC Bias']
+        else:
+            return params
+
+        voltage_stats = extract_voltage_stats(voltage_data, source_key)
+        for key, value in voltage_stats.items():
+            category[key] = value
+
         return params
+
+
 
     def get_source_material_and_target(self, params, source_number, elements):
         source_element = str(
@@ -747,10 +728,10 @@ class Lf_Event:
                 presput_duration += (
                     self.bounds[i][1] - self.bounds[i][0]
                 ).total_seconds()
-
+            presput_duration = pd.to_timedelta(presput_duration, unit='s')
             params[self.category][
             f'{source_name[f'{source_number}']}'
-            ]['duration_second'] = np.round(presput_duration)
+            ]['duration'] = presput_duration
             # Extract the average output power during presputtering
             params[self.category][f'{source_name[f'{source_number}']}'][
                 'avg_output_power'
@@ -2816,7 +2797,7 @@ def main():
         print('Generating the plotly plot')
         plotly_timeline = plot_plotly_extimeline(events_to_plot,
                                                 STEP_COLORS)
-        plotly_timeline.show()
+        # plotly_timeline.show()
 
         # Save the image as an interactive html file
         plotly_timeline.write_html(plotly_graph_file_path)
