@@ -819,12 +819,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         super().normalize(archive, logger)
 
-        sample_number = len(self.samples)
-        j = 0
-        for j in range(sample_number):
-            sample_name = str(self.name) + '_' + str(self.samples[j].relative_position)
-            self.samples[j].name = sample_name
-            self.samples[j].lab_id = sample_name
+        # sample_number = len(self.samples)
+        # j = 0
+        # for j in range(sample_number):
+        #    sample_name = str(self.name) + '_' + str(self.samples[j].relative_position)
+        #    self.samples[j].name = sample_name
+        #    self.samples[j].lab_id = sample_name
 
         if self.log_file:
             import os
