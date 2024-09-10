@@ -74,7 +74,8 @@ CATEGORIES_MAIN_REPORT = ['deposition','ramp_up_temp',
                         'cracker_base_pressure',
                         'source_deprate2_film_meas']
 #Categories of events to select the last event before the deposition, if possible
-CATEGORIES_LAST_EVENT = ['source_deprate2_film_meas','ramp_up_temp']
+CATEGORIES_LAST_EVENT = ['source_deprate2_film_meas','ramp_up_temp',
+                        'source_ramp_up']
 #Categories of events to put in the bottom of the timeline plot
 CATEGORIES_FIRST = {'deposition',
         'ramp_up_temp',
@@ -2579,7 +2580,7 @@ def verify_deposition_unicity(events,raw_data):
                         print('A unique deposition event was succesfully filtered')
     return events
 
-def select_last_event(events, raw_data, deposition,categories):
+def select_last_event(events, raw_data, deposition, categories):
     for event in events:
         if event.category in categories:
             try:
