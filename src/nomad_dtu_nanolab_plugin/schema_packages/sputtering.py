@@ -29,6 +29,7 @@ from nomad.datamodel.metainfo.basesections import (
 )
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
+from nomad.units import ureg
 from nomad_material_processing.vapor_deposition.general import (
     ChamberEnvironment,
     GasFlow,
@@ -37,12 +38,9 @@ from nomad_material_processing.vapor_deposition.pvd.general import PVDSource, PV
 from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
 from nomad_measurements.utils import merge_sections
 
-
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
 from nomad_dtu_nanolab_plugin.sputter_log_reader import read_events, read_logfile
-
-
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -776,47 +774,37 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             main_params (dict): Dictionary containing the log data.
             logger (BoundLogger): A structlog logger.
         """
-        #Initializing a temporary DTUSputtering object
+        # Initializing a temporary DTUSputtering object
         sputtering = DTUSputtering()
 
-        #Writing overview
-        sputtering.datetime = (
-            params['overview']['log_start_time']
+        # Writing overview
+        sputtering.datetime = params['overview']['log_start_time']
+
+        sputtering.end_time = params['overview']['log_end_time']
+
+        # Writing deposition parameters
+        sputtering.deposition_parameters.deposition_temperature = ureg.Quantity(
+            params['deposition']['avg_temp_1'], 'degC'
         )
 
-        sputtering.end_time = (
-            params['overview']['log_end_time']
+        sputtering.deposition_parameters.deposition_time = ureg.Quantity(
+            params['deposition']['duration'].total_seconds(), 'second'
         )
 
-        #Writing deposition parameters
-        sputtering.deposition_parameters.deposition_temperature = (
-            params['deposition']['avg_temp_1'] * ureg('degC')
+        sputtering.deposition_parameters.sputter_pressure = ureg.Quantity(
+            params['deposition']['avg_capman_presssure'], 'mtorr'
         )
 
-        sputtering.deposition_parameters.deposition_time = (
-            params['deposition']['duration'] * ureg('minute')
+        sputtering.deposition_parameters.material_space = params['deposition'][
+            'material_space'
+        ]
+
+        # Writing instruments
+        sputtering.instruments.platen_rotation = ureg.Quantity(
+            params['instruments']['platen_position'], 'degree'
         )
 
-        # sputtering.deposition_parameters.sputter_pressure = (
-        #     ureg.Quantity(
-        #     params['deposition']['avg_capman_presssure'], 'mtorr')
-        #     .to('kg/(m*s^2)').magnitude
-        # )
-
-        sputtering.deposition_parameters.sputter_pressure = (
-            params['deposition']['avg_capman_presssure'] * ureg('mtorr')
-        )
-
-        sputtering.deposition_parameters.material_space = (
-            params['deposition']['material_space']
-        )
-
-        #Writing instruments
-        sputtering.instruments.platen_rotation = (
-            params['instruments']['platen_position'] * ureg('degree')
-        )
-
-        #Merging the sputtering object with self
+        # Merging the sputtering object with self
         merge_sections(self, sputtering, logger)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
