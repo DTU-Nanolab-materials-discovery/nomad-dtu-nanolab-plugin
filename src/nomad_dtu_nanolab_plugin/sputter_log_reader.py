@@ -291,9 +291,7 @@ class Lf_Event:
                 event_list.append(self.sep_data[i])
         self.set_data(event_list[event_loc], raw_data)
 
-    def get_params(self,raw_data,source_list,params=None,nomad_mode=False):
-        if nomad_mode:
-            params = self.get_nomad_step_params(params=params)
+    def get_params(self,raw_data,source_list,params=None):
         if self.category == 'deposition':
             params = self.get_all_deposition_params(source_list,raw_data,params=params)
         if self.category == 'ramp_up_temp':
@@ -310,12 +308,13 @@ class Lf_Event:
             params = self.get_cracker_pressure_params(params=params)
         if self.category == 'source_deprate2_film_meas':
             params = self.get_deposition_rate_params(params=params)
-        print(params)
         return params
 
 
 
     def get_nomad_step_params(self,params=None):
+        #Write necessary code to extract the parameters for the nomad steps
+
         return params
 
     def get_all_deposition_params(self, source_list, raw_data, params=None):
@@ -382,9 +381,13 @@ class Lf_Event:
                     ).all()
                     == 0
                     ):
-                    params[self.category][f'{source_name[f'{source_number}']}']['enabled'] = True
+                    params[self.category][
+                        f'{source_name[f'{source_number}']}'
+                        ]['enabled'] = True
                 else:
-                    params[self.category][f'{source_name[f'{source_number}']}']['enabled'] = False
+                    params[self.category][
+                        f'{source_name[f'{source_number}']}'
+                        ]['enabled'] = False
 
         return params
 
@@ -587,7 +590,9 @@ class Lf_Event:
         return params
 
     def get_avg_output_power(self, params, source_number):
-        params[self.category][f'{source_name[f'{source_number}']}']['avg_output_power'] = (
+        params[self.category][
+            f'{source_name[f'{source_number}']}'
+            ]['avg_output_power'] = (
             self.data[f'Source {source_number} Output Setpoint'].mean()
         )
         return params
@@ -613,10 +618,16 @@ class Lf_Event:
             if pulse_enable_col in self.data:
                 params[self.category][f'{source_name[f'{source_number}']}']['pulsed'] = (
                     self.data[pulse_enable_col].all() == 1)
-                if params[self.category][f'{source_name[f'{source_number}']}']['pulsed']:
-                    params[self.category][f'{source_name[f'{source_number}']}']['pulse_frequency'] = (
-                            self.data[f'Source {source_number} Pulse Frequency'].mean())
-                    params[self.category][f'{source_name[f'{source_number}']}']['dead_time'] = (
+                if params[self.category][
+                    f'{source_name[f'{source_number}']}'
+                    ]['pulsed']:
+                    params[self.category][
+                        f'{source_name[f'{source_number}']}']['pulse_frequency'] = (
+                        self.data[
+                        f'Source {source_number} Pulse Frequency'].mean())
+                    params[self.category][
+                        f'{source_name[f'{source_number}']}'
+                        ]['dead_time'] = (
                             self.data[f'Source {source_number} Reverse Time'].mean())
         elif rf_bias_col in self.data and (
             (self.data[rf_bias_col] > BIAS_THRESHOLD).astype(int).quantile(TOLERANCE) or
@@ -633,32 +644,48 @@ class Lf_Event:
         return params
 
     def get_deposition_voltage(self, params, source_number):
-        if params[self.category][f'{source_name[f'{source_number}']}']['dc']:
-            params[self.category][f'{source_name[f'{source_number}']}']['start_voltage'] = (
+        if params[self.category][
+            f'{source_name[f'{source_number}']}'
+            ]['dc']:
+            params[self.category][
+                f'{source_name[f'{source_number}']}'
+                ]['start_voltage'] = (
                 self.data[f'Source {source_number} Voltage']
                 .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(self.data)))]
                 .mean()
             )
-            params[self.category][f'{source_name[f'{source_number}']}']['end_voltage'] = (
+            params[self.category][
+                f'{source_name[f'{source_number}']}'
+                ]['end_voltage'] = (
                 self.data[f'Source {source_number} Voltage']
                 .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(self.data))) :]
                 .mean()
             )
-            params[self.category][f'{source_name[f'{source_number}']}']['avg_voltage'] = (
+            params[self.category][
+                f'{source_name[f'{source_number}']}'
+                ]['avg_voltage'] = (
                 self.data[f'Source {source_number} Voltage'].mean()
             )
-        elif params['deposition'][f'{source_name[f'{source_number}']}']['rf']:
-            params[self.category][f'{source_name[f'{source_number}']}']['start_voltage'] = (
+        elif params['deposition'][
+            f'{source_name[f'{source_number}']}'
+            ]['rf']:
+            params[self.category][
+                f'{source_name[f'{source_number}']}'
+                ]['start_voltage'] = (
                 self.data[f'Source {source_number} DC Bias']
                 .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(self.data)))]
                 .mean()
             )
-            params[self.category][f'{source_name[f'{source_number}']}']['end_voltage'] = (
+            params[self.category][
+                f'{source_name[f'{source_number}']}'
+                ]['end_voltage'] = (
                 self.data[f'Source {source_number} DC Bias']
                 .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(self.data))) :]
                 .mean()
             )
-            params[self.category][f'{source_name[f'{source_number}']}']['avg_voltage'] = (
+            params[self.category][
+                f'{source_name[f'{source_number}']}'
+                ]['avg_voltage'] = (
                 self.data[f'Source {source_number} DC Bias'].mean()
             )
         return params
@@ -737,7 +764,9 @@ class Lf_Event:
                 'PC Capman Pressure'
             ].mean()
             # Extract the gas flows during presputtering
-            params[self.category][f'{source_name[f'{source_number}']}']['avg_ar_flow'] = (
+            params[self.category][
+                f'{source_name[f'{source_number}']}'
+                ]['avg_ar_flow'] = (
                 self.data['PC MFC 1 Flow'].mean()
                 )
         return params
@@ -1146,19 +1175,29 @@ class Lf_Event:
             source_element = str(
             self.data[f'PC Source {source_number} Material'].iloc[0])
             source_element= re.split(r'\s+', source_element)[0]
-            params[self.category][f'{source_name[f'{source_number}']}']['material'] = (
+            params[self.category][
+                f'{source_name[f'{source_number}']}'
+                ]['material'] = (
                 element(source_element).symbol)
 
-        params[self.category][f'{source_name[f'{source_number}']}']['dep_rate'] = (
+        params[self.category][
+            f'{source_name[f'{source_number}']}'
+            ]['dep_rate'] = (
             self.data['Thickness Rate'].mean())
-        params[self.category][f'{source_name[f'{source_number}']}']['dep_rate_ref_mat'] = (
+        params[self.category][
+            f'{source_name[f'{source_number}']}'
+            ]['dep_rate_ref_mat'] = (
             self.data['Thickness Active Material']
             .iloc[0])
         if 'Thickness Material Density' in self.data.columns:
-            params[self.category][f'{source_name[f'{source_number}']}']['dep_rate_ref_density'] = (
+            params[self.category][
+                f'{source_name[f'{source_number}']}'
+                ]['dep_rate_ref_density'] = (
                 self.data['Thickness Material Density'].mean())
         if 'Thickness Material Z' in self.data.columns:
-            params[self.category][f'{source_name[f'{source_number}']}']['dep_rate_ref_z'] = (
+            params[self.category][
+                f'{source_name[f'{source_number}']}'
+                ]['dep_rate_ref_z'] = (
                 self.data['Thickness Material Z'].mean())
 
         return params
@@ -2708,19 +2747,16 @@ def read_events(data):
     sep_events = unfold_events(copy.deepcopy(events_main_report),data)
 
     #Initialize the params dictionary for the sub report
-    sep_params = {}
+    step_params = {}
 
     # get the individual step params
-    sep_params = get_overview(data)
     for event in sep_events:
-        sep_params = event.get_params(data,source_list,params=sep_params)
-    sep_params = get_end_of_process(data, sep_params)
+        step_params = event.get_nomad_step_params(step_params)
 
     #Sort the subevents by the start time
-    sep_events = sort_events_by_start_time(sep_events)
+    sep_events = sort_events_by_start_time(step_params)
 
-    return events_to_plot,main_params,sep_params
-
+    return events_to_plot,main_params,step_params
 
 #---------------MAIN-----------
 
@@ -2741,7 +2777,7 @@ def main():
         )
 
     #To test the script on a single logfile
-    logfile_names= ['eugbe_0004_Sb_Recording Set 2024.09.06-10.22.31']
+    # logfile_names= ['eugbe_0004_Sb_Recording Set 2024.09.06-10.22.31']
 
     # Loop over all the logfiles in the directory
     for logfile_name in logfile_names:
@@ -2771,7 +2807,7 @@ def main():
         #----HERE, STARTS THE NOMAD RELEVANT SCRIPT----
 
         # ----READ ALL THE EVENTS IN THE LOGFILE----
-        events_to_plot,main_params,sep_params = (
+        events_to_plot,main_params,step_params = (
             read_events(data))
 
         # --------GRAPH THE DIFFERENT STEPS ON A TIME LINE------------
@@ -2780,7 +2816,7 @@ def main():
         print('Generating the plotly plot')
         plotly_timeline = plot_plotly_extimeline(events_to_plot,
                                                 STEP_COLORS)
-        # plotly_timeline.show()
+        plotly_timeline.show()
 
         # Save the image as an interactive html file
         plotly_timeline.write_html(plotly_graph_file_path)
