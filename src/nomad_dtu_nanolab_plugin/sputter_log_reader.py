@@ -13,6 +13,7 @@ import re
 from functools import reduce
 
 import pandas as pd
+import numpy as np
 import plotly.express as px
 from mendeleev import element
 
@@ -69,14 +70,12 @@ WITHIN_RANGE_PARAM = 5  # %
 POWER_FWD_REFL_THRESHOLD = 10  # watts
 #Categories of events to be considered in the main report
 CATEGORIES_MAIN_REPORT = ['deposition','ramp_up_temp',
-                        'ramp_down_high_temp','ramp_down_low_temp',
+                        'ramp_down_high_temp',
                         'source_presput','source_ramp_up',
-                        'cracker_base_pressure','source_deprate2_film_meas',
-                        'all_source_deprate2_film_meas']
+                        'cracker_base_pressure',
+                        'source_deprate2_film_meas']
 #Categories of events to select the last event before the deposition, if possible
-CATEGORIES_LAST_EVENT = ['source_deprate2_film_meas',
-        'all_source_deprate2_film_meas',
-        'source_ramp_up','ramp_up_temp']
+CATEGORIES_LAST_EVENT = ['source_deprate2_film_meas','ramp_up_temp']
 #Categories of events to put in the bottom of the timeline plot
 CATEGORIES_FIRST = {'deposition',
         'ramp_up_temp',
@@ -110,6 +109,12 @@ STEP_COLORS = {
     'Ar On': 'black',
     'S Dep Rate Meas': '#B22222',# Firebrick
     'Cracker Pressure Meas': 'brown'
+}
+source_name = {
+    '1': 'Taurus',
+    '3': 'Magkeeper3',
+    '4': 'Magkeeper4',
+    'all': 'All'
 }
 
 ##------EVENT CLASS DEFINITION------
@@ -303,8 +308,9 @@ class Lf_Event:
             params = self.get_source_ramp_up_params(raw_data,params=params)
         if self.category == 'cracker_base_pressure':
             params = self.get_cracker_pressure_params(params=params)
-        if self.category == 'all_source_deprate2_film_meas':
+        if self.category == 'source_deprate2_film_meas':
             params = self.get_deposition_rate_params(params=params)
+        print(params)
         return params
 
 
@@ -318,8 +324,8 @@ class Lf_Event:
 
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
+        if self.category not in params:
+            params[self.category] = {}
 
         params = self.get_rt_bool(params=params)
         params = self.get_source_used_deposition(source_list, params=params)
@@ -339,17 +345,17 @@ class Lf_Event:
 
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
+        if self.category not in params:
+            params[self.category] = {}
 
         if (self.data
             ['Substrate Heater Temperature Setpoint'] < RT_TEMP_THRESHOLD
             ).all():
-                params[self.step_id]['rt'] = True
+                params[self.category]['rt'] = True
         elif (
         self.data['Substrate Heater Temperature Setpoint'] > RT_TEMP_THRESHOLD
             ).all():
-            params[self.step_id]['rt'] = False
+            params[self.category]['rt'] = False
         return params
 
     def get_source_used_deposition(self, source_list,
@@ -363,11 +369,11 @@ class Lf_Event:
 
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
+        if self.category not in params:
+            params[self.category] = {}
         for source_number in source_list:
-            if f'{source_number}' not in params[self.step_id]:
-                params[self.step_id][f'{source_number}'] = {}
+            if f'{source_name[f'{source_number}']}' not in params[self.category]:
+                params[self.category][f'{source_name[f'{source_number}']}'] = {}
 
         for source_number in source_list:
                 if (
@@ -376,9 +382,9 @@ class Lf_Event:
                     ).all()
                     == 0
                     ):
-                    params[self.step_id][f'{source_number}']['enabled'] = True
+                    params[self.category][f'{source_name[f'{source_number}']}']['enabled'] = True
                 else:
-                    params[self.step_id][f'{source_number}']['enabled'] = False
+                    params[self.category][f'{source_name[f'{source_number}']}']['enabled'] = False
 
         return params
 
@@ -393,10 +399,10 @@ class Lf_Event:
             raise ValueError('This method is only available for the deposition event')
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
-        if 'cracker' not in params[self.step_id]:
-            params[self.step_id]['cracker'] = {}
+        if self.category not in params:
+            params[self.category] = {}
+        if 'SCracker' not in params[self.category]:
+            params[self.category]['SCracker'] = {}
 
         if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
             if (
@@ -414,26 +420,26 @@ class Lf_Event:
                 > CRACKER_ZONE_3_MIN_TEMP
             ).all()
                 ):
-                params[self.step_id]['cracker']['enabled'] = True
-                params[self.step_id]['cracker']['zone1_temp'] = self.data[
+                params[self.category]['SCracker']['enabled'] = True
+                params[self.category]['SCracker']['zone1_temp'] = self.data[
                     'Sulfur Cracker Zone 1 Current Temperature'
                 ].mean()
-                params[self.step_id]['cracker']['zone2_temp'] = self.data[
+                params[self.category]['SCracker']['zone2_temp'] = self.data[
                     'Sulfur Cracker Zone 2 Current Temperature'
                 ].mean()
-                params[self.step_id]['cracker']['zone3_temp'] = self.data[
+                params[self.category]['SCracker']['zone3_temp'] = self.data[
                     'Sulfur Cracker Zone 3 Current Temperature'
                 ].mean()
-                params[self.step_id]['cracker']['pulse_width'] = self.data[
+                params[self.category]['SCracker']['pulse_width'] = self.data[
                     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                 ].mean()
-                params[self.step_id]['cracker']['pulse_freq'] = self.data[
+                params[self.category]['SCracker']['pulse_freq'] = self.data[
                     'Sulfur Cracker Control Setpoint Feedback'
                 ].mean()
             else:
-                params[self.step_id]['cracker']['enabled'] = False
+                params[self.category]['SCracker']['enabled'] = False
         else:
-            params[self.step_id]['cracker']['enabled'] = False
+            params[self.category]['SCracker']['enabled'] = False
         return params
 
     def get_pressure_params(self, raw_data, params=None):
@@ -466,9 +472,9 @@ class Lf_Event:
         params['overview']['lower_pressure_before_deposition'] = (
             min_pressure_before_depostion)
         if min_pressure_before_depostion < MAX_BASE_PRESSURE:
-            if not params[self.step_id]['cracker']['enabled']:
+            if not params[self.category]['SCracker']['enabled']:
                 params['overview']['true_base_pressure_meas'] = True
-            elif params[self.step_id]['cracker']['enabled']:
+            elif params[self.category]['SCracker']['enabled']:
                 params['overview']['true_base_pressure_meas'] = False
         else:
             params['overview']['true_base_pressure_meas'] = False
@@ -481,46 +487,46 @@ class Lf_Event:
 
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
+        if self.category not in params:
+            params[self.category] = {}
 
         # Extract the platen position during deposition
         if 'Substrate Rotation_Position' in self.data:
-            params[self.step_id]['platen_position'] = self.data[
+            params[self.category]['platen_position'] = self.data[
             'Substrate Rotation_Position'
             ].mean()
 
         # Extract start and end time of the deposition
-        params[self.step_id]['start_time'] = self.data['Time Stamp'].iloc[0]
-        params[self.step_id]['end_time'] = self.data['Time Stamp'].iloc[-1]
-        params[self.step_id]['duration'] = (
-        params[self.step_id]['end_time'] - params[self.step_id]['start_time']
+        params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
+        params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
+        params[self.category]['duration'] = (
+        params[self.category]['end_time'] - params[self.category]['start_time']
         )
 
         # Extract average temperature during deposition
-        params[self.step_id]['avg_temp_1'] = self.data[
+        params[self.category]['avg_temp_1'] = self.data[
         'Substrate Heater Temperature'
         ].mean()
-        params[self.step_id]['avg_temp_2'] = self.data[
+        params[self.category]['avg_temp_2'] = self.data[
         'Substrate Heater Temperature 2'
         ].mean()
-        params[self.step_id]['avg_temp_setpoint'] = self.data[
+        params[self.category]['avg_temp_setpoint'] = self.data[
         'Substrate Heater Temperature Setpoint'
         ].mean()
 
         # Extract the average true temperature during deposition
-        params[self.step_id]['avg_true_temp'] = calculate_avg_true_temp(
-        params[self.step_id]['avg_temp_1'], params[self.step_id]['avg_temp_2']
+        params[self.category]['avg_true_temp'] = calculate_avg_true_temp(
+        params[self.category]['avg_temp_1'], params[self.category]['avg_temp_2']
         )
 
         # Extract average sputter PC Capman pressure during deposition
-        params[self.step_id]['avg_capman_pressure'] = self.data[
+        params[self.category]['avg_capman_pressure'] = self.data[
         'PC Capman Pressure'
         ].mean()
 
         # Extract the MF1 Ar, MFC4 PH3 and MFC6 H2S flow during deposition
         # only if the flow is above 1sccm, if not we set the flow to 0
-        params[self.step_id]['avg_ar_flow'] = (
+        params[self.category]['avg_ar_flow'] = (
         self.data[self.data['PC MFC 1 Flow'] > MFC_FLOW_THRESHOLD][
             'PC MFC 1 Flow'
         ].mean()
@@ -529,7 +535,7 @@ class Lf_Event:
         ].empty
         else 0
         )
-        params[self.step_id]['avg_ph3_flow'] = (
+        params[self.category]['avg_ph3_flow'] = (
         self.data[self.data['PC MFC 4 Flow'] > MFC_FLOW_THRESHOLD][
             'PC MFC 4 Flow'
         ].mean()
@@ -538,7 +544,7 @@ class Lf_Event:
         ].empty
         else 0
         )
-        params[self.step_id]['avg_h2s_flow'] = (
+        params[self.category]['avg_h2s_flow'] = (
         self.data[self.data['PC MFC 6 Flow'] > MFC_FLOW_THRESHOLD][
             'PC MFC 6 Flow'
         ].mean()
@@ -557,11 +563,11 @@ class Lf_Event:
 
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
+        if self.category not in params:
+            params[self.category] = {}
         elements = []
         for source_number in source_list:
-            if params[self.step_id][f'{source_number}']['enabled']:
+            if params[self.category][f'{source_name[f'{source_number}']}']['enabled']:
                 params = self.get_avg_output_power(params, source_number)
                 params = self.get_plasma_type(params, source_number)
                 params = self.get_deposition_voltage(params, source_number)
@@ -570,18 +576,18 @@ class Lf_Event:
                 #Extract source material and target id and add the element to the
                 # elements list for the material space extraction
         # Extract the material space as the elements used during deposition
-        if params[self.step_id]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD:
+        if params[self.category]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD:
             elements = elements + ['P']
-        if (params[self.step_id]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD) or (
-        params[self.step_id]['cracker']['enabled']
+        if (params[self.category]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD) or (
+        params[self.category]['SCracker']['enabled']
         ):
             elements = elements + ['S']
         # add the element as an hypen separated string
-        params[self.step_id]['material_space'] = '-'.join(elements)
+        params[self.category]['material_space'] = '-'.join(elements)
         return params
 
     def get_avg_output_power(self, params, source_number):
-        params[self.step_id][f'{source_number}']['avg_output_power'] = (
+        params[self.category][f'{source_name[f'{source_number}']}']['avg_output_power'] = (
             self.data[f'Source {source_number} Output Setpoint'].mean()
         )
         return params
@@ -602,15 +608,15 @@ class Lf_Event:
                 - self.data[rfl_power_col])
                 > POWER_FWD_REFL_THRESHOLD).astype(int).quantile(TOLERANCE)
             ):
-            params[self.step_id][f'{source_number}']['dc'] = True
-            params[self.step_id][f'{source_number}']['rf'] = False
+            params[self.category][f'{source_name[f'{source_number}']}']['dc'] = True
+            params[self.category][f'{source_name[f'{source_number}']}']['rf'] = False
             if pulse_enable_col in self.data:
-                params[self.step_id][f'{source_number}']['pulsed'] = (
+                params[self.category][f'{source_name[f'{source_number}']}']['pulsed'] = (
                     self.data[pulse_enable_col].all() == 1)
-                if params[self.step_id][f'{source_number}']['pulsed']:
-                    params[self.step_id][f'{source_number}']['pulse_frequency'] = (
+                if params[self.category][f'{source_name[f'{source_number}']}']['pulsed']:
+                    params[self.category][f'{source_name[f'{source_number}']}']['pulse_frequency'] = (
                             self.data[f'Source {source_number} Pulse Frequency'].mean())
-                    params[self.step_id][f'{source_number}']['dead_time'] = (
+                    params[self.category][f'{source_name[f'{source_number}']}']['dead_time'] = (
                             self.data[f'Source {source_number} Reverse Time'].mean())
         elif rf_bias_col in self.data and (
             (self.data[rf_bias_col] > BIAS_THRESHOLD).astype(int).quantile(TOLERANCE) or
@@ -619,40 +625,40 @@ class Lf_Event:
             - self.data[rfl_power_col])
             > POWER_FWD_REFL_THRESHOLD).astype(int).quantile(TOLERANCE)
             ):
-            params[self.step_id][f'{source_number}']['rf'] = True
-            params[self.step_id][f'{source_number}']['dc'] = False
+            params[self.category][f'{source_name[f'{source_number}']}']['rf'] = True
+            params[self.category][f'{source_name[f'{source_number}']}']['dc'] = False
         else:
             print('Error: Plasma type not recognized')
 
         return params
 
     def get_deposition_voltage(self, params, source_number):
-        if params[self.step_id][f'{source_number}']['dc']:
-            params[self.step_id][f'{source_number}']['start_voltage'] = (
+        if params[self.category][f'{source_name[f'{source_number}']}']['dc']:
+            params[self.category][f'{source_name[f'{source_number}']}']['start_voltage'] = (
                 self.data[f'Source {source_number} Voltage']
                 .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(self.data)))]
                 .mean()
             )
-            params[self.step_id][f'{source_number}']['end_voltage'] = (
+            params[self.category][f'{source_name[f'{source_number}']}']['end_voltage'] = (
                 self.data[f'Source {source_number} Voltage']
                 .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(self.data))) :]
                 .mean()
             )
-            params[self.step_id][f'{source_number}']['avg_voltage'] = (
+            params[self.category][f'{source_name[f'{source_number}']}']['avg_voltage'] = (
                 self.data[f'Source {source_number} Voltage'].mean()
             )
-        elif params['deposition'][f'{source_number}']['rf']:
-            params[self.step_id][f'{source_number}']['start_voltage'] = (
+        elif params['deposition'][f'{source_name[f'{source_number}']}']['rf']:
+            params[self.category][f'{source_name[f'{source_number}']}']['start_voltage'] = (
                 self.data[f'Source {source_number} DC Bias']
                 .iloc[: (int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(self.data)))]
                 .mean()
             )
-            params[self.step_id][f'{source_number}']['end_voltage'] = (
+            params[self.category][f'{source_name[f'{source_number}']}']['end_voltage'] = (
                 self.data[f'Source {source_number} DC Bias']
                 .iloc[-(int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(self.data))) :]
                 .mean()
             )
-            params[self.step_id][f'{source_number}']['avg_voltage'] = (
+            params[self.category][f'{source_name[f'{source_number}']}']['avg_voltage'] = (
                 self.data[f'Source {source_number} DC Bias'].mean()
             )
         return params
@@ -661,9 +667,9 @@ class Lf_Event:
         source_element = str(
             self.data[f'PC Source {source_number} Material'].iloc[0])
         source_element= re.split(r'\s+', source_element)[0]
-        params[self.step_id][f'{source_number}']['material'] = (
+        params[self.category][f'{source_name[f'{source_number}']}']['material'] = (
             element(source_element).symbol)
-        params[self.step_id][f'{source_number}']['target_id'] = (
+        params[self.category][f'{source_name[f'{source_number}']}']['target_id'] = (
             self.data[f'PC Source {source_number} Loaded Target'].iloc[0])
         elements.append(element(source_element).symbol)
 
@@ -676,14 +682,14 @@ class Lf_Event:
 
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
+        if self.category not in params:
+            params[self.category] = {}
 
         # Extract the S induced base pressure as the mean pressure during
         # the cracker being on and no gas being flown
         if not self.data.empty:
-            params[self.step_id]['cracker_pressure_meas'] = True
-            params[self.step_id]['cracker_pressure'] = self.data[
+            params[self.category]['cracker_pressure_meas'] = True
+            params[self.category]['cracker_pressure'] = self.data[
             'PC Wide Range Gauge'].mean()
         else:
             params['cracker_pressure_meas'] = False
@@ -697,13 +703,16 @@ class Lf_Event:
 
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
+        if self.category not in params:
+            params[self.category] = {}
+
 
         source_number = self.source
+        if f'{source_name[f'{source_number}']}' not in params[self.category]:
+            params[self.category][f'{source_name[f'{source_number}']}'] = {}
+
         # We check if the source is enabled during deposition
-        if params['deposition'][f'{source_number}']['enabled']:
-            params[self.step_id]['source'] = source_number
+        if params['deposition'][f'{source_name[f'{source_number}']}']['enabled']:
             # ----source presputtering parameters-----
             # Extract the presputtering duration
             presput_duration = 0
@@ -712,21 +721,23 @@ class Lf_Event:
                     self.bounds[i][1] - self.bounds[i][0]
                 ).total_seconds()
 
-            params[self.step_id]['duration'] = presput_duration
+            params[self.category][
+            f'{source_name[f'{source_number}']}'
+            ]['duration_second'] = np.round(presput_duration)
             # Extract the average output power during presputtering
-            params[self.step_id][
+            params[self.category][f'{source_name[f'{source_number}']}'][
                 'avg_output_power'
             ] = self.data[
                 f'Source {source_number} Output Setpoint'
             ].mean()
             # Extract the avg capman pressure during presputtering
-            params[self.step_id][
+            params[self.category][f'{source_name[f'{source_number}']}'][
                 'avg_capman_pressure'
             ] = self.data[
                 'PC Capman Pressure'
             ].mean()
             # Extract the gas flows during presputtering
-            params[self.step_id]['avg_ar_flow'] = (
+            params[self.category][f'{source_name[f'{source_number}']}']['avg_ar_flow'] = (
                 self.data['PC MFC 1 Flow'].mean()
                 )
         return params
@@ -740,16 +751,15 @@ class Lf_Event:
 
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
+        if self.category not in params:
+            params[self.category] = {}
 
         source_number = self.source
+        if f'{source_name[f'{source_number}']}' not in params[self.category]:
+            params[self.category][f'{source_name[f'{source_number}']}'] = {}
     # We check if the source is enabled during deposition
-        if params['deposition'][f'{source_number}']['enabled']:
-            # Extract the number of ramp up events
-            params[self.step_id]['source'] = source_number
-
-            # Extract the plasma ignition power as the power at which
+        if params['deposition'][f'{source_name[f'{source_number}']}']['enabled']:
+             # Extract the plasma ignition power as the power at which
             # the plasma really ignites
             # We first filter only the last [-1] source ramp up event with the
             # event filter function
@@ -778,15 +788,27 @@ class Lf_Event:
             # not be empty
             if not data_ignition_time.empty:
                 ignition_time = data_ignition_time['Time Stamp'].iloc[0]
-                params[self.step_id]['source_ignition'] = True
-                params[self.step_id]['source_ignition_time'] = ignition_time
+                params[self.category][
+                    f'{source_name[f'{source_number}']}'
+                    ]['ignition'] = True
+                params[self.category][
+                    f'{source_name[f'{source_number}']}'
+                    ]['ignition_time'] = ignition_time
                 ignition_data = self.data[self.data['Time Stamp'] == ignition_time]
-                params[self.step_id]['source_ignition_power'] = (
-                    ignition_data[f'Source {source_number} Output Setpoint'].iloc[0])
-                params[self.step_id]['source_ignition_pressure'] = (
-                    ignition_data['PC Capman Pressure'].iloc[0])
+                params[self.category][
+                    f'{source_name[f'{source_number}']}'
+                    ]['ignition_power'] = (
+                    ignition_data[f'Source {source_number} Output Setpoint']
+                    .iloc[0])
+                params[self.category][
+                    f'{source_name[f'{source_number}']}'
+                    ]['ignition_pressure'] = (
+                    ignition_data['PC Capman Pressure']
+                    .iloc[0])
             else:
-                params[self.step_id]['source_ignition'] = False
+                params[self.category][
+                    f'{source_name[f'{source_number}']}'
+                    ]['source_ignition'] = False
 
         return params
 
@@ -797,57 +819,57 @@ class Lf_Event:
 
         if 'deposition' not in params:
             raise ValueError('Missing deposition info, run get_rt_bool first')
-        if self.step_id not in params:
-            params[self.step_id] = {}
-        if 'cracker' not in params[self.step_id]:
-            params[self.step_id]['cracker'] = {}
+        if self.category not in params:
+            params[self.category] = {}
+        if 'SCracker' not in params[self.category]:
+            params[self.category]['SCracker'] = {}
 
         if not params['deposition']['rt']:
             # ------Extract the substrate ramp up parameters------
                 # Extract the slope assuming linear ramp up
             # In data_ramp_up_temp only increasing setpoint temperature are
             # considered making easier to extract the slope
-            params[self.step_id]['start_time'] = self.data[
+            params[self.category]['start_time'] = self.data[
                 'Time Stamp'
             ].iloc[0]
-            params[self.step_id]['end_time'] = self.data[
+            params[self.category]['end_time'] = self.data[
                 'Time Stamp'
             ].iloc[-1]
-            params[self.step_id]['duration'] = (
-                params[self.step_id]['end_time']
-                - params[self.step_id]['start_time']
+            params[self.category]['duration'] = (
+                params[self.category]['end_time']
+                - params[self.category]['start_time']
             )
             temp_diff = (
                 self.data['Substrate Heater Temperature Setpoint'].iloc[-1]
                 - self.data['Substrate Heater Temperature Setpoint'].iloc[0]
             )
             time_interval_minutes = (
-                params[self.step_id]['duration'].total_seconds() / 60
+                params[self.category]['duration'].total_seconds() / 60
             )
-            params[self.step_id]['temp_slope'] = (
+            params[self.category]['temp_slope'] = (
                 temp_diff / time_interval_minutes)
             # Extract the average capman pressure during the ramp up
-            params[self.step_id]['avg_capman_pressure'] = self.data[
+            params[self.category]['avg_capman_pressure'] = self.data[
                 'PC Capman Pressure'
             ].mean()
             # Extract the gas flows during the substrate ramp up
             # If the flows are below the noise level threshold,
             # we set the flow to 0
-            params[self.step_id]['avg_ar_flow'] = (
+            params[self.category]['avg_ar_flow'] = (
                 self.data['PC MFC 1 Flow'].mean()
                 if not self.data[self.data['PC MFC 1 Flow'] > 1][
                     'PC MFC 1 Flow'
                 ].empty
                 else 0
             )
-            params[self.step_id]['avg_ph3_flow'] = (
+            params[self.category]['avg_ph3_flow'] = (
                 self.data['PC MFC 4 Flow'].mean()
                 if not self.data[self.data['PC MFC 4 Flow'] > 1][
                     'PC MFC 4 Flow'
                 ].empty
                 else 0
             )
-            params[self.step_id]['avg_h2s_flow'] = (
+            params[self.category]['avg_h2s_flow'] = (
                 self.data['PC MFC 6 Flow'].mean()
                 if not self.data[self.data['PC MFC 6 Flow'] > 1][
                     'PC MFC 6 Flow'
@@ -873,36 +895,36 @@ class Lf_Event:
                         > CRACKER_ZONE_3_MIN_TEMP
                     ).all()
                 ):
-                    params[self.step_id]['cracker']['enabled'] = True
+                    params[self.category]['SCracker']['enabled'] = True
                     # If the cracker has been used, extract the cracker parameters
-                    params[self.step_id]['cracker']['zone1_temp'] = (
+                    params[self.category]['SCracker']['zone1_temp'] = (
                         self.data[
                             'Sulfur Cracker Zone 1 Current Temperature'
                         ].mean()
                     )
-                    params[self.step_id]['cracker']['zone2_temp'] = (
+                    params[self.category]['SCracker']['zone2_temp'] = (
                         self.data[
                             'Sulfur Cracker Zone 2 Current Temperature'
                         ].mean()
                     )
-                    params[self.step_id]['cracker']['zone3_temp'] = (
+                    params[self.category]['SCracker']['zone3_temp'] = (
                         self.data[
                             'Sulfur Cracker Zone 3 Current Temperature'
                         ].mean()
                     )
-                    params[self.step_id]['cracker']['pulse_width'] = (
+                    params[self.category]['SCracker']['pulse_width'] = (
                         self.data[
                             'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                         ].mean()
                     )
-                    params[self.step_id]['cracker']['pulse_freq'] = (
+                    params[self.category]['SCracker']['pulse_freq'] = (
                         self.data[
                         'Sulfur Cracker Control Setpoint Feedback'].mean()
                     )
                 else:
-                    params[self.step_id]['cracker']['enabled'] = False
+                    params[self.category]['SCracker']['enabled'] = False
             else:
-                params[self.step_id]['cracker']['enabled'] = False
+                params[self.category]['SCracker']['enabled'] = False
         return params
 
     def get_sub_ramp_down_params(self, params=None):
@@ -912,8 +934,8 @@ class Lf_Event:
 
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
+        if self.category not in params:
+            params[self.category] = {}
 
         if not params['depostion']['rt']:
             # Extract the slope from when the temp in controled,
@@ -928,21 +950,21 @@ class Lf_Event:
                 - self.data['Substrate Heater Temperature Setpoint'].iloc[0]
             )
             time_interval_minutes = time_interval.total_seconds() / 60
-            params[self.step_id]['temp_slope'] = (
+            params[self.category]['temp_slope'] = (
                 temp_diff / time_interval_minutes)
             # Now we distinguish between the high temp and low temp ramp down phase
             # Extract the start time of the ramp down as the first time of
             # the high temperature ramp down and the end time as the last time of
             # the low temperature ramp down (which is the last time of the log)
-            params[self.step_id]['start_time'] = self.data[
+            params[self.category]['start_time'] = self.data[
                 'Time Stamp'
             ].iloc[0]
-            params[self.step_id]['end_time'] = self.data[
+            params[self.category]['end_time'] = self.data[
                 'Time Stamp'
             ].iloc[-1]
-            params[self.step_id]['duration'] = (
-            params[self.step_id]['end_time']
-            - params[self.step_id]['start_time']
+            params[self.category]['duration'] = (
+            params[self.category]['end_time']
+            - params[self.category]['start_time']
             )
         return params
 
@@ -954,34 +976,34 @@ class Lf_Event:
                 'substrate ramp down event')
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
+        if self.category not in params:
+            params[self.category] = {}
 
-        if 'cracker' not in params[self.step_id]:
-            params[self.step_id]['cracker'] = {}
+        if 'SCracker' not in params[self.category]:
+            params[self.category]['SCracker'] = {}
 
         if 'deposition' not in params:
             raise ValueError('Missing deposition info, run get_rt_bool first')
 
         if not params['deposition']['rt']:
-            params[self.step_id]['start_time'] = self.data[
+            params[self.category]['start_time'] = self.data[
                 'Time Stamp'
             ].iloc[0]
-            params[self.step_id]['end_time'] = self.data[
+            params[self.category]['end_time'] = self.data[
                 'Time Stamp'
             ].iloc[-1]
 
             # Extract the start and end temperature of the
             # high temperature ramp down
-            params[self.step_id]['start_setpoint_temp'] = self.data[
+            params[self.category]['start_setpoint_temp'] = self.data[
                 'Substrate Heater Temperature Setpoint'
             ].iloc[0]
-            params[self.step_id]['end_setpoint_temp'] = self.data[
+            params[self.category]['end_setpoint_temp'] = self.data[
                 'Substrate Heater Temperature Setpoint'
             ].iloc[-1]
 
             # Extract the gases used during the high substrate ramp down
-            params[self.step_id]['avg_ar_flow'] = (
+            params[self.category]['avg_ar_flow'] = (
                 self.data[
                     self.data['PC MFC 1 Flow'] > MFC_FLOW_THRESHOLD
                 ]['PC MFC 1 Flow'].mean()
@@ -990,7 +1012,7 @@ class Lf_Event:
                 ]['PC MFC 1 Flow'].empty
                 else 0
             )
-            params[self.step_id]['avg_ph3_flow'] = (
+            params[self.category]['avg_ph3_flow'] = (
                 self.data[
                     self.data['PC MFC 4 Flow'] > MFC_FLOW_THRESHOLD
                 ]['PC MFC 4 Flow'].mean()
@@ -999,7 +1021,7 @@ class Lf_Event:
                 ]['PC MFC 4 Flow'].empty
                 else 0
             )
-            params[self.step_id]['avg_h2s_flow'] = (
+            params[self.category]['avg_h2s_flow'] = (
                 self.data[
                     self.data['PC MFC 6 Flow'] > MFC_FLOW_THRESHOLD
                 ]['PC MFC 6 Flow'].mean()
@@ -1033,45 +1055,45 @@ class Lf_Event:
                         > CRACKER_ZONE_3_MIN_TEMP
                     ).all()
                 ):
-                    params[self.step_id]['cracker']['enabled'] = True
+                    params[self.category]['SCracker']['enabled'] = True
                     # if the crack has been used, extract the cracker parameters
-                    params[self.step_id]['cracker']['zone1_temp'] = (
+                    params[self.category]['SCracker']['zone1_temp'] = (
                         self.data[
                             'Sulfur Cracker Zone 1 Current Temperature'
                         ].mean()
                     )
-                    params[self.step_id]['cracker']['zone2_temp'] = (
+                    params[self.category]['SCracker']['zone2_temp'] = (
                         self.data[
                             'Sulfur Cracker Zone 2 Current Temperature'
                         ].mean()
                     )
-                    params[self.step_id]['cracker']['zone3_temp'] = (
+                    params[self.category]['SCracker']['zone3_temp'] = (
                         self.data[
                             'Sulfur Cracker Zone 3 Current Temperature'
                         ].mean()
                     )
-                    params[self.step_id]['cracker']['pulse_width'] = (
+                    params[self.category]['SCracker']['pulse_width'] = (
                         self.data[
                             'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                         ].mean()
                     )
-                    params[self.step_id]['cracker']['pulse_freq'] = (
+                    params[self.category]['SCracker']['pulse_freq'] = (
                         self.data[
                             'Sulfur Cracker Control Setpoint Feedback'
                         ].mean()
                     )
                 else:
-                    params[self.step_id]['cracker']['enabled'] = False
+                    params[self.category]['SCracker']['enabled'] = False
             else:
-                params[self.step_id]['cracker']['enabled'] = False
+                params[self.category]['SCracker']['enabled'] = False
             # Extract the anion input cutoff temperature as the last temperature of
             # the high temperature ramp down
-            params[self.step_id]['anion_input_cutoff_temp'] = (
+            params[self.category]['anion_input_cutoff_temp'] = (
                 self.data[
                     'Substrate Heater Temperature Setpoint'
                     ].iloc[-1]
             )
-            params[self.step_id]['anion_input_cutoff_time'] = (
+            params[self.category]['anion_input_cutoff_time'] = (
                 self.data['Time Stamp'].iloc[-1]
             )
         return params
@@ -1082,17 +1104,17 @@ class Lf_Event:
             'the low temperature substrate ramp down event')
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
+        if self.category not in params:
+            params[self.category] = {}
 
         if 'deposition' not in params:
             raise ValueError('Missing deposition info, run get_rt_bool first')
 
         if not params['deposition']['rt']:
-            params[self.step_id]['start'] = self.data[
+            params[self.category]['start'] = self.data[
                 'Time Stamp'
             ].iloc[0]
-            params[self.step_id]['end_time'] = self.data[
+            params[self.category]['end_time'] = self.data[
                 'Time Stamp'
             ].iloc[-1]
         return params
@@ -1100,37 +1122,43 @@ class Lf_Event:
     def get_deposition_rate_params(self, params=None):
         list_allowed_categories = [
             's_deprate2_film_meas',
-            'source_deprate2_film_meas',
-            'all_source_deprate2_film_meas',]
+            'source_deprate2_film_meas'
+            ]
         if self.category not in list_allowed_categories:
             raise ValueError(
                 'This method is only available for the film deposition rate event')
-        source_number = self.source
 
         if params is None:
             params = {}
-        if self.step_id not in params:
-            params[self.step_id] = {}
+        if self.category not in params:
+            params[self.category] = {}
 
         if self.source is None:
-            params[self.step_id]['source'] = 'all'
-
+            source_number = 'all'
         elif self.source is not None:
+            source_number = self.source
+
+        if source_name[f'{source_number}'] not in params[self.category]:
+            params[self.category][source_name[f'{source_number}']] = {}
+
+        if self.source is not None:
+            source_number = self.source
             source_element = str(
             self.data[f'PC Source {source_number} Material'].iloc[0])
-            params[self.step_id]['source'] = source_number
             source_element= re.split(r'\s+', source_element)[0]
-            params[self.step_id]['material']= element(source_element).symbol
+            params[self.category][f'{source_name[f'{source_number}']}']['material'] = (
+                element(source_element).symbol)
 
-        params[self.step_id]['dep_rate'] = self.data['Thickness Rate'].mean()
-        params[self.step_id]['dep_rate_ref_mat'] = (
+        params[self.category][f'{source_name[f'{source_number}']}']['dep_rate'] = (
+            self.data['Thickness Rate'].mean())
+        params[self.category][f'{source_name[f'{source_number}']}']['dep_rate_ref_mat'] = (
             self.data['Thickness Active Material']
             .iloc[0])
         if 'Thickness Material Density' in self.data.columns:
-            params[self.step_id]['dep_rate_ref_density'] = (
+            params[self.category][f'{source_name[f'{source_number}']}']['dep_rate_ref_density'] = (
                 self.data['Thickness Material Density'].mean())
         if 'Thickness Material Z' in self.data.columns:
-            params[self.step_id]['dep_rate_ref_z'] = (
+            params[self.category][f'{source_name[f'{source_number}']}']['dep_rate_ref_z'] = (
                 self.data['Thickness Material Z'].mean())
 
         return params
@@ -1992,7 +2020,7 @@ def define_film_meas_conditions(data, source_list,**kwargs):
 
     deprate2_ternary_meas_cond = reduce(operator.and_, deprate2_film_meas_cond_list)
     deprate2_ternary_meas = Lf_Event('All Source Film Dep Rate Meas',source=None,
-                                     category='all_source_deprate2_film_meas')
+                                     category='source_deprate2_film_meas')
     deprate2_ternary_meas.set_condition(deprate2_ternary_meas_cond)
     deprate2_ternary_meas.filter_data(data)
 

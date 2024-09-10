@@ -784,25 +784,20 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # Writing deposition parameters
         sputtering.deposition_parameters.deposition_temperature = ureg.Quantity(
-            params['deposition']['avg_temp_1'], 'degC'
-        )
+            params['deposition']['avg_temp_1'], 'degC')
 
         sputtering.deposition_parameters.deposition_time = ureg.Quantity(
-            params['deposition']['duration'].total_seconds(), 'second'
-        )
+            params['deposition']['duration'].total_seconds(), 'second')
 
         sputtering.deposition_parameters.sputter_pressure = ureg.Quantity(
-            params['deposition']['avg_capman_presssure'], 'mtorr'
-        )
+            params['deposition']['avg_capman_presssure'], 'mtorr')
 
-        sputtering.deposition_parameters.material_space = params['deposition'][
-            'material_space'
-        ]
+        sputtering.deposition_parameters.material_space = (
+            params['deposition']['material_space'])
 
         # Writing instruments
         sputtering.instruments.platen_rotation = ureg.Quantity(
-            params['instruments']['platen_position'], 'degree'
-        )
+            params['instruments']['platen_position'], 'degree')
 
         # Merging the sputtering object with self
         merge_sections(self, sputtering, logger)
@@ -837,8 +832,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 self.lab_id = sample_id
 
             with archive.m_context.raw_file(self.log_file, 'r') as log:
-                log_data = read_logfile(log.name)
-                events_plot, params, _ = read_events(log_data)
+                log_df = read_logfile(log.name)
+                events_plot, params, _ = read_events(log_df)
 
             if params is not None:
                 self.write_log_data(params)
