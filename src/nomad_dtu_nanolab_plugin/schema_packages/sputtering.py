@@ -807,9 +807,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         #     'instruments.platen_rotation','degree']
         # ]
 
-        # #Looping through the data
-        # for input_val,output_val,unit in data:
-        #     write_data(output_val,input_val,unit)
+        # # Looping through the data
+        # for input_val, output_val, unit in data:
+        #     if input_val is not None:
+        #         write_data(output_val, input_val, unit)
+        #     else:
+        #         logger.warning(f"Missing input value for {output_val}"
 
 
         # Initializing a temporary DTUSputtering object
