@@ -4,24 +4,22 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 from nomad.datamodel.data import Schema
-from nomad.datamodel.datamodel import (ELNAnnotation, ELNComponentEnum,
-                                       EntryArchive)
+from nomad.datamodel.datamodel import ELNAnnotation, ELNComponentEnum, EntryArchive
 from nomad.datamodel.metainfo.annotations import BrowserAnnotation
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
-from nomad_measurements.utils import merge_sections
 from structlog.stdlib import BoundLogger
 
-from nomad_dtu_nanolab_plugin.basesections import (MappingMeasurement,
-                                                   MappingResult)
+from nomad_dtu_nanolab_plugin.basesections import MappingMeasurement, MappingResult
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
-m_package = Package() #fill out later
+m_package = Package()  # fill out later
+
 
 class PLMappingResult(MappingResult, Schema):
     m_def = Section()
@@ -73,7 +71,6 @@ class PLMappingResult(MappingResult, Schema):
         ),
     )
 
-
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `PLMappingResult` class.
@@ -85,6 +82,7 @@ class PLMappingResult(MappingResult, Schema):
         """
 
         super().normalize(archive, logger)
+
 
 class PLMetadata(Schema):
     m_def = Section()
@@ -131,10 +129,10 @@ class PLMetadata(Schema):
     scan_rate = Quantity(
         type=np.float64,
         unit='m/s',
-        description='''
+        description="""
         The rate of the scan.
         The unit is points per second (pts/s)
-        and therefore only right as long as the resolution is 1mm''',
+        and therefore only right as long as the resolution is 1mm""",
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm/s',
@@ -142,7 +140,7 @@ class PLMetadata(Schema):
         ),
     )
     used_laser = Quantity(
-        type =np.float64,
+        type=np.float64,
         unit='m',
         description='The wavelength of the laser used',
         a_eln=ELNAnnotation(
@@ -171,15 +169,14 @@ class PLMetadata(Schema):
     )
     gain_factor = Quantity(
         type=np.float64,
-        description='''
+        description="""
         The gain factor used for the measurement,
         it is unitless and scales the signal intensity
-        ''',
+        """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             label='Gain Factor',
         ),
-
     )
     temperature = Quantity(
         type=np.float64,
@@ -202,7 +199,7 @@ class PLMetadata(Schema):
         ),
     )
     wavelength_range = Quantity(
-        type= [np.float64],
+        type=[np.float64],
         unit='m',
         description='The range of the wavelength',
         a_eln=ELNAnnotation(
@@ -223,7 +220,7 @@ class PLMetadata(Schema):
     )
     gratings = Quantity(
         type=np.float64,
-        unit= 'g/m',
+        unit='g/m',
         description='The gratings used for the measurement',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
@@ -252,6 +249,7 @@ class PLMetadata(Schema):
 
         super().normalize(archive, logger)
 
+
 class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
@@ -277,14 +275,13 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
         repeats=True,
     )
 
-
     def write_PL_metadata(
         self,
         metadata_dict: dict[str, Any],
         archive: 'EntryArchive',
         logger: 'BoundLogger',
     ) -> None:
-        metadata =metadata_dict
+        metadata = metadata_dict
 
         entry = metadata.get('Thickness', None)
         if entry is not None and self.metadata.thickness is None:
@@ -390,34 +387,40 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
         if entry is not None and self.metadata.detector is None:
             self.metadata.detector = entry
 
-
     def write_PL_by_position(
         self,
         data_dict: dict[str, Any],
         archive: 'EntryArchive',
         logger: 'BoundLogger',
     ) -> None:
+        old_results: dict[PLMappingResult] = {}
+        if self.results is not None:
+            result: PLMappingResult
+            old_results = {
+                f'{result.x_absolute, result.y_absolute}': result
+                for result in self.results
+            }
 
-        results = self.results
-        if results is None:
-            results = []
-            for key, values in data_dict.items():
+        new_results = []
 
-                result = PLMappingResult(
-                    position=key,
-                    peak_lambda=ureg.Quantity(values[0], 'nm'),
-                    peak_intensity=ureg.Quantity(values[1], 'V'),
-                    signal_intensity=values[2],
-                    peak_fwhm=ureg.Quantity(values[3], 'nm'),
-                )
-                result.normalize(archive, logger)
-                results.append(result)
-        else:
-            result=[]
-            #add the information accoring to the key to the respective subsections
+        for key, values in data_dict.items():
+            if key in old_results:
+                result = old_results[key]
+            else:
+                result = PLMappingResult()
 
+            result.position = key
+            result.peak_lambda = ureg.Quantity(values[0], 'nm')
+            result.peak_intensity = ureg.Quantity(values[1], 'V')
+            result.signal_intensity = values[2]
+            result.peak_fwhm = ureg.Quantity(values[3], 'nm')
 
-    def plot_overview(self, data_df: pd.DataFrame ) -> None:
+            result.normalize(archive, logger)
+            new_results.append(result)
+        self.results = new_results
+        # add the information accoring to the key to the respective subsections
+
+    def plot_overview(self, data_df: pd.DataFrame) -> None:
         # Sort the DataFrame by 'X' and 'Y' columns
         data_df = data_df.sort_values(by=['X', 'Y'], key=lambda col: col.astype(float))
 
@@ -425,13 +428,14 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
         for column in data_df.columns:
             if column not in ['X', 'Y']:
                 fig = px.scatter(
-                    data_df, x='X',
+                    data_df,
+                    x='X',
                     y='Y',
                     color=column,
                     size=None,
-                    title=f'Scatter Plot of {column}'
-                    )
-                fig.update_traces(marker=dict(size=20))  #Set size for all markers
+                    title=f'Scatter Plot of {column}',
+                )
+                fig.update_traces(marker=dict(size=20))  # Set size for all markers
 
                 plot_json = fig.to_plotly_json()
                 plot_json['config'] = dict(
@@ -444,13 +448,10 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
                     )
                 )
 
-
-
     def plot_spectra(self) -> None:
-        #add the plotting stuff here
+        # add the plotting stuff here
         data_lines = []
-        #problem : how toplot these in their subsections
-
+        # problem : how toplot these in their subsections
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -489,7 +490,6 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
                     value = value.replace(' ', '')
                     metadata_dict[key] = value
 
-
             data_dict = {'Wavelength in nm': []}
             current_header = 'Wavelength in nm'
             data_dict[current_header] = []
@@ -504,17 +504,12 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
 
             data_dict = {k: v for k, v in data_dict.items() if v}
 
-
-
             self.write_PL_metadata(metadata_dict, archive, logger)
-            #the data_dict has all the spectra information with the position as the key
-            #use the dict to plot all the spectra in the respective subsections
-            #do i need a write section? or just the plot section?
-            self.figures =[]
+            # the data_dict has all the spectra information with the position as the key
+            # use the dict to plot all the spectra in the respective subsections
+            # do i need a write section? or just the plot section?
+            self.figures = []
             self.plot_spectra()
-
-
-
 
         if self.pl_overview_file:
             metadata_lines = []
@@ -546,7 +541,7 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
 
             # create a df from the data_lines (easier for plotting)
             data_df = pd.DataFrame(data_lines)
-            #some cleanup of the dataframe
+            # some cleanup of the dataframe
             data_df.columns = data_df.iloc[0]
             data_df = data_df.drop([0, 1])
             data_df.columns = data_df.columns.str.replace(' ', '').str.replace('\t', '')
@@ -561,10 +556,9 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
 
             self.write_PL_metadata(metadata_dict, archive, logger)
             self.write_PL_by_position(data_dict, archive, logger)
-            self.figures =[]
+            self.figures = []
             self.plot_overview(data_df)
-            #add the plots of the spectra to the subsections
-
+            # add the plots of the spectra to the subsections
 
         super().normalize(archive, logger)
 
