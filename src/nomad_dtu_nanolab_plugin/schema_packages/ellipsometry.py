@@ -1,27 +1,28 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-import numpy as np
-import pandas as pd
-import plotly.express as px
 from nomad.datamodel.data import Schema
-from nomad.datamodel.datamodel import (ELNAnnotation, ELNComponentEnum,
-                                       EntryArchive)
-from nomad.datamodel.metainfo.annotations import BrowserAnnotation
-from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
+from nomad.datamodel.datamodel import EntryArchive
+from nomad.datamodel.metainfo.annotations import (
+    BrowserAnnotation,
+    ELNAnnotation,
+    ELNComponentEnum,
+)
+from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
-from nomad.units import ureg
-from nomad_measurements.utils import merge_sections
 from structlog.stdlib import BoundLogger
 
-from nomad_dtu_nanolab_plugin.basesections import (MappingMeasurement,
-                                                   MappingResult)
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+    MappingMeasurement,
+    MappingResult,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
-m_package = Package() #fill out later
+m_package = Package()  # fill out later
+
 
 class EllipsometryMappingResult(MappingResult, Schema):
     m_def = Section()
@@ -35,8 +36,6 @@ class EllipsometryMappingResult(MappingResult, Schema):
         ),
     )
 
-
-
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `PLMappingResult` class.
@@ -49,9 +48,9 @@ class EllipsometryMappingResult(MappingResult, Schema):
 
         super().normalize(archive, logger)
 
+
 class EllipsometryMetadata(Schema):
     m_def = Section()
-
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -64,6 +63,7 @@ class EllipsometryMetadata(Schema):
         """
 
         super().normalize(archive, logger)
+
 
 class DTUEllipsometryMeasurement(MappingMeasurement, PlotSection, Schema):
     m_def = Section(
@@ -83,21 +83,24 @@ class DTUEllipsometryMeasurement(MappingMeasurement, PlotSection, Schema):
     thickness_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
-        a_eln={'component': 'FileEditQuantity', 'label': 'exported thickness text file'},
+        a_eln={
+            'component': 'FileEditQuantity',
+            'label': 'exported thickness text file',
+        },
     )
     metadata = SubSection(
         section_def=EllipsometryMetadata,
         description='The metadata of the ellipsometry measurement',
-        #need the native file and a way to open it to extract the metadata
+        # need the native file and a way to open it to extract the metadata
     )
     results = SubSection(
         section_def=EllipsometryMappingResult,
         description='The PL results.',
         repeats=True,
-        #add the spectra from n and k as well as the thickness value here
+        # add the spectra from n and k as well as the thickness value here
     )
 
-    '''
+    """
     def write_PL_by_position(
         self,
         data_dict: dict[str, Any],
@@ -127,7 +130,7 @@ class DTUEllipsometryMeasurement(MappingMeasurement, PlotSection, Schema):
         #add the plotting stuff here
         data_lines = []
         #problem : how toplot these in their subsections
-    '''
+    """
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -138,9 +141,7 @@ class DTUEllipsometryMeasurement(MappingMeasurement, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        #if self.pl_data_file:
-
-
+        # if self.pl_data_file:
 
         super().normalize(archive, logger)
 

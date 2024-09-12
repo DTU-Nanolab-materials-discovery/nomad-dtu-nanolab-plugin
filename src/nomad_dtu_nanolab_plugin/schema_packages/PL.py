@@ -4,15 +4,22 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 from nomad.datamodel.data import Schema
-from nomad.datamodel.datamodel import ELNAnnotation, ELNComponentEnum, EntryArchive
-from nomad.datamodel.metainfo.annotations import BrowserAnnotation
+from nomad.datamodel.datamodel import EntryArchive
+from nomad.datamodel.metainfo.annotations import (
+    BrowserAnnotation,
+    ELNAnnotation,
+    ELNComponentEnum,
+)
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from structlog.stdlib import BoundLogger
 
-from nomad_dtu_nanolab_plugin.basesections import MappingMeasurement, MappingResult
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+    MappingMeasurement,
+    MappingResult,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
