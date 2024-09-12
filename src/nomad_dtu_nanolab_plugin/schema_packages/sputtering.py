@@ -771,9 +771,47 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         Method for writing the log data to the respective sections.
 
         Args:
-            main_params (dict): Dictionary containing the log data.
+            params (dict): Dictionary containing the log data.
             logger (BoundLogger): A structlog logger.
         """
+        # #Helper method to write the data
+        # def write_data(output_val,input_val,unit:str):
+        #     if unit is not None:
+        #         sputtering.output = ureg.Quantity(
+        #             input_val, unit
+        #         )
+        #     else:
+        #         sputtering.output = input_val
+
+        # #Definiting the input, ouput and unit
+        # data = [
+        #     [params['overview']['log_start_time'],
+        #     'datetime',None],
+
+        #     [params['overview']['log_end_time'],
+        #     'end_time',None],
+
+        #     [params['deposition']['avg_temp_1'],
+        #     'deposition_parameters.deposition_temperature','degC'],
+
+        #     [params['deposition']['duration'].total_seconds(),
+        #     'deposition_parameters.deposition_time','second'],
+
+        #     [params['deposition']['avg_capman_presssure'],
+        #     'deposition_parameters.sputter_pressure','mtorr'],
+
+        #     [params['deposition']['material_space'],
+        #     'deposition_parameters.material_space',None],
+
+        #     [params['instruments']['platen_position'],
+        #     'instruments.platen_rotation','degree']
+        # ]
+
+        # #Looping through the data
+        # for input_val,output_val,unit in data:
+        #     write_data(output_val,input_val,unit)
+
+
         # Initializing a temporary DTUSputtering object
         sputtering = DTUSputtering()
 
