@@ -817,12 +817,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # Initializing a temporary DTUSputtering object
         sputtering = DTUSputtering()
 
-        # Writing overview
-
-        sputtering.end_time = params['overview']['log_end_time']
+        # Writing deposition parameters
 
         sputtering.deposition_parameters = DepositionParameters()
-        # Writing deposition parameters
+
         sputtering.deposition_parameters.deposition_temperature = ureg.Quantity(
             params['deposition']['avg_temp_1'], 'degC'
         )
@@ -849,6 +847,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         merge_sections(self, sputtering, logger)
 
         self.datetime = params['overview']['log_start_time']
+
+        self.end_time = params['overview']['log_end_time']
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
