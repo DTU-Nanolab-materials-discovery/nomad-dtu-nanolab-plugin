@@ -2733,44 +2733,49 @@ def read_events(data):
 
 
 def main():
-    logfile_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\deposition logs'
-    logfile_extension = 'CSV'
+    samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\samples'
+    logfiles_extension = 'CSV'
 
-    # Read all the logfiles in the directory, removing only the .CSV extension
-    logfile_names = [
-        re.sub(rf'\.{logfile_extension}$', '', file)
-        for file in os.listdir(logfile_dir)
-        if re.match(r'^\w+\d{4}\w+', file) and file.endswith(f'.{logfile_extension}')
-    ]
-    # Remove mittma_0002_Cu_
-    # from the logfile_names
-    logfile_names.remove(
+    logfiles={'name':[], 'folder':[]}
+
+    samples_to_remove = [
         'mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07'
-    )
+        ]
+
+    # In samples_dir, explore all the folders (samples names)
+    for folder in os.listdir(samples_dir):
+        sample_path = os.path.join(samples_dir, folder, 'log_files')
+
+        # Check if the sample_path exists and is a directory
+        if os.path.isdir(sample_path):
+            # Iterate over files in the sample_path directory
+            for file in os.listdir(sample_path):
+                if re.match(r'^\w+\d{4}\w+', file) and file.endswith(f'.{logfiles_extension}'):
+                    logfile_name = re.sub(rf'\.{logfiles_extension}$', '', file)
+                    if logfile_name not in samples_to_remove:
+                        logfiles['name'].append(logfile_name)
+                        logfiles['folder'].append(sample_path)
 
     # To test the script on a single logfile
     # logfile_names= ['eugbe_0004_Sb_Recording Set 2024.09.06-10.22.31']
 
     # Loop over all the logfiles in the directory
-    for logfile_name in logfile_names:
+    for i in range(len(logfiles['name'])):
         # Default Logfile location
-        print(f'Processing logfile: {logfile_name}')
-        logfile_path = f'{logfile_dir}/{logfile_name}.{logfile_extension}'
+        print(f'Processing logfile: {logfiles["name"][i]}')
+        logfile_path = f'{logfiles["folder"][i]}/{logfiles["name"][i]}.{logfiles_extension}'
 
         # ---------DEFAULT EXPORT LOCATIONS-------------
         # Specify the path and filename for the report text file
-        txt_file_dir = os.path.join(logfile_dir, 'derived_quantities_txt_files')
-        txt_file_name = f'{logfile_name}_derived_quantities.txt'
+        txt_file_dir = os.path.join(logfiles["folder"][i])
+        txt_file_name = f'{logfiles["name"][i]}_derived_quantities.txt'
         txt_file_path = os.path.join(txt_file_dir, txt_file_name)
 
         # Specify the plotly graph export location and file name
-        plotly_graph_file_dir = os.path.join(
-            logfile_dir, 'plotly_process_timeline_graphs'
-        )
-        plotly_graph_file_name = f'{logfile_name}_plotly_timeline.html'
-        plotly_graph_file_path = os.path.join(
-            plotly_graph_file_dir, plotly_graph_file_name
-        )
+        plotly_graph_file_dir = os.path.join(logfiles["folder"][i])
+        plotly_graph_file_name = f'{logfiles["name"][i]}_plotly_timeline.html'
+        plotly_graph_file_path = os.path.join(plotly_graph_file_dir, plotly_graph_file_name)
+
 
         # ---------READ THE DATA-------------
 
@@ -2796,13 +2801,13 @@ def main():
         # ----HERE STOPS THE NOMAD RELEVANT SCRIPT----
         # --------PRINT DERIVED QUANTITIES REPORT-------------
 
-        print(f'Derived quantities report for logfile\n{logfile_name}:\n')
+        print(f'Derived quantities report for logfile\n{logfiles['name']}:\n')
         print_params(main_params)
 
         # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---
 
         print('Saving the derived quantities report as a text file')
-        save_report_as_text(main_params, txt_file_path, logfile_name)
+        save_report_as_text(main_params, txt_file_path, logfiles['name'])
         print('\n')
 
 
