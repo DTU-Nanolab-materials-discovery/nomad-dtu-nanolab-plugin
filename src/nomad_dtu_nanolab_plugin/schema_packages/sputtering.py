@@ -779,68 +779,65 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             written.
             logger (BoundLogger): A structlog logger.
         """
-        # #Helper method to write the data
-        # def write_data(output_val,input_val,unit:str):
-        #     if unit is not None:
-        #         sputtering.output = ureg.Quantity(
-        #             input_val, unit
-        #         )
-        #     else:
-        #         sputtering.output = input_val
+        #Helper method to write the data
+        def write_sputtering_data(output_val,input_val,unit:str):
+            if unit is not None:
+                sputtering.output = ureg.Quantity(
+                    input_val, unit
+                )
+            else:
+                sputtering.output = input_val
 
-        # #Definiting the input, ouput and unit
-        # data = [
-        #     [params['overview']['log_start_time'],
-        #     'datetime',None],
+        #Getting the deposition sub dictoinary
+        deposition = params.get('deposition', {})
+        #Definiting the input, ouput and unit
+        data = [
+            [params['deposition']['avg_temp_1'],
+            'deposition_parameters.deposition_temperature','degC'],
 
-        #     [params['overview']['log_end_time'],
-        #     'end_time',None],
+            [params['deposition']['duration'].total_seconds(),
+            'deposition_parameters.deposition_time','second'],
 
-        #     [params['deposition']['avg_temp_1'],
-        #     'deposition_parameters.deposition_temperature','degC'],
+            [params['deposition']['avg_capman_presssure'],
+            'deposition_parameters.sputter_pressure','mtorr'],
 
-        #     [params['deposition']['duration'].total_seconds(),
-        #     'deposition_parameters.deposition_time','second'],
+            [params['deposition']['material_space'],
+            'deposition_parameters.material_space', None],
 
-        #     [params['deposition']['avg_capman_presssure'],
-        #     'deposition_parameters.sputter_pressure','mtorr'],
-
-        #     [params['deposition']['material_space'],
-        #     'deposition_parameters.material_space',None],
-
-        #     [params['deposition']['platen_position'],
-        #     'instruments.platen_rotation','degree']
-        # ]
-
-        # # Looping through the data
-        # for input_val, output_val, unit in data:
-        #     if input_val is not None:
-        #         write_data(output_val, input_val, unit)
-        #     else:
-        #         logger.warning(f"Missing input value for {output_val}"
+        ]
 
         # Initializing a temporary DTUSputtering object
         sputtering = DTUSputtering()
-
+        # Initializing the deposition parameters
         sputtering.deposition_parameters = DepositionParameters()
-        deposition = params.get('deposition', {})
 
-        sputtering.deposition_parameters.deposition_temperature = ureg.Quantity(
-            deposition['avg_temp_1'], 'degC'
-        )
+        # Looping through the data
+        for input_val, output_val, unit in data:
+            try:
+                write_sputtering_data(output_val, input_val, unit)
+            else:
+                logger.warning(f"Erro when writing {input_val} to sputtering.{out_val}")
 
-        sputtering.deposition_parameters.deposition_time = ureg.Quantity(
-            deposition['duration'].total_seconds(), 'second'
-        )
 
-        sputtering.deposition_parameters.sputter_pressure = ureg.Quantity(
-            deposition['avg_capman_pressure'], 'mtorr'
-        )
+        # sputtering.deposition_parameters = DepositionParameters()
+        # deposition = params.get('deposition', {})
 
-        sputtering.deposition_parameters.material_space = deposition['material_space']
+        # sputtering.deposition_parameters.deposition_temperature = ureg.Quantity(
+        #     deposition['avg_temp_1'], 'degC'
+        # )
 
+        # sputtering.deposition_parameters.deposition_time = ureg.Quantity(
+        #     deposition['duration'].total_seconds(), 'second'
+        # )
+
+        # sputtering.deposition_parameters.sputter_pressure = ureg.Quantity(
+        #     deposition['avg_capman_pressure'], 'mtorr'
+        # )
+
+        # sputtering.deposition_parameters.material_space = deposition['material_space']
+
+        #Special case for the adjusted instrument parameters
         instrument_reference = AdjustedInstrumentParameters()
-        # Writing instruments
         if 'platen_position' in deposition:
             instrument_reference.platen_rotation = ureg.Quantity(
                 deposition['platen_position'], 'degree'
