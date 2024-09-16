@@ -1,0 +1,10 @@
+diff a/src/nomad_dtu_nanolab_plugin/schema_packages/__init__.py b/src/nomad_dtu_nanolab_plugin/schema_packages/__init__.py	(rejected hunks)
+@@ -7,7 +7,7 @@ class NewSchemaPackageEntryPoint(SchemaPackageEntryPoint):
+ 
+     def load(self):
+         from nomad_dtu_nanolab_plugin.schema_packages.schema_package import m_package
+- 
++
+         return m_package
+ 
+ 
