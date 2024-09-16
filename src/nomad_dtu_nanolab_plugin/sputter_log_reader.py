@@ -2762,8 +2762,12 @@ def main():
                         logfiles['name'].append(logfile_name)
                         logfiles['folder'].append(sample_path)
 
-    # To test the script on a single logfile
-    # logfile_names= ['eugbe_0004_Sb_Recording Set 2024.09.06-10.22.31']
+    #Un comment to test the script on a single logfile
+    logfiles = {}
+    logfiles['name']= ['eugbe_0004_Sb_Recording Set 2024.09.06-10.22.31']
+    logfiles['folder']= [
+        r'Z:\P110143-phosphosulfides-Andrea\Data\samples\eugbe_0004_Sb\log_files']
+
 
     # Loop over all the logfiles in the directory
     for i in range(len(logfiles['name'])):
