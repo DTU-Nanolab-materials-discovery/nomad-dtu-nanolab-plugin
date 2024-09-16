@@ -5,7 +5,7 @@ from nomad.client import normalize_all, parse
 
 
 def test_schema():
-    test_file = os.path.join('tests', 'data', 'logfile_test.archive.yaml')
+    test_file = os.path.join('tests', 'data', 'test_logfile.archive.yaml')
     entry_archive = parse(test_file)[0]
     normalize_all(entry_archive)
 

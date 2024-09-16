@@ -1403,10 +1403,8 @@ def rename_cracker_columns(data):
         # If the wrong cracker columns are present exclusively, we rename them
         data.rename(
             columns={
-                'Sulfur Cracker Control Setpoint':
-                'Sulfur Cracker Control Setpoint Feedback',
-                'Sulfur Cracker Control Valve PulseWidth Setpoint':
-                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
+                'Sulfur Cracker Control Setpoint': 'Sulfur Cracker Control Setpoint Feedback',
+                'Sulfur Cracker Control Valve PulseWidth Setpoint': 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
             },
             inplace=True,
         )
@@ -2738,11 +2736,11 @@ def main():
     samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\samples'
     logfiles_extension = 'CSV'
 
-    logfiles={'name':[], 'folder':[]}
+    logfiles = {'name': [], 'folder': []}
 
     samples_to_remove = [
         'mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07'
-        ]
+    ]
 
     # In samples_dir, explore all the folders (samples names)
     for folder in os.listdir(samples_dir):
@@ -2753,7 +2751,8 @@ def main():
             # Iterate over files in the sample_path directory
             for file in os.listdir(sample_path):
                 if re.match(r'^\w+\d{4}\w+', file) and file.endswith(
-                        f'.{logfiles_extension}'):
+                    f'.{logfiles_extension}'
+                ):
                     logfile_name = re.sub(rf'\.{logfiles_extension}$', '', file)
                     if logfile_name not in samples_to_remove:
                         logfiles['name'].append(logfile_name)
@@ -2767,21 +2766,21 @@ def main():
         # Default Logfile location
         print(f'Processing logfile: {logfiles["name"][i]}')
         logfile_path = (
-            f'{logfiles["folder"][i]}/{logfiles["name"][i]}.{logfiles_extension}')
+            f'{logfiles["folder"][i]}/{logfiles["name"][i]}.{logfiles_extension}'
+        )
 
         # ---------DEFAULT EXPORT LOCATIONS-------------
         # Specify the path and filename for the report text file
-        txt_file_dir = os.path.join(logfiles["folder"][i])
+        txt_file_dir = os.path.join(logfiles['folder'][i])
         txt_file_name = f'{logfiles["name"][i]}_derived_quantities.txt'
         txt_file_path = os.path.join(txt_file_dir, txt_file_name)
 
         # Specify the plotly graph export location and file name
-        plotly_graph_file_dir = os.path.join(logfiles["folder"][i])
+        plotly_graph_file_dir = os.path.join(logfiles['folder'][i])
         plotly_graph_file_name = f'{logfiles["name"][i]}_plotly_timeline.html'
         plotly_graph_file_path = os.path.join(
-            plotly_graph_file_dir,
-            plotly_graph_file_name)
-
+            plotly_graph_file_dir, plotly_graph_file_name
+        )
 
         # ---------READ THE DATA-------------
 
@@ -2807,7 +2806,7 @@ def main():
         # ----HERE STOPS THE NOMAD RELEVANT SCRIPT----
         # --------PRINT DERIVED QUANTITIES REPORT-------------
 
-        print(f'Derived quantities report for logfile\n{logfiles['name'][i]}:\n')
+        print(f'Derived quantities report for logfile\n{logfiles["name"][i]}:\n')
         print_params(main_params)
 
         # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---

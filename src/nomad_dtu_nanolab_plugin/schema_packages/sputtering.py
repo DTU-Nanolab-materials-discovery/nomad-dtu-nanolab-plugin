@@ -737,6 +737,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     )
     instruments = SubSection(
         section_def=AdjustedInstrumentParameters,
+        repeats=True,
     )
     deposition_parameters = SubSection(
         section_def=DepositionParameters,
@@ -766,12 +767,16 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         )
 
-    def write_log_data(self, params: dict, logger: 'BoundLogger') -> None:
+    def write_log_data(
+        self, params: dict, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
         """
         Method for writing the log data to the respective sections.
 
         Args:
             params (dict): Dictionary containing the log data.
+            archive (EntryArchive): The archive containing the section that is being
+            written.
             logger (BoundLogger): A structlog logger.
         """
         # #Helper method to write the data
@@ -816,33 +821,36 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # Initializing a temporary DTUSputtering object
         sputtering = DTUSputtering()
-        sputtering.instruments = AdjustedInstrumentParameters()
+
         sputtering.deposition_parameters = DepositionParameters()
+        deposition = params.get('deposition', {})
 
         sputtering.deposition_parameters.deposition_temperature = ureg.Quantity(
-            params['deposition']['avg_temp_1'], 'degC'
+            deposition['avg_temp_1'], 'degC'
         )
 
         sputtering.deposition_parameters.deposition_time = ureg.Quantity(
-            params['deposition']['duration'].total_seconds(), 'second'
+            deposition['duration'].total_seconds(), 'second'
         )
 
         sputtering.deposition_parameters.sputter_pressure = ureg.Quantity(
-            params['deposition']['avg_capman_pressure'], 'mtorr'
+            deposition['avg_capman_pressure'], 'mtorr'
         )
 
-        sputtering.deposition_parameters.material_space = params['deposition'][
-            'material_space'
-        ]
+        sputtering.deposition_parameters.material_space = deposition['material_space']
 
-        sputtering.instruments.platen_rotation = ureg.Quantity(
-            params['deposition']['platen_position'], 'degree'
-        )
+        instrument_reference = AdjustedInstrumentParameters()
+        # Writing instruments
+        if 'platen_position' in deposition:
+            instrument_reference.platen_rotation = ureg.Quantity(
+                deposition['platen_position'], 'degree'
+            )
+        sputtering.instruments = [instrument_reference]
 
         # Merging the sputtering object with self
         merge_sections(self, sputtering, logger)
 
-        #Overwriting the datetime and end_time
+        # Overwriting the datetime and end_time
         self.datetime = params['overview']['log_start_time']
 
         self.end_time = params['overview']['log_end_time']
@@ -881,7 +889,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 events_plot, params, _ = read_events(log_df)
 
             if params is not None:
-                self.write_log_data(params, logger)
+                self.write_log_data(params, archive, logger)
 
             self.figures = []
             self.plot(archive, logger)
