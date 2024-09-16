@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 import plotly.express as px
-from nomad.datamodel.data import Schema
+from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 m_package = Package()  # fill out later
 
 
-class PLMappingResult(MappingResult, Schema):
+class PLMappingResult(MappingResult):
     m_def = Section()
 
     position = Quantity(
@@ -92,7 +92,7 @@ class PLMappingResult(MappingResult, Schema):
         super().normalize(archive, logger)
 
 
-class PLMetadata(Schema):
+class PLMetadata(ArchiveSection):
     m_def = Section()
     thickness = Quantity(
         type=np.float64,
@@ -344,9 +344,8 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
         archive: 'EntryArchive',
         logger: 'BoundLogger',
     ) -> None:
-        old_results: dict[PLMappingResult] = {}
+        old_results: dict[str, PLMappingResult] = {}
         if self.results is not None:
-            result: PLMappingResult
             old_results = {
                 f'{result.x_absolute, result.y_absolute}': result
                 for result in self.results
