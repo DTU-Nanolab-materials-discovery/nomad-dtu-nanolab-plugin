@@ -1403,8 +1403,10 @@ def rename_cracker_columns(data):
         # If the wrong cracker columns are present exclusively, we rename them
         data.rename(
             columns={
-                'Sulfur Cracker Control Setpoint': 'Sulfur Cracker Control Setpoint Feedback',
-                'Sulfur Cracker Control Valve PulseWidth Setpoint': 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
+                'Sulfur Cracker Control Setpoint':
+                'Sulfur Cracker Control Setpoint Feedback',
+                'Sulfur Cracker Control Valve PulseWidth Setpoint':
+                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
             },
             inplace=True,
         )
@@ -2750,7 +2752,8 @@ def main():
         if os.path.isdir(sample_path):
             # Iterate over files in the sample_path directory
             for file in os.listdir(sample_path):
-                if re.match(r'^\w+\d{4}\w+', file) and file.endswith(f'.{logfiles_extension}'):
+                if re.match(r'^\w+\d{4}\w+', file) and file.endswith(
+                        f'.{logfiles_extension}'):
                     logfile_name = re.sub(rf'\.{logfiles_extension}$', '', file)
                     if logfile_name not in samples_to_remove:
                         logfiles['name'].append(logfile_name)
@@ -2774,7 +2777,9 @@ def main():
         # Specify the plotly graph export location and file name
         plotly_graph_file_dir = os.path.join(logfiles["folder"][i])
         plotly_graph_file_name = f'{logfiles["name"][i]}_plotly_timeline.html'
-        plotly_graph_file_path = os.path.join(plotly_graph_file_dir, plotly_graph_file_name)
+        plotly_graph_file_path = os.path.join(
+            plotly_graph_file_dir,
+            plotly_graph_file_name)
 
 
         # ---------READ THE DATA-------------

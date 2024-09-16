@@ -846,6 +846,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # Merging the sputtering object with self
         merge_sections(self, sputtering, logger)
 
+        #Overwriting the datetime and end_time
         self.datetime = params['overview']['log_start_time']
 
         self.end_time = params['overview']['log_end_time']
