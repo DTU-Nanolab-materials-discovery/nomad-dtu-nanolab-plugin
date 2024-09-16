@@ -2766,7 +2766,8 @@ def main():
     for i in range(len(logfiles['name'])):
         # Default Logfile location
         print(f'Processing logfile: {logfiles["name"][i]}')
-        logfile_path = f'{logfiles["folder"][i]}/{logfiles["name"][i]}.{logfiles_extension}'
+        logfile_path = (
+            f'{logfiles["folder"][i]}/{logfiles["name"][i]}.{logfiles_extension}')
 
         # ---------DEFAULT EXPORT LOCATIONS-------------
         # Specify the path and filename for the report text file
