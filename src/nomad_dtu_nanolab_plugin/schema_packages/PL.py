@@ -13,6 +13,7 @@ from nomad.datamodel.metainfo.annotations import (
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
+from nomad_measurements.utils import merge_sections
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -282,6 +283,15 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
         repeats=True,
     )
 
+    def remove_unit(self, value: str) -> float:
+        if value is not None:
+            filtered_chars = [c for c in value if c.isdigit() or c == '.']
+            filtered_entry = ''.join(filtered_chars)
+            return float(filtered_entry)
+        else:
+            return None
+
+
     def write_PL_metadata(
         self,
         metadata_dict: dict[str, Any],
@@ -290,109 +300,43 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
     ) -> None:
         metadata = metadata_dict
 
-        entry = metadata.get('Thickness', None)
-        if entry is not None and self.metadata.thickness is None:
-            filtered_chars = [c for c in entry if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            thickness = float(filtered_entry) if filtered_entry else None
-            self.metadata.thickness = ureg.Quantity(thickness, 'um')
+        thickness = self.remove_unit(metadata.get('Thickness', None))
+        waferdiam = self.remove_unit(metadata.get('WaferDiam', None))
+        scandiam = self.remove_unit(metadata.get('ScanDiam', None))
+        resolution = self.remove_unit(metadata.get('Resolution', None))
+        scanrate = self.remove_unit(metadata.get('ScanRate', None))
+        laser = self.remove_unit(metadata.get('Laser', None))
+        power = self.remove_unit(metadata.get('Power', None))
+        filter = metadata.get('Filter', None)
+        gain = self.remove_unit(metadata.get('Gain', None))
+        temperature = self.remove_unit(metadata.get('Temperature', None))
+        centerwavelength = self.remove_unit(metadata.get('Centerwavelength', None))
+        slitwidth = self.remove_unit(metadata.get('Slitwidth', None))
+        gratings = self.remove_unit(metadata.get('Grating', None))
+        detector = metadata.get('Detector', None)
 
-        entry = metadata.get('WaferDiam', None)
-        if entry is not None and self.metadata.wafer_diameter is None:
-            filtered_chars = [c for c in entry if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            waferdiam = float(filtered_entry) if filtered_entry else None
-            self.metadata.wafer_diameter = ureg.Quantity(waferdiam, 'mm')
+        range = metadata.get('Range', None)
+        parts = [float(self.remove_unit(part)) for part in range.split('to') if part]
 
-        entry = metadata.get('ScanDiam', None)
-        if entry is not None and self.metadata.scan_diameter is None:
-            filtered_chars = [c for c in entry if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            scandiam = float(filtered_entry) if filtered_entry else None
-            self.metadata.scan_diameter = ureg.Quantity(scandiam, 'mm')
+        meta= PLMetadata(
+            thickness=ureg.Quantity(thickness, 'um'),
+            wafer_diameter=ureg.Quantity(waferdiam, 'mm'),
+            scan_diameter=ureg.Quantity(scandiam, 'mm'),
+            resolution=ureg.Quantity(resolution, 'mm'),
+            scan_rate=ureg.Quantity(scanrate, 'mm/s'),
+            used_laser=ureg.Quantity(laser, 'nm'),
+            used_power=ureg.Quantity(power, 'mW'),
+            used_filter=filter,
+            gain_factor=gain,
+            temperature=ureg.Quantity(temperature, 'C'),
+            center_wafelength=ureg.Quantity(centerwavelength, 'nm'),
+            wavelength_range=[ureg.Quantity(x, 'nm') for x in parts],
+            slit_width=ureg.Quantity(slitwidth, 'mm'),
+            gratings=ureg.Quantity(gratings, 'g/mm'),
+            detector=detector,
+        )
 
-        entry = metadata.get('Resolution', None)
-        if entry is not None and self.metadata.resolution is None:
-            filtered_chars = [c for c in entry if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            resolution = float(filtered_entry) if filtered_entry else None
-            self.metadata.resolution = ureg.Quantity(resolution, 'mm')
-
-        entry = metadata.get('ScanRate', None)
-        if entry is not None and self.metadata.scan_rate is None:
-            filtered_chars = [c for c in entry if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            scanrate = float(filtered_entry) if filtered_entry else None
-            self.metadata.scan_rate = ureg.Quantity(scanrate, 'mm/s')
-
-        entry = metadata.get('Laser', None)
-        if entry is not None and self.metadata.used_laser is None:
-            filtered_chars = [c for c in entry if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            laser = float(filtered_entry) if filtered_entry else None
-            self.metadata.used_laser = ureg.Quantity(laser, 'nm')
-
-        entry = metadata.get('Power', None)
-        if entry is not None and self.metadata.used_power is None:
-            filtered_chars = [c for c in entry if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            power = float(filtered_entry) if filtered_entry else None
-            self.metadata.used_power = ureg.Quantity(power, 'mW')
-
-        entry = metadata.get('Filter', None)
-        if entry is not None and self.metadata.used_filter is None:
-            self.metadata.used_filter = entry
-
-        entry = metadata.get('Gain', None)
-        if entry is not None and self.metadata.gain_factor is None:
-            filtered_chars = [c for c in entry if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            gain = float(filtered_entry) if filtered_entry else None
-            self.metadata.gain_factor = gain
-
-        entry = metadata.get('Temperature', None)
-        if entry is not None and self.metadata.temperature is None:
-            filtered_chars = [c for c in entry if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            temperature = float(filtered_entry) if filtered_entry else None
-            self.metadata.temperature = ureg.Quantity(temperature, 'C')
-
-        entry = metadata.get('Centerwavelength', None)
-        if entry is not None and self.metadata.center_wafelength is None:
-            filtered_chars = [c for c in entry if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            centerwavelength = float(filtered_entry) if filtered_entry else None
-            self.metadata.center_wafelength = ureg.Quantity(centerwavelength, 'nm')
-
-        entry = metadata.get('Range', None)
-        if entry is not None and self.metadata.wavelength_range is None:
-            parts = entry.split('to')
-            cleaned_parts = []
-            for part in parts:
-                filtered_chars = [c for c in part if c.isdigit() or c == '.']
-                cleaned_part = ''.join(filtered_chars)
-                cleaned_parts.append(cleaned_part)
-            wavelength_range = [float(part) for part in cleaned_parts if part]
-            wavelength_quantities = [ureg.Quantity(x, 'nm') for x in wavelength_range]
-            self.metadata.wavelength_range = wavelength_quantities
-
-        entry = metadata.get('Slitwidth', None)
-        if entry is not None and self.metadata.slit_width is None:
-            filtered_chars = [c for c in entry if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            slitwidth = float(filtered_entry) if filtered_entry else None
-            self.metadata.slit_width = ureg.Quantity(slitwidth, 'mm')
-
-        entry = metadata.get('Grating', None)
-        if entry is not None and self.metadata.gratings is None:
-            filtered_chars = [c for c in entry if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            gratings = float(filtered_entry) if filtered_entry else None
-            self.metadata.gratings = ureg.Quantity(gratings, 'g/mm')
-
-        entry = metadata.get('Detector', None)
-        if entry is not None and self.metadata.detector is None:
-            self.metadata.detector = entry
+        merge_sections(self.metadata, meta, logger)
 
     def write_PL_by_position(
         self,
@@ -455,10 +399,60 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
                     )
                 )
 
+    """
     def plot_spectra(self) -> None:
         # add the plotting stuff here
-        data_lines = []
+
         # problem : how toplot these in their subsections
+        """
+
+    def arrange_metadata(self, metadata_lines: list[str]) -> dict[str, Any]:
+
+            metadata_dict = {}
+            # Transform metadata_lines into dictionary entries
+            for line in metadata_lines:
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    key = key.replace(' ', '')
+                    value = value.replace(' ', '')
+                    metadata_dict[key] = value
+
+            return metadata_dict
+
+    def arrange_spectra(self, data_lines: list[str]) -> dict[str, Any]:
+            data_dict = {'Wavelength in nm': []}
+            current_header = 'Wavelength in nm'
+            data_dict[current_header] = []
+
+            for line in data_lines:
+                if line.startswith('POS:'):
+                    # Extract the header from the line
+                    current_header = line.split('POS:')[1].strip()
+                    data_dict[current_header] = []
+                else:
+                    data_dict[current_header].append(line)
+
+            data_dict = {k: v for k, v in data_dict.items() if v}
+            return data_dict
+
+    def arrange_map(self, data_lines: list[str]) -> tuple[pd.DataFrame, dict[str, Any]]:
+
+            # create a df from the data_lines (easier for plotting)
+            data_df = pd.DataFrame(data_lines)
+            # some cleanup of the dataframe
+            data_df.columns = data_df.iloc[0]
+            data_df = data_df.drop([0, 1])
+            data_df.columns = data_df.columns.str.replace(' ', '').str.replace('\t', '')
+            data_df = data_df.apply(pd.to_numeric, errors='ignore')
+
+            # make a dict for writing into the subsections
+            data_dict = {}
+            for index, row in data_df.iterrows():
+                key = f"{row['X']},{row['Y']}"
+                values = row.drop(['X', 'Y']).tolist()
+                data_dict[key] = values
+
+            return data_df, data_dict
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -487,31 +481,11 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
                 else:
                     metadata_lines.append(stripped_line)
 
-            metadata_dict = {}
-
-            # Transform metadata_lines into dictionary entries
-            for line in metadata_lines:
-                if ':' in line:
-                    key, value = line.split(':', 1)
-                    key = key.replace(' ', '')
-                    value = value.replace(' ', '')
-                    metadata_dict[key] = value
-
-            data_dict = {'Wavelength in nm': []}
-            current_header = 'Wavelength in nm'
-            data_dict[current_header] = []
-
-            for line in data_lines:
-                if line.startswith('POS:'):
-                    # Extract the header from the line
-                    current_header = line.split('POS:')[1].strip()
-                    data_dict[current_header] = []
-                else:
-                    data_dict[current_header].append(line)
-
-            data_dict = {k: v for k, v in data_dict.items() if v}
-
+            metadata_dict= self.arrange_metadata(metadata_lines)
             self.write_PL_metadata(metadata_dict, archive, logger)
+
+            data_dict= self.arrange_spectra(data_lines)
+
             # the data_dict has all the spectra information with the position as the key
             # use the dict to plot all the spectra in the respective subsections
             # do i need a write section? or just the plot section?
@@ -537,31 +511,11 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
                 else:
                     metadata_lines.append(stripped_line)
 
-            metadata_dict = {}
-            # Transform metadata_lines into dictionary entries
-            for line in metadata_lines:
-                if ':' in line:
-                    key, value = line.split(':', 1)
-                    key = key.replace(' ', '')
-                    value = value.replace(' ', '')
-                    metadata_dict[key] = value
-
-            # create a df from the data_lines (easier for plotting)
-            data_df = pd.DataFrame(data_lines)
-            # some cleanup of the dataframe
-            data_df.columns = data_df.iloc[0]
-            data_df = data_df.drop([0, 1])
-            data_df.columns = data_df.columns.str.replace(' ', '').str.replace('\t', '')
-            data_df = data_df.apply(pd.to_numeric, errors='ignore')
-
-            # make a dict for writing into the subsections
-            data_dict = {}
-            for index, row in data_df.iterrows():
-                key = f"{row['X']},{row['Y']}"
-                values = row.drop(['X', 'Y']).tolist()
-                data_dict[key] = values
-
+            metadata_dict= self.arrange_metadata(metadata_lines)
             self.write_PL_metadata(metadata_dict, archive, logger)
+
+            data_df, data_dict= self.arrange_map(data_lines)
+
             self.write_PL_by_position(data_dict, archive, logger)
             self.figures = []
             self.plot_overview(data_df)
