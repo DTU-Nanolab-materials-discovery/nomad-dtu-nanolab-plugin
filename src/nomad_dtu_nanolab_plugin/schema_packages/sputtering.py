@@ -815,8 +815,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         for input_val, output_val, unit in data:
             try:
                 write_sputtering_data(output_val, input_val, unit)
-            else:
-                logger.warning(f"Erro when writing {input_val} to sputtering.{out_val}")
+            except Exception:
+                logger.warning(
+                    f"Erro when writing {input_val} to sputtering.{output_val}")
 
 
         # sputtering.deposition_parameters = DepositionParameters()
@@ -827,7 +828,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # )
 
         # sputtering.deposition_parameters.deposition_time = ureg.Quantity(
-        #     deposition['duration'].total_seconds(), 'second'
+        #     deposition['duration'S].total_seconds(), 'second'
         # )
 
         # sputtering.deposition_parameters.sputter_pressure = ureg.Quantity(
