@@ -819,8 +819,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         #         logger.warning(
         #             f"Erro when writing {input_val} to sputtering.{output_val}")
 
-
+        # Initializing a temporary DTUSputtering object and its subsections
+        sputtering = DTUSputtering()
         sputtering.deposition_parameters = DepositionParameters()
+
+        # Getting the deposition sub dictionnary from the params
         deposition = params.get('deposition', {})
 
         sputtering.deposition_parameters.deposition_temperature = ureg.Quantity(
