@@ -798,7 +798,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             [params['deposition']['duration'].total_seconds(),
             'deposition_parameters.deposition_time','second'],
 
-            [params['deposition']['avg_capman_presssure'],
+            [params['deposition']['avg_capman_pressure'],
             'deposition_parameters.sputter_pressure','mtorr'],
 
             [params['deposition']['material_space'],
