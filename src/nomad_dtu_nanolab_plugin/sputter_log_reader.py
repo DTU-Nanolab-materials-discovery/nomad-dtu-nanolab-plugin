@@ -2807,13 +2807,13 @@ def main():
         # ----HERE STOPS THE NOMAD RELEVANT SCRIPT----
         # --------PRINT DERIVED QUANTITIES REPORT-------------
 
-        print(f'Derived quantities report for logfile\n{logfiles['name']}:\n')
+        print(f'Derived quantities report for logfile\n{logfiles['name'][i]}:\n')
         print_params(main_params)
 
         # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---
 
         print('Saving the derived quantities report as a text file')
-        save_report_as_text(main_params, txt_file_path, logfiles['name'])
+        save_report_as_text(main_params, txt_file_path, logfiles['name'][i])
         print('\n')
 
 

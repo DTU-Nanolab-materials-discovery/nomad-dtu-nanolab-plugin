@@ -803,7 +803,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         #     [params['deposition']['material_space'],
         #     'deposition_parameters.material_space',None],
 
-        #     [params['instruments']['platen_position'],
+        #     [params['deposition']['platen_position'],
         #     'instruments.platen_rotation','degree']
         # ]
 
@@ -816,9 +816,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # Initializing a temporary DTUSputtering object
         sputtering = DTUSputtering()
-
-        # Writing deposition parameters
-
+        sputtering.instruments = AdjustedInstrumentParameters()
         sputtering.deposition_parameters = DepositionParameters()
 
         sputtering.deposition_parameters.deposition_temperature = ureg.Quantity(
@@ -837,11 +835,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             'material_space'
         ]
 
-        # sputtering.instruments = AdjustedInstrumentParameters()
-        # # Writing instruments
-        # sputtering.instruments.platen_rotation = ureg.Quantity(
-        #     params['instruments']['platen_position'], 'degree'
-        # )
+        sputtering.instruments.platen_rotation = ureg.Quantity(
+            params['deposition']['platen_position'], 'degree'
+        )
 
         # Merging the sputtering object with self
         merge_sections(self, sputtering, logger)
