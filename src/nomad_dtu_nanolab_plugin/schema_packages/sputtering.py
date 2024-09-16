@@ -828,7 +828,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         )
 
         sputtering.deposition_parameters.deposition_time = ureg.Quantity(
-            deposition['duration'S].total_seconds(), 'second'
+            deposition['duration'].total_seconds(), 'second'
         )
 
         sputtering.deposition_parameters.sputter_pressure = ureg.Quantity(
