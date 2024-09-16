@@ -1403,8 +1403,12 @@ def rename_cracker_columns(data):
         # If the wrong cracker columns are present exclusively, we rename them
         data.rename(
             columns={
-                'Sulfur Cracker Control Setpoint': 'Sulfur Cracker Control Setpoint Feedback',
-                'Sulfur Cracker Control Valve PulseWidth Setpoint': 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
+                'Sulfur Cracker Control Setpoint': (
+                    'Sulfur Cracker Control Setpoint Feedback'
+                ),
+                'Sulfur Cracker Control Valve PulseWidth Setpoint': (
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ),
             },
             inplace=True,
         )
