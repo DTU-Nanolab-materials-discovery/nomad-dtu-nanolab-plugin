@@ -192,7 +192,7 @@ class PLMetadata(ArchiveSection):
         description='The temperature during the measurement',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='C',
+            defaultDisplayUnit='degC',
             label='Temperature',
         ),
     )
@@ -207,7 +207,7 @@ class PLMetadata(ArchiveSection):
         ),
     )
     wavelength_range = Quantity(
-        type=[np.float64],
+        type=np.float64,
         unit='m',
         description='The range of the wavelength',
         a_eln=ELNAnnotation(
@@ -215,6 +215,7 @@ class PLMetadata(ArchiveSection):
             defaultDisplayUnit='nm',
             label='Wafelength Range',
         ),
+        shape=[2],
     )
     slit_width = Quantity(
         type=np.float64,
@@ -327,7 +328,7 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
             used_power=ureg.Quantity(power, 'mW'),
             used_filter=filter,
             gain_factor=gain,
-            temperature=ureg.Quantity(temperature, 'C'),
+            temperature=ureg.Quantity(temperature, 'degC'),
             center_wafelength=ureg.Quantity(centerwavelength, 'nm'),
             wavelength_range=[ureg.Quantity(x, 'nm') for x in parts],
             slit_width=ureg.Quantity(slitwidth, 'mm'),
