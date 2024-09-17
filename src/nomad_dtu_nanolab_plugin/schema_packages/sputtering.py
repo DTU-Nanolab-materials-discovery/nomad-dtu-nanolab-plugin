@@ -792,28 +792,32 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         time_units = ['second', 'minute', 'hour']
 
         def write_sputtering_data(input_dict: dict, input_keys: list,
-                                    sputtering, output_attr: str, unit: str):
+                                    output_attr, unit: str, sputtering):
+            value = get_nested_value(input_dict, input_keys)
+            if value is None:
+                logger.warning(f'Value for {input_keys} is None')
+                return
+            if unit in time_units:
                 try:
-                    value = get_nested_value(input_dict, input_keys)
-                    if value is None:
-                        raise ValueError(f"Missing value for keys: {input_keys}")
-
-                    if unit in time_units:
-                        setattr(sputtering, output_attr,
-                        ureg.Quantity(value.total_seconds(), unit))
-                    elif unit:
-                        setattr(sputtering, output_attr, ureg.Quantity(value, unit))
-                    else:
-                        setattr(sputtering, output_attr, value)
-
-                except Exception as e:
-                    input_path = 'params'
-                    for key in input_keys:
-                        input_path += f'[\'{key}\']'
+                    value = value.total_seconds()
+                except AttributeError:
                     logger.warning(
-                        f'Failed writing {input_path} to \
-                        sputtering.{output_attr}: {str(e)}'
-                    )
+                        f'Value for {input_keys} does not have total_seconds method')
+                    return
+                value = ureg.Quantity(value, unit)
+            elif unit is not None:
+                try:
+                    value = ureg.Quantity(value, unit)
+                except Exception as e:
+                    logger.warning(
+                        f'Failed to convert {value} to Quantity with unit {unit}: {e}')
+                    return
+
+            # Traverse the path to set the nested attribute
+            attrs = output_attr.split('.')
+            obj = sputtering
+            for attr in attrs[:-1]:
+                obj = getattr(obj, attr)
 
 
         #Helper method to get the nested value, if it exists
@@ -856,7 +860,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # Looping through the data
         for input_keys, output_val, unit in data:
-
             try:
                 write_sputtering_data(params, input_keys, sputtering,
                 output_val, unit)
