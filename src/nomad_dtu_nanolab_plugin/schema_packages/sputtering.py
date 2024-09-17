@@ -849,6 +849,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # Initializing a temporary DTUSputtering object as
         sputtering = DTUSputtering()
 
+        #Initializing the deposition parameters
+        sputtering.deposition_parameters = DepositionParameters()
+
         #Get the deposition sub dictionary
         deposition = params.get('deposition', {})
 
