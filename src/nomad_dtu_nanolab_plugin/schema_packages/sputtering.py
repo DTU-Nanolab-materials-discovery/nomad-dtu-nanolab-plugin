@@ -791,7 +791,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         def write_sputtering_data(input_dict:dict,input_keys:list,
                 ouput_val, unit:str,
                 sputtering):
-            if unit is not None:
+            if unit is 'second':
+                sputtering.output = ureg.Quantity(
+                    get_nested_value(input_dict, input_keys).total_seconds(), unit
+                )
+            elif unit is not None:
                 sputtering.output = ureg.Quantity(
                     get_nested_value(input_dict, input_keys), unit
                 )
