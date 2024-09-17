@@ -291,7 +291,6 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
         else:
             return None
 
-
     def write_PL_metadata(
         self,
         metadata_dict: dict[str, Any],
@@ -318,7 +317,7 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
         range = metadata.get('Range', None)
         parts = [float(self.remove_unit(part)) for part in range.split('to') if part]
 
-        meta= PLMetadata(
+        meta = PLMetadata(
             thickness=ureg.Quantity(thickness, 'um'),
             wafer_diameter=ureg.Quantity(waferdiam, 'mm'),
             scan_diameter=ureg.Quantity(scandiam, 'mm'),
@@ -406,52 +405,50 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
         """
 
     def arrange_metadata(self, metadata_lines: list[str]) -> dict[str, Any]:
+        metadata_dict = {}
+        # Transform metadata_lines into dictionary entries
+        for line in metadata_lines:
+            if ':' in line:
+                key, value = line.split(':', 1)
+                key = key.replace(' ', '')
+                value = value.replace(' ', '')
+                metadata_dict[key] = value
 
-            metadata_dict = {}
-            # Transform metadata_lines into dictionary entries
-            for line in metadata_lines:
-                if ':' in line:
-                    key, value = line.split(':', 1)
-                    key = key.replace(' ', '')
-                    value = value.replace(' ', '')
-                    metadata_dict[key] = value
-
-            return metadata_dict
+        return metadata_dict
 
     def arrange_spectra(self, data_lines: list[str]) -> dict[str, Any]:
-            data_dict = {'Wavelength in nm': []}
-            current_header = 'Wavelength in nm'
-            data_dict[current_header] = []
+        data_dict = {'Wavelength in nm': []}
+        current_header = 'Wavelength in nm'
+        data_dict[current_header] = []
 
-            for line in data_lines:
-                if line.startswith('POS:'):
-                    # Extract the header from the line
-                    current_header = line.split('POS:')[1].strip()
-                    data_dict[current_header] = []
-                else:
-                    data_dict[current_header].append(line)
+        for line in data_lines:
+            if line.startswith('POS:'):
+                # Extract the header from the line
+                current_header = line.split('POS:')[1].strip()
+                data_dict[current_header] = []
+            else:
+                data_dict[current_header].append(line)
 
-            data_dict = {k: v for k, v in data_dict.items() if v}
-            return data_dict
+        data_dict = {k: v for k, v in data_dict.items() if v}
+        return data_dict
 
     def arrange_map(self, data_lines: list[str]) -> tuple[pd.DataFrame, dict[str, Any]]:
+        # create a df from the data_lines (easier for plotting)
+        data_df = pd.DataFrame(data_lines)
+        # some cleanup of the dataframe
+        data_df.columns = data_df.iloc[0]
+        data_df = data_df.drop([0, 1])
+        data_df.columns = data_df.columns.str.replace(' ', '').str.replace('\t', '')
+        data_df = data_df.apply(pd.to_numeric, errors='ignore')
 
-            # create a df from the data_lines (easier for plotting)
-            data_df = pd.DataFrame(data_lines)
-            # some cleanup of the dataframe
-            data_df.columns = data_df.iloc[0]
-            data_df = data_df.drop([0, 1])
-            data_df.columns = data_df.columns.str.replace(' ', '').str.replace('\t', '')
-            data_df = data_df.apply(pd.to_numeric, errors='ignore')
+        # make a dict for writing into the subsections
+        data_dict = {}
+        for index, row in data_df.iterrows():
+            key = f"{row['X']},{row['Y']}"
+            values = row.drop(['X', 'Y']).tolist()
+            data_dict[key] = values
 
-            # make a dict for writing into the subsections
-            data_dict = {}
-            for index, row in data_df.iterrows():
-                key = f"{row['X']},{row['Y']}"
-                values = row.drop(['X', 'Y']).tolist()
-                data_dict[key] = values
-
-            return data_df, data_dict
+        return data_df, data_dict
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -480,10 +477,10 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
                 else:
                     metadata_lines.append(stripped_line)
 
-            metadata_dict= self.arrange_metadata(metadata_lines)
+            metadata_dict = self.arrange_metadata(metadata_lines)
             self.write_PL_metadata(metadata_dict, archive, logger)
 
-            data_dict= self.arrange_spectra(data_lines)
+            data_dict = self.arrange_spectra(data_lines)
 
             # the data_dict has all the spectra information with the position as the key
             # use the dict to plot all the spectra in the respective subsections
@@ -510,10 +507,10 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
                 else:
                     metadata_lines.append(stripped_line)
 
-            metadata_dict= self.arrange_metadata(metadata_lines)
+            metadata_dict = self.arrange_metadata(metadata_lines)
             self.write_PL_metadata(metadata_dict, archive, logger)
 
-            data_df, data_dict= self.arrange_map(data_lines)
+            data_df, data_dict = self.arrange_map(data_lines)
 
             self.write_PL_by_position(data_dict, archive, logger)
             self.figures = []

@@ -333,7 +333,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         #                 size=15,
         #                 color=comp_data,  # Set color to atomic fraction values
         #                 colorscale='Viridis',  # Choose a colorscale
-        #                 # colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
+        #                 # colorbar=dict(title=f'{q} Atomic Fraction'),  # Add colorbar
         #                 showscale=False,  # Hide the colorbar for the scatter plot
         #                 line=dict(
         #                     width=2,  # Set the width of the border
@@ -341,7 +341,9 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         #                 ),
         #             ),
         #             customdata=comp_data,  # Add atomic fraction data to customdata
-        #             hovertemplate=f'<b>Atomic fraction of {i}/{j}:</b> %{{customdata}}',
+        #             hovertemplate=(
+        #                 f'<b>Atomic fraction of {i}/{j}:</b> %{{customdata}}'
+        #             ),
         #         )
 
         #         # Create a heatmap
