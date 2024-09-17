@@ -788,10 +788,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             logger (BoundLogger): A structlog logger.
         """
         #Helper method to write the data
+
+        time_units = ['']
+
         def write_sputtering_data(input_dict:dict,input_keys:list,
                 ouput_val, unit:str,
                 sputtering):
-            if unit is 'second':
+            if unit == 'second' or unit == 'minute' or unit == 'hour':
                 sputtering.output = ureg.Quantity(
                     get_nested_value(input_dict, input_keys).total_seconds(), unit
                 )
