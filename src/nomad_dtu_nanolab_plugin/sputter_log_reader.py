@@ -1176,7 +1176,7 @@ def save_report_as_text(derived_quant, txt_file_path, logfile_name):
     # Save the derived quantities report as a text file as
     with open(txt_file_path, 'w') as txt_file:
         txt_file.write(f'Derived quantities report for logfile\n{logfile_name}:\n\n')
-        txt_file.write(write_derived_quantities(derived_quant))
+        txt_file.write(write_params(derived_quant))
 
 
 # Function to convert timestamps to isoformat
@@ -1216,12 +1216,12 @@ def print_params(quantities, indent=''):
 
 
 # Function to write the derived quantities in a nested format
-def write_derived_quantities(quantities, indent=''):
+def write_params(quantities, indent=''):
     output = []
     for key, value in quantities.items():
         if isinstance(value, dict):
             output.append(f'{indent}{key}:')
-            output.append(write_derived_quantities(value, indent + '  '))
+            output.append(write_params(value, indent + '  '))
         else:
             formatted_value = value
             if isinstance(value, pd.Timestamp):

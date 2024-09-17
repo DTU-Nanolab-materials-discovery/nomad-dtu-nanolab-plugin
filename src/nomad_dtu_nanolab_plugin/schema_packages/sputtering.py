@@ -44,6 +44,7 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     plot_plotly_extimeline,
     read_events,
     read_logfile,
+    write_params,
 )
 
 if TYPE_CHECKING:
@@ -730,6 +731,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Log file'},
     )
+    log_file_report = Quantity(
+        type=str,
+        a_eln={'component': 'RichTextEditQuantity', 'label': 'Log file report'},
+    )
     samples = SubSection(
         section_def=DTUsamples,
         repeats=True,
@@ -840,6 +845,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         #Definiting the input, ouput and unit
         data = [
+            #Deposition parameters
             [['deposition','avg_temp_1'],
             'deposition_parameters.deposition_temperature','degC'],
 
@@ -851,39 +857,34 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             [['deposition','material_space'],
             'deposition_parameters.material_space', None],
+
+            [['deposition','avg_ar_flow'],
+            'deposition_parameters.ar_flow','cm^3/minute'],
+
+            [['deposition','avg_h2s_flow'],
+            'deposition_parameters.h2s_in_Ar_flow','cm^3/minute'],
+
+            [['deposition','avg_ph3_flow'],
+            'deposition_parameters.ph3_in_Ar_flow','cm^3/minute'],
+
+            #End of process parameters
+            [['overview','end_of_process_temp'],
+            'end_of_process.Heater_temperature','degC'],
+
+            [['overview','time_in_chamber_after_ending_deposition'],
+            'end_of_process.time_in_chamber_after_ending_deposition','minute'],
         ]
 
-        # Initializing a temporary DTUSputtering object
+        # Initializing a temporary DTUSputtering and DepositionParameters objects
         sputtering = DTUSputtering()
-        # Initializing the deposition parameters
         sputtering.deposition_parameters = DepositionParameters()
+        sputtering.end_of_process = EndOfProcess()
 
+        # Writing the params dict in the form of a report
+        sputtering.log_file_report = write_params(params)
         # Looping through the data
         for input_keys, output_attr, unit in data:
             write_sputtering_data(params, input_keys, output_attr, unit, sputtering)
-
-        # # Initializing a temporary DTUSputtering object as
-        # sputtering = DTUSputtering()
-
-        # #Initializing the deposition parameters
-        # sputtering.deposition_parameters = DepositionParameters()
-
-        # #Get the deposition sub dictionary
-        # deposition = params.get('deposition', {})
-
-        # sputtering.deposition_parameters.deposition_temperature = ureg.Quantity(
-        #     deposition['avg_temp_1'], 'degC'
-        # )
-
-        # sputtering.deposition_parameters.deposition_time = ureg.Quantity(
-        #     deposition['duration'].total_seconds(), 'second'
-        # )
-
-        # sputtering.deposition_parameters.sputter_pressure = ureg.Quantity(
-        #     deposition['avg_capman_pressure'], 'mtorr'
-        # )
-
-        # sputtering.deposition_parameters.material_space = deposition['material_space']
 
         # Getting the deposition sub-dictionary
         deposition = params.get('deposition', {})
@@ -916,32 +917,36 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         super().normalize(archive, logger)
 
-        # sample_number = len(self.samples)
-        # j = 0
-        # for j in range(sample_number):
-        #    sample_name = str(self.name) + '_' + str(self.samples[j].relative_position)
-        #    self.samples[j].name = sample_name
-        #    self.samples[j].lab_id = sample_name
-
+        # Analysing log file
         if self.log_file:
-
             # Extracting the sample name from the log file name
             log_name = os.path.basename(self.log_file)
-            sample_id = '_'.join(log_name.split('.')[0:2])
+            sample_id = '_'.join(log_name.split('_')[0:2])
             # If lab_id is empty, assign the sample name to lab_id
             if self.lab_id is None:
                 self.lab_id = sample_id
-
+            # Openning the log file
             with archive.m_context.raw_file(self.log_file, 'r') as log:
                 log_df = read_logfile(log.name)
                 events_plot, params, _ = read_events(log_df)
-
+            # Writing logfile data to the respective sections
             if params is not None:
                 self.write_log_data(params, archive, logger)
 
             # self.figures = []
             # if events_plot is not None:
             #     self.plot(events_plot, archive, logger)
+
+
+
+            # sample_number = len(self.samples)
+            # j = 0
+            # for j in range(sample_number):
+            #    sample_name = (
+            # str(self.name) + '_' + str(self.samples[j].relative_position))
+            #    self.samples[j].name = sample_name
+            #    self.samples[j].lab_id = sample_name
+
 
             # to automate the take over of te references
             # for the further processing see in the respective sections
