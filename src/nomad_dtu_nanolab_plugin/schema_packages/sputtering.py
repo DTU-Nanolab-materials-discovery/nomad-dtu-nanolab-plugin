@@ -818,7 +818,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             obj = sputtering
             for attr in attrs[:-1]:
                 obj = getattr(obj, attr)
-
+            setattr(obj, attrs[-1], value)
 
         #Helper method to get the nested value, if it exists
         def get_nested_value(dictionary, key_path):
@@ -859,18 +859,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.deposition_parameters = DepositionParameters()
 
         # Looping through the data
-        for input_keys, output_val, unit in data:
-            try:
-                write_sputtering_data(params, input_keys,
-                output_val, unit, sputtering)
-                # logger.warning(
-                #     f'{params} {input_keys} {output_val}')
-            except Exception:
-                input_path = 'params'
-                for key in input_keys:
-                    input_path += f'[\'{key}\']'
-                logger.warning(
-                    f'Failed writing {input_path} to sputtering.{output_val}')
+        for input_keys, output_attr, unit in data:
+            write_sputtering_data(params, input_keys, output_attr, unit, sputtering)
+
         # # Initializing a temporary DTUSputtering object as
         # sputtering = DTUSputtering()
 
