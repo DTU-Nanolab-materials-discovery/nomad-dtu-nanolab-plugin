@@ -2225,7 +2225,7 @@ def plot_plotly_extimeline(events_to_plot, step_colors):
         title='Process Timeline',
     )
     # Update the layout to include a border around the plot area
-    fig.update_layout(
+    fig.update_layout('Colormap',
         xaxis_title='Time',
         yaxis_title=None,
         yaxis=dict(
