@@ -792,7 +792,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         time_units = ['second', 'minute', 'hour']
 
         def write_sputtering_data(input_dict:dict,input_keys:list,
-                ouput_val, unit:str,
+                output, unit:str,
                 sputtering):
             if unit in time_units:
                 sputtering.output = ureg.Quantity(
@@ -850,13 +850,15 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # Looping through the data
         for input_keys, output_val, unit in data:
             try:
-                write_sputtering_data(params,input_keys, output_val, unit)
+                write_sputtering_data(params, input_keys, output_val, unit)
+                # logger.warning(
+                #     f'{params} {input_keys} {output_val}')
             except Exception:
                 input_path = 'params'
                 for key in input_keys:
                     input_path += f'[\'{key}\']'
                 logger.warning(
-                    f'Failed writing {input_path} to {output_val}')
+                    f'Failed writing {input_path} to sputtering.{output_val}')
         # # Initializing a temporary DTUSputtering object as
         # sputtering = DTUSputtering()
 
