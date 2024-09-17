@@ -821,11 +821,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     return
 
             # Traverse the path to set the nested attribute
-            attrs = output_attr.split('.')
-            obj = sputtering
-            for attr in attrs[:-1]:
-                obj = getattr(obj, attr)
-            setattr(obj, attrs[-1], value)
+            try:
+                attrs = output_attr.split('.')
+                obj = sputtering
+                for attr in attrs[:-1]:
+                    obj = getattr(obj, attr)
+                setattr(obj, attrs[-1], value)
+            except Exception as e:
+                logger.warning(f'Failed to set attribute {output_attr}: {e}')
 
         #Helper method to get the nested value, if it exists
         def get_nested_value(dictionary, key_path):
