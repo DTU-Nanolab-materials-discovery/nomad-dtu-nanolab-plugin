@@ -128,3 +128,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# NOMAD parsing tests
+output.archive.json
+test_plots
