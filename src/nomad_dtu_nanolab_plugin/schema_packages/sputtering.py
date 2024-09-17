@@ -820,7 +820,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             """
             for key in key_path:
                 if isinstance(dictionary, dict):
-                    dictionary = dictionary.get(key, default)
+                    dictionary = dictionary.get(key)
                 else:
                     return None
             return dictionary
