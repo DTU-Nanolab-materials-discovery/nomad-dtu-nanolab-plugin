@@ -780,9 +780,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         )
 
-    def map_params_to_class(self,
-            params,guns,archive: 'EntryArchive', logger: 'BoundLogger'
-            ) -> None:
+    def map_params_to_class(self,params,guns):
         #Definiting the input, ouput and unit
         data = [
             #Deposition parameters
