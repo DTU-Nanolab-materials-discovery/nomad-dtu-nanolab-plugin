@@ -922,9 +922,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             if params is not None:
                 self.write_log_data(params, archive, logger)
 
-            self.figures = []
-            if events_plot is not None:
-                self.plot(events_plot, archive, logger)
+            # self.figures = []
+            # if events_plot is not None:
+            #     self.plot(events_plot, archive, logger)
 
             # to automate the take over of te references
             # for the further processing see in the respective sections
