@@ -140,6 +140,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
     def plot(self) -> None:
         x, y, thickness = [], [], []
         quantifications = defaultdict(list)
+        ratios = defaultdict(list)
         result: EDXResult
         for result in self.results:
             if not isinstance(result.layer_thickness, ureg.Quantity):
@@ -168,17 +169,20 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                 )
 
             # Calculate and append the fractions of all elements with each other
-            #test to see if this works or there is another errror
-            elements = list(quantifications.keys())
-            for i in range(len(elements) - 1):
-                for j in range(i + 1, len(elements)):
-                    element_i = elements[i]
-                    element_j = elements[j]
-                    ratios = [a / b for a, b in zip(
-                        quantifications[element_i], quantifications[element_j]
-                        )
-                        ]
-                    quantifications[f'{element_i}/{element_j}'] = ratios
+            # test to see if this works or there is another errror
+            quantification_i: EDXQuantification
+            for quantification_i in result.quantifications:
+                quantification_j: EDXQuantification
+                for quantification_j in result.quantifications:
+                    if quantification_i.element == quantification_j.element:
+                        continue
+                    ratio = (
+                        quantification_i.atomic_fraction
+                        / quantification_j.atomic_fraction
+                    )
+                    ratios[
+                        f'{quantification_i.element}/{quantification_j.element}'
+                    ].append(ratio)
 
         # Create a grid for the heatmap
         xi = np.linspace(min(x), max(x), 100)
@@ -311,68 +315,67 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                 )
             )
 
-        """
-        for i in range(len(quantifications) - 1):
-            for j in range(i + 1, len(quantifications)):
-                # Create a grid for the heatmap
-                comp_data = quantifications[i] / quantification[j]
-                xi = np.linspace(min(x), max(x), 100)
-                yi = np.linspace(min(y), max(y), 100)
-                xi, yi = np.meshgrid(xi, yi)
-                zi = griddata((x, y), comp_data, (xi, yi), method='linear')
+        # for i in range(len(quantifications) - 1):
+        #     for j in range(i + 1, len(quantifications)):
+        #         # Create a grid for the heatmap
+        #         comp_data = quantifications[i] / quantification[j]
+        #         xi = np.linspace(min(x), max(x), 100)
+        #         yi = np.linspace(min(y), max(y), 100)
+        #         xi, yi = np.meshgrid(xi, yi)
+        #         zi = griddata((x, y), comp_data, (xi, yi), method='linear')
 
-                # Create a scatter plot
-                scatter = go.Scatter(
-                    x=x,
-                    y=y,
-                    mode='markers',
-                    marker=dict(
-                        size=15,
-                        color=comp_data,  # Set color to atomic fraction values
-                        colorscale='Viridis',  # Choose a colorscale
-                        # colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
-                        showscale=False,  # Hide the colorbar for the scatter plot
-                        line=dict(
-                            width=2,  # Set the width of the border
-                            color='DarkSlateGrey',  # Set the color of the border
-                        ),
-                    ),
-                    customdata=comp_data,  # Add atomic fraction data to customdata
-                    hovertemplate=f'<b>Atomic fraction of {i}/{j}:</b> %{{customdata}}',
-                )
+        #         # Create a scatter plot
+        #         scatter = go.Scatter(
+        #             x=x,
+        #             y=y,
+        #             mode='markers',
+        #             marker=dict(
+        #                 size=15,
+        #                 color=comp_data,  # Set color to atomic fraction values
+        #                 colorscale='Viridis',  # Choose a colorscale
+        #                 # colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
+        #                 showscale=False,  # Hide the colorbar for the scatter plot
+        #                 line=dict(
+        #                     width=2,  # Set the width of the border
+        #                     color='DarkSlateGrey',  # Set the color of the border
+        #                 ),
+        #             ),
+        #             customdata=comp_data,  # Add atomic fraction data to customdata
+        #             hovertemplate=f'<b>Atomic fraction of {i}/{j}:</b> %{{customdata}}',
+        #         )
 
-                # Create a heatmap
-                heatmap = go.Heatmap(
-                    x=xi[0],
-                    y=yi[:, 0],
-                    z=zi,
-                    colorscale='Viridis',
-                    colorbar=dict(title=f'{i}/{j} Atomic Fraction'),
-                )
+        #         # Create a heatmap
+        #         heatmap = go.Heatmap(
+        #             x=xi[0],
+        #             y=yi[:, 0],
+        #             z=zi,
+        #             colorscale='Viridis',
+        #             colorbar=dict(title=f'{i}/{j} Atomic Fraction'),
+        #         )
 
-                # Combine scatter plot and heatmap
-                fig = go.Figure(data=[heatmap, scatter])
+        #         # Combine scatter plot and heatmap
+        #         fig = go.Figure(data=[heatmap, scatter])
 
-                # Update layout
-                fig.update_layout(
-                    title=f'{i}/{j} Atomic Fraction Colormap',
-                    xaxis_title='X Position (mm)',
-                    yaxis_title='Y Position (mm)',
-                    template='plotly_white',
-                    hovermode='closest',
-                    dragmode='zoom',
-                )
+        #         # Update layout
+        #         fig.update_layout(
+        #             title=f'{i}/{j} Atomic Fraction Colormap',
+        #             xaxis_title='X Position (mm)',
+        #             yaxis_title='Y Position (mm)',
+        #             template='plotly_white',
+        #             hovermode='closest',
+        #             dragmode='zoom',
+        #         )
 
-                plot_json = fig.to_plotly_json()
-                plot_json['config'] = dict(
-                    scrollZoom=False,
-                )
-                self.figures.append(
-                    PlotlyFigure(
-                        label=f'{i}/{j} Atomic Fraction',
-                        figure=plot_json,
-                    )
-                )"""
+        #         plot_json = fig.to_plotly_json()
+        #         plot_json['config'] = dict(
+        #             scrollZoom=False,
+        #         )
+        #         self.figures.append(
+        #             PlotlyFigure(
+        #                 label=f'{i}/{j} Atomic Fraction',
+        #                 figure=plot_json,
+        #             )
+        #         )
 
     def write_edx_data(
         self,
