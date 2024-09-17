@@ -2166,7 +2166,7 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
 # -------PLOTTING DEFINITIONS------------
 
 
-def plot_plotly_extimeline(events_to_plot, step_colors):
+def plot_plotly_extimeline(events_to_plot):
     """
     args:
         logfile_name: str
@@ -2182,9 +2182,6 @@ def plot_plotly_extimeline(events_to_plot, step_colors):
         source_steps: list
             List of source dependent steps to be plotted
             above the non_source_steps
-        step_colors: dict
-            Dictionary containing the colors to be used for each step
-            in the plot
     """
 
     # Format the steps to be plotted for the plotly timeline
@@ -2221,7 +2218,7 @@ def plot_plotly_extimeline(events_to_plot, step_colors):
         x_end='End',
         y='Event',
         color='Event',
-        color_discrete_map=step_colors,
+        color_discrete_map=STEP_COLORS,
         title='Process Timeline',
     )
     # Update the layout to include a border around the plot area
@@ -2807,7 +2804,7 @@ def main():
 
         # Create the figure
         print('Generating the plotly plot')
-        plotly_timeline = plot_plotly_extimeline(events_to_plot, STEP_COLORS)
+        plotly_timeline = plot_plotly_extimeline(events_to_plot)
         # plotly_timeline.show()
 
         # Save the image as an interactive html file

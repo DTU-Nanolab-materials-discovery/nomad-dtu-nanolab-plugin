@@ -41,11 +41,16 @@ from nomad_measurements.utils import merge_sections
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
-    read_events, read_logfile, plot_plotly_extimeline)
+    plot_plotly_extimeline,
+    read_events,
+    read_logfile,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
+
+import os
 
 m_package = Package(name='DTU customised sputter Schemas')
 
@@ -770,78 +775,76 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         )
 
-    # def write_log_data(
-    #     self, params: dict, archive: 'EntryArchive', logger: 'BoundLogger'
-    # ) -> None:
-    #     """
-    #     Method for writing the log data to the respective sections.
+    def write_log_data(
+        self, params: dict, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
+        """
+        Method for writing the log data to the respective sections.
 
-    #     Args:
-    #         params (dict): Dictionary containing the log data.
-    #         archive (EntryArchive): The archive containing the section that
-    #           is being written.
-    #         logger (BoundLogger): A structlog logger.
-    #     """
-    #     #Helper method to write the data
-    #     def write_sputtering_data(input_dict:dict,input_keys:list,ouput_val,unit:str):
-    #         if unit is not None:
-    #             sputtering.output = ureg.Quantity(
-    #                 get_nested_value(input_dict, input_keys), unit
-    #             )
-    #         else:
-    #             sputtering.output = get_nested_value(input_dict,input_keys)
+        Args:
+            params (dict): Dictionary containing the log data.
+            archive (EntryArchive): The archive containing the section that
+              is being written.
+            logger (BoundLogger): A structlog logger.
+        """
+        # #Helper method to write the data
+        # def write_sputtering_data(input_dict:dict,input_keys:list,ouput_val,unit:str):
+        #     if unit is not None:
+        #         sputtering.output = ureg.Quantity(
+        #             get_nested_value(input_dict, input_keys), unit
+        #         )
+        #     else:
+        #         sputtering.output = get_nested_value(input_dict,input_keys)
 
-    #     #Helper method to get the nested value, if it exists
-    #     def get_nested_value(dictionary, key_path):
-    #         """
-    #         Safely get a nested value from a dictionary.
+        # #Helper method to get the nested value, if it exists
+        # def get_nested_value(dictionary, key_path):
+        #     """
+        #     Safely get a nested value from a dictionary.
 
-    #         :param dictionary: The dictionary to traverse.
-    #         :param key_path: A list of keys representing the path
-    #               to the desired value.
-    #         :param default: The default value to return if any key
-    #               in the path does not exist.
-    #         :return: The value at the end of the key path, or the
-    #               default value if any key does not exist.
-    #         """
-    #         for key in key_path:
-    #             if isinstance(dictionary, dict):
-    #                 dictionary = dictionary.get(key, default)
-    #             else:
-    #                 return None
-    #         return dictionary
+        #     :param dictionary: The dictionary to traverse.
+        #     :param key_path: A list of keys representing the path
+        #           to the desired value.
+        #     :param default: The default value to return if any key
+        #           in the path does not exist.
+        #     :return: The value at the end of the key path, or the
+        #           default value if any key does not exist.
+        #     """
+        #     for key in key_path:
+        #         if isinstance(dictionary, dict):
+        #             dictionary = dictionary.get(key, default)
+        #         else:
+        #             return None
+        #     return dictionary
 
-    #     #Getting the deposition sub dictoinary
-    #     deposition = params.get('deposition', {})
-    #     #Definiting the input, ouput and unit
-    #     data = [
-    #         [['deposition','avg_temp_1'],
-    #         'deposition_parameters.deposition_temperature','degC'],
+        # #Getting the deposition sub dictoinary
+        # deposition = params.get('deposition', {})
+        # #Definiting the input, ouput and unit
+        # data = [
+        #     [['deposition','avg_temp_1'],
+        #     'deposition_parameters.deposition_temperature','degC'],
 
-    #         [['deposition','duration'].total_seconds(),
-    #         'deposition_parameters.deposition_time','second'],
+        #     [['deposition','duration'].total_seconds(),
+        #     'deposition_parameters.deposition_time','second'],
 
-    #         [['deposition','avg_capman_pressure'],
-    #         'deposition_parameters.sputter_pressure','mtorr'],
+        #     [['deposition','avg_capman_pressure'],
+        #     'deposition_parameters.sputter_pressure','mtorr'],
 
-    #         [['deposition','material_space'],
-    #         'deposition_parameters.material_space', None],
-    #     ]
+        #     [['deposition','material_space'],
+        #     'deposition_parameters.material_space', None],
+        # ]
 
         # # Initializing a temporary DTUSputtering object
         # sputtering = DTUSputtering()
         # # Initializing the deposition parameters
         # sputtering.deposition_parameters = DepositionParameters()
 
-    #     # Looping through the data
-    #     for input_keys, output_val, unit in data:
-    #         try:
-    #             write_sputtering_data(params,input_keys, output_val, unit)
-    #         except Exception:
-    #             logger.warning(
-    #                 f"Erro when writing {input_val} to sputtering.{output_val}")
-
-
+        # # Looping through the data
+        # for input_keys, output_val, unit in data:
+        #     try:
+        #         write_sputtering_data(params,input_keys, output_val, unit)
+        #     except Exception:
+        #         logger.warning(
+        #             f"Error when writing {input_val} to sputtering.{output_val}")
 
         # Initializing a temporary DTUSputtering object as
         sputtering = DTUSputtering()
@@ -849,19 +852,19 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         #Get the deposition sub dictionary
         deposition = params.get('deposition', {})
 
-        # sputtering.deposition_parameters.deposition_temperature = ureg.Quantity(
-        #     deposition['avg_temp_1'], 'degC'
-        # )
+        sputtering.deposition_parameters.deposition_temperature = ureg.Quantity(
+            deposition['avg_temp_1'], 'degC'
+        )
 
-        # sputtering.deposition_parameters.deposition_time = ureg.Quantity(
-        #     deposition['duration'].total_seconds(), 'second'
-        # )
+        sputtering.deposition_parameters.deposition_time = ureg.Quantity(
+            deposition['duration'].total_seconds(), 'second'
+        )
 
-        # sputtering.deposition_parameters.sputter_pressure = ureg.Quantity(
-        #     deposition['avg_capman_pressure'], 'mtorr'
-        # )
+        sputtering.deposition_parameters.sputter_pressure = ureg.Quantity(
+            deposition['avg_capman_pressure'], 'mtorr'
+        )
 
-        # sputtering.deposition_parameters.material_space = deposition['material_space']
+        sputtering.deposition_parameters.material_space = deposition['material_space']
 
         #Special case for the adjusted instrument parameters
         instrument_reference = AdjustedInstrumentParameters()
@@ -899,7 +902,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         #    self.samples[j].lab_id = sample_name
 
         if self.log_file:
-            import os
 
             # Extracting the sample name from the log file name
             log_name = os.path.basename(self.log_file)
