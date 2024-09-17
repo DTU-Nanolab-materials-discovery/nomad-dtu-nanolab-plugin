@@ -753,7 +753,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         fig = go.Figure()
 
         #Making the plot from the plot_plotly_extimeline function
-        fig = plot_plotly_extimeline(events_plot,STEP_COLORS)
+        fig = plot_plotly_extimeline(events_plot)
 
         # Update layout
         # fig.update_layout('Colormap',
