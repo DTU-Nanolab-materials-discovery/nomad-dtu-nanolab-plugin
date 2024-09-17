@@ -853,7 +853,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 write_sputtering_data(params,input_keys, output_val, unit)
             except Exception:
                 logger.warning(
-                    f"Error when writing {input_val} to sputtering.{output_val}")
+                    f'Error when writing nested params value',
+                    f'{input_keys} to sputtering.{output_val}')
 
         # # Initializing a temporary DTUSputtering object as
         # sputtering = DTUSputtering()
