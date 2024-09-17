@@ -848,7 +848,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     f'deposition_parameters.{gun}.power_type', None]
                 )
                 data.append(
-                    [['deposition', gun, 'stable_average_voltage'],
+                    [['deposition', gun, 'avg_voltage'],
                     f'deposition_parameters.{gun}.stable_average_voltage', 'V']
                 )
         return data
@@ -927,7 +927,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.deposition_parameters = DepositionParameters()
         for gun in guns:
             setattr(sputtering.deposition_parameters, gun, GunOverview())
-        sputtering.deposition_parameters.SCraker = SCracker()
+        sputtering.deposition_parameters.SCracker = SCracker()
         sputtering.end_of_process = EndOfProcess()
 
         # Writing the params dict in the form of a report
