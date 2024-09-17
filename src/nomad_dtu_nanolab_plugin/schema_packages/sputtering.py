@@ -898,8 +898,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         #Gun parameters
         guns = ['Magkeeper3', 'Magkeeper4', 'Taurus']
         for gun in guns:
-            if params[gun]['Enabled']:
-
+            if params[gun]['enabled']:
                 data.append(
                     [['deposition', gun, 'material'],
                     f'deposition_parameters.{gun}.target_material', None]
@@ -914,7 +913,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 )
                 data.append(
                     [['source_ramp_up', gun, 'plasma_type'],
-                    'deposition_parameters.power_type', None]
+                    f'deposition_parameters.{gun}.power_type', None]
                 )
                 data.append(
                     [['deposition', gun, 'stable_average_voltage'],
