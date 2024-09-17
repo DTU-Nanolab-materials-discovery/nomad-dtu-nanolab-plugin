@@ -250,7 +250,9 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             )
         )
 
-        for q in quantifications:
+        combined_data = {**quantifications, **ratios}
+
+        for q in combined_data:
             # Create a grid for the heatmap
             xi = np.linspace(min(x), max(x), 100)
             yi = np.linspace(min(y), max(y), 100)
