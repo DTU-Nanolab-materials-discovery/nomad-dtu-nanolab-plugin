@@ -628,11 +628,21 @@ class Lf_Event:
                     'pulsed'
                 ]:
                     params[self.category][f'{source_name[str(source_number)]}'][
+                        'plasma_type'
+                    ] = 'pulsed_dc'
+                    params[self.category][f'{source_name[str(source_number)]}'][
                         'pulse_frequency'
                     ] = self.data[f'Source {source_number} Pulse Frequency'].mean()
                     params[self.category][f'{source_name[str(source_number)]}'][
                         'dead_time'
                     ] = self.data[f'Source {source_number} Reverse Time'].mean()
+                else:
+                    params[self.category][
+                        f'{source_name[str(source_number)]}'
+                        ]['pulsed'] = False
+                    params[self.category][
+                        f'{source_name[str(source_number)]}'
+                        ]['plasma_type'] = 'dc'
         elif rf_bias_col in self.data and (
             (self.data[rf_bias_col] > BIAS_THRESHOLD).astype(int).quantile(TOLERANCE)
             or (
@@ -641,11 +651,18 @@ class Lf_Event:
             )
             .astype(int)
             .quantile(TOLERANCE)
-        ):
+            ):
             params[self.category][f'{source_name[str(source_number)]}']['rf'] = True
+            params[self.category][
+                f'{source_name[str(source_number)]}'
+                ]['plasma_type'] = 'rf'
             params[self.category][f'{source_name[str(source_number)]}']['dc'] = False
+            params[self.category][
+                f'{source_name[str(source_number)]}'
+                ]['pulsed'] = False
         else:
             print('Error: Plasma type not recognized')
+
 
         return params
 

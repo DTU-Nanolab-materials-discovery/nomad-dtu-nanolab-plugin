@@ -489,7 +489,7 @@ class GunOverview(ArchiveSection):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
     )
-    plasma_ignited_at = Quantity(
+    plasma_ignition_power = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
@@ -792,13 +792,15 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
               is being written.
             logger (BoundLogger): A structlog logger.
         """
+
         #Helper method to write the data
-
-        time_units = ['second', 'minute', 'hour']
-
         def write_sputtering_data(input_dict: dict, input_keys: list,
                                     output_attr, unit: str, sputtering):
+
+            time_units = ['second', 'milisecond', 'minute', 'hour']
+
             value = get_nested_value(input_dict, input_keys)
+
             if value is None:
                 logger.warning(f'Value for {input_keys} is None')
                 return
@@ -873,12 +875,61 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             [['overview','time_in_chamber_after_deposition'],
             'end_of_process.time_in_chamber_after_ending_deposition','second'],
+
+            #SCracker parameters
+            [['deposition','SCRacker','zone1_temp'],
+            'deposition_parameters.SCracker.Zone1_temperature','degC'],
+
+            [['deposition','SCRacker','zone2_temp'],
+            'deposition_parameters.SCracker.Zone2_temperature','degC'],
+
+            [['deposition','SCRacker','zone3_temp'],
+            'deposition_parameters.SCracker.Zone3_temperature','degC'],
+
+            [['deposition','SCRacker','valve_on_time'],
+            'deposition_parameters.SCracker.valve_ON_time','milisecond'],
+
+            [['deposition','SCRacker','valve_frequency'],
+            'deposition_parameters.SCracker.valve_frequency','mHz'],
         ]
+        #Gun parameters
+        guns = ['Magkeeper3', 'Magkeeper4', 'Taurus']
+        for gun in guns:
+            if params[gun]['Enabled']:
+
+                data.append(
+                    [['deposition', gun, 'material'],
+                    f'deposition_parameters.{gun}.target_material', None]
+                )
+                data.append(
+                    [['deposition', gun, 'avg_output_power'],
+                    f'deposition_parameters.{gun}.applied_power', 'W']
+                )
+                data.append(
+                    [['source_ramp_up', gun, 'ignition_power'],
+                    f'deposition_parameters.{gun}.plasma_ignition_power', 'W']
+                )
+                data.append(
+                    [['source_ramp_up', gun, 'plasma_type'],
+                    'deposition_parameters.power_type', None]
+                )
+                data.append(
+                    [['deposition', gun, 'stable_average_voltage'],
+                    f'deposition_parameters.{gun}.stable_average_voltage', 'V']
+                )
+
+
+
 
         # Initializing a temporary DTUSputtering and DepositionParameters objects
         sputtering = DTUSputtering()
         sputtering.deposition_parameters = DepositionParameters()
+        for gun in guns:
+            setattr(sputtering.deposition_parameters, gun, GunOverview())
+        sputtering.deposition_parameters.SCraker = SCracker()
         sputtering.end_of_process = EndOfProcess()
+
+
 
         # Writing the params dict in the form of a report
         sputtering.log_file_report = write_params(params)
