@@ -756,13 +756,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         fig = plot_plotly_extimeline(events_plot)
 
         # Update layout
-        # fig.update_layout('Colormap',
-        #     xaxis_title='X label',
-        #     yaxis_title='Y label',
-        #     template='plotly_white',
-        #     hovermode='closest',
-        #     dragmode='zoom',
-        # )
+        fig.update_layout('Colormap')
 
         plot_json = fig.to_plotly_json()
         plot_json['config'] = dict(
