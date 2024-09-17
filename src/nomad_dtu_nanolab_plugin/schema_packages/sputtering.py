@@ -780,74 +780,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         )
 
-    def write_log_data(
-        self, params: dict, archive: 'EntryArchive', logger: 'BoundLogger'
-    ) -> None:
-        """
-        Method for writing the log data to the respective sections.
-
-        Args:
-            params (dict): Dictionary containing the log data.
-            archive (EntryArchive): The archive containing the section that
-              is being written.
-            logger (BoundLogger): A structlog logger.
-        """
-
-        #Helper method to write the data
-        def write_sputtering_data(input_dict: dict, input_keys: list,
-                                    output_attr, unit: str, sputtering):
-
-            time_units = ['second', 'milisecond', 'minute', 'hour']
-
-            value = get_nested_value(input_dict, input_keys)
-
-            if value is None:
-                logger.warning(f'Value for {input_keys} is None')
-                return
-            if unit in time_units:
-                try:
-                    value = value.total_seconds()
-                except AttributeError:
-                    logger.warning(
-                        f'Value for {input_keys} does not have total_seconds method')
-                    return
-                value = ureg.Quantity(value, unit)
-            elif unit is not None:
-                try:
-                    value = ureg.Quantity(value, unit)
-                except Exception as e:
-                    logger.warning(
-                        f'Failed to convert {value} to Quantity with unit {unit}: {e}')
-                    return
-
-            # Traverse the path to set the nested attribute
-            try:
-                attrs = output_attr.split('.')
-                obj = sputtering
-                for attr in attrs[:-1]:
-                    obj = getattr(obj, attr)
-                setattr(obj, attrs[-1], value)
-            except Exception as e:
-                logger.warning(f'Failed to set attribute {output_attr}: {e}')
-
-        #Helper method to get the nested value, if it exists
-        def get_nested_value(dictionary, key_path):
-            """
-            Safely get a nested value from a dictionary.
-
-            :param dictionary: The dictionary to traverse.
-            :param key_path: A list of keys representing the path
-                to the desired value.
-            :return: The value at the end of the key path, or None if not found.
-            """
-            for key in key_path:
-                if isinstance(dictionary, dict):
-                    dictionary = dictionary.get(key)
-                else:
-                    return None
-            return dictionary
-
-
+    def map_params_to_class(params,guns):
         #Definiting the input, ouput and unit
         data = [
             #Deposition parameters
@@ -896,7 +829,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             'deposition_parameters.SCracker.valve_frequency','mHz'],
         ]
         #Gun parameters
-        guns = ['Magkeeper3', 'Magkeeper4', 'Taurus']
         for gun in guns:
             if params[gun]['enabled']:
                 data.append(
@@ -919,8 +851,75 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     [['deposition', gun, 'stable_average_voltage'],
                     f'deposition_parameters.{gun}.stable_average_voltage', 'V']
                 )
+        return data
 
+    def write_log_data(
+        self, params: dict, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
+        """
+        Method for writing the log data to the respective sections.
+        Args:
+            params (dict): Dictionary containing the log data.
+            archive (EntryArchive): The archive containing the section that
+              is being written.
+            logger (BoundLogger): A structlog logger.
+        """
 
+        #Helper method to write the data
+        def write_sputtering_data(input_dict: dict, input_keys: list,
+                                    output_attr, unit: str, sputtering):
+
+            time_units = ['second', 'milisecond', 'minute', 'hour']
+
+            value = get_nested_value(input_dict, input_keys)
+
+            if value is None:
+                logger.warning(f'Value for {input_keys} is None')
+                return
+            if unit in time_units:
+                try:
+                    value = value.total_seconds()
+                except AttributeError:
+                    logger.warning(
+                        f'Value for {input_keys} does not have total_seconds method')
+                    return
+                value = ureg.Quantity(value, unit)
+            elif unit is not None:
+                try:
+                    value = ureg.Quantity(value, unit)
+                except Exception as e:
+                    logger.warning(
+                        f'Failed to convert {value} to Quantity with unit {unit}: {e}')
+                    return
+            # Traverse the path to set the nested attribute
+            try:
+                attrs = output_attr.split('.')
+                obj = sputtering
+                for attr in attrs[:-1]:
+                    obj = getattr(obj, attr)
+                setattr(obj, attrs[-1], value)
+            except Exception as e:
+                logger.warning(f'Failed to set attribute {output_attr}: {e}')
+
+        #Helper method to get the nested value, if it exists
+        def get_nested_value(self,dictionary, key_path):
+            """
+            Safely get a nested value from a dictionary.
+
+            :param dictionary: The dictionary to traverse.
+            :param key_path: A list of keys representing the path
+                to the desired value.
+            :return: The value at the end of the key path, or None if not found.
+            """
+            for key in key_path:
+                if isinstance(dictionary, dict):
+                    dictionary = dictionary.get(key)
+                else:
+                    return None
+            return dictionary
+
+        guns = ['Magkeeper3', 'Magkeeper4', 'Taurus']
+        data = self.map_params_to_class(params,guns)
 
 
         # Initializing a temporary DTUSputtering and DepositionParameters objects
@@ -931,10 +930,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.deposition_parameters.SCraker = SCracker()
         sputtering.end_of_process = EndOfProcess()
 
-
-
         # Writing the params dict in the form of a report
         sputtering.log_file_report = write_params(params)
+
         # Looping through the data
         for input_keys, output_attr, unit in data:
             write_sputtering_data(params, input_keys, output_attr, unit, sputtering)
@@ -955,7 +953,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # Overwriting the datetime and end_time
         self.datetime = params['overview']['log_start_time']
-
         self.end_time = params['overview']['log_end_time']
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
