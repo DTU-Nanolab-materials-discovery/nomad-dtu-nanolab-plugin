@@ -872,7 +872,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             'end_of_process.Heater_temperature','degC'],
 
             [['overview','time_in_chamber_after_ending_deposition'],
-            'end_of_process.time_in_chamber_after_ending_deposition','minute'],
+            'end_of_process.time_in_chamber_after_ending_deposition','second'],
         ]
 
         # Initializing a temporary DTUSputtering and DepositionParameters objects
