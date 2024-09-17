@@ -7,11 +7,9 @@ import pandas as pd
 import plotly.graph_objects as go
 from ase.data import chemical_symbols
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import (
-    BrowserAnnotation,
-    ELNAnnotation,
-    ELNComponentEnum,
-)
+from nomad.datamodel.metainfo.annotations import (BrowserAnnotation,
+                                                  ELNAnnotation,
+                                                  ELNComponentEnum)
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
@@ -20,10 +18,7 @@ from scipy.interpolate import griddata
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    MappingMeasurement,
-    MappingResult,
-    RectangularSampleAlignment,
-)
+    MappingMeasurement, MappingResult, RectangularSampleAlignment)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -262,7 +257,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             xi = np.linspace(min(x), max(x), 100)
             yi = np.linspace(min(y), max(y), 100)
             xi, yi = np.meshgrid(xi, yi)
-            zi = griddata((x, y), quantifications[q], (xi, yi), method='linear')
+            zi = griddata((x, y), combined_data[q], (xi, yi), method='linear')
 
             # Create a scatter plot
             scatter = go.Scatter(
@@ -271,7 +266,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                 mode='markers',
                 marker=dict(
                     size=15,
-                    color=quantifications[q],  # Set color to atomic fraction values
+                    color=combined_data[q],  # Set color to atomic fraction values
                     colorscale='Viridis',  # Choose a colorscale
                     # colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
                     showscale=False,  # Hide the colorbar for the scatter plot
@@ -280,7 +275,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                         color='DarkSlateGrey',  # Set the color of the border
                     ),
                 ),
-                customdata=quantifications[q],  # Add atomic fraction data to customdata
+                customdata=combined_data[q],  # Add atomic fraction data to customdata
                 hovertemplate=f'<b>Atomic fraction of {q}:</b> %{{customdata}}',
             )
 
