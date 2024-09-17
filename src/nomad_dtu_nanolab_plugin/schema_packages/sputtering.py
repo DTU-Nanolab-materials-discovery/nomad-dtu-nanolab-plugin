@@ -791,19 +791,30 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         time_units = ['second', 'minute', 'hour']
 
-        def write_sputtering_data(input_dict:dict,input_keys:list,
-                output, unit:str,
-                sputtering):
-            if unit in time_units:
-                sputtering.output = ureg.Quantity(
-                    get_nested_value(input_dict, input_keys).total_seconds(), unit
-                )
-            elif unit is not None:
-                sputtering.output = ureg.Quantity(
-                    get_nested_value(input_dict, input_keys), unit
-                )
-            else:
-                sputtering.output = get_nested_value(input_dict,input_keys)
+        def write_sputtering_data(input_dict: dict, input_keys: list,
+                                    sputtering, output_attr: str, unit: str):
+                try:
+                    value = get_nested_value(input_dict, input_keys)
+                    if value is None:
+                        raise ValueError(f"Missing value for keys: {input_keys}")
+
+                    if unit in time_units:
+                        setattr(sputtering, output_attr,
+                        ureg.Quantity(value.total_seconds(), unit))
+                    elif unit:
+                        setattr(sputtering, output_attr, ureg.Quantity(value, unit))
+                    else:
+                        setattr(sputtering, output_attr, value)
+
+                except Exception as e:
+                    input_path = 'params'
+                    for key in input_keys:
+                        input_path += f'[\'{key}\']'
+                    logger.warning(
+                        f'Failed writing {input_path} to \
+                        sputtering.{output_attr}: {str(e)}'
+                    )
+
 
         #Helper method to get the nested value, if it exists
         def get_nested_value(dictionary, key_path):
@@ -812,11 +823,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             :param dictionary: The dictionary to traverse.
             :param key_path: A list of keys representing the path
-                  to the desired value.
-            :param default: The default value to return if any key
-                  in the path does not exist.
-            :return: The value at the end of the key path, or the
-                  default value if any key does not exist.
+                to the desired value.
+            :return: The value at the end of the key path, or None if not found.
             """
             for key in key_path:
                 if isinstance(dictionary, dict):
@@ -825,8 +833,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     return None
             return dictionary
 
-        #Getting the deposition sub dictoinary
-        deposition = params.get('deposition', {})
+
         #Definiting the input, ouput and unit
         data = [
             [['deposition','avg_temp_1'],
@@ -849,6 +856,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # Looping through the data
         for input_keys, output_val, unit in data:
+
             try:
                 write_sputtering_data(params, input_keys, output_val, unit)
                 # logger.warning(
@@ -881,6 +889,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # )
 
         # sputtering.deposition_parameters.material_space = deposition['material_space']
+
+        # Getting the deposition sub-dictionary
+        deposition = params.get('deposition', {})
 
         #Special case for the adjusted instrument parameters
         instrument_reference = AdjustedInstrumentParameters()
