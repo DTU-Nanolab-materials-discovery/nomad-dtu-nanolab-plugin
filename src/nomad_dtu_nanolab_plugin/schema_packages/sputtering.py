@@ -858,7 +858,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         for input_keys, output_val, unit in data:
 
             try:
-                write_sputtering_data(params, input_keys, output_val, unit)
+                write_sputtering_data(params, input_keys, sputtering,
+                output_val, unit)
                 # logger.warning(
                 #     f'{params} {input_keys} {output_val}')
             except Exception:
