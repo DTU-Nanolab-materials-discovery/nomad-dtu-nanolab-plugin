@@ -832,7 +832,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             [['deposition','avg_temp_1'],
             'deposition_parameters.deposition_temperature','degC'],
 
-            [['deposition','duration'].total_seconds(),
+            [['deposition','duration'],
             'deposition_parameters.deposition_time','second'],
 
             [['deposition','avg_capman_pressure'],

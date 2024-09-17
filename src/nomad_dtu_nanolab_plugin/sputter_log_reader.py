@@ -2734,8 +2734,28 @@ def read_events(data):
 
 # ---------------MAIN-----------
 
+#Helper method to get the nested value, if it exists
+def get_nested_value(dictionary, key_path):
+    """
+    Safely get a nested value from a dictionary.
+
+    :param dictionary: The dictionary to traverse.
+    :param key_path: A list of keys representing the path
+            to the desired value.
+    :param default: The default value to return if any key
+            in the path does not exist.
+    :return: The value at the end of the key path, or the
+            default value if any key does not exist.
+    """
+    for key in key_path:
+        if isinstance(dictionary, dict):
+            dictionary = dictionary.get(key)
+        else:
+            return None
+    return dictionary
 
 def main():
+    global main_params
     samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\samples'
     logfiles_extension = 'CSV'
 
