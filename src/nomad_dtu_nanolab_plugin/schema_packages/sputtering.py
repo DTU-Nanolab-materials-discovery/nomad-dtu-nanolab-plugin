@@ -921,7 +921,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         if self.log_file:
             # Extracting the sample name from the log file name
             log_name = os.path.basename(self.log_file)
-            sample_id = '_'.join(log_name.split('_')[0:2])
+            sample_id = '_'.join(log_name.split('_')[0,1,2])
             # If lab_id is empty, assign the sample name to lab_id
             if self.lab_id is None:
                 self.lab_id = sample_id
