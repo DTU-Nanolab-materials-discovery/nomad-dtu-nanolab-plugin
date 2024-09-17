@@ -790,7 +790,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         #Helper method to write the data
         def write_sputtering_data(input_dict:dict,input_keys:list,
                 ouput_val, unit:str,
-                sputtering=sputtering):
+                sputtering):
             if unit is not None:
                 sputtering.output = ureg.Quantity(
                     get_nested_value(input_dict, input_keys), unit
