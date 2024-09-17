@@ -40,7 +40,8 @@ from nomad_measurements.utils import merge_sections
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
-from nomad_dtu_nanolab_plugin.sputter_log_reader import read_events, read_logfile
+from nomad_dtu_nanolab_plugin.sputter_log_reader import (
+    read_events, read_logfile, plot_plotly_extimeline)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -743,18 +744,20 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         section_def=DepositionParameters,
     )
 
-    def plot(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+    def plot(self, events_plot, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         fig = go.Figure()
 
+        #Making the plot from the plot_plotly_extimeline function
+        fig = plot_plotly_extimeline(events_plot)
+
         # Update layout
-        fig.update_layout(
-            title='Thickness Colormap',
-            xaxis_title='X label',
-            yaxis_title='Y label',
-            template='plotly_white',
-            hovermode='closest',
-            dragmode='zoom',
-        )
+        # fig.update_layout('Colormap',
+        #     xaxis_title='X label',
+        #     yaxis_title='Y label',
+        #     template='plotly_white',
+        #     hovermode='closest',
+        #     dragmode='zoom',
+        # )
 
         plot_json = fig.to_plotly_json()
         plot_json['config'] = dict(
@@ -762,7 +765,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         )
         self.figures.append(
             PlotlyFigure(
-                label='My figure label',
+                label='Process timeline',
                 figure=plot_json,
             )
         )
@@ -893,7 +896,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 self.write_log_data(params, archive, logger)
 
             self.figures = []
-            self.plot(archive, logger)
+            if events_plot is not None:
+                self.plot(events_plot, archive, logger)
 
             # to automate the take over of te references
             # for the further processing see in the respective sections

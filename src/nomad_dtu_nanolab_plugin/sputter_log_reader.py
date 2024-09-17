@@ -2233,7 +2233,9 @@ def plot_plotly_extimeline(events_to_plot, step_colors):
             ticktext=df['Event'].unique(),
             autorange='reversed',  # Ensure tasks are displayed in order
         ),
-        template='plotly_white',  # Use a white background template
+        template='plotly_white', # Use a white background template
+        hovermode='closest',
+        dragmode='zoom',
         title=dict(
             text='Process Timeline',  # Title text
             x=0.5,  # Center the title horizontally
