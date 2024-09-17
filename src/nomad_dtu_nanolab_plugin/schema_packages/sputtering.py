@@ -778,8 +778,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     #     Args:
     #         params (dict): Dictionary containing the log data.
-    #         archive (EntryArchive): The archive containing the section that is being
-    #         written.
+    #         archive (EntryArchive): The archive containing the section that
+    #           is being written.
     #         logger (BoundLogger): A structlog logger.
     #     """
     #     #Helper method to write the data
@@ -797,9 +797,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     #         Safely get a nested value from a dictionary.
 
     #         :param dictionary: The dictionary to traverse.
-    #         :param key_path: A list of keys representing the path to the desired value.
-    #         :param default: The default value to return if any key in the path does not exist.
-    #         :return: The value at the end of the key path, or the default value if any key does not exist.
+    #         :param key_path: A list of keys representing the path
+    #               to the desired value.
+    #         :param default: The default value to return if any key
+    #               in the path does not exist.
+    #         :return: The value at the end of the key path, or the
+    #               default value if any key does not exist.
     #         """
     #         for key in key_path:
     #             if isinstance(dictionary, dict):
@@ -825,10 +828,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     #         'deposition_parameters.material_space', None],
     #     ]
 
-    #     # Initializing a temporary DTUSputtering object
-    #     sputtering = DTUSputtering()
-    #     # Initializing the deposition parameters
-    #     sputtering.deposition_parameters = DepositionParameters()
+        # # Initializing a temporary DTUSputtering object
+        # sputtering = DTUSputtering()
+        # # Initializing the deposition parameters
+        # sputtering.deposition_parameters = DepositionParameters()
 
     #     # Looping through the data
     #     for input_keys, output_val, unit in data:
@@ -838,8 +841,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     #             logger.warning(
     #                 f"Erro when writing {input_val} to sputtering.{output_val}")
 
-        # # Initializing a temporary DTUSputtering object as
-        # deposition = params.get('deposition', {})
+
+
+        # Initializing a temporary DTUSputtering object as
+        sputtering = DTUSputtering()
+
+        #Get the deposition sub dictionary
+        deposition = params.get('deposition', {})
 
         # sputtering.deposition_parameters.deposition_temperature = ureg.Quantity(
         #     deposition['avg_temp_1'], 'degC'
