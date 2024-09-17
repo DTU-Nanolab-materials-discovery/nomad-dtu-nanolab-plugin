@@ -789,12 +789,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         """
         #Helper method to write the data
 
-        time_units = ['']
+        time_units = ['second', 'minute', 'hour']
 
         def write_sputtering_data(input_dict:dict,input_keys:list,
                 ouput_val, unit:str,
                 sputtering):
-            if unit == 'second' or unit == 'minute' or unit == 'hour':
+            if unit in time_units:
                 sputtering.output = ureg.Quantity(
                     get_nested_value(input_dict, input_keys).total_seconds(), unit
                 )
@@ -853,8 +853,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 write_sputtering_data(params,input_keys, output_val, unit)
             except Exception:
                 logger.warning(
-                    f'Error when writing nested params value',
-                    f'{input_keys} to sputtering.{output_val}')
+                    'Error when writing nested params value: %s to sputtering.%s',
+                    input_keys, output_val
+                )
 
         # # Initializing a temporary DTUSputtering object as
         # sputtering = DTUSputtering()
