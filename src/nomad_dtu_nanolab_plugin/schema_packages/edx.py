@@ -7,11 +7,9 @@ import pandas as pd
 import plotly.graph_objects as go
 from ase.data import chemical_symbols
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import (
-    BrowserAnnotation,
-    ELNAnnotation,
-    ELNComponentEnum,
-)
+from nomad.datamodel.metainfo.annotations import (BrowserAnnotation,
+                                                  ELNAnnotation,
+                                                  ELNComponentEnum)
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
@@ -20,10 +18,7 @@ from scipy.interpolate import griddata
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    MappingMeasurement,
-    MappingResult,
-    RectangularSampleAlignment,
-)
+    MappingMeasurement, MappingResult, RectangularSampleAlignment)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -171,11 +166,16 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             # Calculate and append the fractions of all elements with each other
             # test to see if this works or there is another errror
             quantification_i: EDXQuantification
+            #processed_pairs = set()
             for quantification_i in result.quantifications:
                 quantification_j: EDXQuantification
                 for quantification_j in result.quantifications:
                     if quantification_i.element == quantification_j.element:
                         continue
+                    #pair = (quantification_i.element, quantification_j.element)
+                    #reverse_pair = (quantification_j.element, quantification_i.element)
+                    #if pair in processed_pairs or reverse_pair in processed_pairs:
+                    #    continue
                     ratio = (
                         quantification_i.atomic_fraction
                         / quantification_j.atomic_fraction
@@ -183,6 +183,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                     ratios[
                         f'{quantification_i.element}/{quantification_j.element}'
                     ].append(ratio)
+                    #processed_pairs.add(pair)
 
         # Create a grid for the heatmap
         xi = np.linspace(min(x), max(x), 100)
