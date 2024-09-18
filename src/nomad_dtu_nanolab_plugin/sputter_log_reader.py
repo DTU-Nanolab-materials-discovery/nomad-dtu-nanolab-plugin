@@ -618,8 +618,8 @@ class Lf_Event:
             .astype(int)
             .quantile(TOLERANCE)
         ):
-            params[self.category][f'{source_name[str(source_number)]}']['dc'] = True
-            params[self.category][f'{source_name[str(source_number)]}']['rf'] = False
+            params[self.category][f'{source_name[str(source_number)]}']['DC'] = True
+            params[self.category][f'{source_name[str(source_number)]}']['RF'] = False
             if pulse_enable_col in self.data:
                 params[self.category][f'{source_name[str(source_number)]}'][
                     'pulsed'
@@ -629,7 +629,7 @@ class Lf_Event:
                 ]:
                     params[self.category][f'{source_name[str(source_number)]}'][
                         'plasma_type'
-                    ] = 'pulsed_dc'
+                    ] = 'pulsed_DC'
                     params[self.category][f'{source_name[str(source_number)]}'][
                         'pulse_frequency'
                     ] = self.data[f'Source {source_number} Pulse Frequency'].mean()
@@ -642,7 +642,7 @@ class Lf_Event:
                         ]['pulsed'] = False
                     params[self.category][
                         f'{source_name[str(source_number)]}'
-                        ]['plasma_type'] = 'dc'
+                        ]['plasma_type'] = 'DC'
         elif rf_bias_col in self.data and (
             (self.data[rf_bias_col] > BIAS_THRESHOLD).astype(int).quantile(TOLERANCE)
             or (
@@ -652,11 +652,11 @@ class Lf_Event:
             .astype(int)
             .quantile(TOLERANCE)
             ):
-            params[self.category][f'{source_name[str(source_number)]}']['rf'] = True
+            params[self.category][f'{source_name[str(source_number)]}']['RF'] = True
             params[self.category][
                 f'{source_name[str(source_number)]}'
-                ]['plasma_type'] = 'rf'
-            params[self.category][f'{source_name[str(source_number)]}']['dc'] = False
+                ]['plasma_type'] = 'RF'
+            params[self.category][f'{source_name[str(source_number)]}']['DC'] = False
             params[self.category][
                 f'{source_name[str(source_number)]}'
                 ]['pulsed'] = False
@@ -684,9 +684,9 @@ class Lf_Event:
         source_key = f'{source_name[f"{source_number}"]}'
         category = params[self.category][source_key]
 
-        if category['dc']:
+        if category['DC']:
             voltage_data = self.data[f'Source {source_number} Voltage']
-        elif category['rf']:
+        elif category['RF']:
             voltage_data = self.data[f'Source {source_number} DC Bias']
         else:
             return params
