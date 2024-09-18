@@ -815,19 +815,19 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             ['end_of_process','time_in_chamber_after_ending_deposition'],'second'],
 
             #SCracker parameters
-            [['deposition','SCRacker','zone1_temp'],
+            [['deposition','SCracker','zone1_temp'],
             ['deposition_parameters','SCracker','Zone1_temperature'],'degC']
 
-            [['deposition','SCRacker','zone2_temp'],
+            [['deposition','SCracker','zone2_temp'],
             ['deposition_parameters','SCracker','Zone2_temperature'],'degC']
 
-            [['deposition','SCRacker','zone3_temp'],
+            [['deposition','SCracker','zone3_temp'],
             ['deposition_parameters','SCracker','Zone3_temperature'],'degC']
 
-            [['deposition','SCRacker','valve_on_time'],
+            [['deposition','SCracker','valve_on_time'],
             ['deposition_parameters','SCracker','valve_ON_time'],'milisecond']
 
-            [['deposition','SCRacker','valve_frequency'],
+            [['deposition','SCracker','valve_frequency'],
             ['deposition_parameters','SCracker','valve_frequency'],'mHz']
         ]
         #Gun parameters
@@ -835,23 +835,23 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             if params[gun]['enabled']:
                 data.append(
                     [['deposition', gun, 'material'],
-                    'deposition_parameters,gun,target_material', None]
+                    ['deposition_parameters',gun,'target_material'], None]
                 )
                 data.append(
                     [['deposition', gun, 'avg_output_power'],
-                    ['deposition_parameters',gun,'applied_power'], 'W']
+                    ['deposition_parameters', gun,'applied_power'], 'W']
                 )
                 data.append(
                     [['source_ramp_up', gun, 'ignition_power'],
-                    ['deposition_parameters',gun,'plasma_ignition_power'], 'W']
+                    ['deposition_parameters', gun,'plasma_ignition_power'], 'W']
                 )
                 data.append(
                     [['source_ramp_up', gun, 'plasma_type'],
-                    ['deposition_parameters',gun,'power_type'], None]
+                    ['deposition_parameters', gun,'power_type'], None]
                 )
                 data.append(
                     [['deposition', gun, 'avg_voltage'],
-                    ['deposition_parameters',gun,'stable_average_voltage'], 'V']
+                    ['deposition_parameters', gun,'stable_average_voltage'], 'V']
                 )
         return data
 
@@ -905,7 +905,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 subsection_str = f'sputtering.{".".join(output_keys)}'
                 logger.warning(
                     f'Failed to set {params_str} to {subsection_str}: {e}'
-    )
+                )
 
 
         #Helper method to get the nested value, if it exists
@@ -945,8 +945,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.log_file_report = write_params(params)
 
         # Looping through the data
-        for input_keys, output_attr, unit in data:
-            write_sputtering_data(params, input_keys, output_attr, unit, sputtering)
+        for input_keys, output_keys, unit in data:
+            write_sputtering_data(params, input_keys, output_keys, unit, sputtering)
 
         # Getting the deposition sub-dictionary
         deposition = params.get('deposition', {})
