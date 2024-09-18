@@ -794,7 +794,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             [['deposition','avg_capman_pressure'],
             ['deposition_parameters','sputter_pressure'],'mtorr'],
 
-
             [['deposition','material_space'],
             ['deposition_parameters','material_space'], None],
 
@@ -831,28 +830,28 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             ['deposition_parameters','SCracker','valve_frequency'],'mHz'],
         ]
         #Gun parameters
-        for gun in guns:
-            if params[gun]['enabled']:
-                data.append(
-                    [['deposition', gun, 'material'],
-                    ['deposition_parameters',gun,'target_material'], None]
-                )
-                data.append(
-                    [['deposition', gun, 'avg_output_power'],
-                    ['deposition_parameters', gun,'applied_power'], 'W']
-                )
-                data.append(
-                    [['source_ramp_up', gun, 'ignition_power'],
-                    ['deposition_parameters', gun,'plasma_ignition_power'], 'W']
-                )
-                data.append(
-                    [['source_ramp_up', gun, 'plasma_type'],
-                    ['deposition_parameters', gun,'power_type'], None]
-                )
-                data.append(
-                    [['deposition', gun, 'avg_voltage'],
-                    ['deposition_parameters', gun,'stable_average_voltage'], 'V']
-                )
+        # for gun in guns:
+        #     if params[gun]['enabled']:
+        #         data.append(
+        #             [['deposition', gun, 'material'],
+        #             ['deposition_parameters',gun,'target_material'], None]
+        #         )
+        #         data.append(
+        #             [['deposition', gun, 'avg_output_power'],
+        #             ['deposition_parameters', gun,'applied_power'], 'W']
+        #         )
+        #         data.append(
+        #             [['source_ramp_up', gun, 'ignition_power'],
+        #             ['deposition_parameters', gun,'plasma_ignition_power'], 'W']
+        #         )
+        #         data.append(
+        #             [['source_ramp_up', gun, 'plasma_type'],
+        #             ['deposition_parameters', gun,'power_type'], None]
+        #         )
+        #         data.append(
+        #             [['deposition', gun, 'avg_voltage'],
+        #             ['deposition_parameters', gun,'stable_average_voltage'], 'V']
+        #         )
         return data, guns
 
     def write_log_data(
@@ -933,9 +932,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # for gun in guns:
         #     setattr(sputtering.deposition_parameters, gun, GunOverview())
-        sputtering.deposition_parameters.Magkeeper3 = GunOverview()
-        sputtering.deposition_parameters.Magkeeper4 = GunOverview()
-        sputtering.deposition_parameters.Taurus = GunOverview()
+        # sputtering.deposition_parameters.Magkeeper3 = GunOverview()
+        # sputtering.deposition_parameters.Magkeeper4 = GunOverview()
+        # sputtering.deposition_parameters.Taurus = GunOverview()
 
         sputtering.deposition_parameters.SCracker = SCracker()
         sputtering.end_of_process = EndOfProcess()
