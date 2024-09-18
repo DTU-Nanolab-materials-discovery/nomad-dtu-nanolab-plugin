@@ -873,6 +873,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             time_units = ['second', 'milisecond', 'minute', 'hour']
 
             value = get_nested_value(input_dict, input_keys)
+            params_str = f'params[\'{"\'][\'".join(input_keys)}\']'
+            subsection_str = f'sputtering.{".".join(output_keys)}'
+
+
 
             if value is None:
                 logger.warning(f'Value for {input_keys} is None')
@@ -881,16 +885,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 try:
                     value = value.total_seconds()
                 except AttributeError:
-                    logger.warning(f'Value for {input_keys} does not \
-                    have total_seconds method')
+                    logger.warning(f'{params_str}.total_seconds method is invalid')
                     return
                 value = ureg.Quantity(value, unit)
             elif unit is not None:
                 try:
                     value = ureg.Quantity(value, unit)
                 except Exception as e:
-                    logger.warning(f'Failed to convert {value} \
-                    to Quantity with unit {unit}: {e}')
+                    logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
                     return
             # Traverse the path to set the nested attribute
             try:
@@ -899,8 +901,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     sputtering = getattr(sputtering, attr)
                 setattr(sputtering, output_keys[-1], value)
             except Exception as e:
-                params_str = f'params[\'{"\'][\'".join(input_keys)}\']'
-                subsection_str = f'sputtering.{".".join(output_keys)}'
                 logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
 
         #Helper method to get the nested value, if it exists
