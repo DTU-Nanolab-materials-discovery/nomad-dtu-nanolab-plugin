@@ -780,7 +780,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         )
 
-    def map_params_to_class(self,params,guns):
+    def map_params_to_class(self,params):
+        guns = ['Magkeeper3', 'Magkeeper4', 'Taurus']
         #Definiting the input, ouput and unit
         data = [
             #Deposition parameters
@@ -918,15 +919,19 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     return None
             return dictionary
 
-        guns = ['Magkeeper3', 'Magkeeper4', 'Taurus']
-        data = self.map_params_to_class(params,guns)
 
+        data, guns = self.map_params_to_class(params,guns)
 
         # Initializing a temporary DTUSputtering and DepositionParameters objects
         sputtering = DTUSputtering()
         sputtering.deposition_parameters = DepositionParameters()
-        for gun in guns:
-            setattr(sputtering.deposition_parameters, gun, GunOverview())
+
+        # for gun in guns:
+        #     setattr(sputtering.deposition_parameters, gun, GunOverview())
+        sputtering.deposition_parameters.Magkeeper3 = GunOverview()
+        sputtering.deposition_parameters.Magkeeper4 = GunOverview()
+        sputtering.deposition_parameters.Taurus = GunOverview()
+
         sputtering.deposition_parameters.SCracker = SCracker()
         sputtering.end_of_process = EndOfProcess()
 
