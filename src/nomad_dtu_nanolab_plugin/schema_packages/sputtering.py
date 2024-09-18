@@ -881,16 +881,16 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 try:
                     value = value.total_seconds()
                 except AttributeError:
-                    logger.warning(
-                        f'Value for {input_keys} does not have total_seconds method')
+                    logger.warning(f'Value for {input_keys} does not \
+                    have total_seconds method')
                     return
                 value = ureg.Quantity(value, unit)
             elif unit is not None:
                 try:
                     value = ureg.Quantity(value, unit)
                 except Exception as e:
-                    logger.warning(
-                        f'Failed to convert {value} to Quantity with unit {unit}: {e}')
+                    logger.warning(f'Failed to convert {value} \
+                    to Quantity with unit {unit}: {e}')
                     return
             # Traverse the path to set the nested attribute
             try:
