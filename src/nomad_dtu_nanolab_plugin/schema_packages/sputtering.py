@@ -873,7 +873,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             time_units = ['second', 'millisecond', 'minute', 'hour']
 
             value = get_nested_value(input_dict, input_keys)
-            params_str = f'params[\'{"\'][\'".join(input_keys)}\']'
+            joined_keys = "']['".join(input_keys)
+            params_str = f"params['{joined_keys}']"
             subsection_str = f'sputtering.{".".join(output_keys)}'
 
             if value is None:
@@ -894,9 +895,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     return
             # Traverse the path to set the nested attribute
             try:
-                # attrs = output_attr.split('.')
+                obj = sputtering
                 for attr in output_keys[:-1]:
-                    sputtering = getattr(sputtering, attr)
+                    obj = getattr(obj, attr)
                 setattr(sputtering, output_keys[-1], value)
             except Exception as e:
                 logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
