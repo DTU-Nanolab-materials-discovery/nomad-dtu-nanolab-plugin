@@ -1163,7 +1163,6 @@ def get_overview(raw_data, params=None):
 
     return params
 
-
 def get_end_of_process(raw_data, params=None):
     # Extract the end of process temperature as the last temperature logged
     # Note: this part can be improved by extracting the temperature at
@@ -1189,11 +1188,11 @@ def get_end_of_process(raw_data, params=None):
     return params
 
 
-def save_report_as_text(derived_quant, txt_file_path, logfile_name):
+def save_report_as_text(params:dict, txt_file_path, logfile_name):
     # Save the derived quantities report as a text file as
     with open(txt_file_path, 'w') as txt_file:
         txt_file.write(f'Derived quantities report for logfile\n{logfile_name}:\n\n')
-        txt_file.write(write_params(derived_quant))
+        txt_file.write(write_params(params))
 
 
 # Function to convert timestamps to isoformat

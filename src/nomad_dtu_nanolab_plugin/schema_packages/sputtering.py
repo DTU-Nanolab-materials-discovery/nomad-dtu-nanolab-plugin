@@ -780,7 +780,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         )
 
-    def map_params_to_class(self,params):
+    def map_params_to_nomad(self,params):
         guns = ['Magkeeper3', 'Magkeeper4', 'Taurus']
         #Definiting the input, ouput and unit
         data = [
@@ -903,7 +903,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 subsection_str = f'sputtering.{".".join(output_keys)}'
                 logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
 
-
         #Helper method to get the nested value, if it exists
         def get_nested_value(dictionary, key_path):
             """
@@ -921,7 +920,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     return None
             return dictionary
 
-        data, guns = self.map_params_to_class(params)
+        data, guns = self.map_params_to_nomad(params)
 
         # Initializing a temporary class objects
         sputtering = DTUSputtering()
