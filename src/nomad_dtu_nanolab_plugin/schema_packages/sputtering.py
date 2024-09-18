@@ -926,11 +926,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering = DTUSputtering()
         sputtering.deposition_parameters = DepositionParameters()
 
-        # for gun in gun_list:
-        #     setattr(sputtering.deposition_parameters, gun, GunOverview())
-        sputtering.deposition_parameters.Magkeeper3 = GunOverview()
-        sputtering.deposition_parameters.Magkeeper4 = GunOverview()
-        sputtering.deposition_parameters.Taurus = GunOverview()
+        for gun in gun_list:
+            if params['deposition'].get(gun, {}).get('enabled', False):
+                setattr(sputtering.deposition_parameters, gun, GunOverview())
+        # sputtering.deposition_parameters.Magkeeper3 = GunOverview()
+        # sputtering.deposition_parameters.Magkeeper4 = GunOverview()
+        # sputtering.deposition_parameters.Taurus = GunOverview()
 
         sputtering.deposition_parameters.SCracker = SCracker()
         sputtering.end_of_process = EndOfProcess()
