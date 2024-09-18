@@ -834,7 +834,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             if params[gun]['enabled']:
                 data.append(
                     [['deposition', gun, 'material'],
-                    ['deposition_parameters',gun,'target_material'], None]
+                    ['deposition_parameters', gun,'target_material'], None]
                 )
                 data.append(
                     [['deposition', gun, 'avg_output_power'],
@@ -868,18 +868,16 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         #Helper method to write the data
         def write_sputtering_data(input_dict: dict, input_keys: list,
-                                    output_keys, unit: str, sputtering):
+                                    output_keys:list, unit: str, sputtering):
 
-            time_units = ['second', 'milisecond', 'minute', 'hour']
+            time_units = ['second', 'millisecond', 'minute', 'hour']
 
             value = get_nested_value(input_dict, input_keys)
             params_str = f'params[\'{"\'][\'".join(input_keys)}\']'
             subsection_str = f'sputtering.{".".join(output_keys)}'
 
-
-
             if value is None:
-                logger.warning(f'Value for {input_keys} is None')
+                logger.warning(f'{params_str} is None')
                 return
             if unit in time_units:
                 try:
