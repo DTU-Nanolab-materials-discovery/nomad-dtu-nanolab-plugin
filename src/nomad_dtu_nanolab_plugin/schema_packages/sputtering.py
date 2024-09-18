@@ -786,71 +786,72 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         data = [
             #Deposition parameters
             [['deposition','avg_temp_1'],
-            'deposition_parameters.deposition_temperature','degC'],
+             ['deposition_parameters','deposition_temperature'],'degC']
 
             [['deposition','duration'],
-            'deposition_parameters.deposition_time','second'],
+            ['deposition_parameters','deposition_time'],'second']
 
             [['deposition','avg_capman_pressure'],
-            'deposition_parameters.sputter_pressure','mtorr'],
+            ['deposition_parameters','sputter_pressure'],'mtorr']
+
 
             [['deposition','material_space'],
-            'deposition_parameters.material_space', None],
+            ['deposition_parameters','material_space'], None]
 
             [['deposition','avg_ar_flow'],
-            'deposition_parameters.ar_flow','cm^3/minute'],
+            ['deposition_parameters','ar_flow'],'cm^3/minute']
 
             [['deposition','avg_h2s_flow'],
-            'deposition_parameters.h2s_in_Ar_flow','cm^3/minute'],
+            ['deposition_parameters','h2s_in_Ar_flow'],'cm^3/minute']
 
             [['deposition','avg_ph3_flow'],
-            'deposition_parameters.ph3_in_Ar_flow','cm^3/minute'],
+            ['deposition_parameters','ph3_in_Ar_flow'],'cm^3/minute']
 
             #End of process parameters
             [['overview','end_of_process_temp'],
-            'end_of_process.Heater_temperature','degC'],
+             ['end_of_process','Heater_temperature'],'degC']
 
             [['overview','time_in_chamber_after_deposition'],
-            'end_of_process.time_in_chamber_after_ending_deposition','second'],
+            ['end_of_process','time_in_chamber_after_ending_deposition'],'second'],
 
             #SCracker parameters
             [['deposition','SCRacker','zone1_temp'],
-            'deposition_parameters.SCracker.Zone1_temperature','degC'],
+            ['deposition_parameters','SCracker','Zone1_temperature'],'degC']
 
             [['deposition','SCRacker','zone2_temp'],
-            'deposition_parameters.SCracker.Zone2_temperature','degC'],
+            ['deposition_parameters','SCracker','Zone2_temperature'],'degC']
 
             [['deposition','SCRacker','zone3_temp'],
-            'deposition_parameters.SCracker.Zone3_temperature','degC'],
+            ['deposition_parameters','SCracker','Zone3_temperature'],'degC']
 
             [['deposition','SCRacker','valve_on_time'],
-            'deposition_parameters.SCracker.valve_ON_time','milisecond'],
+            ['deposition_parameters','SCracker','valve_ON_time'],'milisecond']
 
             [['deposition','SCRacker','valve_frequency'],
-            'deposition_parameters.SCracker.valve_frequency','mHz'],
+            ['deposition_parameters','SCracker','valve_frequency'],'mHz']
         ]
         #Gun parameters
         for gun in guns:
             if params[gun]['enabled']:
                 data.append(
                     [['deposition', gun, 'material'],
-                    f'deposition_parameters.{gun}.target_material', None]
+                    'deposition_parameters,gun,target_material', None]
                 )
                 data.append(
                     [['deposition', gun, 'avg_output_power'],
-                    f'deposition_parameters.{gun}.applied_power', 'W']
+                    ['deposition_parameters',gun,'applied_power'], 'W']
                 )
                 data.append(
                     [['source_ramp_up', gun, 'ignition_power'],
-                    f'deposition_parameters.{gun}.plasma_ignition_power', 'W']
+                    ['deposition_parameters',gun,'plasma_ignition_power'], 'W']
                 )
                 data.append(
                     [['source_ramp_up', gun, 'plasma_type'],
-                    f'deposition_parameters.{gun}.power_type', None]
+                    ['deposition_parameters',gun,'power_type'], None]
                 )
                 data.append(
                     [['deposition', gun, 'avg_voltage'],
-                    f'deposition_parameters.{gun}.stable_average_voltage', 'V']
+                    ['deposition_parameters',gun,'stable_average_voltage'], 'V']
                 )
         return data
 
@@ -868,7 +869,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         #Helper method to write the data
         def write_sputtering_data(input_dict: dict, input_keys: list,
-                                    output_attr, unit: str, sputtering):
+                                    output_keys, unit: str, sputtering):
 
             time_units = ['second', 'milisecond', 'minute', 'hour']
 
@@ -894,13 +895,18 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     return
             # Traverse the path to set the nested attribute
             try:
-                attrs = output_attr.split('.')
+                # attrs = output_attr.split('.')
                 obj = sputtering
-                for attr in attrs[:-1]:
+                for attr in output_keys[:-1]:
                     obj = getattr(obj, attr)
-                setattr(obj, attrs[-1], value)
+                setattr(obj, output_keys[-1], value)
             except Exception as e:
-                logger.warning(f'Failed to set attribute {output_attr}: {e}')
+                params_str = f'params[\'{"\'][\'".join(input_keys)}\']'
+                subsection_str = f'sputtering.{".".join(output_keys)}'
+                logger.warning(
+                    f'Failed to set {params_str} to {subsection_str}: {e}'
+    )
+
 
         #Helper method to get the nested value, if it exists
         def get_nested_value(self,dictionary, key_path):
@@ -920,7 +926,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             return dictionary
 
 
-        data, guns = self.map_params_to_class(params,guns)
+        data, guns = self.map_params_to_class(params)
 
         # Initializing a temporary DTUSputtering and DepositionParameters objects
         sputtering = DTUSputtering()
