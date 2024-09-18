@@ -786,49 +786,49 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         data = [
             #Deposition parameters
             [['deposition','avg_temp_1'],
-             ['deposition_parameters','deposition_temperature'],'degC']
+            ['deposition_parameters','deposition_temperature'],'degC'],
 
             [['deposition','duration'],
-            ['deposition_parameters','deposition_time'],'second']
+            ['deposition_parameters','deposition_time'],'second'],
 
             [['deposition','avg_capman_pressure'],
-            ['deposition_parameters','sputter_pressure'],'mtorr']
+            ['deposition_parameters','sputter_pressure'],'mtorr'],
 
 
             [['deposition','material_space'],
-            ['deposition_parameters','material_space'], None]
+            ['deposition_parameters','material_space'], None],
 
             [['deposition','avg_ar_flow'],
-            ['deposition_parameters','ar_flow'],'cm^3/minute']
+            ['deposition_parameters','ar_flow'],'cm^3/minute'],
 
             [['deposition','avg_h2s_flow'],
-            ['deposition_parameters','h2s_in_Ar_flow'],'cm^3/minute']
+            ['deposition_parameters','h2s_in_Ar_flow'],'cm^3/minute'],
 
             [['deposition','avg_ph3_flow'],
-            ['deposition_parameters','ph3_in_Ar_flow'],'cm^3/minute']
+            ['deposition_parameters','ph3_in_Ar_flow'],'cm^3/minute'],
 
             #End of process parameters
             [['overview','end_of_process_temp'],
-             ['end_of_process','Heater_temperature'],'degC']
+            ['end_of_process','Heater_temperature'],'degC'],
 
             [['overview','time_in_chamber_after_deposition'],
             ['end_of_process','time_in_chamber_after_ending_deposition'],'second'],
 
             #SCracker parameters
             [['deposition','SCracker','zone1_temp'],
-            ['deposition_parameters','SCracker','Zone1_temperature'],'degC']
+            ['deposition_parameters','SCracker','Zone1_temperature'],'degC'],
 
             [['deposition','SCracker','zone2_temp'],
-            ['deposition_parameters','SCracker','Zone2_temperature'],'degC']
+            ['deposition_parameters','SCracker','Zone2_temperature'],'degC'],
 
             [['deposition','SCracker','zone3_temp'],
-            ['deposition_parameters','SCracker','Zone3_temperature'],'degC']
+            ['deposition_parameters','SCracker','Zone3_temperature'],'degC'],
 
             [['deposition','SCracker','valve_on_time'],
-            ['deposition_parameters','SCracker','valve_ON_time'],'milisecond']
+            ['deposition_parameters','SCracker','valve_ON_time'],'milisecond'],
 
             [['deposition','SCracker','valve_frequency'],
-            ['deposition_parameters','SCracker','valve_frequency'],'mHz']
+            ['deposition_parameters','SCracker','valve_frequency'],'mHz'],
         ]
         #Gun parameters
         for gun in guns:
@@ -928,7 +928,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         data, guns = self.map_params_to_class(params)
 
-        # Initializing a temporary DTUSputtering and DepositionParameters objects
+        # Initializing a temporary class objects
         sputtering = DTUSputtering()
         sputtering.deposition_parameters = DepositionParameters()
 
