@@ -845,7 +845,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     ['deposition_parameters', gun,'plasma_ignition_power'], 'W']
                 )
                 data.append(
-                    [['source_ramp_up', gun, 'plasma_type'],
+                    [['deposition', gun, 'plasma_type'],
                     ['deposition_parameters', gun,'power_type'], None]
                 )
                 data.append(
@@ -878,7 +878,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             subsection_str = f'sputtering.{".".join(output_keys)}'
 
             if value is None:
-                logger.warning(f'{params_str} is None')
+                logger.warning(f'{params_str} does not exist')
                 return
             if unit in time_units:
                 try:
@@ -899,6 +899,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 for attr in output_keys[:-1]:
                     obj = getattr(obj, attr)
                 setattr(sputtering, output_keys[-1], value)
+                logger.info(f'Set {params_str} to {subsection_str}')
             except Exception as e:
                 logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
 
