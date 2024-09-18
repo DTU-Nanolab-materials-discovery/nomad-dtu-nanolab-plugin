@@ -898,7 +898,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 obj = sputtering
                 for attr in output_keys[:-1]:
                     obj = getattr(obj, attr)
-                setattr(sputtering, output_keys[-1], value)
+                setattr(obj, output_keys[-1], value)
                 logger.info(f'Set {params_str} to {subsection_str}')
             except Exception as e:
                 logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
