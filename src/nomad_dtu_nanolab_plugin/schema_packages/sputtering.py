@@ -831,7 +831,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         ]
         #Gun parameters
         for gun in guns:
-            if params[gun]['enabled']:
+            if params['deposition'][gun]['enabled']:
                 data.append(
                     [['deposition', gun, 'material'],
                     ['deposition_parameters', gun,'target_material'], None]
