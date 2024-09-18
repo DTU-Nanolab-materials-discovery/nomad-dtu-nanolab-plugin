@@ -44,7 +44,7 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     plot_plotly_extimeline,
     read_events,
     read_logfile,
-    write_params,
+    # write_params,
 )
 
 if TYPE_CHECKING:
@@ -936,7 +936,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.end_of_process = EndOfProcess()
 
         # Writing the params dict in the form of a report
-        sputtering.log_file_report = write_params(params)
+        # sputtering.log_file_report = write_params(params)
 
         # Looping through the data
         for input_keys, output_keys, unit in data:
