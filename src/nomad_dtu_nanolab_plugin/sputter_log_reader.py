@@ -1214,7 +1214,7 @@ def print_params(quantities, indent=''):
     for key, value in quantities.items():
         if isinstance(value, dict):
             print(f'{indent}{key}:')
-            print_params(value, indent + '  ')
+            print_params(value, indent + '    ')
         else:
             formatted_value = value
             if isinstance(value, pd.Timestamp):
@@ -1237,7 +1237,7 @@ def write_params(quantities, indent=''):
     for key, value in quantities.items():
         if isinstance(value, dict):
             output.append(f'{indent}{key}:')
-            output.append(write_params(value, indent + '   '))
+            output.append(write_params(value, indent + '    '))
         else:
             formatted_value = value
             if isinstance(value, pd.Timestamp):
