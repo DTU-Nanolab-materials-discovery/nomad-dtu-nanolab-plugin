@@ -825,7 +825,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             ['deposition_parameters','SCracker','Zone3_temperature'],'degC'],
 
             [['deposition','SCracker','valve_on_time'],
-            ['deposition_parameters','SCracker','valve_ON_time'],'milisecond'],
+            ['deposition_parameters','SCracker','valve_ON_time'],'millisecond'],
 
             [['deposition','SCracker','valve_frequency'],
             ['deposition_parameters','SCracker','valve_frequency'],'mHz'],
@@ -853,7 +853,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     [['deposition', gun, 'avg_voltage'],
                     ['deposition_parameters', gun,'stable_average_voltage'], 'V']
                 )
-        return data
+        return data, guns
 
     def write_log_data(
         self, params: dict, archive: 'EntryArchive', logger: 'BoundLogger'
@@ -896,10 +896,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Traverse the path to set the nested attribute
             try:
                 # attrs = output_attr.split('.')
-                obj = sputtering
                 for attr in output_keys[:-1]:
-                    obj = getattr(obj, attr)
-                setattr(obj, output_keys[-1], value)
+                    sputtering = getattr(sputtering, attr)
+                setattr(sputtering, output_keys[-1], value)
             except Exception as e:
                 params_str = f'params[\'{"\'][\'".join(input_keys)}\']'
                 subsection_str = f'sputtering.{".".join(output_keys)}'
@@ -909,7 +908,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
 
         #Helper method to get the nested value, if it exists
-        def get_nested_value(self,dictionary, key_path):
+        def get_nested_value(dictionary, key_path):
             """
             Safely get a nested value from a dictionary.
 
