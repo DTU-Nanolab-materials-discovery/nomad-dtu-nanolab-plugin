@@ -2779,9 +2779,9 @@ def main():
 
     #Un comment to test the script on a single logfile
     logfiles = {}
-    logfiles['name']= ['eugbe_0004_Sb_Recording Set 2024.09.06-10.22.31']
+    logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
     logfiles['folder']= [
-        r'Z:\P110143-phosphosulfides-Andrea\Data\samples\eugbe_0004_Sb\log_files']
+        r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files']
 
 
     # Loop over all the logfiles in the directory
