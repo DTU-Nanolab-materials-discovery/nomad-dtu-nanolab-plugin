@@ -830,28 +830,28 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             ['deposition_parameters','SCracker','valve_frequency'],'mHz'],
         ]
         #Gun parameters
-        # for gun in guns:
-        #     if params[gun]['enabled']:
-        #         data.append(
-        #             [['deposition', gun, 'material'],
-        #             ['deposition_parameters',gun,'target_material'], None]
-        #         )
-        #         data.append(
-        #             [['deposition', gun, 'avg_output_power'],
-        #             ['deposition_parameters', gun,'applied_power'], 'W']
-        #         )
-        #         data.append(
-        #             [['source_ramp_up', gun, 'ignition_power'],
-        #             ['deposition_parameters', gun,'plasma_ignition_power'], 'W']
-        #         )
-        #         data.append(
-        #             [['source_ramp_up', gun, 'plasma_type'],
-        #             ['deposition_parameters', gun,'power_type'], None]
-        #         )
-        #         data.append(
-        #             [['deposition', gun, 'avg_voltage'],
-        #             ['deposition_parameters', gun,'stable_average_voltage'], 'V']
-        #         )
+        for gun in guns:
+            if params[gun]['enabled']:
+                data.append(
+                    [['deposition', gun, 'material'],
+                    ['deposition_parameters',gun,'target_material'], None]
+                )
+                data.append(
+                    [['deposition', gun, 'avg_output_power'],
+                    ['deposition_parameters', gun,'applied_power'], 'W']
+                )
+                data.append(
+                    [['source_ramp_up', gun, 'ignition_power'],
+                    ['deposition_parameters', gun,'plasma_ignition_power'], 'W']
+                )
+                data.append(
+                    [['source_ramp_up', gun, 'plasma_type'],
+                    ['deposition_parameters', gun,'power_type'], None]
+                )
+                data.append(
+                    [['deposition', gun, 'avg_voltage'],
+                    ['deposition_parameters', gun,'stable_average_voltage'], 'V']
+                )
         return data, guns
 
     def write_log_data(
@@ -901,9 +901,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             except Exception as e:
                 params_str = f'params[\'{"\'][\'".join(input_keys)}\']'
                 subsection_str = f'sputtering.{".".join(output_keys)}'
-                logger.warning(
-                    f'Failed to set {params_str} to {subsection_str}: {e}'
-                )
+                logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
 
 
         #Helper method to get the nested value, if it exists
@@ -923,7 +921,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     return None
             return dictionary
 
-
         data, guns = self.map_params_to_class(params)
 
         # Initializing a temporary class objects
@@ -932,9 +929,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # for gun in guns:
         #     setattr(sputtering.deposition_parameters, gun, GunOverview())
-        # sputtering.deposition_parameters.Magkeeper3 = GunOverview()
-        # sputtering.deposition_parameters.Magkeeper4 = GunOverview()
-        # sputtering.deposition_parameters.Taurus = GunOverview()
+        sputtering.deposition_parameters.Magkeeper3 = GunOverview()
+        sputtering.deposition_parameters.Magkeeper4 = GunOverview()
+        sputtering.deposition_parameters.Taurus = GunOverview()
 
         sputtering.deposition_parameters.SCracker = SCracker()
         sputtering.end_of_process = EndOfProcess()
