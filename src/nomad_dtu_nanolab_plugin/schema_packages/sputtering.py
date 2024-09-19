@@ -1022,14 +1022,16 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     'unit': unit,
                     'logger': logger
                 }
-            self.write_data(config)
+                self.write_data(config)
 
             steps.append(step)
 
-        # Adding the steps to the temporary sputtering object
-        sputtering.steps = steps
-        # Merging the sputtering object with self
-        merge_sections(self, sputtering, logger)
+        self.steps = steps
+
+        # # Adding the steps to the temporary sputtering object
+        # sputtering.steps = steps
+        # # Merging the sputtering object with self
+        # merge_sections(self, sputtering, logger)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
