@@ -1,30 +1,30 @@
 
 #------------------PACKAGES AND DEFINITIONS-------------------
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 import matplotlib.font_manager as fm
-from matplotlib.transforms import Affine2D
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib import patches
+from matplotlib.transforms import Affine2D
+from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
 # from nomad_dtu_nanolab_plugin.sputtering import DTUsamples, GunOverview
 # from nomad_dtu_nanolab_plugin.substrate import DTUSubstrate
 # from nomad_dtu_nanolab_plugin.target import DTUTarget
 
 
-#--------------------DEFINE GRAPHICAL PARAMETERS, SPUTTER CHAMBER AND PLATIN --------------------------
+#----DEFINE GRAPHICAL PARAMETERS, SPUTTER CHAMBER AND platen ----------
 
 # Define the default grapihcal parameters
 DEFAULT_FONTSIZE = 10
 DEFAULT_LINEWIDTH = 1
 GUN_TO_PLATEN = 1.4
 
-X_LIM=(-140, 140)
-Y_LIM=(-120, 120)
+X_LIM=(-130, 130)
+Y_LIM=(-110, 110)
 
-# Define the platin geometry
+# Define the platen geometry
 PLATEN_POS, PLATEN_DIAM, PLATEN_CENTER_DIAM  = (0, 0), 75, 2
 
 MIDDLE_SCREW_POS, MIDDLE_SCREW_DIAM = (0,15), 3
@@ -39,9 +39,10 @@ GUN_PROPERTIES = {
     'Magkeeper4': {'color': 'magenta', 'location': np.radians(45)},
 }
 
-#---------FUNCTIONS AND CLASSES-------------
+#---------CLASSES-------------
 
-class Sample():
+#Very simples classes to store the samples and guns information
+class Sample:
     #Note that sample positions are the position of the center of
     #the square samples. sub_size=40 is assumed by default.
     def __init__(self, label, pos_x, pos_y,
@@ -54,7 +55,7 @@ class Sample():
         self.pos_y_bl = pos_y - sub_size / 2
         self.mat=mat
 
-class Gun():
+class Gun:
     def __init__(self, name, mat, pos_x=None, pos_y=None, ):
         self.name=name
         self.mat=mat
@@ -63,6 +64,7 @@ class Gun():
         self.gcolor = GUN_PROPERTIES[name]['color']
         self.location = GUN_PROPERTIES[name]['location']
 
+#----------HELPERS FUNCTIONS----------------
 
 #Function to go back in forth between polar and cartesian
 def polar(x, y):
@@ -75,24 +77,6 @@ def cartesian(r, theta):
     y = r * np.sin(theta)
     return x, y
 
-#Function to convert excel lists into python lists
-def convert_string_list(input_list):
-    # Check if input_list is a Pandas Series
-    if isinstance(input_list, pd.Series):
-        # Extract the string from the Series
-        # (assuming there's only one element)
-        string_with_commas = input_list.iloc[0]
-    else:
-        string_with_commas = input_list  # If input_list  already a string
-
-    # Convert to string if it's not already
-    if not isinstance(string_with_commas, str):
-        string_with_commas = str(string_with_commas)
-
-    # Split the string by commas and strip whitespace
-    result_list = [elem.strip() for elem in string_with_commas.split(',')]
-
-    return result_list
 
 #function to read samples number and their position from the logbook
 def read_samples(sample_list:list):
@@ -101,9 +85,8 @@ def read_samples(sample_list:list):
         label = sample_obj.relative_position
         pos_x= sample_obj.Substrate_position_x
         pos_y = sample_obj.Substrate_position_y
-        #Where do i get the size of the sample
-        #Where do i get the material of the sample
-        sample = Sample(label,pos_x, pos_y)
+        # size = sample_obj.reference.SIZE?
+        sample = Sample(label, pos_x, pos_y)
         samples.append(sample)
     return samples
 
@@ -111,14 +94,13 @@ def read_samples(sample_list:list):
 def read_guns(gun_list:list, gun_names:str):
     guns = []
     for gun_obj, name in zip(gun_list, gun_names):
-        mat = gun_obj.target_material
         #Where do i get where the gun is aiming at ?
-        gun = Gun(name, mat)
+        gun = Gun(name, gun_obj.target_material)
         guns.append(gun)
     return guns
 
 def plot_matplotlib_chamber_config(samples, guns,
-            platin_angle,plot_platin_angle=False):
+            platen_angle, plot_platen_angle=False):
         fig, ax = plt.subplots()
 
         # Define the shapes
@@ -179,7 +161,7 @@ def plot_matplotlib_chamber_config(samples, guns,
             if gun.pos_x is not None and gun.pos_y is not None
         ]
 
-        circle_platin = patches.Circle(
+        circle_platen = patches.Circle(
             PLATEN_POS,
             PLATEN_DIAM,
             linewidth=DEFAULT_LINEWIDTH,
@@ -187,7 +169,7 @@ def plot_matplotlib_chamber_config(samples, guns,
             facecolor='none'
         )
 
-        circle_platin_center = patches.Circle(
+        circle_platen_center = patches.Circle(
             PLATEN_POS,
             PLATEN_CENTER_DIAM,
             linewidth=DEFAULT_LINEWIDTH,
@@ -204,7 +186,7 @@ def plot_matplotlib_chamber_config(samples, guns,
         )
 
         # Create a transformation to rotate around the origin
-        rotation_angle = platin_angle - 90
+        rotation_angle = platen_angle - 90
         rotation_transform = Affine2D().rotate_deg(rotation_angle)
 
         # Draw the shapes and rotate around the origin when necessary
@@ -227,10 +209,10 @@ def plot_matplotlib_chamber_config(samples, guns,
             rotation_transform + ax.transData)
         ax.add_patch(circle_middle_screw)
 
-        ax.add_patch(circle_platin_center)
+        ax.add_patch(circle_platen_center)
 
-        circle_platin.set_transform(rotation_transform + ax.transData)
-        ax.add_patch(circle_platin)
+        circle_platen.set_transform(rotation_transform + ax.transData)
+        ax.add_patch(circle_platen)
 
         # Add text labels to samples (rotating with a)
         for sample in samples:
@@ -290,7 +272,7 @@ def plot_matplotlib_chamber_config(samples, guns,
         ax.text(
             0,
             Y_LIM[1] - 10,
-            'Front Glovebox Door',
+            'Glovebox Door',
             ha='center',
             va='center',
             color='black',
@@ -301,7 +283,7 @@ def plot_matplotlib_chamber_config(samples, guns,
         ax.text(
             0,
             Y_LIM[0] + 10,
-            'Back Service Door',
+            'Service Door',
             ha='center',
             va='center',
             color='black',
@@ -325,19 +307,18 @@ def plot_matplotlib_chamber_config(samples, guns,
         )
 
         # Add legend
-        if plot_platin_angle:
+        if plot_platen_angle:
             ax.legend(
-                title=f"a={platin_angle}\u00b0",
+                title=f"a={platen_angle}\u00b0",
                 loc='upper left',
                 fontsize=DEFAULT_FONTSIZE
             )
 
         # Remove axis lines and ticks
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['left'].set_visible(False)
-        ax.spines['bottom'].set_visible(False)
-        ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+        for spine in ['top', 'right', 'left', 'bottom']:
+            ax.spines[spine].set_visible(False)
+        ax.tick_params(left=False, bottom=False,
+        labelleft=False, labelbottom=False)
 
         # Add a 50mm scale bar
         fontprops = fm.FontProperties(size=DEFAULT_FONTSIZE)
@@ -355,20 +336,9 @@ def plot_matplotlib_chamber_config(samples, guns,
         plt.ylim(Y_LIM)
         ax.set_aspect('equal', adjustable='box')
 
-        return fig, ax
-
-import numpy as np
-
-
+        return fig
 
 def main():
-
-    #--------------------READ THE LOGFILE OF THE RELEVANT SAMPLE--------------------------
-
-
-    #--------------------FETCH THE SAMPLE, GUN DATA
-    # AND PLATIN ANGLE FROM THE LOGFILE--------------------
-    # samples = read_samples()
 
     # Dummy samples and guns
 
@@ -379,25 +349,21 @@ def main():
         Sample('4', 25, 25, 40)
     ]
 
-
-    # guns = read_guns()
-
     guns = [
         Gun( 'Magkeeper4', 'Cu'),
     ]
 
-    platin_angle = 80 # in degrees
-
+    platen_angle = 80 # in degrees
 
     # #------------------------PLOT-----------------------------
 
 
     # Call the method in the main function
-    fig, ax = plot_matplotlib_chamber_config(
-        samples, guns, platin_angle)
+    fig = plot_matplotlib_chamber_config(
+        samples, guns, platen_angle)
     fig.show()
 
-    # fig = plot_plotly_chamber_config(samples, guns, platin_angle)
+    # fig = plot_plotly_chamber_config(samples, guns, platen_angle)
     #Show plotly figure
     # fig.show()
 

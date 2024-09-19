@@ -47,6 +47,11 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     read_logfile,
     write_params,
 )
+from nomad_dtu_nanolab_plugin.sputter_chamber_visualizer import (
+    plot_matplotlib_chamber_config,
+    read_guns,
+    read_samples,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -756,30 +761,47 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     )
 
     def plot(self, events_plot, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        fig = go.Figure()
 
-        #Making the plot from the plot_plotly_extimeline function
-        fig = plot_plotly_extimeline(events_plot)
+        #Plotting the events on a timeline from the plot_plotly_extimeline function
 
-        # Update layout
-        # fig.update_layout('Colormap',
-        #     xaxis_title='X label',
-        #     yaxis_title='Y label',
-        #     template='plotly_white',
-        #     hovermode='closest',
-        #     dragmode='zoom',
-        # )
+        timeline = plot_plotly_extimeline(events_plot)
 
-        plot_json = fig.to_plotly_json()
-        plot_json['config'] = dict(
+        #Converting the timeline to a plotly json
+
+        timeline_json = timeline.to_plotly_json()
+        timeline_json['config'] = dict(
             scrollZoom=False,
         )
+
+        #Adding the plotly figure to the figures list
         self.figures.append(
             PlotlyFigure(
                 label='Process timeline',
-                figure=plot_json,
+                figure=timeline_json,
             )
         )
+
+        # # Plotting the sample positions on the platen
+        # samples_plot = read_samples(self.samples)
+        # guns_plot =read_guns(
+        #         [
+        #             self.Magkeeper3,
+        #             self.Magkeeper4,
+        #             self.Taurus,
+        #             self.SCracker
+        #         ],
+        #         [
+        #             'Magkeeper3',
+        #             'Taurus',
+        #             'Magkeeper4',
+        #             'SCracker'
+        #         ]
+        # )
+        # sample_pos = plot_matplotlib_chamber_config(
+        #         samples_plot,
+        #         guns_plot,
+        #         self.instrument_reference.platen_rotation)
+
 
     def map_params_to_nomad(self,params,gun_list):
         #Definiting the input, ouput and unit
@@ -1073,9 +1095,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             #Run the normalizer of the deposition.parameters subsection
             self.deposition_parameters.normalize(archive, logger)
 
+            # Plotting the events on a timeline
             # self.figures = []
             # if events_plot is not None:
             #     self.plot(events_plot, archive, logger)
+
+
 
 
             # sample_number = len(self.samples)
