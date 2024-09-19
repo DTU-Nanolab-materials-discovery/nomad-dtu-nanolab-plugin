@@ -825,10 +825,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             [['deposition','SCracker','zone3_temp'],
             ['deposition_parameters','SCracker','Zone3_temperature'],'degC'],
 
-            [['deposition','SCracker','valve_on_time'],
+            [['deposition','SCracker','pulse_width'],
             ['deposition_parameters','SCracker','valve_ON_time'],'millisecond'],
 
-            [['deposition','SCracker','valve_frequency'],
+            [['deposition','SCracker','pulse_freq'],
             ['deposition_parameters','SCracker','valve_frequency'],'mHz'],
         ]
         #Gun parameters

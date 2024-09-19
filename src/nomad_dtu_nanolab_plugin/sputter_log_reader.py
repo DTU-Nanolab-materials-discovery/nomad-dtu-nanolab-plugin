@@ -20,7 +20,7 @@ from mendeleev import element
 # Set of reference values used in different parts of the script
 # Proportion of values needed to be above the threshold to consider the
 # plasma rf or dc
-TOLERANCE = 0.95
+TOLERANCE = 0.85
 # Eletrical current threshold above which a dc plasma is considered on
 CURRENT_THRESHOLD = 0.01  # miliamps
 # Bias threshold above which a rf plasma is considered on
@@ -440,7 +440,7 @@ class Lf_Event:
 
         if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
             if (
-                (self.data['Sulfur Cracker Control Enabled'] == 1).all()
+                (self.data['Sulfur Cracker Control Enabled'] == 1).mean() >= TOLERANCE
                 and (
                     self.data['Sulfur Cracker Zone 1 Current Temperature']
                     > CRACKER_ZONE_1_MIN_TEMP
@@ -613,8 +613,7 @@ class Lf_Event:
         if params[self.category]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD:
             elements = elements + ['P']
         if (params[self.category]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD) or (
-            params[self.category]['SCracker']['enabled']
-        ):
+            params[self.category]['SCracker']['enabled']):
             elements = elements + ['S']
         # add the element as an hypen separated string
         params[self.category]['material_space'] = '-'.join(elements)
@@ -635,15 +634,10 @@ class Lf_Event:
 
         # We tolerate a certain percentage of the data to be below the threshold
         if dc_current_col in self.data and (
-            (self.data[dc_current_col] > CURRENT_THRESHOLD)
-            .astype(int)
-            .quantile(TOLERANCE)
+            (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
             or (
                 (self.data[fwd_power_col] - self.data[rfl_power_col])
-                > POWER_FWD_REFL_THRESHOLD
-            )
-            .astype(int)
-            .quantile(TOLERANCE)
+                > POWER_FWD_REFL_THRESHOLD).mean() >= TOLERANCE
         ):
             params[self.category][f'{source_name[str(source_number)]}']['DC'] = True
             params[self.category][f'{source_name[str(source_number)]}']['RF'] = False
@@ -671,13 +665,10 @@ class Lf_Event:
                         f'{source_name[str(source_number)]}'
                         ]['plasma_type'] = 'DC'
         elif rf_bias_col in self.data and (
-            (self.data[rf_bias_col] > BIAS_THRESHOLD).astype(int).quantile(TOLERANCE)
+            (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= TOLERANCE
             or (
                 (self.data[fwd_power_col] - self.data[rfl_power_col])
-                > POWER_FWD_REFL_THRESHOLD
-            )
-            .astype(int)
-            .quantile(TOLERANCE)
+                > POWER_FWD_REFL_THRESHOLD).mean() >= TOLERANCE
             ):
             params[self.category][f'{source_name[str(source_number)]}']['RF'] = True
             params[self.category][
@@ -924,7 +915,8 @@ class Lf_Event:
             # act of opening the cracker pulse valve (1 open, 0 closed)
             if 'Sulfur Cracker Zone 1 Current Temperature' in raw_data.columns:
                 if (
-                    (self.data['Sulfur Cracker Control Enabled'] == 1).all()
+                    (self.data['Sulfur Cracker Control Enabled'] == 1)
+                    .mean() >= TOLERANCE
                     and (
                         self.data['Sulfur Cracker Zone 1 Current Temperature']
                         > CRACKER_ZONE_1_MIN_TEMP
@@ -1469,6 +1461,7 @@ def rename_cracker_columns(data):
 # directly use the source number to create the conditions if we handle
 # the case where the column does not exist in the dataframe
 def filter_data_plasma_on_ramp_up(data, source_list):
+    print('Defining the conditions and filtering the data')
     # Initialize dictionaries to store the ramp up, plasma on
     # conditions and corresponding data for each source
     source_ramp_up = {}
@@ -2528,6 +2521,7 @@ def normalize_column(df, column_name):
 
 
 def formatting_logfile(data):
+    print('Formatting the dataframe for conditional filtering')
     # -----FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING-------
     # -------RENAME THE CRACKER COLUMNS OF THE DATAFRAME---------
     data = rename_cracker_columns(data)
@@ -2611,14 +2605,14 @@ def select_last_event(events, raw_data, deposition, categories):
 
 
 def read_events(data):
-    print('Formatting the dataframe for conditional filtering')
+
     data, source_list = formatting_logfile(data)
 
     # ---------DEFINE DE CONDITIONS FOR DIFFERENT EVENTS-------------
     # Initialize the list of all events
     events = []
 
-    print('Defining the conditions and filtering the data')
+
 
     # ---------1/CONDITIONS FOR THE PLASMA ON OR BEING RAMPED UP--------
     source_on, source_on_open, source_ramp_up = filter_data_plasma_on_ramp_up(
@@ -2763,8 +2757,6 @@ def read_events(data):
     # unfold all the events_main_report events to get sep_events
     sep_events = unfold_events(copy.deepcopy(events_main_report), data)
 
-
-
     # Sort the subevents by the start time
     sep_events = sort_events_by_start_time(sep_events)
 
@@ -2808,11 +2800,11 @@ def main():
                         logfiles['name'].append(logfile_name)
                         logfiles['folder'].append(sample_path)
 
-    #Un comment to test the script on a single logfile
-    logfiles = {}
-    logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
-    logfiles['folder']= [
-        r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files']
+    #Uncomment to test the script on a single logfile
+    # logfiles = {}
+    # logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
+    # logfiles['folder']= [
+    #     r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files']
 
 
     # Loop over all the logfiles in the directory
