@@ -1002,14 +1002,17 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         self, step_params: dict,
         archive: 'EntryArchive', logger: 'BoundLogger'
         ) -> None:
+
         steps = []
+
         for key in step_params:
             #Initializing a temporary step object
-            step = DTUsteps()
-            step.sputter_parameters = DTUsputter_parameters()
-            step.environment = DTUChamberEnvironment()
-            step.sources = [DTUsource()]
-            step.environment.gas_flow = [DTUGasFlow()]
+            step = DTUsteps(repeats=False)
+
+            # step.sputter_parameters = DTUsputter_parameters()
+            # step.environment = DTUChamberEnvironment()
+            # step.sources = [DTUsource()]
+            # step.environment.gas_flow = [DTUGasFlow()]
 
             data_step = self.map_step_params_to_nomad(step_params, key)
 
