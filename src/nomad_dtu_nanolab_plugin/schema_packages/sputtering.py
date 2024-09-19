@@ -787,8 +787,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             [['deposition','avg_temp_1'],
             ['deposition_parameters','deposition_temperature'],'degC'],
 
+            # duration has no unit since it is a TimeDelta object
+
             [['deposition','duration'],
-            ['deposition_parameters','deposition_time'],'second'],
+            ['deposition_parameters','deposition_time'], None],
 
             [['deposition','avg_capman_pressure'],
             ['deposition_parameters','sputter_pressure'],'mtorr'],
@@ -863,23 +865,24 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         unit = config.get('unit')
         logger = config.get('logger')
 
-        time_units = ['second', 'millisecond', 'minute', 'hour']
 
-        value = self.get_nested_value(input_dict, input_keys)
         joined_keys = "']['".join(input_keys)
         params_str = f"params['{joined_keys}']"
         subsection_str = f'{output_obj}.{".".join(output_keys)}'
 
+        value = self.get_nested_value(input_dict, input_keys)
+        #Checking that the value exists
         if value is None:
-            logger.warning(f'{params_str} does not exist')
+            logger.warning(f'Missing {params_str}: Could not set {subsection_str}')
             return
-        if unit in time_units:
+        # We check if the value is a TimeDelta object and convert it to seconds
+        if type(value) == pd._libs.tslibs.timedeltas.Timedelta:
             try:
                 value = value.total_seconds()
             except AttributeError:
                 logger.warning(f'{params_str}.total_seconds method is invalid')
                 return
-            value = ureg.Quantity(value, unit)
+            value = ureg.Quantity(value, 'second')
         elif unit is not None:
             try:
                 value = ureg.Quantity(value, unit)
@@ -926,6 +929,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             logger (BoundLogger): A structlog logger.
         """
 
+        # Overwriting the datetime and end_time
+        self.datetime = params['overview']['log_start_time']
+        self.end_time = params['overview']['log_end_time']
+
         gun_list = ['Magkeeper3', 'Magkeeper4', 'Taurus']
 
         data = self.map_params_to_nomad(params, gun_list)
@@ -970,23 +977,18 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         sputtering.instruments = [instrument_reference]
 
-
         return sputtering
-
-        # Overwriting the datetime and end_time
-        self.datetime = params['overview']['log_start_time']
-        self.end_time = params['overview']['log_end_time']
 
     def map_step_params_to_nomad(self, step_params, key):
         data = [
             [[key, 'name'],
             ['name'], None],
-
+            # start_time has no unit since it is a TimeStamp object
             [[key, 'start_time'],
             ['start_time'], None],
-
+            # duration has no unit since it is a TimeDelta object
             [[key, 'duration'],
-            ['duration'], None]
+            ['duration'], None],
             ]
 
         #Defining the input, output and unit
