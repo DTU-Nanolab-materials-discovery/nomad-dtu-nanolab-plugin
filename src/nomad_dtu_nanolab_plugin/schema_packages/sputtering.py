@@ -780,8 +780,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         )
 
-    def map_params_to_nomad(self,params):
-        gun_list = ['Magkeeper3', 'Magkeeper4', 'Taurus']
+    def map_params_to_nomad(self,params,gun_list):
         #Definiting the input, ouput and unit
         data = [
             #Deposition parameters
@@ -852,11 +851,72 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     [['deposition', gun, 'avg_voltage'],
                     ['deposition_parameters', gun,'stable_average_voltage'], 'V']
                 )
-        return data, gun_list
+        return data
 
-    def write_log_data(
-        self, params: dict, archive: 'EntryArchive', logger: 'BoundLogger'
-    ) -> None:
+    #Helper method to write the data
+    def write_data(self, config:dict):
+
+        input_dict = config.get('input_dict')
+        input_keys = config.get('input_keys')
+        output_obj = config.get('output_obj')
+        output_keys = config.get('output_keys')
+        unit = config.get('unit')
+        logger = config.get('logger')
+
+        time_units = ['second', 'millisecond', 'minute', 'hour']
+
+        value = self.get_nested_value(input_dict, input_keys)
+        joined_keys = "']['".join(input_keys)
+        params_str = f"params['{joined_keys}']"
+        subsection_str = f'{output_obj}.{".".join(output_keys)}'
+
+        if value is None:
+            logger.warning(f'{params_str} does not exist')
+            return
+        if unit in time_units:
+            try:
+                value = value.total_seconds()
+            except AttributeError:
+                logger.warning(f'{params_str}.total_seconds method is invalid')
+                return
+            value = ureg.Quantity(value, unit)
+        elif unit is not None:
+            try:
+                value = ureg.Quantity(value, unit)
+            except Exception as e:
+                logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
+                return
+        # Traverse the path to set the nested attribute
+        try:
+            obj = output_obj
+            for attr in output_keys[:-1]:
+                obj = getattr(obj, attr)
+            setattr(obj, output_keys[-1], value)
+            logger.info(f'Set {params_str} to {subsection_str}')
+        except Exception as e:
+            logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
+
+    #Helper method to get the nested value, if it exists
+    def get_nested_value(self, dictionary, key_path):
+        """
+        Safely get a nested value from a dictionary.
+
+        :param dictionary: The dictionary to traverse.
+        :param key_path: A list of keys representing the path
+            to the desired value.
+        :return: The value at the end of the key path, or None if not found.
+        """
+        for key in key_path:
+            if isinstance(dictionary, dict):
+                dictionary = dictionary.get(key)
+            else:
+                return None
+        return dictionary
+
+    def write_general_log_data(
+        self, params: dict,
+        archive: 'EntryArchive', logger: 'BoundLogger'
+        ) -> None:
         """
         Method for writing the log data to the respective sections.
         Args:
@@ -866,61 +926,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             logger (BoundLogger): A structlog logger.
         """
 
-        #Helper method to write the data
-        def write_sputtering_data(input_dict: dict, input_keys: list,
-                                    output_keys:list, unit: str, sputtering):
+        gun_list = ['Magkeeper3', 'Magkeeper4', 'Taurus']
 
-            time_units = ['second', 'millisecond', 'minute', 'hour']
-
-            value = get_nested_value(input_dict, input_keys)
-            joined_keys = "']['".join(input_keys)
-            params_str = f"params['{joined_keys}']"
-            subsection_str = f'sputtering.{".".join(output_keys)}'
-
-            if value is None:
-                logger.warning(f'{params_str} does not exist')
-                return
-            if unit in time_units:
-                try:
-                    value = value.total_seconds()
-                except AttributeError:
-                    logger.warning(f'{params_str}.total_seconds method is invalid')
-                    return
-                value = ureg.Quantity(value, unit)
-            elif unit is not None:
-                try:
-                    value = ureg.Quantity(value, unit)
-                except Exception as e:
-                    logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
-                    return
-            # Traverse the path to set the nested attribute
-            try:
-                obj = sputtering
-                for attr in output_keys[:-1]:
-                    obj = getattr(obj, attr)
-                setattr(obj, output_keys[-1], value)
-                logger.info(f'Set {params_str} to {subsection_str}')
-            except Exception as e:
-                logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
-
-        #Helper method to get the nested value, if it exists
-        def get_nested_value(dictionary, key_path):
-            """
-            Safely get a nested value from a dictionary.
-
-            :param dictionary: The dictionary to traverse.
-            :param key_path: A list of keys representing the path
-                to the desired value.
-            :return: The value at the end of the key path, or None if not found.
-            """
-            for key in key_path:
-                if isinstance(dictionary, dict):
-                    dictionary = dictionary.get(key)
-                else:
-                    return None
-            return dictionary
-
-        data, gun_list = self.map_params_to_nomad(params)
+        data = self.map_params_to_nomad(params, gun_list)
 
         # Initializing a temporary class objects
         sputtering = DTUSputtering()
@@ -941,7 +949,15 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # Looping through the data
         for input_keys, output_keys, unit in data:
-            write_sputtering_data(params, input_keys, output_keys, unit, sputtering)
+            config = {
+                'input_dict': params,
+                'input_keys': input_keys,
+                'output_obj': sputtering,
+                'output_keys': output_keys,
+                'unit': unit,
+                'logger': logger
+            }
+            self.write_data(config)
 
         # Getting the deposition sub-dictionary
         deposition = params.get('deposition', {})
@@ -960,6 +976,63 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # Overwriting the datetime and end_time
         self.datetime = params['overview']['log_start_time']
         self.end_time = params['overview']['log_end_time']
+
+    def map_step_params_to_nomad(self, step_params, key):
+        data = [
+            [[key, 'name'],
+            ['name'], None],
+
+            [[key, 'start_time'],
+            ['start_time'], None]
+
+            [[key, 'duration'],
+            ['duration'], None]
+            ]
+
+        #Defining the input, output and unit
+        return data
+
+
+    def write_step_log_data(
+        self, step_params: dict,
+        archive: 'EntryArchive', logger: 'BoundLogger'
+        ) -> None:
+        steps = []
+        for key in step_params:
+
+            #Initializing a temporary sputtering object
+            sputtering = DTUSputtering()
+
+            #Initializing a temporary step object
+            step = DTUsteps()
+            step.sputter_parameters = DTUsputter_parameters()
+            step.environment = DTUChamberEnvironment()
+            step.sources = []
+            step.environment.gas_flow = []
+
+            data_step = self.map_step_params_to_nomad(step_params, key)
+
+            # Looping through the data
+            for input_keys, output_keys, unit in data_step:
+                config = {
+                    'input_dict': step_params,
+                    'input_keys': input_keys,
+                    'output_obj': step,
+                    'output_keys': output_keys,
+                    'unit': unit,
+                    'logger': logger
+                }
+            self.write_data(config)
+
+            steps.append(step)
+
+        # Adding the steps to the temporary sputtering object
+        sputtering.steps = steps
+        # Merging the sputtering object with self
+        merge_sections(self, sputtering, logger)
+
+
+
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -984,11 +1057,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Openning the log file
             with archive.m_context.raw_file(self.log_file, 'r') as log:
                 log_df = read_logfile(log.name)
-                events_plot, params, _ = read_events(log_df)
-            # Writing logfile data to the respective sections
+                events_plot, params, step_params = read_events(log_df)
             if params is not None:
-                self.write_log_data(params, archive, logger)
-
+                # Writing logfile data to the respective sections
+                self.write_general_log_data(params, archive, logger)
+                #Run the normalizer of the deposition.parameters subsection
+                self.deposition_parameters.normalize(archive, logger)
+            if step_params is not None:
+                self.write_step_log_data(step_params, archive, logger)
             # self.figures = []
             # if events_plot is not None:
             #     self.plot(events_plot, archive, logger)

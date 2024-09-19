@@ -318,8 +318,33 @@ class Lf_Event:
             params = self.get_deposition_rate_params(params=params)
         return params
 
-    def get_nomad_step_params(self, params=None):
-        # Write necessary code to extract the parameters for the nomad steps
+    def get_nomad_step_params(self, params=None, source_list = None):
+        #Set a default value for the source list
+        if source_list is None:
+            source_list = [self.source]
+        #Initialize the params dictionary if it is not provided
+        if params is None:
+            params = {}
+        # Write the event step_id as the key of the dictionary
+        if self.step_id not in params:
+            params[self.step_id] = {}
+
+        for source_number in source_list:
+            if f'{source_name[str(source_number)]}' not in params[self.step_id]:
+                params[self.step_id][
+                    'sources'
+                    ][f'{source_name[str(source_number)]}'] = {}
+
+        params[self.step_id]['name'] = self.name
+        params[self.step_id]['lab_id'] = self.step_id
+        params[self.step_id]['category'] = self.category
+        # Extract the start and end time, and duration of the event
+        params[self.step_id]['start_time'] = self.data['Time Stamp'].iloc[0]
+        params[self.step_id]['end_time'] = self.data['Time Stamp'].iloc[-1]
+        params[self.step_id]['duration'] = (
+            params[self.step_id]['end_time'] - params[self.step_id]['start_time']
+        )
+        params[self.step_id]['creates_new_thin_film'] = (self.category == 'deposition')
 
         return params
 
@@ -1633,7 +1658,8 @@ def filter_data_deposition(data, source_list, **kwargs):
     any_source_on_open = Lf_Event(
         'Any Source On and Open', category='any_source_on_open'
     )
-    deposition = Lf_Event('Deposition', category='deposition')
+    #We create a deposition event that is not tied to any source in particular
+    deposition = Lf_Event('Deposition', category='deposition', source = None)
 
     # Define a list of condition containing each source being on and open
     # at the same time
@@ -2735,15 +2761,17 @@ def read_events(data):
     # unfold all the events_main_report events to get sep_events
     sep_events = unfold_events(copy.deepcopy(events_main_report), data)
 
+
+
+    # Sort the subevents by the start time
+    sep_events = sort_events_by_start_time(sep_events)
+
     # Initialize the params dictionary for the sub report
     step_params = {}
 
     # get the individual step params
     for event in sep_events:
-        step_params = event.get_nomad_step_params(step_params)
-
-    # Sort the subevents by the start time
-    sep_events = sort_events_by_start_time(step_params)
+        step_params = event.get_nomad_step_params(step_params, source_list)
 
     return events_to_plot, main_params, step_params
 
@@ -2811,7 +2839,6 @@ def main():
         print('Extracting all the events from the logfile')
         data = read_logfile(logfile_path)
 
-        # ----HERE, STARTS THE NOMAD RELEVANT SCRIPT----
 
         # ----READ ALL THE EVENTS IN THE LOGFILE----
         events_to_plot, main_params, step_params = read_events(data)
@@ -2826,11 +2853,15 @@ def main():
         # Save the image as an interactive html file
         plotly_timeline.write_html(plotly_graph_file_path)
 
-        # ----HERE STOPS THE NOMAD RELEVANT SCRIPT----
-        # --------PRINT DERIVED QUANTITIES REPORT-------------
+        # --------PRINT DERIVED QUANTITIES REPORTS-------------
 
         print(f'Derived quantities report for logfile\n{logfiles["name"][i]}:\n')
         print_params(main_params)
+        print('\n')
+
+        print(f'Step report for logfile\n{logfiles["name"][i]}:\n')
+        print_params(step_params)
+        print('\n')
 
         # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---
 
