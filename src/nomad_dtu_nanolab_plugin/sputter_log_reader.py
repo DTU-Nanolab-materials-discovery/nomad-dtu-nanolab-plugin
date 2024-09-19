@@ -328,9 +328,11 @@ class Lf_Event:
         # Write the event step_id as the key of the dictionary
         if self.step_id not in params:
             params[self.step_id] = {}
+            params[self.step_id]['sources'] = {}
 
         for source_number in source_list:
-            if f'{source_name[str(source_number)]}' not in params[self.step_id]:
+            source_key = f'{source_name[str(source_number)]}'
+            if source_key not in params[self.step_id]['sources']:
                 params[self.step_id][
                     'sources'
                     ][f'{source_name[str(source_number)]}'] = {}

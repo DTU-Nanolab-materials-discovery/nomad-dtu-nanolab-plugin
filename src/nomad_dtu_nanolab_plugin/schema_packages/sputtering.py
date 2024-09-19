@@ -1000,8 +1000,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         steps = []
         for key in step_params:
 
-            # #Initializing a temporary sputtering object
-            # sputtering = DTUSputtering()
+            #Initializing a temporary sputtering object
+            sputtering = DTUSputtering()
 
             #Initializing a temporary step object
             step = DTUsteps()
@@ -1028,10 +1028,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         self.steps = steps
 
-        # # Adding the steps to the temporary sputtering object
-        # sputtering.steps = steps
-        # # Merging the sputtering object with self
-        # merge_sections(self, sputtering, logger)
+        # Adding the steps to the temporary sputtering object
+        sputtering.steps = steps
+        # Merging the sputtering object with self
+        merge_sections(self, sputtering, logger)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
