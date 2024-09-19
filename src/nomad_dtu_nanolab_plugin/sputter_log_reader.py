@@ -2782,6 +2782,7 @@ def read_events(data):
 # ---------------MAIN-----------
 
 def main():
+    global events_to_plot, main_params, step_params
     samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\samples'
     logfiles_extension = 'CSV'
 

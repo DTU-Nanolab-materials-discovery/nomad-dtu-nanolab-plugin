@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from datetime import datetime
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import (
@@ -784,6 +785,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     def map_params_to_nomad(self,params,gun_list):
         #Definiting the input, ouput and unit
         data = [
+            #Overview parameters
+            [['overview','log_start_time'],
+            ['datetime'], None],
+
+            [['overview','log_end_time'],
+            ['end_time'], None],
+
             #Deposition parameters
             [['deposition','avg_temp_1'],
             ['deposition_parameters','deposition_temperature'],'degC'],
@@ -885,6 +893,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 logger.warning(f'{params_str}.total_seconds method is invalid')
                 return
             value = ureg.Quantity(value, 'second')
+        elif isinstance(value, pd.Timestamp):
+            try value = datetime.strptime(valu,"%b-%d-%Y %I:%M:%S.%f %p")
+            except Exception as e:
+                logger.warning(f'Failed to convert {params_str} to datetime: {e}')
         elif unit is not None:
             try:
                 value = ureg.Quantity(value, unit)
@@ -931,9 +943,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             logger (BoundLogger): A structlog logger.
         """
 
-        # Overwriting the datetime and end_time
-        self.datetime = params['overview']['log_start_time']
-        self.end_time = params['overview']['log_end_time']
+
 
         gun_list = ['Magkeeper3', 'Magkeeper4', 'Taurus']
 
@@ -1064,7 +1074,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             if step_params is not None and sputtering is not None:
                 steps = self.generate_step_log_data(step_params, archive, logger)
-                sputtering.steps.extend(steps)
+                sputtering.steps.extend (steps)
 
             # Merging the sputtering object with self
             merge_sections(self, sputtering, logger)
