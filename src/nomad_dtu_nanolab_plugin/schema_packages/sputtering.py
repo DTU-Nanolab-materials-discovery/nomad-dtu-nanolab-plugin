@@ -913,7 +913,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 return None
         return dictionary
 
-    def write_general_log_data(
+    def generate_general_log_data(
         self, params: dict,
         archive: 'EntryArchive', logger: 'BoundLogger'
         ) -> None:
@@ -970,8 +970,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         sputtering.instruments = [instrument_reference]
 
-        # Merging the sputtering object with self
-        merge_sections(self, sputtering, logger)
+
+        return sputtering
 
         # Overwriting the datetime and end_time
         self.datetime = params['overview']['log_start_time']
@@ -993,16 +993,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         return data
 
 
-    def write_step_log_data(
+    def generate_step_log_data(
         self, step_params: dict,
         archive: 'EntryArchive', logger: 'BoundLogger'
         ) -> None:
         steps = []
         for key in step_params:
-
-            #Initializing a temporary sputtering object
-            sputtering = DTUSputtering()
-
             #Initializing a temporary step object
             step = DTUsteps()
             step.sputter_parameters = DTUsputter_parameters()
@@ -1026,12 +1022,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             steps.append(step)
 
-        self.steps = steps
-
-        # Adding the steps to the temporary sputtering object
-        sputtering.steps = steps
-        # Merging the sputtering object with self
-        merge_sections(self, sputtering, logger)
+        return steps
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -1059,15 +1050,21 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 events_plot, params, step_params = read_events(log_df)
             if params is not None:
                 # Writing logfile data to the respective sections
-                self.write_general_log_data(params, archive, logger)
-                #Run the normalizer of the deposition.parameters subsection
-                self.deposition_parameters.normalize(archive, logger)
-            if step_params is not None:
-                self.write_step_log_data(step_params, archive, logger)
+                sputtering = self.generate_general_log_data(params, archive, logger)
+
+            if step_params is not None and sputtering is not None:
+                steps = self.generate_step_log_data(step_params, archive, logger)
+                sputtering.steps = steps
+
+            # Merging the sputtering object with self
+            merge_sections(self, sputtering, logger)
+
+            #Run the normalizer of the deposition.parameters subsection
+            self.deposition_parameters.normalize(archive, logger)
+
             # self.figures = []
             # if events_plot is not None:
             #     self.plot(events_plot, archive, logger)
-
 
 
             # sample_number = len(self.samples)
