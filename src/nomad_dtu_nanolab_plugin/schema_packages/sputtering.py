@@ -763,44 +763,50 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     def plot(self, events_plot, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
 
         #Plotting the events on a timeline from the plot_plotly_extimeline function
+        try:
 
-        timeline = plot_plotly_extimeline(events_plot)
+            timeline = plot_plotly_extimeline(events_plot)
 
-        #Converting the timeline to a plotly json
+            #Converting the timeline to a plotly json
 
-        timeline_json = timeline.to_plotly_json()
-        timeline_json['config'] = dict(
-            scrollZoom=False,
-        )
-
-        #Adding the plotly figure to the figures list
-        self.figures.append(
-            PlotlyFigure(
-                label='Process timeline',
-                figure=timeline_json,
+            timeline_json = timeline.to_plotly_json()
+            timeline_json['config'] = dict(
+                scrollZoom=False,
             )
-        )
 
-        # # Plotting the sample positions on the platen
-        # samples_plot = read_samples(self.samples)
-        # guns_plot =read_guns(
-        #         [
-        #             self.Magkeeper3,
-        #             self.Magkeeper4,
-        #             self.Taurus,
-        #             self.SCracker
-        #         ],
-        #         [
-        #             'Magkeeper3',
-        #             'Taurus',
-        #             'Magkeeper4',
-        #             'SCracker'
-        #         ]
-        # )
-        # sample_pos = plot_matplotlib_chamber_config(
-        #         samples_plot,
-        #         guns_plot,
-        #         self.instrument_reference.platen_rotation)
+            #Adding the plotly figure to the figures list
+            self.figures.append(
+                PlotlyFigure(
+                    label='Process timeline',
+                    figure=timeline_json,
+                )
+            )
+        except Exception as e:
+            logger.warning(f'Failed to plot the events: {e}')
+
+        # Plotting the sample positions on the platen
+        try:
+            samples_plot = read_samples(self.samples)
+            guns_plot =read_guns(
+                    [
+                        self.Magkeeper3,
+                        self.Magkeeper4,
+                        self.Taurus,
+                        self.SCracker
+                    ],
+                    [
+                        'Magkeeper3',
+                        'Taurus',
+                        'Magkeeper4',
+                        'SCracker'
+                    ]
+            )
+            sample_pos = plot_matplotlib_chamber_config(
+                    samples_plot,
+                    guns_plot,
+                    self.instrument_reference.platen_rotation)
+        except Exception as e:
+            logger.warning(f'Failed to plot the sample positions: {e}')
 
 
     def map_params_to_nomad(self,params,gun_list):
@@ -1095,10 +1101,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             #Run the normalizer of the deposition.parameters subsection
             self.deposition_parameters.normalize(archive, logger)
 
-            # Plotting the events on a timeline
-            # self.figures = []
-            # if events_plot is not None:
-            #     self.plot(events_plot, archive, logger)
+            #Triggering the plotting of the timeline and the sample position plot
+            self.figures = []
+            self.plot(events_plot, archive, logger)
 
 
 
