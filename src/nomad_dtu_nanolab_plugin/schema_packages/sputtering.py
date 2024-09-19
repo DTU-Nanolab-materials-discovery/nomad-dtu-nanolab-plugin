@@ -1007,7 +1007,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         for key in step_params:
             #Initializing a temporary step object
-            step = DTUsteps(repeats=False)
+            step = DTUsteps()
 
             # step.sputter_parameters = DTUsputter_parameters()
             # step.environment = DTUChamberEnvironment()
@@ -1063,7 +1063,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             if step_params is not None and sputtering is not None:
                 steps = self.generate_step_log_data(step_params, archive, logger)
-                sputtering.steps = steps
+                sputtering.steps.append(steps)
 
             # Merging the sputtering object with self
             merge_sections(self, sputtering, logger)
