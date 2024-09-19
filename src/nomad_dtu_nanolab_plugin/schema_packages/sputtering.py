@@ -862,6 +862,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         input_dict = config.get('input_dict')
         input_keys = config.get('input_keys')
         output_obj = config.get('output_obj')
+        output_obj_name = config.get('output_obj_name')
         output_keys = config.get('output_keys')
         unit = config.get('unit')
         logger = config.get('logger')
@@ -869,7 +870,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         joined_keys = "']['".join(input_keys)
         params_str = f"params['{joined_keys}']"
-        subsection_str = f"{output_obj.__name__}.{".".join(output_keys)}"
+        subsection_str = f"{output_obj_name}.{'.'.join(output_keys)}"
 
         value = self.get_nested_value(input_dict, input_keys)
         #Checking that the value exists
@@ -961,6 +962,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 'input_dict': params,
                 'input_keys': input_keys,
                 'output_obj': sputtering,
+                'output_obj_name': 'sputtering',
                 'output_keys': output_keys,
                 'unit': unit,
                 'logger': logger
@@ -1017,6 +1019,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     'input_dict': step_params,
                     'input_keys': input_keys,
                     'output_obj': step,
+                    'output_obj_name': 'step',
                     'output_keys': output_keys,
                     'unit': unit,
                     'logger': logger
