@@ -932,8 +932,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         """
 
         # Overwriting the datetime and end_time
-        self.datetime = params['overview']['log_start_time']
-        self.end_time = params['overview']['log_end_time']
+        self.datetime = params['overview']['log_start_time'].to_pydatetime()
+        self.end_time = params['overview']['log_end_time'].to_pydatetime()
 
         gun_list = ['Magkeeper3', 'Magkeeper4', 'Taurus']
 
