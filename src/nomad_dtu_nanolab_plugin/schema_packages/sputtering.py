@@ -19,6 +19,7 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
@@ -876,7 +877,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             logger.warning(f'Missing {params_str}: Could not set {subsection_str}')
             return
         # We check if the value is a TimeDelta object and convert it to seconds
-        if type(value) == pd._libs.tslibs.timedeltas.Timedelta:
+        if isinstance(value,pd._libs.tslibs.timedeltas.Timedelta):
             try:
                 value = value.total_seconds()
             except AttributeError:
