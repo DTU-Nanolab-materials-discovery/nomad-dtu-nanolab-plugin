@@ -20,7 +20,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import (
@@ -28,7 +27,7 @@ from nomad.datamodel.metainfo.basesections import (
     CompositeSystemReference,
     InstrumentReference,
 )
-from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
+from nomad.datamodel.metainfo.plot import Figure, PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_material_processing.vapor_deposition.general import (
@@ -41,16 +40,16 @@ from nomad_measurements.utils import merge_sections
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
+from nomad_dtu_nanolab_plugin.sputter_chamber_visualizer import (
+    plot_matplotlib_chamber_config,
+    read_guns,
+    read_samples,
+)
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     plot_plotly_extimeline,
     read_events,
     read_logfile,
     write_params,
-)
-from nomad_dtu_nanolab_plugin.sputter_chamber_visualizer import (
-    plot_matplotlib_chamber_config,
-    read_guns,
-    read_samples,
 )
 
 if TYPE_CHECKING:
@@ -801,10 +800,16 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                         'SCracker'
                     ]
             )
-            sample_pos = plot_matplotlib_chamber_config(
+            sample_pos_plot = plot_matplotlib_chamber_config(
                     samples_plot,
                     guns_plot,
                     self.instrument_reference.platen_rotation)
+            self.figures.append(
+                Figure(
+                    label='Sample positions',
+                    figure=sample_pos_plot,
+                )
+            )
         except Exception as e:
             logger.warning(f'Failed to plot the sample positions: {e}')
 

@@ -4,7 +4,6 @@
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from matplotlib import patches
 from matplotlib.transforms import Affine2D
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
