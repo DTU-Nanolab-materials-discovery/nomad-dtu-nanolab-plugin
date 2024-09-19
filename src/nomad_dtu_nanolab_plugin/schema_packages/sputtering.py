@@ -835,7 +835,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         for gun in gun_list:
             if params['deposition'].get(gun, {}).get('enabled', False):
                 param_nomad_map.append(
-                    [['deposition', gun, 'material'],
+                    [['deposition', gun, 'target_id'],
                     ['deposition_parameters', gun,'target_material'], None]
                 )
                 param_nomad_map.append(

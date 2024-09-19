@@ -2203,7 +2203,7 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
 # -------PLOTTING DEFINITIONS------------
 
 
-def plot_plotly_extimeline(events_to_plot):
+def plot_plotly_extimeline(events_to_plot, sample_name):
     """
     args:
         logfile_name: str
@@ -2226,21 +2226,18 @@ def plot_plotly_extimeline(events_to_plot):
     for step in events_to_plot:
         if isinstance(step, Lf_Event):
             for bounds in step.bounds:
-                rows.append({'Event': step.name, 'Start': bounds[0], 'End': bounds[1]})
-        # elif isinstance(step, dict):
-        #     for source_number in source_used_list:
-        #         for bounds in step[str(source_number)].bounds:
-        #             rows.append({
-        #                 'Event': step[str(source_number)].name,
-        #                 'Start': bounds[0],
-        #                 'End': bounds[1]
-        #             })
+                rows.append({'Event': step.name, 'Start': bounds[0], 'End': bounds[1],
+                'Average Temp': step.data['Substrate Heater Temperature'].mean(),
+                'Average Pressure': step.data['PC Capman Pressure'].mean()})
+                #add more quantities if needed
 
     df = pd.DataFrame(rows)
 
+    time_margin = pd.Timedelta(minutes=15)
     # Determine the timeline duration
-    min_start_time = df['Start'].min()
-    max_end_time = df['End'].max()
+    min_start_time = df['Start'].min() - time_margin
+    # Calculate end time overlooking the Ar On event
+    max_end_time = df[df['Event'] != 'Ar On']['End'].max() + time_margin
     # Duration in hours
     timeline_duration = (max_end_time - min_start_time).total_seconds() / 3600
 
@@ -2257,7 +2254,9 @@ def plot_plotly_extimeline(events_to_plot):
         color='Event',
         color_discrete_map=STEP_COLORS,
         title='Process Timeline',
+        hover_data=['Average Temp', 'Average Pressure'],
     )
+    fig.update_xaxes(range=[min_start_time, max_end_time])
     # Update the layout to include a border around the plot area
     fig.update_layout(
         xaxis_title='Time',
@@ -2271,7 +2270,7 @@ def plot_plotly_extimeline(events_to_plot):
         hovermode='closest',
         dragmode='zoom',
         title=dict(
-            text='Process Timeline',  # Title text
+            text=f'Process Timeline for {sample_name}',  # Title text
             x=0.5,  # Center the title horizontally
             y=0.85,  # Position the title vertically
             xanchor='center',  # Anchor the title at the center horizontally
@@ -2842,7 +2841,7 @@ def main():
 
         # Create the figure
         print('Generating the plotly plot')
-        plotly_timeline = plot_plotly_extimeline(events_to_plot)
+        plotly_timeline = plot_plotly_extimeline(events_to_plot, logfiles['name'][i])
         # plotly_timeline.show()
 
         # Save the image as an interactive html file
