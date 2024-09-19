@@ -869,7 +869,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         joined_keys = "']['".join(input_keys)
         params_str = f"params['{joined_keys}']"
-        subsection_str = f'{output_obj}.{".".join(output_keys)}'
+        subsection_str = f"{output_obj.__name__}.{".".join(output_keys)}"
 
         value = self.get_nested_value(input_dict, input_keys)
         #Checking that the value exists
