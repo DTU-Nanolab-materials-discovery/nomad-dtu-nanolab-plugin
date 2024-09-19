@@ -983,7 +983,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             ['name'], None],
 
             [[key, 'start_time'],
-            ['start_time'], None]
+            ['start_time'], None],
 
             [[key, 'duration'],
             ['duration'], None]
@@ -1005,10 +1005,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             #Initializing a temporary step object
             step = DTUsteps()
-            step.sputter_parameters = DTUsputter_parameters()
-            step.environment = DTUChamberEnvironment()
-            step.sources = []
-            step.environment.gas_flow = []
+            # step.sputter_parameters = DTUsputter_parameters()
+            # step.environment = DTUChamberEnvironment()
+            # step.sources = []
+            # step.environment.gas_flow = []
 
             data_step = self.map_step_params_to_nomad(step_params, key)
 
@@ -1030,9 +1030,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.steps = steps
         # Merging the sputtering object with self
         merge_sections(self, sputtering, logger)
-
-
-
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
