@@ -781,16 +781,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         )
 
-    def map_params_to_nomad(self, params, gun_list):
+    def map_params_to_nomad(self,params,gun_list):
         #Definiting the input, ouput and unit
-        data = [
-            #Overview parameters
-            [['overview','log_start_time'],
-            ['datetime'], None],
-
-            [['overview','log_end_time'],
-            ['end_time'], None],
-
+        param_nomad_map = [
             #Deposition parameters
             [['deposition','avg_temp_1'],
             ['deposition_parameters','deposition_temperature'],'degC'],
@@ -841,27 +834,27 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         #Gun parameters
         for gun in gun_list:
             if params['deposition'].get(gun, {}).get('enabled', False):
-                data.append(
+                param_nomad_map.append(
                     [['deposition', gun, 'material'],
                     ['deposition_parameters', gun,'target_material'], None]
                 )
-                data.append(
+                param_nomad_map.append(
                     [['deposition', gun, 'avg_output_power'],
                     ['deposition_parameters', gun,'applied_power'], 'W']
                 )
-                data.append(
+                param_nomad_map.append(
                     [['source_ramp_up', gun, 'ignition_power'],
                     ['deposition_parameters', gun,'plasma_ignition_power'], 'W']
                 )
-                data.append(
+                param_nomad_map.append(
                     [['deposition', gun, 'plasma_type'],
                     ['deposition_parameters', gun,'power_type'], None]
                 )
-                data.append(
+                param_nomad_map.append(
                     [['deposition', gun, 'avg_voltage'],
                     ['deposition_parameters', gun,'stable_average_voltage'], 'V']
                 )
-        return data
+        return param_nomad_map
 
     #Helper method to write the data
     def write_data(self, config:dict):
@@ -892,11 +885,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 logger.warning(f'{params_str}.total_seconds method is invalid')
                 return
             value = ureg.Quantity(value, 'second')
-        elif isinstance(value, pd._libs.tslibs.timestamps.Timestamp):
-            try:
-                value = value.to_pydatetime()
-            except Exception as e:
-                logger.warning(f'Failed to convert {params_str} to datetime: {e}')
         elif unit is not None:
             try:
                 value = ureg.Quantity(value, unit)
@@ -943,11 +931,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             logger (BoundLogger): A structlog logger.
         """
 
-
+        # Overwriting the datetime and end_time
+        self.datetime = params['overview']['log_start_time']
+        self.end_time = params['overview']['log_end_time']
 
         gun_list = ['Magkeeper3', 'Magkeeper4', 'Taurus']
 
-        data = self.map_params_to_nomad(params, gun_list)
+        # Mapping the params to the respective sections
+        param_nomad_map = self.map_params_to_nomad(params, gun_list)
 
         # Initializing a temporary class objects
         sputtering = DTUSputtering()
@@ -967,8 +958,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # Writing the params dict in the form of a report
         sputtering.log_file_report = write_params(params)
 
-        # Looping through the data
-        for input_keys, output_keys, unit in data:
+        # Looping through the param_nomad_map
+        for input_keys, output_keys, unit in param_nomad_map:
             config = {
                 'input_dict': params,
                 'input_keys': input_keys,
@@ -994,7 +985,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         return sputtering
 
     def map_step_params_to_nomad(self, step_params, key):
-        data = [
+        step_param_nomad_map = [
             [[key, 'name'],
             ['name'], None],
             # start_time has no unit since it is a TimeStamp object
@@ -1006,7 +997,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             ]
 
         #Defining the input, output and unit
-        return data
+        return step_param_nomad_map
 
 
     def generate_step_log_data(
@@ -1025,10 +1016,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # step.sources = [DTUsource()]
             # step.environment.gas_flow = [DTUGasFlow()]
 
-            data_step = self.map_step_params_to_nomad(step_params, key)
+            step_param_nomad_map = self.map_step_params_to_nomad(step_params, key)
 
-            # Looping through the data
-            for input_keys, output_keys, unit in data_step:
+            # Looping through the step_param_nomad_map
+            for input_keys, output_keys, unit in step_param_nomad_map:
                 config = {
                     'input_dict': step_params,
                     'input_keys': input_keys,
@@ -1074,7 +1065,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             if step_params is not None and sputtering is not None:
                 steps = self.generate_step_log_data(step_params, archive, logger)
-                sputtering.steps.extend (steps)
+                sputtering.steps.extend(steps)
 
             # Merging the sputtering object with self
             merge_sections(self, sputtering, logger)
