@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from datetime import datetime
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import (
@@ -782,7 +781,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         )
 
-    def map_params_to_nomad(self,params,gun_list):
+    def map_params_to_nomad(self, params, gun_list):
         #Definiting the input, ouput and unit
         data = [
             #Overview parameters
@@ -893,8 +892,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 logger.warning(f'{params_str}.total_seconds method is invalid')
                 return
             value = ureg.Quantity(value, 'second')
-        elif isinstance(value, pd.Timestamp):
-            try value = datetime.strptime(valu,"%b-%d-%Y %I:%M:%S.%f %p")
+        elif isinstance(value, pd._libs.tslibs.timestamps.Timestamp):
+            try:
+                value = value.to_pydatetime()
             except Exception as e:
                 logger.warning(f'Failed to convert {params_str} to datetime: {e}')
         elif unit is not None:
