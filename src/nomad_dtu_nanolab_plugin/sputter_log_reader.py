@@ -2013,7 +2013,8 @@ def define_film_meas_conditions(data, source_list, **kwargs):
             deprate2_film_meas_cond = (
                 deprate2_meas.cond
                 & source_on_open[str(source_number)].cond
-                & (cracker_dep_cond | h2s_dep_cond)
+                & cracker_dep_cond
+                & h2s_dep_cond
                 & ph3_dep_cond
                 & (data['Thickness Active Material'] != 'Sulfur')
                 & power_cond
@@ -2557,15 +2558,15 @@ def verify_deposition_unicity(events, raw_data):
                 )
                 for i in range(event.events):
                     print(
-                        f'Deposition {i} start time: {event.bounds[i][0]}',
-                        f'Deposition {i} end time: {event.bounds[i][1]}',
+                        f'Deposition({i})start time: {event.bounds[i][0]}',
+                        f'Deposition({i})end time: {event.bounds[i][1]}',
                     )
                 event.filter_out_small_events(MIN_DEPOSITION_SIZE)
                 print('Number of deposition events after filtering:', event.events)
                 for i in range(event.events):
                     print(
-                        f'Deposition {i+1} start time: {event.bounds[i][0]}',
-                        f'Deposition {i+1} end time: {event.bounds[i][1]}',
+                        f'Deposition({i+1})start time: {event.bounds[i][0]}',
+                        f'Deposition({i+1})end time: {event.bounds[i][1]}',
                     )
                 if event.events != 1:
                     print(
@@ -2580,7 +2581,7 @@ def verify_deposition_unicity(events, raw_data):
                         raw_data,
                         continuity_limit=DEPOSITION_CONTINUITY_LIMIT,
                     )
-                    if event.events = 1:
+                    if event.events == 1:
                         print('A unique deposition event was succesfully filtered')
                     else:
                         raise ValueError(
@@ -2592,14 +2593,14 @@ def verify_deposition_unicity(events, raw_data):
     return events
 
 
-def select_last_event(events, raw_data, deposition, categories):
+def select_last_event(events, raw_data, ref_event, categories):
     for event in events:
         if event.category in categories:
             try:
-                event.select_event(raw_data, -1, deposition.bounds[0][0])
+                event.select_event(raw_data, -1, ref_event.bounds[0][0])
             except Exception as e:
                 print(
-                    'Warning: Failed to find any event before deposition for',
+                    'Warning: Failed to find any event before ref_event for',
                     f'{event.step_id}. Error: {e}',
                 )
     return events
@@ -2612,8 +2613,6 @@ def read_events(data):
     # ---------DEFINE DE CONDITIONS FOR DIFFERENT EVENTS-------------
     # Initialize the list of all events
     events = []
-
-
 
     # ---------1/CONDITIONS FOR THE PLASMA ON OR BEING RAMPED UP--------
     source_on, source_on_open, source_ramp_up = filter_data_plasma_on_ramp_up(
@@ -2728,11 +2727,11 @@ def read_events(data):
     # in the future
     events_to_plot = copy.deepcopy(events)
 
-    # We verify the unicity of the deposition event
+    # We verify the unicity of the deposition event, and try to fix it if needed
     events = verify_deposition_unicity(events, data)
 
     # To make a list sutable for making a report, we remove
-    # all the events that do not match the categories_for_main_report
+    # all the events that do not match the CATEGORIES_MAIN_REPORT
 
     events_main_report = [
         copy.deepcopy(event)
@@ -2799,7 +2798,7 @@ def main():
                         logfiles['name'].append(logfile_name)
                         logfiles['folder'].append(sample_path)
 
-    #Uncomment to test the script on a single logfile
+    # # Uncomment to test the script on a single logfile
     # logfiles = {}
     # logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
     # logfiles['folder']= [
