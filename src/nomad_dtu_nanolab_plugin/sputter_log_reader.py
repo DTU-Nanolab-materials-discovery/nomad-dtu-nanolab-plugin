@@ -2544,7 +2544,8 @@ def verify_deposition_unicity(events, raw_data):
             # than MIN_DEPOSITION_SIZE, we consider that the deposition
             # event is not valid
             if event.events == 0:
-                print('Error: More than no deposition event')
+                print('Error: No deposition event found')
+                break
             elif event.events > 1:
                 print(
                     'More than one deposition event detected.',
@@ -2579,14 +2580,15 @@ def verify_deposition_unicity(events, raw_data):
                         raw_data,
                         continuity_limit=DEPOSITION_CONTINUITY_LIMIT,
                     )
-                    if event.events != 1:
+                    if event.events = 1:
+                        print('A unique deposition event was succesfully filtered')
+                    else:
                         raise ValueError(
                             'Error: The number of deposition events is not 1 ',
-                            'after increasing the continuity limit and fitlering ',
+                            'after increasing the continuity limit and filttering ',
                             'smaller events',
                         )
-                    else:
-                        print('A unique deposition event was succesfully filtered')
+                        break
     return events
 
 
@@ -2767,8 +2769,6 @@ def read_events(data):
         step_params = event.get_nomad_step_params(step_params, source_list)
 
     return events_to_plot, main_params, step_params
-
-
 
 # ---------------MAIN-----------
 

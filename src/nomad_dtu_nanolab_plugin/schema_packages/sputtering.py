@@ -763,11 +763,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         #Plotting the events on a timeline from the plot_plotly_extimeline function
         try:
-
             timeline = plot_plotly_extimeline(events_plot, self.lab_id)
 
             #Converting the timeline to a plotly json
-
             timeline_json = timeline.to_plotly_json()
             timeline_json['config'] = dict(
                 scrollZoom=False,
