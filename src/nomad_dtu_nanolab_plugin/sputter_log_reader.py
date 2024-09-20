@@ -115,7 +115,17 @@ STEP_COLORS = {
     'S Dep Rate Meas': '#B22222',  # Firebrick
     'Cracker Pressure Meas': 'brown',
 }
-source_name = {'1': 'Taurus', '3': 'Magkeeper3', '4': 'Magkeeper4', 'all': 'All'}
+SOURCE_NAME = {
+    '1': 'Taurus',
+    '3': 'Magkeeper3',
+    '4': 'Magkeeper4',
+    'all': 'All'
+    }
+GAS_NUMBER = {
+    'ar': 1,
+    'ph3': 4,
+    'h2s': 6,
+}
 
 ##------EVENT CLASS DEFINITION------
 
@@ -326,16 +336,16 @@ class Lf_Event:
         if params is None:
             params = {}
         # Write the event step_id as the key of the dictionary
-        if self.step_id not in params:
-            params[self.step_id] = {}
-            params[self.step_id]['sources'] = {}
 
-        for source_number in source_list:
-            source_key = f'{source_name[str(source_number)]}'
-            if source_key not in params[self.step_id]['sources']:
-                params[self.step_id][
-                    'sources'
-                    ][f'{source_name[str(source_number)]}'] = {}
+        params[self.step_id] = {}
+        params[self.step_id]['sources'] = {}
+        params[self.step_id]['environment'] = {}
+        params[self.step_id]['environment']['gas_flow'] = {}
+        params[self.step_id]['environment']['pressure'] = {}
+        params[self.step_id]['environment']['heater'] = {}
+
+
+        #Get basic step parameters in the dictionary
 
         params[self.step_id]['name'] = self.name
         params[self.step_id]['lab_id'] = self.step_id
@@ -348,6 +358,50 @@ class Lf_Event:
         )
         params[self.step_id]['creates_new_thin_film'] = (self.category == 'deposition')
 
+        params = self.get_step_environment_params(params)
+
+        #Get the source parameters
+
+        params = self.get_step_sources_params(source_list, params)
+
+
+        return params
+
+    def get_step_environment_params(self,params):
+        for gas_name in ['ar', 'ph3', 'h2s']:
+            params[self.step_id]['environment']['gas_flow'][gas_name] = {}
+            params[self.step_id]['environment']['gas_flow'][gas_name]['gas'] = {}
+            params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'] = {}
+
+            params[self.step_id][
+                'environment']['gas_flow'][gas_name]['gas_name'] = gas_name
+            # In the following entry, we add the time series of the
+            # corresponding gas flow rate
+            params[self.step_id][
+                'environment']['gas_flow'][gas_name]['flow_rate']['set_value']= (
+                self.data[f'PC MFC {GAS_NUMBER[gas_name]} Setpoint']
+            )
+            #In the following entry, we set the value of the gas flow rate
+            params[self.step_id][
+                'environment']['gas_flow'][gas_name]['flow_rate']['value']= (
+                self.data[f'PC MFC {GAS_NUMBER[gas_name]} Flow'])
+            #In the following entry, we set the time values
+            params[self.step_id][
+                'environment']['gas_flow'][gas_name]['flow_rate']['time']= (
+                self.data['Time Stamp'])
+            params[self.step_id][
+                'environment'
+                ]['gas_flow'
+                ][gas_name]['measurement_type'] = 'Mass Flow Controller'
+            params[self.step_id][
+                'environment']['gas_flow'][gas_name]['gas']['name'] = gas_name
+        return params
+
+    def get_step_sources_params(self, source_list, params):
+        for source_number in source_list:
+            source_key = f'{SOURCE_NAME[str(source_number)]}'
+            if source_key not in params[self.step_id]['sources']:
+                params[self.step_id]['sources'][source_key] = {}
         return params
 
     def get_all_deposition_params(self, source_list, raw_data, params=None):
@@ -403,8 +457,8 @@ class Lf_Event:
         if self.category not in params:
             params[self.category] = {}
         for source_number in source_list:
-            if f'{source_name[str(source_number)]}' not in params[self.category]:
-                params[self.category][f'{source_name[str(source_number)]}'] = {}
+            if f'{SOURCE_NAME[str(source_number)]}' not in params[self.category]:
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'] = {}
 
         for source_number in source_list:
             if (
@@ -413,11 +467,11 @@ class Lf_Event:
                 ).all()
                 == 0
             ):
-                params[self.category][f'{source_name[str(source_number)]}'][
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                     'enabled'
                 ] = True
             else:
-                params[self.category][f'{source_name[str(source_number)]}'][
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                     'enabled'
                 ] = False
 
@@ -600,7 +654,7 @@ class Lf_Event:
             params[self.category] = {}
         elements = []
         for source_number in source_list:
-            if params[self.category][f'{source_name[str(source_number)]}']['enabled']:
+            if params[self.category][f'{SOURCE_NAME[str(source_number)]}']['enabled']:
                 params = self.get_avg_output_power(params, source_number)
                 params = self.get_plasma_type(params, source_number)
                 params = self.get_deposition_voltage(params, source_number)
@@ -620,7 +674,7 @@ class Lf_Event:
         return params
 
     def get_avg_output_power(self, params, source_number):
-        params[self.category][f'{source_name[str(source_number)]}'][
+        params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
             'avg_output_power'
         ] = self.data[f'Source {source_number} Output Setpoint'].mean()
         return params
@@ -639,30 +693,30 @@ class Lf_Event:
                 (self.data[fwd_power_col] - self.data[rfl_power_col])
                 > POWER_FWD_REFL_THRESHOLD).mean() >= TOLERANCE
         ):
-            params[self.category][f'{source_name[str(source_number)]}']['DC'] = True
-            params[self.category][f'{source_name[str(source_number)]}']['RF'] = False
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['DC'] = True
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['RF'] = False
             if pulse_enable_col in self.data:
-                params[self.category][f'{source_name[str(source_number)]}'][
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                     'pulsed'
                 ] = self.data[pulse_enable_col].all() == 1
-                if params[self.category][f'{source_name[str(source_number)]}'][
+                if params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                     'pulsed'
                 ]:
-                    params[self.category][f'{source_name[str(source_number)]}'][
+                    params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                         'plasma_type'
                     ] = 'pulsed_DC'
-                    params[self.category][f'{source_name[str(source_number)]}'][
+                    params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                         'pulse_frequency'
                     ] = self.data[f'Source {source_number} Pulse Frequency'].mean()
-                    params[self.category][f'{source_name[str(source_number)]}'][
+                    params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                         'dead_time'
                     ] = self.data[f'Source {source_number} Reverse Time'].mean()
                 else:
                     params[self.category][
-                        f'{source_name[str(source_number)]}'
+                        f'{SOURCE_NAME[str(source_number)]}'
                         ]['pulsed'] = False
                     params[self.category][
-                        f'{source_name[str(source_number)]}'
+                        f'{SOURCE_NAME[str(source_number)]}'
                         ]['plasma_type'] = 'DC'
         elif rf_bias_col in self.data and (
             (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= TOLERANCE
@@ -670,13 +724,13 @@ class Lf_Event:
                 (self.data[fwd_power_col] - self.data[rfl_power_col])
                 > POWER_FWD_REFL_THRESHOLD).mean() >= TOLERANCE
             ):
-            params[self.category][f'{source_name[str(source_number)]}']['RF'] = True
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['RF'] = True
             params[self.category][
-                f'{source_name[str(source_number)]}'
+                f'{SOURCE_NAME[str(source_number)]}'
                 ]['plasma_type'] = 'RF'
-            params[self.category][f'{source_name[str(source_number)]}']['DC'] = False
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['DC'] = False
             params[self.category][
-                f'{source_name[str(source_number)]}'
+                f'{SOURCE_NAME[str(source_number)]}'
                 ]['pulsed'] = False
         else:
             print('Error: Plasma type not recognized')
@@ -686,20 +740,24 @@ class Lf_Event:
 
     def get_deposition_voltage(self, params, source_number):
         def extract_voltage_stats(data, key_prefix):
-            return {
-                'start_voltage': data.iloc[
+            start_voltage = data.iloc[
                     : int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(data))
-                ].mean(),
-                'end_voltage': data.iloc[
+                ].mean()
+            end_voltage = data.iloc[
                     -int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(data)) :
-                ].mean(),
+                ].mean()
+            return {
+                'start_voltage': start_voltage,
+                'end_voltage': end_voltage,
                 'avg_voltage': data.mean(),
                 'min_voltage': data.min(),
                 'max_voltage': data.max(),
                 'std_voltage': data.std(),
+                'range_voltage': data.max() - data.min(),
+                'start_minus_end_voltage': start_voltage - end_voltage,
             }
 
-        source_key = f'{source_name[f"{source_number}"]}'
+        source_key = f'{SOURCE_NAME[f"{source_number}"]}'
         category = params[self.category][source_key]
 
         if category['DC']:
@@ -718,10 +776,10 @@ class Lf_Event:
     def get_source_material_and_target(self, params, source_number, elements):
         source_element = str(self.data[f'PC Source {source_number} Material'].iloc[0])
         source_element = re.split(r'\s+', source_element)[0]
-        params[self.category][f'{source_name[str(source_number)]}']['material'] = (
+        params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
             element(source_element).symbol
         )
-        params[self.category][f'{source_name[str(source_number)]}']['target_id'] = (
+        params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_id'] = (
             self.data[f'PC Source {source_number} Loaded Target'].iloc[0]
         )
         elements.append(element(source_element).symbol)
@@ -760,11 +818,11 @@ class Lf_Event:
             params[self.category] = {}
 
         source_number = self.source
-        if f'{source_name[str(source_number)]}' not in params[self.category]:
-            params[self.category][f'{source_name[str(source_number)]}'] = {}
+        if f'{SOURCE_NAME[str(source_number)]}' not in params[self.category]:
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'] = {}
 
         # We check if the source is enabled during deposition
-        if params['deposition'][f'{source_name[str(source_number)]}']['enabled']:
+        if params['deposition'][f'{SOURCE_NAME[str(source_number)]}']['enabled']:
             # ----source presputtering parameters-----
             # Extract the presputtering duration
             presput_duration = 0
@@ -773,19 +831,19 @@ class Lf_Event:
                     self.bounds[i][1] - self.bounds[i][0]
                 ).total_seconds()
             presput_duration = pd.to_timedelta(presput_duration, unit='s')
-            params[self.category][f'{source_name[str(source_number)]}']['duration'] = (
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['duration'] = (
                 presput_duration
             )
             # Extract the average output power during presputtering
-            params[self.category][f'{source_name[str(source_number)]}'][
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                 'avg_output_power'
             ] = self.data[f'Source {source_number} Output Setpoint'].mean()
             # Extract the avg capman pressure during presputtering
-            params[self.category][f'{source_name[str(source_number)]}'][
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                 'avg_capman_pressure'
             ] = self.data['PC Capman Pressure'].mean()
             # Extract the gas flows during presputtering
-            params[self.category][f'{source_name[str(source_number)]}'][
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                 'avg_ar_flow'
             ] = self.data['PC MFC 1 Flow'].mean()
         return params
@@ -804,10 +862,10 @@ class Lf_Event:
             params[self.category] = {}
 
         source_number = self.source
-        if f'{source_name[str(source_number)]}' not in params[self.category]:
-            params[self.category][f'{source_name[str(source_number)]}'] = {}
+        if f'{SOURCE_NAME[str(source_number)]}' not in params[self.category]:
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'] = {}
         # We check if the source is enabled during deposition
-        if params['deposition'][f'{source_name[str(source_number)]}']['enabled']:
+        if params['deposition'][f'{SOURCE_NAME[str(source_number)]}']['enabled']:
             # Extract the plasma ignition power as the power at which
             # the plasma really ignites
             # We first filter only the last [-1] source ramp up event with the
@@ -837,21 +895,21 @@ class Lf_Event:
             # not be empty
             if not data_ignition_time.empty:
                 ignition_time = data_ignition_time['Time Stamp'].iloc[0]
-                params[self.category][f'{source_name[str(source_number)]}'][
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                     'ignition'
                 ] = True
-                params[self.category][f'{source_name[str(source_number)]}'][
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                     'ignition_time'
                 ] = ignition_time
                 ignition_data = self.data[self.data['Time Stamp'] == ignition_time]
-                params[self.category][f'{source_name[str(source_number)]}'][
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                     'ignition_power'
                 ] = ignition_data[f'Source {source_number} Output Setpoint'].iloc[0]
-                params[self.category][f'{source_name[str(source_number)]}'][
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                     'ignition_pressure'
                 ] = ignition_data['PC Capman Pressure'].iloc[0]
             else:
-                params[self.category][f'{source_name[str(source_number)]}'][
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                     'source_ignition'
                 ] = False
 
@@ -1131,8 +1189,8 @@ class Lf_Event:
         elif self.source is not None:
             source_number = self.source
 
-        if source_name[str(source_number)] not in params[self.category]:
-            params[self.category][source_name[str(source_number)]] = {}
+        if SOURCE_NAME[str(source_number)] not in params[self.category]:
+            params[self.category][SOURCE_NAME[str(source_number)]] = {}
 
         if self.source is not None:
             source_number = self.source
@@ -1140,22 +1198,22 @@ class Lf_Event:
                 self.data[f'PC Source {source_number} Material'].iloc[0]
             )
             source_element = re.split(r'\s+', source_element)[0]
-            params[self.category][f'{source_name[str(source_number)]}']['material'] = (
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
                 element(source_element).symbol
             )
 
-        params[self.category][f'{source_name[str(source_number)]}']['dep_rate'] = (
+        params[self.category][f'{SOURCE_NAME[str(source_number)]}']['dep_rate'] = (
             self.data['Thickness Rate'].mean()
         )
-        params[self.category][f'{source_name[str(source_number)]}'][
+        params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
             'dep_rate_ref_mat'
         ] = self.data['Thickness Active Material'].iloc[0]
         if 'Thickness Material Density' in self.data.columns:
-            params[self.category][f'{source_name[str(source_number)]}'][
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                 'dep_rate_ref_density'
             ] = self.data['Thickness Material Density'].mean()
         if 'Thickness Material Z' in self.data.columns:
-            params[self.category][f'{source_name[str(source_number)]}'][
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                 'dep_rate_ref_z'
             ] = self.data['Thickness Material Z'].mean()
 
@@ -1207,11 +1265,14 @@ def get_end_of_process(raw_data, params=None):
     return params
 
 
-def save_report_as_text(params:dict, txt_file_path, logfile_name):
+def save_report_as_text(params:dict, step_params:dict, txt_file_path, logfile_name):
     # Save the derived quantities report as a text file as
     with open(txt_file_path, 'w') as txt_file:
         txt_file.write(f'Derived quantities report for logfile\n{logfile_name}:\n\n')
         txt_file.write(write_params(params))
+        txt_file.write('\n')
+        txt_file.write('Step report:\n')
+        txt_file.write(write_params(step_params))
 
 
 # Function to convert timestamps to isoformat
@@ -1269,6 +1330,8 @@ def write_params(quantities, indent=''):
                 hours, remainder = divmod(total_seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
                 formatted_value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
+            elif isinstance(value, pd.DataFrame):
+                formatted_value = 'Cannot display pd.DataFrame'
             output.append(f'{indent}{key}: {formatted_value}')
     return '\n'.join(output)
 
@@ -2859,7 +2922,7 @@ def main():
         # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---
 
         print('Saving the derived quantities report as a text file')
-        save_report_as_text(main_params, txt_file_path, logfiles['name'][i])
+        save_report_as_text(main_params,step_params, txt_file_path, logfiles['name'][i])
         print('\n')
 
 
