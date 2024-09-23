@@ -138,7 +138,7 @@ class Lf_Event:
         self.category = category
         self.source = source
         self.step_number = step_number
-        if category is None:
+        if category is not None:
             self.step_id = category
         else:
             self.step_id = name
