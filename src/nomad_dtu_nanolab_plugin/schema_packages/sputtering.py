@@ -50,6 +50,9 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     read_events,
     read_logfile,
     write_params,
+    map_params_to_nomad,
+    map_step_params_to_nomad,
+    get_nested_value,
 )
 
 if TYPE_CHECKING:
@@ -811,82 +814,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         except Exception as e:
             logger.warning(f'Failed to plot the sample positions: {e}')
 
-
-    def map_params_to_nomad(self,params,gun_list):
-        #Definiting the input, ouput and unit
-        param_nomad_map = [
-            #Deposition parameters
-            [['deposition','avg_temp_1'],
-            ['deposition_parameters','deposition_temperature'],'degC'],
-
-            # duration has no unit since it is a TimeDelta object
-
-            [['deposition','duration'],
-            ['deposition_parameters','deposition_time'], None],
-
-            [['deposition','avg_capman_pressure'],
-            ['deposition_parameters','sputter_pressure'],'mtorr'],
-
-            [['deposition','material_space'],
-            ['deposition_parameters','material_space'], None],
-
-            [['deposition','avg_ar_flow'],
-            ['deposition_parameters','ar_flow'],'cm^3/minute'],
-
-            [['deposition','avg_h2s_flow'],
-            ['deposition_parameters','h2s_in_Ar_flow'],'cm^3/minute'],
-
-            [['deposition','avg_ph3_flow'],
-            ['deposition_parameters','ph3_in_Ar_flow'],'cm^3/minute'],
-
-            #End of process parameters
-            [['overview','end_of_process_temp'],
-            ['end_of_process','Heater_temperature'],'degC'],
-
-            [['overview','time_in_chamber_after_deposition'],
-            ['end_of_process','time_in_chamber_after_ending_deposition'],'second'],
-
-            #SCracker parameters
-            [['deposition','SCracker','zone1_temp'],
-            ['deposition_parameters','SCracker','Zone1_temperature'],'degC'],
-
-            [['deposition','SCracker','zone2_temp'],
-            ['deposition_parameters','SCracker','Zone2_temperature'],'degC'],
-
-            [['deposition','SCracker','zone3_temp'],
-            ['deposition_parameters','SCracker','Zone3_temperature'],'degC'],
-
-            [['deposition','SCracker','pulse_width'],
-            ['deposition_parameters','SCracker','valve_ON_time'],'millisecond'],
-
-            [['deposition','SCracker','pulse_freq'],
-            ['deposition_parameters','SCracker','valve_frequency'],'mHz'],
-        ]
-        #Gun parameters
-        for gun in gun_list:
-            if params['deposition'].get(gun, {}).get('enabled', False):
-                param_nomad_map.append(
-                    [['deposition', gun, 'target_id'],
-                    ['deposition_parameters', gun,'target_material'], None]
-                )
-                param_nomad_map.append(
-                    [['deposition', gun, 'avg_output_power'],
-                    ['deposition_parameters', gun,'applied_power'], 'W']
-                )
-                param_nomad_map.append(
-                    [['source_ramp_up', gun, 'ignition_power'],
-                    ['deposition_parameters', gun,'plasma_ignition_power'], 'W']
-                )
-                param_nomad_map.append(
-                    [['deposition', gun, 'plasma_type'],
-                    ['deposition_parameters', gun,'power_type'], None]
-                )
-                param_nomad_map.append(
-                    [['deposition', gun, 'avg_voltage'],
-                    ['deposition_parameters', gun,'stable_average_voltage'], 'V']
-                )
-        return param_nomad_map
-
     #Helper method to write the data
     def write_data(self, config:dict):
 
@@ -898,12 +825,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         unit = config.get('unit')
         logger = config.get('logger')
 
-
         joined_keys = "']['".join(input_keys)
         params_str = f"params['{joined_keys}']"
         subsection_str = f"{output_obj_name}.{'.'.join(output_keys)}"
 
-        value = self.get_nested_value(input_dict, input_keys)
+        value = get_nested_value(input_dict, input_keys)
+
         #Checking that the value exists
         if value is None:
             logger.warning(f'Missing {params_str}: Could not set {subsection_str}')
@@ -932,23 +859,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         except Exception as e:
             logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
 
-    #Helper method to get the nested value, if it exists
-    def get_nested_value(self, dictionary, key_path):
-        """
-        Safely get a nested value from a dictionary.
-
-        :param dictionary: The dictionary to traverse.
-        :param key_path: A list of keys representing the path
-            to the desired value.
-        :return: The value at the end of the key path, or None if not found.
-        """
-        for key in key_path:
-            if isinstance(dictionary, dict):
-                dictionary = dictionary.get(key)
-            else:
-                return None
-        return dictionary
-
     def generate_general_log_data(
         self, params: dict,
         archive: 'EntryArchive', logger: 'BoundLogger'
@@ -969,7 +879,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         gun_list = ['Magkeeper3', 'Magkeeper4', 'Taurus']
 
         # Mapping the params to the respective sections
-        param_nomad_map = self.map_params_to_nomad(params, gun_list)
+        param_nomad_map = map_params_to_nomad(params, gun_list)
 
         # Initializing a temporary class objects
         sputtering = DTUSputtering()
@@ -1015,22 +925,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         return sputtering
 
-    def map_step_params_to_nomad(self, step_params, key):
-        step_param_nomad_map = [
-            [[key, 'name'],
-            ['name'], None],
-            # start_time has no unit since it is a TimeStamp object
-            [[key, 'start_time'],
-            ['start_time'], None],
-            # duration has no unit since it is a TimeDelta object
-            [[key, 'duration'],
-            ['duration'], None],
-            ]
-
-        #Defining the input, output and unit
-        return step_param_nomad_map
-
-
     def generate_step_log_data(
         self, step_params: dict,
         archive: 'EntryArchive', logger: 'BoundLogger'
@@ -1047,7 +941,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # step.sources = [DTUsource()]
             # step.environment.gas_flow = [DTUGasFlow()]
 
-            step_param_nomad_map = self.map_step_params_to_nomad(step_params, key)
+            step_param_nomad_map = map_step_params_to_nomad(step_params, key)
 
             # Looping through the step_param_nomad_map
             for input_keys, output_keys, unit in step_param_nomad_map:
@@ -1107,9 +1001,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             #Triggering the plotting of the timeline and the sample position plot
             self.figures = []
             self.plot(events_plot, archive, logger)
-
-
-
 
             # sample_number = len(self.samples)
             # j = 0

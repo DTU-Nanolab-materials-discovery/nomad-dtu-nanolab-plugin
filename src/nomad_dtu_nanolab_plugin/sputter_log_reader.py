@@ -14,6 +14,8 @@ from functools import reduce
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from mendeleev import element
 
 # ---------REFERENCE VALUES-------------
@@ -131,12 +133,15 @@ GAS_NUMBER = {
 
 
 class Lf_Event:
-    def __init__(self, name: str, source=None, category=None, step_number=None):
+    def __init__(self, name:str, source=None, category=None, step_number=None):
         self.name = name
         self.category = category
         self.source = source
         self.step_number = step_number
-        self.step_id = category
+        if category is None:
+            self.step_id = category
+        else:
+            self.step_id = name
         if category != 'deposition':
             if source is not None:
                 self.step_id += f'_s{source}'
@@ -169,14 +174,6 @@ class Lf_Event:
         self.sep_name = [f'{self.name}({i})' for i in range(self.events)]
         self.sep_bounds = [self.bounds[i] for i in range(self.events)]
 
-    # def _generate_sep_data(self):
-    #     return
-
-    # def _generate_sep_name(self):
-    #     return [f'{self.name}({i})' for i in range(self._events)]
-
-    # def _generate_sep_bounds(self):
-    #     return [self._bounds[i] for i in range(self._events)]
     def extract_domains(self, continuity_limit, timestamp_col='Time Stamp'):
         """
         This function extracts the bounds of continuous time domains in a
@@ -379,7 +376,7 @@ class Lf_Event:
             # corresponding gas flow rate
             params[self.step_id][
                 'environment']['gas_flow'][gas_name]['flow_rate']['set_value']= (
-                self.data[f'PC MFC {GAS_NUMBER[gas_name]} Setpoint']
+                self.data[f'PC MFC {GAS_NUMBER[gas_name]} Setpoint'].iloc[-1]
             )
             #In the following entry, we set the value of the gas flow rate
             params[self.step_id][
@@ -1307,7 +1304,8 @@ def print_params(quantities, indent=''):
                 hours, remainder = divmod(total_seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
                 formatted_value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
-
+            elif isinstance(value, pd.Series):
+                formatted_value = 'Cannot display pd.DataFrame'
             print(f'{indent}{key}: {formatted_value}')
 
 
@@ -1330,7 +1328,7 @@ def write_params(quantities, indent=''):
                 hours, remainder = divmod(total_seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
                 formatted_value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
-            elif isinstance(value, pd.DataFrame):
+            elif isinstance(value, pd.Series):
                 formatted_value = 'Cannot display pd.DataFrame'
             output.append(f'{indent}{key}: {formatted_value}')
     return '\n'.join(output)
@@ -2266,8 +2264,87 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
 
 # -------PLOTTING DEFINITIONS------------
 
+def quick_plot(df, Y, X='Time Stamp', mode='default'):
+    """
+    Plots a time series using Plotly.
 
-def plot_plotly_extimeline(events_to_plot, sample_name):
+    Args:
+        data (pd.DataFrame): DataFrame containing the data.
+        Y (list or str): Column name(s) for the y-axis.
+        X (str): Column name for the x-axis (pd.Timestamp)
+            Default is 'Time Stamp'.
+        mode (str): Plotting mode, either 'default' or 'stack'.
+            Default is 'default'.
+
+    Returns:
+        fig (plotly.graph_objects.Figure): The Plotly figure object.
+    """
+    #Define useful constants
+    BASE_HEIGHT = 250  # Base height for the 'stack' verion of the plot
+    VERTICAL_SPACING = 0.02  # Vertical spacing between subplots
+
+    # Ensure that df[X] is a datetime object
+    if not pd.api.types.is_datetime64_any_dtype(df[X]):
+        raise ValueError(f'Column {X} must be a datetime object.')
+
+    # Ensure Y is a list
+    if isinstance(Y, str):
+        Y = [Y]
+
+    # Set y-axis title based on the number of columns
+    if len(Y) == 1:
+        y_axis_title = 'Time'  # Use the column name as the title if only one column
+    else:
+        y_axis_title = 'Values'  # Default to 'Values' if multiple columns
+
+    plot_title='Quick Plot'
+
+    if mode == 'default':
+        # Create a Plotly figure
+        fig = px.line(df, x=X, y=Y, title=plot_title)
+
+        # Update layout for better visualization
+        fig.update_layout(
+            yaxis_title=y_axis_title,
+            legend_title_text='',  # Remove the legend title
+        )
+
+    elif mode == 'stack':
+        # Create subplots with shared x-axis
+        fig = make_subplots(rows=len(Y), cols=1,
+                            shared_xaxes=True,
+                            vertical_spacing=VERTICAL_SPACING)
+
+        # Add a trace for each y-axis column
+        for i, y_col in enumerate(Y):
+            fig.add_trace(go.Scatter(x=df[X],
+                                     y=df[y_col],
+                                     mode='lines',
+                                     name=y_col),
+                                     row=i+1, col=1)
+
+            fig.update_yaxes(title_text=y_col, row=i+1, col=1)
+
+        # Set the x-axis title for the bottom subplot only
+        fig.update_xaxes(title_text='Time', row=len(Y), col=1)
+
+        # Adjust the height based on the number of subplots
+        fig.update_layout(title_text=plot_title,height=BASE_HEIGHT * len(Y))
+
+    # Update layout for better visualization
+    fig.update_layout(
+        template='plotly_white',  # Use a white background template
+    )
+
+    # Place the legend at the top right corner
+    fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99))
+
+    # Show the figure
+    # fig.show()
+
+    return fig
+
+def plot_plotly_extimeline(events_to_plot, sample_name=''):
     """
     args:
         logfile_name: str
@@ -2284,6 +2361,10 @@ def plot_plotly_extimeline(events_to_plot, sample_name):
             List of source dependent steps to be plotted
             above the non_source_steps
     """
+
+    # Check if the events_to_plot is a single event or a list of events
+    if isinstance(events_to_plot, Lf_Event):
+        events_to_plot = [events_to_plot]
 
     # Format the steps to be plotted for the plotly timeline
     rows = []
@@ -2334,7 +2415,7 @@ def plot_plotly_extimeline(events_to_plot, sample_name):
         hovermode='closest',
         dragmode='zoom',
         title=dict(
-            text=f'Process Timeline for {sample_name}',  # Title text
+            text=f'{sample_name} Process Timeline ',  # Title text
             x=0.5,  # Center the title horizontally
             y=0.85,  # Position the title vertically
             xanchor='center',  # Anchor the title at the center horizontally
@@ -2410,6 +2491,17 @@ def add_event_to_events(event, all_events):
             'The event to be added to the list of all events is not of the right type'
         )
     return all_events
+
+def event_list_to_dict(all_events):
+    if isinstance(all_events, Lf_Event):
+        all_events = [all_events]
+
+    event_dict = {}
+
+    for event in all_events:
+        event_dict[event.step_id] = event
+
+    return event_dict
 
 
 # Definition to sort the events by the start time
@@ -2832,6 +2924,115 @@ def read_events(data):
 
     return events_to_plot, main_params, step_params
 
+#----NOMAD HELPER FUNCTION-----
+
+#Helper method to get the nested value, if it exists
+def get_nested_value(dictionary, key_path):
+    """
+    Safely get a nested value from a dictionary.
+
+    :param dictionary: The dictionary to traverse.
+    :param key_path: A list of keys representing the path
+        to the desired value.
+    :return: The value at the end of the key path, or None if not found.
+    """
+    for key in key_path:
+        if isinstance(dictionary, dict):
+            dictionary = dictionary.get(key)
+        else:
+            return None
+    return dictionary
+
+def map_params_to_nomad(params,gun_list):
+        #Definiting the input, ouput and unit
+        param_nomad_map = [
+            #Deposition parameters
+            [['deposition','avg_temp_1'],
+            ['deposition_parameters','deposition_temperature'],'degC'],
+
+            # duration has no unit since it is a TimeDelta object
+
+            [['deposition','duration'],
+            ['deposition_parameters','deposition_time'], None],
+
+            [['deposition','avg_capman_pressure'],
+            ['deposition_parameters','sputter_pressure'],'mtorr'],
+
+            [['deposition','material_space'],
+            ['deposition_parameters','material_space'], None],
+
+            [['deposition','avg_ar_flow'],
+            ['deposition_parameters','ar_flow'],'cm^3/minute'],
+
+            [['deposition','avg_h2s_flow'],
+            ['deposition_parameters','h2s_in_Ar_flow'],'cm^3/minute'],
+
+            [['deposition','avg_ph3_flow'],
+            ['deposition_parameters','ph3_in_Ar_flow'],'cm^3/minute'],
+
+            #End of process parameters
+            [['overview','end_of_process_temp'],
+            ['end_of_process','Heater_temperature'],'degC'],
+
+            [['overview','time_in_chamber_after_deposition'],
+            ['end_of_process','time_in_chamber_after_ending_deposition'],'second'],
+
+            #SCracker parameters
+            [['deposition','SCracker','zone1_temp'],
+            ['deposition_parameters','SCracker','Zone1_temperature'],'degC'],
+
+            [['deposition','SCracker','zone2_temp'],
+            ['deposition_parameters','SCracker','Zone2_temperature'],'degC'],
+
+            [['deposition','SCracker','zone3_temp'],
+            ['deposition_parameters','SCracker','Zone3_temperature'],'degC'],
+
+            [['deposition','SCracker','pulse_width'],
+            ['deposition_parameters','SCracker','valve_ON_time'],'millisecond'],
+
+            [['deposition','SCracker','pulse_freq'],
+            ['deposition_parameters','SCracker','valve_frequency'],'mHz'],
+        ]
+        #Gun parameters
+        for gun in gun_list:
+            if params['deposition'].get(gun, {}).get('enabled', False):
+                param_nomad_map.append(
+                    [['deposition', gun, 'target_id'],
+                    ['deposition_parameters', gun,'target_material'], None]
+                )
+                param_nomad_map.append(
+                    [['deposition', gun, 'avg_output_power'],
+                    ['deposition_parameters', gun,'applied_power'], 'W']
+                )
+                param_nomad_map.append(
+                    [['source_ramp_up', gun, 'ignition_power'],
+                    ['deposition_parameters', gun,'plasma_ignition_power'], 'W']
+                )
+                param_nomad_map.append(
+                    [['deposition', gun, 'plasma_type'],
+                    ['deposition_parameters', gun,'power_type'], None]
+                )
+                param_nomad_map.append(
+                    [['deposition', gun, 'avg_voltage'],
+                    ['deposition_parameters', gun,'stable_average_voltage'], 'V']
+                )
+        return param_nomad_map
+
+def map_step_params_to_nomad(step_params, key):
+    step_param_nomad_map = [
+        [[key, 'name'],
+        ['name'], None],
+        # start_time has no unit since it is a TimeStamp object
+        [[key, 'start_time'],
+        ['start_time'], None],
+        # duration has no unit since it is a TimeDelta object
+        [[key, 'duration'],
+        ['duration'], None],
+        ]
+
+    #Defining the input, output and unit
+    return step_param_nomad_map
+
 # ---------------MAIN-----------
 
 def main():
@@ -2861,11 +3062,11 @@ def main():
                         logfiles['name'].append(logfile_name)
                         logfiles['folder'].append(sample_path)
 
-    # # Uncomment to test the script on a single logfile
-    # logfiles = {}
-    # logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
-    # logfiles['folder']= [
-    #     r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files']
+    # Uncomment to test the script on a single logfile
+    logfiles = {}
+    logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
+    logfiles['folder']= [
+        r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files']
 
 
     # Loop over all the logfiles in the directory
