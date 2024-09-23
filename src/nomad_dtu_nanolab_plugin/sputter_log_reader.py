@@ -15,8 +15,8 @@ from functools import reduce
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from mendeleev import element
+from plotly.subplots import make_subplots
 
 # ---------REFERENCE VALUES-------------
 # Set of reference values used in different parts of the script
@@ -2282,10 +2282,6 @@ def quick_plot(df, Y, X='Time Stamp', mode='default'):
     #Define useful constants
     BASE_HEIGHT = 250  # Base height for the 'stack' verion of the plot
     VERTICAL_SPACING = 0.02  # Vertical spacing between subplots
-
-    # Ensure that df[X] is a datetime object
-    if not pd.api.types.is_datetime64_any_dtype(df[X]):
-        raise ValueError(f'Column {X} must be a datetime object.')
 
     # Ensure Y is a list
     if isinstance(Y, str):

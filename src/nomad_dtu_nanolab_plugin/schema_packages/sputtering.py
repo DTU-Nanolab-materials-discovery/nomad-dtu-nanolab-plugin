@@ -46,13 +46,13 @@ from nomad_dtu_nanolab_plugin.sputter_chamber_visualizer import (
     read_samples,
 )
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
+    get_nested_value,
+    map_params_to_nomad,
+    map_step_params_to_nomad,
     plot_plotly_extimeline,
     read_events,
     read_logfile,
     write_params,
-    map_params_to_nomad,
-    map_step_params_to_nomad,
-    get_nested_value,
 )
 
 if TYPE_CHECKING:
