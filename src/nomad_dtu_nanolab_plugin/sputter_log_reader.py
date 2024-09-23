@@ -695,6 +695,14 @@ class Lf_Event:
             else 0
         )
 
+        #calculate the ratio between the PH3 and H2S flow
+        if params[self.category]['avg_h2s_flow'] != 0 and params[self.category][
+            'avg_ph3_flow'] != 0:
+            params[self.category]['ph3_h2s_ratio'] = (
+                params[self.category]['avg_ph3_flow']
+                / params[self.category]['avg_h2s_flow']
+            )
+
         return params
 
     #method to extract the source specific parameters of the deposition event.
@@ -1297,9 +1305,6 @@ def get_overview(raw_data, params=None):
     if 'overview' not in params:
         params['overview'] = {}
 
-    # Extract sample name as the first 3 log file string when parsed by '_'
-    # params['overview']['sample_name'] =
-
     # Extract start and end time of the log file
     params['overview']['log_start_time'] = raw_data['Time Stamp'].iloc[0]
     params['overview']['log_end_time'] = raw_data['Time Stamp'].iloc[-1]
@@ -1330,16 +1335,43 @@ def get_end_of_process(raw_data, params=None):
     )
     return params
 
-
-def save_report_as_text(params:dict, step_params:dict, txt_file_path, logfile_name):
+# method to save the derived quantities report as a text file
+def save_report_as_text(params:dict, txt_file_path, logfile_name=None):
     # Save the derived quantities report as a text file as
     with open(txt_file_path, 'w') as txt_file:
-        txt_file.write(f'Derived quantities report for logfile\n{logfile_name}:\n\n')
+        if logfile_name is not None:
+            txt_file.write(
+                f'Derived quantities report for logfile\n{logfile_name}:\n\n')
         txt_file.write(write_params(params))
-        txt_file.write('\n')
-        txt_file.write('Step report:\n')
-        txt_file.write(write_params(step_params))
 
+#method to flatten a nested dictionary
+def flatten_dict(d, parent_key='', sep=';'):
+    """
+    Flatten a nested dictionary.
+
+    Args:
+        d (dict): The dictionary to flatten.
+        parent_key (str): The base key string for nested keys.
+        sep (str): The separator between parent and child keys.
+
+    Returns:
+        dict: The flattened dictionary.
+    """
+    items = []
+    for k, v in d.items():
+        new_key = f'{parent_key}{sep}{k}' if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+def consolidate_data_to_csv(all_params, samples_dir):
+        flatten_all_params = flatten_dict(all_params)
+        df_all = pd.DataFrame([flatten_all_params],sep=';')
+        df_all.columns = pd.MultiIndex.from_tuples(
+            [tuple(col.split(';')) for col in df_all.columns])
+        df_all.to_csv(os.path.join(samples_dir,'all_params.csv'), index=False)
 
 # Function to convert timestamps to isoformat
 def convert_timestamps(obj):
@@ -2741,7 +2773,7 @@ def normalize_column(df, column_name):
 
 
 def formatting_logfile(data):
-    print('Formatting the dataframe for conditional filtering')
+    print('\n','Formatting the dataframe for conditional filtering')
     # -----FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING-------
     # -------RENAME THE CRACKER COLUMNS OF THE DATAFRAME---------
     data = rename_cracker_columns(data)
@@ -2774,7 +2806,7 @@ def verify_deposition_unicity(events, raw_data):
                     f'{MIN_DEPOSITION_SIZE} steps',
                 )
                 print(
-                    'Number of deposition events before filtering:', event.events, '\n'
+                    'Number of deposition events before filtering:', event.events
                 )
                 for i in range(event.events):
                     print(
@@ -3101,8 +3133,8 @@ def map_step_params_to_nomad(step_params, key):
 # ---------------MAIN-----------
 
 def main():
-    global events_to_plot, main_params, step_params
-    samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\samples'
+    # global events_to_plot, main_params, step_params, all_params
+    samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\Samples'
     logfiles_extension = 'CSV'
 
     logfiles = {'name': [], 'folder': []}
@@ -3110,6 +3142,9 @@ def main():
     samples_to_remove = [
         'mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07'
     ]
+
+    #Initialize the the general param dictionary
+    all_params = {}
 
     # In samples_dir, explore all the folders (samples names)
     for folder in os.listdir(samples_dir):
@@ -3128,10 +3163,10 @@ def main():
                         logfiles['folder'].append(sample_path)
 
     # Uncomment to test the script on a single logfile
-    logfiles = {}
-    logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
-    logfiles['folder']= [
-        r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files']
+    # logfiles = {}
+    # logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
+    # logfiles['folder']= [
+    #     r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files']
 
 
     # Loop over all the logfiles in the directory
@@ -3154,7 +3189,6 @@ def main():
         plotly_graph_file_path = os.path.join(
             plotly_graph_file_dir, plotly_graph_file_name
         )
-
         # ---------READ THE DATA-------------
 
         # Read the log file and spectrum data
@@ -3164,6 +3198,10 @@ def main():
 
         # ----READ ALL THE EVENTS IN THE LOGFILE----
         events_to_plot, main_params, step_params = read_events(data)
+
+        # ---APPEND THE MAIN PARAMS TO THE ALL PARAMS DICTIONARY---
+        sample_key = '_'.join(str(logfiles['name'][i]).split('_')[0:3])
+        all_params[sample_key] = main_params
 
         # --------GRAPH THE DIFFERENT STEPS ON A TIME LINE------------
 
@@ -3177,21 +3215,23 @@ def main():
 
         # --------PRINT DERIVED QUANTITIES REPORTS-------------
 
-        print(f'Derived quantities report for logfile\n{logfiles["name"][i]}:\n')
-        print_params(main_params)
-        print('\n')
+        # print(f'Derived quantities report for logfile\n{logfiles["name"][i]}:\n')
+        # print_params(main_params)
+        # print('\n')
 
-        print(f'Step report for logfile\n{logfiles["name"][i]}:\n')
-        print_params(step_params)
-        print('\n')
+        # print(f'Step report for logfile\n{logfiles["name"][i]}:\n')
+        # print_params(step_params)
+        # print('\n')
 
         # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---
 
         print('Saving the derived quantities report as a text file')
-        save_report_as_text(main_params,step_params, txt_file_path, logfiles['name'][i])
-        print('\n')
+        save_report_as_text(main_params, txt_file_path, logfiles['name'][i])
+
+    #----CONSILIDATE THE DATA INTO A SINGLE CSV FILE-----
 
 
+    consolidate_data_to_csv(all_params, samples_dir)
 if __name__ == '__main__':
     main()
 
