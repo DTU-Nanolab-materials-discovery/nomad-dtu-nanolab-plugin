@@ -134,10 +134,18 @@ GAS_NUMBER = {
 
 class Lf_Event:
     def __init__(self, name:str, source=None, category=None, step_number=None):
+        #human readable name of the event
         self.name = name
+        #category of the event (Ex: deposition, ramp_up_temp, etc)
         self.category = category
+        #source associated with the event (Ex: source_presput)
+        # None if the event is not associated with no or more than one
+        # source (Ex: deposition)
         self.source = source
-        self.step_number = step_number
+
+
+        #here we create a unique identifier for the event
+        #based on the name, category, source and step number
         if category is not None:
             self.step_id = category
         else:
@@ -147,34 +155,65 @@ class Lf_Event:
                 self.step_id += f'_s{source}'
             if step_number is not None:
                 self.step_id += f'_n{step_number}'
+
+        #the avg_timestep is the average time difference between two
+        #consecutive timestamps in the raw_logfile. It is used as a reference
+        # time to determine the continuity of the time domains
         self.avg_timestep = None
+        #the condition is a boolean pd.Series that indicates which rows of the
+        #raw_data are part of the particular event
         self.cond = pd.DataFrame()
+        #the data is a pd.DataFrame that contains the rows of the raw_data that
+        #meet the condition defined above
         self.data = pd.DataFrame()
+        #the bounds are the start and end timestamps of the continuous time
+        #there can be multiple bounds if the event is not continuous. If so
+        # there will be separate events (sep_) for each continuous domain
         self.bounds = []
+        # the number of time continuous domains in the event, essentially len(bounds)
         self.events = 0
+        # if several events are within the object (time discontinuity),
+        # the step number will indicate what is index of the subevent
+        self.step_number = step_number
+        # and sep_data will store the data of each subevent
         self.sep_data = [pd.DataFrame()]
+        # the name of each subevent. Autmatically generated based on the name
+        # of the event, the source and the index of the subevent
+        # (Ex: Source 1 Ramp Up(0), Source 1 Ramp Up(1), etc)
         self.sep_name = ['']
+        # the bounds of each subevent
         self.sep_bounds = []
 
+
+    #method to populate the data attribute of the event, using the raw_data,
+    # and the CONTINUITY_LIMIT (threshold for time continuity)
     def set_data(self, data, raw_data, continuity_limit=CONTINUITY_LIMIT):
         self.data = data
+        #Whenever the data is set, we also calculate the average timestep...
         self.avg_timestep = cal_avg_timestep(raw_data)
+        #... the bounds...
         self.bounds = self.extract_domains(continuity_limit)
+        #... and run the update_events_and_separated_data method, which will
+        # update the events, sep_data, sep_name and sep_bounds attributes
         self.update_events_and_separated_data()
 
+    #method to set the bounds of the event
     def set_bounds(self, bounds):
         self.bounds = bounds
+        #whenever the bounds are set, we also run the update_events_and_separated_data
         self.update_events_and_separated_data()
-
+    # helper method to update events, sep_data, sep_name, and sep_bounds after
+    # bounds changes
     def update_events_and_separated_data(self):
-        """Helper method to update events, sep_data, sep_name, and sep_bounds after
-        bounds change."""
         self.events = len(self.bounds)
         self.sep_data = [event_filter(self.data, bound) for bound in self.bounds]
         self.sep_name = [f'{self.name}({i})' for i in range(self.events)]
         self.sep_bounds = [self.bounds[i] for i in range(self.events)]
 
-    def extract_domains(self, continuity_limit, timestamp_col='Time Stamp'):
+
+    #very important method to extract the bounds of the continuous time domains
+    def extract_domains(self, continuity_limit=CONTINUITY_LIMIT,
+            timestamp_col='Time Stamp'):
         """
         This function extracts the bounds of continuous time domains in a
         DataFrame based on the time continuity
@@ -229,6 +268,7 @@ class Lf_Event:
             ]
             return bounds
 
+    #method to filter the data of the event based on a conditionnal boolean pd.Series
     def filter_data(self, raw_data):
         if not self.cond.empty:
             self.avg_timestep = cal_avg_timestep(raw_data)
@@ -243,12 +283,10 @@ class Lf_Event:
     def set_source(self, source):
         self.source = source
 
-    def set_name(self, name):
-        self.name = name
-
-    def set_category(self, category):
-        self.category = category
-
+    #specific method to stitch the source ramp up events together,
+    # in the case a source is ramped up in several steps.
+    #it essentially merges the events if the last output setpoint power
+    # of first event is the same as the second event first output setpoint power
     def stitch_source_ramp_up_events(self):
         i = 0
         while i < len(self.bounds) - 1:
@@ -285,16 +323,18 @@ class Lf_Event:
                 i += 1  # Only increment i if no merge occurred
         self.update_events_and_separated_data()
 
+    #simple method to exlude events that are too small
     def filter_out_small_events(self, min_domain_size):
         data_list = []
         for i in range(self.events):
             if len(self.sep_data[i]) > min_domain_size:
                 data_list.append(self.sep_data[i])
-
         # Concatenate the list of DataFrames
         data = pd.concat(data_list, ignore_index=True)
         self.set_data(data, data)
 
+    #method to only select events that come before a certain reference time
+    # with the option of selecting any event before the reference time
     def select_event(self, raw_data, event_loc: int, ref_time=None):
         event_list = []
         if ref_time is None:
@@ -304,27 +344,10 @@ class Lf_Event:
                 event_list.append(self.sep_data[i])
         self.set_data(event_list[event_loc], raw_data)
 
-    def get_params(self, raw_data, source_list, params=None):
-        if self.category == 'deposition':
-            params = self.get_all_deposition_params(
-                source_list, raw_data, params=params
-            )
-        if self.category == 'ramp_up_temp':
-            params = self.get_sub_ramp_up_params(raw_data, params=params)
-        if self.category == 'ramp_down_high_temp':
-            params = self.get_sub_ramp_down_high_temp_params(params=params)
-        if self.category == 'ramp_down_low_temp':
-            params = self.get_sub_ramp_down_low_temp_params(params=params)
-        if self.category == 'source_presput':
-            params = self.get_source_presput_params(params=params)
-        if self.category == 'source_ramp_up':
-            params = self.get_source_ramp_up_params(raw_data, params=params)
-        if self.category == 'cracker_base_pressure':
-            params = self.get_cracker_pressure_params(params=params)
-        if self.category == 'source_deprate2_film_meas':
-            params = self.get_deposition_rate_params(params=params)
-        return params
+    #DTUsteps parameters extraction methods
 
+    #method to extract the parameters of step events, in a format that can be
+    # used to populate the Nomad DTUsteps of DTUSputtering
     def get_nomad_step_params(self, params=None, source_list = None):
         #Set a default value for the source list
         if source_list is None:
@@ -361,9 +384,10 @@ class Lf_Event:
 
         params = self.get_step_sources_params(source_list, params)
 
-
         return params
 
+    #method to extract the so called environment parameters (gases, sources, etc)
+    # of single steps
     def get_step_environment_params(self,params):
         for gas_name in ['ar', 'ph3', 'h2s']:
             params[self.step_id]['environment']['gas_flow'][gas_name] = {}
@@ -394,6 +418,7 @@ class Lf_Event:
                 'environment']['gas_flow'][gas_name]['gas']['name'] = gas_name
         return params
 
+    #method to extract the so called sources parameters of single steps
     def get_step_sources_params(self, source_list, params):
         for source_number in source_list:
             source_key = f'{SOURCE_NAME[str(source_number)]}'
@@ -401,6 +426,32 @@ class Lf_Event:
                 params[self.step_id]['sources'][source_key] = {}
         return params
 
+    #DTUSputtering parameters extraction methods
+
+    #method to attribute the right method to extract the parameters of the event
+    # based on its category
+    def get_params(self, raw_data, source_list, params=None):
+        if self.category == 'deposition':
+            params = self.get_all_deposition_params(
+                source_list, raw_data, params=params
+            )
+        if self.category == 'ramp_up_temp':
+            params = self.get_sub_ramp_up_params(raw_data, params=params)
+        if self.category == 'ramp_down_high_temp':
+            params = self.get_sub_ramp_down_high_temp_params(params=params)
+        if self.category == 'ramp_down_low_temp':
+            params = self.get_sub_ramp_down_low_temp_params(params=params)
+        if self.category == 'source_presput':
+            params = self.get_source_presput_params(params=params)
+        if self.category == 'source_ramp_up':
+            params = self.get_source_ramp_up_params(raw_data, params=params)
+        if self.category == 'cracker_base_pressure':
+            params = self.get_cracker_pressure_params(params=params)
+        if self.category == 'source_deprate2_film_meas':
+            params = self.get_deposition_rate_params(params=params)
+        return params
+
+    #master parameters extraction method for the deposition event
     def get_all_deposition_params(self, source_list, raw_data, params=None):
         if self.category != 'deposition':
             raise ValueError('This method is only available for the deposition event')
@@ -418,6 +469,7 @@ class Lf_Event:
         params = self.get_source_depostion_params(source_list, params=params)
         return params
 
+    #method to deduce if the deposition was done at room temperature or not
     def get_rt_bool(self, params=None):
         # Extract if the deposition was done at room temperature as :
         # - the temperature control is disabled or
@@ -441,6 +493,7 @@ class Lf_Event:
             params[self.category]['rt'] = False
         return params
 
+    #method to extrac the sources used for deposition
     def get_source_used_deposition(self, source_list, params=None):
         # Extract the source used for deposition
         # For all sources, we check if the source is enabled during deposition
@@ -474,6 +527,7 @@ class Lf_Event:
 
         return params
 
+    #method to extract the SCracker parameters
     def get_cracker_params(self, params=None):
         # Extract if the cracker has been used during deposition as the
         # cracker control being enabled and the temperatures of the
@@ -527,6 +581,7 @@ class Lf_Event:
             params[self.category]['SCracker']['enabled'] = False
         return params
 
+    #method to extract important pressure parameters
     def get_pressure_params(self, raw_data, params=None):
         # Extract the some base pressure metric as the lowest positive
         # pressure recorded before deposition (but only if
@@ -566,6 +621,7 @@ class Lf_Event:
 
         return params
 
+    #method to extract simple deposition parameters, that are not source specific
     def get_simple_deposition_params(self, params=None):
         if self.category != 'deposition':
             raise ValueError('This method is only available for the deposition event')
@@ -641,6 +697,9 @@ class Lf_Event:
 
         return params
 
+    #method to extract the source specific parameters of the deposition event.
+    #this method uses different sub-methods to extract the parameters of the
+    # sources used during deposition
     def get_source_depostion_params(self, source_list, params=None):
         if self.category != 'deposition':
             raise ValueError('This method is only available for the deposition event')
@@ -670,12 +729,14 @@ class Lf_Event:
         params[self.category]['material_space'] = '-'.join(elements)
         return params
 
+    #method to deduce the average output power of the source during deposition
     def get_avg_output_power(self, params, source_number):
         params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
             'avg_output_power'
         ] = self.data[f'Source {source_number} Output Setpoint'].mean()
         return params
 
+    #method to deduce the plasma type of the source during deposition
     def get_plasma_type(self, params, source_number):
         dc_current_col = f'Source {source_number} Current'
         rf_bias_col = f'Source {source_number} DC Bias'
@@ -731,10 +792,9 @@ class Lf_Event:
                 ]['pulsed'] = False
         else:
             print('Error: Plasma type not recognized')
-
-
         return params
 
+    #method to deduce the deposition voltage of the source during deposition
     def get_deposition_voltage(self, params, source_number):
         def extract_voltage_stats(data, key_prefix):
             start_voltage = data.iloc[
@@ -770,6 +830,7 @@ class Lf_Event:
 
         return params
 
+    #method to deduce the source material and target of the source during deposition
     def get_source_material_and_target(self, params, source_number, elements):
         source_element = str(self.data[f'PC Source {source_number} Material'].iloc[0])
         source_element = re.split(r'\s+', source_element)[0]
@@ -783,6 +844,7 @@ class Lf_Event:
 
         return params, elements
 
+    #method to extract the pressure induced by the cracker
     def get_cracker_pressure_params(self, params=None):
         if self.category != 'cracker_base_pressure':
             raise ValueError
@@ -803,6 +865,7 @@ class Lf_Event:
             params['cracker_pressure_meas'] = False
         return params
 
+    #method to extract source dependent presputtering parameters
     def get_source_presput_params(self, params=None):
         if self.category != 'source_presput':
             raise ValueError(
@@ -845,6 +908,7 @@ class Lf_Event:
             ] = self.data['PC MFC 1 Flow'].mean()
         return params
 
+    #method to extract the source ramp up and ignition parameters
     def get_source_ramp_up_params(self, raw_data, params=None):
         # Here, we interate over the sources to extract many relevant parameters
 
@@ -912,6 +976,7 @@ class Lf_Event:
 
         return params
 
+    #method to extract the substrate ramp up parameters
     def get_sub_ramp_up_params(self, raw_data, params=None):
         if self.category != 'ramp_up_temp':
             raise ValueError(
@@ -1008,6 +1073,7 @@ class Lf_Event:
                 params[self.category]['SCracker']['enabled'] = False
         return params
 
+    #method to extract the substatre temperature ramp down parameters,
     def get_sub_ramp_down_params(self, params=None):
         if self.category != 'sub_ramp_down':
             raise ValueError(
@@ -1033,10 +1099,7 @@ class Lf_Event:
             )
             time_interval_minutes = time_interval.total_seconds() / 60
             params[self.category]['temp_slope'] = temp_diff / time_interval_minutes
-            # Now we distinguish between the high temp and low temp ramp down phase
-            # Extract the start time of the ramp down as the first time of
-            # the high temperature ramp down and the end time as the last time of
-            # the low temperature ramp down (which is the last time of the log)
+
             params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
             params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
             params[self.category]['duration'] = (
@@ -1044,6 +1107,9 @@ class Lf_Event:
             )
         return params
 
+    # method to extract the high temperature ramp down parameters (meaning when
+    #the substrate temperature is above the temperature where anions tend to
+    #escape the film)
     def get_sub_ramp_down_high_temp_params(self, params=None):
         if self.category != 'ramp_down_high_temp':
             raise ValueError(
@@ -1150,6 +1216,9 @@ class Lf_Event:
             ].iloc[-1]
         return params
 
+    #method to extract the low temperature ramp down parameters (meaning when
+    #the substrate temperature is below the temperature where anions tend to
+    #escape the film)
     def get_sub_ramp_down_low_temp_params(self, params=None):
         if self.category != 'ramp_down_low_temp':
             raise ValueError(
@@ -1169,6 +1238,7 @@ class Lf_Event:
             params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
         return params
 
+    #method to extract the film deposition rate parameters
     def get_deposition_rate_params(self, params=None):
         list_allowed_categories = ['s_deprate2_film_meas', 'source_deprate2_film_meas']
         if self.category not in list_allowed_categories:
@@ -1220,7 +1290,6 @@ class Lf_Event:
 # ---------FUNCTIONS DEFINITION------------
 
 # ---------HELPERS FUNCTIONS FOR REPORT GENERATION------------
-
 
 def get_overview(raw_data, params=None):
     if params is None:
