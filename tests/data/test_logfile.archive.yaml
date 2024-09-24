@@ -22,4 +22,4 @@ data:
       m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
       target_material: 'BaS'
     SCracker:
-      m_def: omad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
+      m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
