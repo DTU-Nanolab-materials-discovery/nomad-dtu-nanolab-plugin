@@ -786,8 +786,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # Plotting the sample positions on the platen
         try:
             samples_plot = read_samples(self.samples)
+            params: DepositionParameters = self.deposition_parameters
             guns_plot = read_guns(
-                [self.Magkeeper3, self.Magkeeper4, self.Taurus, self.SCracker],
+                [params.Magkeeper3, params.Magkeeper4, params.Taurus, params.SCracker],
                 ['Magkeeper3', 'Taurus', 'Magkeeper4', 'SCracker'],
             )
             sample_pos_plot = plot_matplotlib_chamber_config(
