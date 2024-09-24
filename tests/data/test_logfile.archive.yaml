@@ -24,5 +24,5 @@ data:
     SCracker:
       m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
   instruments:
-    -m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.AdjustedInstrumentParameters
+    m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.AdjustedInstrumentParameters
       platen_rotation: 80
