@@ -1,9 +1,15 @@
 data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering
   log_file: mittma_0007_Cu_Recording Set 2024.06.03-09.52.29.CSV
-  #samples: [DTUSamples(
-  #relative_position = 'BR'
-  #Substrate_position_x = 25
-  #Substrate_position_y = 25
-  #)]
-  #Magkeeper: GunOverview(target_material='Cu')
+  samples:
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUsamples
+      relative_position: 'BR'
+      Substrate_position_x: 25
+      Substrate_position_y: 25
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUsamples
+      relative_position: 'FR'
+      Substrate_position_x: -15
+      Substrate_position_y: 25
+  Magkeeper3:
+    m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
+    target_material: 'Cu'

@@ -763,18 +763,17 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     )
 
     def plot(self, events_plot, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-
-        #Plotting the events on a timeline from the plot_plotly_extimeline function
+        # Plotting the events on a timeline from the plot_plotly_extimeline function
         try:
             timeline = plot_plotly_extimeline(events_plot, self.lab_id)
 
-            #Converting the timeline to a plotly json
+            # Converting the timeline to a plotly json
             timeline_json = timeline.to_plotly_json()
             timeline_json['config'] = dict(
                 scrollZoom=False,
             )
 
-            #Adding the plotly figure to the figures list
+            # Adding the plotly figure to the figures list
             self.figures.append(
                 PlotlyFigure(
                     label='Process timeline',
@@ -787,24 +786,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # Plotting the sample positions on the platen
         try:
             samples_plot = read_samples(self.samples)
-            guns_plot =read_guns(
-                    [
-                        self.Magkeeper3,
-                        self.Magkeeper4,
-                        self.Taurus,
-                        self.SCracker
-                    ],
-                    [
-                        'Magkeeper3',
-                        'Taurus',
-                        'Magkeeper4',
-                        'SCracker'
-                    ]
+            guns_plot = read_guns(
+                [self.Magkeeper3, self.Magkeeper4, self.Taurus, self.SCracker],
+                ['Magkeeper3', 'Taurus', 'Magkeeper4', 'SCracker'],
             )
             sample_pos_plot = plot_matplotlib_chamber_config(
-                    samples_plot,
-                    guns_plot,
-                    self.instrument_reference.platen_rotation)
+                samples_plot, guns_plot, self.instrument_reference.platen_rotation
+            )
             self.figures.append(
                 Figure(
                     label='Sample positions',
@@ -814,9 +802,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         except Exception as e:
             logger.warning(f'Failed to plot the sample positions: {e}')
 
-    #Helper method to write the data
-    def write_data(self, config:dict):
-
+    # Helper method to write the data
+    def write_data(self, config: dict):
         input_dict = config.get('input_dict')
         input_keys = config.get('input_keys')
         output_obj = config.get('output_obj')
@@ -831,12 +818,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         value = get_nested_value(input_dict, input_keys)
 
-        #Checking that the value exists
+        # Checking that the value exists
         if value is None:
             logger.warning(f'Missing {params_str}: Could not set {subsection_str}')
             return
         # We check if the value is a TimeDelta object and convert it to seconds
-        if isinstance(value,pd._libs.tslibs.timedeltas.Timedelta):
+        if isinstance(value, pd._libs.tslibs.timedeltas.Timedelta):
             try:
                 value = value.total_seconds()
             except AttributeError:
@@ -860,9 +847,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
 
     def generate_general_log_data(
-        self, params: dict,
-        archive: 'EntryArchive', logger: 'BoundLogger'
-        ) -> None:
+        self, params: dict, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
         """
         Method for writing the log data to the respective sections.
         Args:
@@ -887,11 +873,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.steps = [DTUsteps()]
         sputtering.deposition_parameters = DepositionParameters()
 
-
         for gun in gun_list:
             if params['deposition'].get(gun, {}).get('enabled', False):
                 setattr(sputtering.deposition_parameters, gun, GunOverview())
-
 
         sputtering.deposition_parameters.SCracker = SCracker()
         sputtering.end_of_process = EndOfProcess()
@@ -908,14 +892,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 'output_obj_name': 'sputtering',
                 'output_keys': output_keys,
                 'unit': unit,
-                'logger': logger
+                'logger': logger,
             }
             self.write_data(config)
 
         # Getting the deposition sub-dictionary
         deposition = params.get('deposition', {})
 
-        #Special case for the adjusted instrument parameters
+        # Special case for the adjusted instrument parameters
         instrument_reference = AdjustedInstrumentParameters()
         if 'platen_position' in deposition:
             instrument_reference.platen_rotation = ureg.Quantity(
@@ -926,14 +910,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         return sputtering
 
     def generate_step_log_data(
-        self, step_params: dict,
-        archive: 'EntryArchive', logger: 'BoundLogger'
-        ) -> None:
-
+        self, step_params: dict, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
         steps = []
 
         for key in step_params:
-            #Initializing a temporary step object
+            # Initializing a temporary step object
             step = DTUsteps()
 
             # step.sputter_parameters = DTUsputter_parameters()
@@ -952,7 +934,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     'output_obj_name': 'step',
                     'output_keys': output_keys,
                     'unit': unit,
-                    'logger': logger
+                    'logger': logger,
                 }
                 self.write_data(config)
 
@@ -995,10 +977,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Merging the sputtering object with self
             merge_sections(self, sputtering, logger)
 
-            #Run the normalizer of the deposition.parameters subsection
+            # Run the normalizer of the deposition.parameters subsection
             self.deposition_parameters.normalize(archive, logger)
 
-            #Triggering the plotting of the timeline and the sample position plot
+            # Triggering the plotting of the timeline and the sample position plot
             self.figures = []
             self.plot(events_plot, archive, logger)
 
@@ -1009,7 +991,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # str(self.name) + '_' + str(self.samples[j].relative_position))
             #    self.samples[j].name = sample_name
             #    self.samples[j].lab_id = sample_name
-
 
             # to automate the take over of te references
             # for the further processing see in the respective sections

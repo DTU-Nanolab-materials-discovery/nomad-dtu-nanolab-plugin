@@ -117,12 +117,7 @@ STEP_COLORS = {
     'S Dep Rate Meas': '#B22222',  # Firebrick
     'Cracker Pressure Meas': 'brown',
 }
-SOURCE_NAME = {
-    '1': 'Taurus',
-    '3': 'Magkeeper3',
-    '4': 'Magkeeper4',
-    'all': 'All'
-    }
+SOURCE_NAME = {'1': 'Taurus', '3': 'Magkeeper3', '4': 'Magkeeper4', 'all': 'All'}
 GAS_NUMBER = {
     'ar': 1,
     'ph3': 4,
@@ -133,19 +128,18 @@ GAS_NUMBER = {
 
 
 class Lf_Event:
-    def __init__(self, name:str, source=None, category=None, step_number=None):
-        #human readable name of the event
+    def __init__(self, name: str, source=None, category=None, step_number=None):
+        # human readable name of the event
         self.name = name
-        #category of the event (Ex: deposition, ramp_up_temp, etc)
+        # category of the event (Ex: deposition, ramp_up_temp, etc)
         self.category = category
-        #source associated with the event (Ex: source_presput)
+        # source associated with the event (Ex: source_presput)
         # None if the event is not associated with no or more than one
         # source (Ex: deposition)
         self.source = source
 
-
-        #here we create a unique identifier for the event
-        #based on the name, category, source and step number
+        # here we create a unique identifier for the event
+        # based on the name, category, source and step number
         if category is not None:
             self.step_id = category
         else:
@@ -156,18 +150,18 @@ class Lf_Event:
             if step_number is not None:
                 self.step_id += f'_n{step_number}'
 
-        #the avg_timestep is the average time difference between two
-        #consecutive timestamps in the raw_logfile. It is used as a reference
+        # the avg_timestep is the average time difference between two
+        # consecutive timestamps in the raw_logfile. It is used as a reference
         # time to determine the continuity of the time domains
         self.avg_timestep = None
-        #the condition is a boolean pd.Series that indicates which rows of the
-        #raw_data are part of the particular event
+        # the condition is a boolean pd.Series that indicates which rows of the
+        # raw_data are part of the particular event
         self.cond = pd.DataFrame()
-        #the data is a pd.DataFrame that contains the rows of the raw_data that
-        #meet the condition defined above
+        # the data is a pd.DataFrame that contains the rows of the raw_data that
+        # meet the condition defined above
         self.data = pd.DataFrame()
-        #the bounds are the start and end timestamps of the continuous time
-        #there can be multiple bounds if the event is not continuous. If so
+        # the bounds are the start and end timestamps of the continuous time
+        # there can be multiple bounds if the event is not continuous. If so
         # there will be separate events (sep_) for each continuous domain
         self.bounds = []
         # the number of time continuous domains in the event, essentially len(bounds)
@@ -184,24 +178,24 @@ class Lf_Event:
         # the bounds of each subevent
         self.sep_bounds = []
 
-
-    #method to populate the data attribute of the event, using the raw_data,
+    # method to populate the data attribute of the event, using the raw_data,
     # and the CONTINUITY_LIMIT (threshold for time continuity)
     def set_data(self, data, raw_data, continuity_limit=CONTINUITY_LIMIT):
         self.data = data
-        #Whenever the data is set, we also calculate the average timestep...
+        # Whenever the data is set, we also calculate the average timestep...
         self.avg_timestep = cal_avg_timestep(raw_data)
-        #... the bounds...
+        # ... the bounds...
         self.bounds = self.extract_domains(continuity_limit)
-        #... and run the update_events_and_separated_data method, which will
+        # ... and run the update_events_and_separated_data method, which will
         # update the events, sep_data, sep_name and sep_bounds attributes
         self.update_events_and_separated_data()
 
-    #method to set the bounds of the event
+    # method to set the bounds of the event
     def set_bounds(self, bounds):
         self.bounds = bounds
-        #whenever the bounds are set, we also run the update_events_and_separated_data
+        # whenever the bounds are set, we also run the update_events_and_separated_data
         self.update_events_and_separated_data()
+
     # helper method to update events, sep_data, sep_name, and sep_bounds after
     # bounds changes
     def update_events_and_separated_data(self):
@@ -210,10 +204,10 @@ class Lf_Event:
         self.sep_name = [f'{self.name}({i})' for i in range(self.events)]
         self.sep_bounds = [self.bounds[i] for i in range(self.events)]
 
-
-    #very important method to extract the bounds of the continuous time domains
-    def extract_domains(self, continuity_limit=CONTINUITY_LIMIT,
-            timestamp_col='Time Stamp'):
+    # very important method to extract the bounds of the continuous time domains
+    def extract_domains(
+        self, continuity_limit=CONTINUITY_LIMIT, timestamp_col='Time Stamp'
+    ):
         """
         This function extracts the bounds of continuous time domains in a
         DataFrame based on the time continuity
@@ -268,7 +262,7 @@ class Lf_Event:
             ]
             return bounds
 
-    #method to filter the data of the event based on a conditionnal boolean pd.Series
+    # method to filter the data of the event based on a conditionnal boolean pd.Series
     def filter_data(self, raw_data):
         if not self.cond.empty:
             self.avg_timestep = cal_avg_timestep(raw_data)
@@ -283,9 +277,9 @@ class Lf_Event:
     def set_source(self, source):
         self.source = source
 
-    #specific method to stitch the source ramp up events together,
+    # specific method to stitch the source ramp up events together,
     # in the case a source is ramped up in several steps.
-    #it essentially merges the events if the last output setpoint power
+    # it essentially merges the events if the last output setpoint power
     # of first event is the same as the second event first output setpoint power
     def stitch_source_ramp_up_events(self):
         i = 0
@@ -323,7 +317,7 @@ class Lf_Event:
                 i += 1  # Only increment i if no merge occurred
         self.update_events_and_separated_data()
 
-    #simple method to exlude events that are too small
+    # simple method to exlude events that are too small
     def filter_out_small_events(self, min_domain_size):
         data_list = []
         for i in range(self.events):
@@ -333,7 +327,7 @@ class Lf_Event:
         data = pd.concat(data_list, ignore_index=True)
         self.set_data(data, data)
 
-    #method to only select events that come before a certain reference time
+    # method to only select events that come before a certain reference time
     # with the option of selecting any event before the reference time
     def select_event(self, raw_data, event_loc: int, ref_time=None):
         event_list = []
@@ -344,15 +338,15 @@ class Lf_Event:
                 event_list.append(self.sep_data[i])
         self.set_data(event_list[event_loc], raw_data)
 
-    #DTUsteps parameters extraction methods
+    # DTUsteps parameters extraction methods
 
-    #method to extract the parameters of step events, in a format that can be
+    # method to extract the parameters of step events, in a format that can be
     # used to populate the Nomad DTUsteps of DTUSputtering
-    def get_nomad_step_params(self, params=None, source_list = None):
-        #Set a default value for the source list
+    def get_nomad_step_params(self, params=None, source_list=None):
+        # Set a default value for the source list
         if source_list is None:
             source_list = [self.source]
-        #Initialize the params dictionary if it is not provided
+        # Initialize the params dictionary if it is not provided
         if params is None:
             params = {}
         # Write the event step_id as the key of the dictionary
@@ -364,8 +358,7 @@ class Lf_Event:
         params[self.step_id]['environment']['pressure'] = {}
         params[self.step_id]['environment']['heater'] = {}
 
-
-        #Get basic step parameters in the dictionary
+        # Get basic step parameters in the dictionary
 
         params[self.step_id]['name'] = self.name
         params[self.step_id]['lab_id'] = self.step_id
@@ -376,49 +369,49 @@ class Lf_Event:
         params[self.step_id]['duration'] = (
             params[self.step_id]['end_time'] - params[self.step_id]['start_time']
         )
-        params[self.step_id]['creates_new_thin_film'] = (self.category == 'deposition')
+        params[self.step_id]['creates_new_thin_film'] = self.category == 'deposition'
 
         params = self.get_step_environment_params(params)
 
-        #Get the source parameters
+        # Get the source parameters
 
         params = self.get_step_sources_params(source_list, params)
 
         return params
 
-    #method to extract the so called environment parameters (gases, sources, etc)
+    # method to extract the so called environment parameters (gases, sources, etc)
     # of single steps
-    def get_step_environment_params(self,params):
+    def get_step_environment_params(self, params):
         for gas_name in ['ar', 'ph3', 'h2s']:
             params[self.step_id]['environment']['gas_flow'][gas_name] = {}
             params[self.step_id]['environment']['gas_flow'][gas_name]['gas'] = {}
             params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'] = {}
 
-            params[self.step_id][
-                'environment']['gas_flow'][gas_name]['gas_name'] = gas_name
+            params[self.step_id]['environment']['gas_flow'][gas_name]['gas_name'] = (
+                gas_name
+            )
             # In the following entry, we add the time series of the
             # corresponding gas flow rate
-            params[self.step_id][
-                'environment']['gas_flow'][gas_name]['flow_rate']['set_value']= (
-                self.data[f'PC MFC {GAS_NUMBER[gas_name]} Setpoint'].iloc[-1]
+            params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'][
+                'set_value'
+            ] = self.data[f'PC MFC {GAS_NUMBER[gas_name]} Setpoint'].iloc[-1]
+            # In the following entry, we set the value of the gas flow rate
+            params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'][
+                'value'
+            ] = self.data[f'PC MFC {GAS_NUMBER[gas_name]} Flow']
+            # In the following entry, we set the time values
+            params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'][
+                'time'
+            ] = self.data['Time Stamp']
+            params[self.step_id]['environment']['gas_flow'][gas_name][
+                'measurement_type'
+            ] = 'Mass Flow Controller'
+            params[self.step_id]['environment']['gas_flow'][gas_name]['gas']['name'] = (
+                gas_name
             )
-            #In the following entry, we set the value of the gas flow rate
-            params[self.step_id][
-                'environment']['gas_flow'][gas_name]['flow_rate']['value']= (
-                self.data[f'PC MFC {GAS_NUMBER[gas_name]} Flow'])
-            #In the following entry, we set the time values
-            params[self.step_id][
-                'environment']['gas_flow'][gas_name]['flow_rate']['time']= (
-                self.data['Time Stamp'])
-            params[self.step_id][
-                'environment'
-                ]['gas_flow'
-                ][gas_name]['measurement_type'] = 'Mass Flow Controller'
-            params[self.step_id][
-                'environment']['gas_flow'][gas_name]['gas']['name'] = gas_name
         return params
 
-    #method to extract the so called sources parameters of single steps
+    # method to extract the so called sources parameters of single steps
     def get_step_sources_params(self, source_list, params):
         for source_number in source_list:
             source_key = f'{SOURCE_NAME[str(source_number)]}'
@@ -426,9 +419,9 @@ class Lf_Event:
                 params[self.step_id]['sources'][source_key] = {}
         return params
 
-    #DTUSputtering parameters extraction methods
+    # DTUSputtering parameters extraction methods
 
-    #method to attribute the right method to extract the parameters of the event
+    # method to attribute the right method to extract the parameters of the event
     # based on its category
     def get_params(self, raw_data, source_list, params=None):
         if self.category == 'deposition':
@@ -451,7 +444,7 @@ class Lf_Event:
             params = self.get_deposition_rate_params(params=params)
         return params
 
-    #master parameters extraction method for the deposition event
+    # master parameters extraction method for the deposition event
     def get_all_deposition_params(self, source_list, raw_data, params=None):
         if self.category != 'deposition':
             raise ValueError('This method is only available for the deposition event')
@@ -469,7 +462,7 @@ class Lf_Event:
         params = self.get_source_depostion_params(source_list, params=params)
         return params
 
-    #method to deduce if the deposition was done at room temperature or not
+    # method to deduce if the deposition was done at room temperature or not
     def get_rt_bool(self, params=None):
         # Extract if the deposition was done at room temperature as :
         # - the temperature control is disabled or
@@ -493,7 +486,7 @@ class Lf_Event:
             params[self.category]['rt'] = False
         return params
 
-    #method to extrac the sources used for deposition
+    # method to extrac the sources used for deposition
     def get_source_used_deposition(self, source_list, params=None):
         # Extract the source used for deposition
         # For all sources, we check if the source is enabled during deposition
@@ -527,7 +520,7 @@ class Lf_Event:
 
         return params
 
-    #method to extract the SCracker parameters
+    # method to extract the SCracker parameters
     def get_cracker_params(self, params=None):
         # Extract if the cracker has been used during deposition as the
         # cracker control being enabled and the temperatures of the
@@ -581,7 +574,7 @@ class Lf_Event:
             params[self.category]['SCracker']['enabled'] = False
         return params
 
-    #method to extract important pressure parameters
+    # method to extract important pressure parameters
     def get_pressure_params(self, raw_data, params=None):
         # Extract the some base pressure metric as the lowest positive
         # pressure recorded before deposition (but only if
@@ -621,7 +614,7 @@ class Lf_Event:
 
         return params
 
-    #method to extract simple deposition parameters, that are not source specific
+    # method to extract simple deposition parameters, that are not source specific
     def get_simple_deposition_params(self, params=None):
         if self.category != 'deposition':
             raise ValueError('This method is only available for the deposition event')
@@ -695,9 +688,11 @@ class Lf_Event:
             else 0
         )
 
-        #calculate the ratio between the PH3 and H2S flow
-        if params[self.category]['avg_h2s_flow'] != 0 and params[self.category][
-            'avg_ph3_flow'] != 0:
+        # calculate the ratio between the PH3 and H2S flow
+        if (
+            params[self.category]['avg_h2s_flow'] != 0
+            and params[self.category]['avg_ph3_flow'] != 0
+        ):
             params[self.category]['ph3_h2s_ratio'] = (
                 params[self.category]['avg_ph3_flow']
                 / params[self.category]['avg_h2s_flow']
@@ -705,8 +700,8 @@ class Lf_Event:
 
         return params
 
-    #method to extract the source specific parameters of the deposition event.
-    #this method uses different sub-methods to extract the parameters of the
+    # method to extract the source specific parameters of the deposition event.
+    # this method uses different sub-methods to extract the parameters of the
     # sources used during deposition
     def get_source_depostion_params(self, source_list, params=None):
         if self.category != 'deposition':
@@ -731,20 +726,21 @@ class Lf_Event:
         if params[self.category]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD:
             elements = elements + ['P']
         if (params[self.category]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD) or (
-            params[self.category]['SCracker']['enabled']):
+            params[self.category]['SCracker']['enabled']
+        ):
             elements = elements + ['S']
         # add the element as an hypen separated string
         params[self.category]['material_space'] = '-'.join(elements)
         return params
 
-    #method to deduce the average output power of the source during deposition
+    # method to deduce the average output power of the source during deposition
     def get_avg_output_power(self, params, source_number):
         params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
             'avg_output_power'
         ] = self.data[f'Source {source_number} Output Setpoint'].mean()
         return params
 
-    #method to deduce the plasma type of the source during deposition
+    # method to deduce the plasma type of the source during deposition
     def get_plasma_type(self, params, source_number):
         dc_current_col = f'Source {source_number} Current'
         rf_bias_col = f'Source {source_number} DC Bias'
@@ -757,7 +753,9 @@ class Lf_Event:
             (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
             or (
                 (self.data[fwd_power_col] - self.data[rfl_power_col])
-                > POWER_FWD_REFL_THRESHOLD).mean() >= TOLERANCE
+                > POWER_FWD_REFL_THRESHOLD
+            ).mean()
+            >= TOLERANCE
         ):
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['DC'] = True
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['RF'] = False
@@ -778,39 +776,41 @@ class Lf_Event:
                         'dead_time'
                     ] = self.data[f'Source {source_number} Reverse Time'].mean()
                 else:
-                    params[self.category][
-                        f'{SOURCE_NAME[str(source_number)]}'
-                        ]['pulsed'] = False
-                    params[self.category][
-                        f'{SOURCE_NAME[str(source_number)]}'
-                        ]['plasma_type'] = 'DC'
+                    params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                        'pulsed'
+                    ] = False
+                    params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                        'plasma_type'
+                    ] = 'DC'
         elif rf_bias_col in self.data and (
             (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= TOLERANCE
             or (
                 (self.data[fwd_power_col] - self.data[rfl_power_col])
-                > POWER_FWD_REFL_THRESHOLD).mean() >= TOLERANCE
-            ):
+                > POWER_FWD_REFL_THRESHOLD
+            ).mean()
+            >= TOLERANCE
+        ):
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['RF'] = True
-            params[self.category][
-                f'{SOURCE_NAME[str(source_number)]}'
-                ]['plasma_type'] = 'RF'
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                'plasma_type'
+            ] = 'RF'
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['DC'] = False
-            params[self.category][
-                f'{SOURCE_NAME[str(source_number)]}'
-                ]['pulsed'] = False
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['pulsed'] = (
+                False
+            )
         else:
             print('Error: Plasma type not recognized')
         return params
 
-    #method to deduce the deposition voltage of the source during deposition
+    # method to deduce the deposition voltage of the source during deposition
     def get_deposition_voltage(self, params, source_number):
         def extract_voltage_stats(data, key_prefix):
             start_voltage = data.iloc[
-                    : int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(data))
-                ].mean()
+                : int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(data))
+            ].mean()
             end_voltage = data.iloc[
-                    -int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(data)) :
-                ].mean()
+                -int(FRAQ_ROWS_AVG_VOLTAGE * 0.01 * len(data)) :
+            ].mean()
             return {
                 'start_voltage': start_voltage,
                 'end_voltage': end_voltage,
@@ -838,7 +838,7 @@ class Lf_Event:
 
         return params
 
-    #method to deduce the source material and target of the source during deposition
+    # method to deduce the source material and target of the source during deposition
     def get_source_material_and_target(self, params, source_number, elements):
         source_element = str(self.data[f'PC Source {source_number} Material'].iloc[0])
         source_element = re.split(r'\s+', source_element)[0]
@@ -852,7 +852,7 @@ class Lf_Event:
 
         return params, elements
 
-    #method to extract the pressure induced by the cracker
+    # method to extract the pressure induced by the cracker
     def get_cracker_pressure_params(self, params=None):
         if self.category != 'cracker_base_pressure':
             raise ValueError
@@ -873,7 +873,7 @@ class Lf_Event:
             params['cracker_pressure_meas'] = False
         return params
 
-    #method to extract source dependent presputtering parameters
+    # method to extract source dependent presputtering parameters
     def get_source_presput_params(self, params=None):
         if self.category != 'source_presput':
             raise ValueError(
@@ -916,7 +916,7 @@ class Lf_Event:
             ] = self.data['PC MFC 1 Flow'].mean()
         return params
 
-    #method to extract the source ramp up and ignition parameters
+    # method to extract the source ramp up and ignition parameters
     def get_source_ramp_up_params(self, raw_data, params=None):
         # Here, we interate over the sources to extract many relevant parameters
 
@@ -984,7 +984,7 @@ class Lf_Event:
 
         return params
 
-    #method to extract the substrate ramp up parameters
+    # method to extract the substrate ramp up parameters
     def get_sub_ramp_up_params(self, raw_data, params=None):
         if self.category != 'ramp_up_temp':
             raise ValueError(
@@ -1043,8 +1043,8 @@ class Lf_Event:
             # act of opening the cracker pulse valve (1 open, 0 closed)
             if 'Sulfur Cracker Zone 1 Current Temperature' in raw_data.columns:
                 if (
-                    (self.data['Sulfur Cracker Control Enabled'] == 1)
-                    .mean() >= TOLERANCE
+                    (self.data['Sulfur Cracker Control Enabled'] == 1).mean()
+                    >= TOLERANCE
                     and (
                         self.data['Sulfur Cracker Zone 1 Current Temperature']
                         > CRACKER_ZONE_1_MIN_TEMP
@@ -1081,7 +1081,7 @@ class Lf_Event:
                 params[self.category]['SCracker']['enabled'] = False
         return params
 
-    #method to extract the substatre temperature ramp down parameters,
+    # method to extract the substatre temperature ramp down parameters,
     def get_sub_ramp_down_params(self, params=None):
         if self.category != 'sub_ramp_down':
             raise ValueError(
@@ -1116,8 +1116,8 @@ class Lf_Event:
         return params
 
     # method to extract the high temperature ramp down parameters (meaning when
-    #the substrate temperature is above the temperature where anions tend to
-    #escape the film)
+    # the substrate temperature is above the temperature where anions tend to
+    # escape the film)
     def get_sub_ramp_down_high_temp_params(self, params=None):
         if self.category != 'ramp_down_high_temp':
             raise ValueError(
@@ -1224,9 +1224,9 @@ class Lf_Event:
             ].iloc[-1]
         return params
 
-    #method to extract the low temperature ramp down parameters (meaning when
-    #the substrate temperature is below the temperature where anions tend to
-    #escape the film)
+    # method to extract the low temperature ramp down parameters (meaning when
+    # the substrate temperature is below the temperature where anions tend to
+    # escape the film)
     def get_sub_ramp_down_low_temp_params(self, params=None):
         if self.category != 'ramp_down_low_temp':
             raise ValueError(
@@ -1246,7 +1246,7 @@ class Lf_Event:
             params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
         return params
 
-    #method to extract the film deposition rate parameters
+    # method to extract the film deposition rate parameters
     def get_deposition_rate_params(self, params=None):
         list_allowed_categories = ['s_deprate2_film_meas', 'source_deprate2_film_meas']
         if self.category not in list_allowed_categories:
@@ -1299,6 +1299,7 @@ class Lf_Event:
 
 # ---------HELPERS FUNCTIONS FOR REPORT GENERATION------------
 
+
 def get_overview(raw_data, params=None):
     if params is None:
         params = {}
@@ -1310,6 +1311,7 @@ def get_overview(raw_data, params=None):
     params['overview']['log_end_time'] = raw_data['Time Stamp'].iloc[-1]
 
     return params
+
 
 def get_end_of_process(raw_data, params=None):
     # Extract the end of process temperature as the last temperature logged
@@ -1335,16 +1337,19 @@ def get_end_of_process(raw_data, params=None):
     )
     return params
 
+
 # method to save the derived quantities report as a text file
-def save_report_as_text(params:dict, txt_file_path, logfile_name=None):
+def save_report_as_text(params: dict, txt_file_path, logfile_name=None):
     # Save the derived quantities report as a text file as
     with open(txt_file_path, 'w') as txt_file:
         if logfile_name is not None:
             txt_file.write(
-                f'Derived quantities report for logfile\n{logfile_name}:\n\n')
+                f'Derived quantities report for logfile\n{logfile_name}:\n\n'
+            )
         txt_file.write(write_params(params))
 
-#method to flatten a nested dictionary
+
+# method to flatten a nested dictionary
 def flatten_dict(d, parent_key='', sep=';'):
     """
     Flatten a nested dictionary.
@@ -1366,12 +1371,15 @@ def flatten_dict(d, parent_key='', sep=';'):
             items.append((new_key, v))
     return dict(items)
 
+
 def consolidate_data_to_csv(all_params, samples_dir):
-        flatten_all_params = flatten_dict(all_params)
-        df_all = pd.DataFrame([flatten_all_params],sep=';')
-        df_all.columns = pd.MultiIndex.from_tuples(
-            [tuple(col.split(';')) for col in df_all.columns])
-        df_all.to_csv(os.path.join(samples_dir,'all_params.csv'), index=False)
+    flatten_all_params = flatten_dict(all_params)
+    df_all = pd.DataFrame([flatten_all_params], sep=';')
+    df_all.columns = pd.MultiIndex.from_tuples(
+        [tuple(col.split(';')) for col in df_all.columns]
+    )
+    df_all.to_csv(os.path.join(samples_dir, 'all_params.csv'), index=False)
+
 
 # Function to convert timestamps to isoformat
 def convert_timestamps(obj):
@@ -1815,8 +1823,8 @@ def filter_data_deposition(data, source_list, **kwargs):
     any_source_on_open = Lf_Event(
         'Any Source On and Open', category='any_source_on_open'
     )
-    #We create a deposition event that is not tied to any source in particular
-    deposition = Lf_Event('Deposition', category='deposition', source = None)
+    # We create a deposition event that is not tied to any source in particular
+    deposition = Lf_Event('Deposition', category='deposition', source=None)
 
     # Define a list of condition containing each source being on and open
     # at the same time
@@ -2365,6 +2373,7 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
 
 # -------PLOTTING DEFINITIONS------------
 
+
 def quick_plot(df, Y, X='Time Stamp', mode='default'):
     """
     Plots a time series using Plotly.
@@ -2380,7 +2389,7 @@ def quick_plot(df, Y, X='Time Stamp', mode='default'):
     Returns:
         fig (plotly.graph_objects.Figure): The Plotly figure object.
     """
-    #Define useful constants
+    # Define useful constants
     BASE_HEIGHT = 250  # Base height for the 'stack' verion of the plot
     VERTICAL_SPACING = 0.02  # Vertical spacing between subplots
 
@@ -2394,7 +2403,7 @@ def quick_plot(df, Y, X='Time Stamp', mode='default'):
     else:
         y_axis_title = 'Values'  # Default to 'Values' if multiple columns
 
-    plot_title='Quick Plot'
+    plot_title = 'Quick Plot'
 
     if mode == 'default':
         # Create a Plotly figure
@@ -2408,25 +2417,25 @@ def quick_plot(df, Y, X='Time Stamp', mode='default'):
 
     elif mode == 'stack':
         # Create subplots with shared x-axis
-        fig = make_subplots(rows=len(Y), cols=1,
-                            shared_xaxes=True,
-                            vertical_spacing=VERTICAL_SPACING)
+        fig = make_subplots(
+            rows=len(Y), cols=1, shared_xaxes=True, vertical_spacing=VERTICAL_SPACING
+        )
 
         # Add a trace for each y-axis column
         for i, y_col in enumerate(Y):
-            fig.add_trace(go.Scatter(x=df[X],
-                                     y=df[y_col],
-                                     mode='lines',
-                                     name=y_col),
-                                     row=i+1, col=1)
+            fig.add_trace(
+                go.Scatter(x=df[X], y=df[y_col], mode='lines', name=y_col),
+                row=i + 1,
+                col=1,
+            )
 
-            fig.update_yaxes(title_text=y_col, row=i+1, col=1)
+            fig.update_yaxes(title_text=y_col, row=i + 1, col=1)
 
         # Set the x-axis title for the bottom subplot only
         fig.update_xaxes(title_text='Time', row=len(Y), col=1)
 
         # Adjust the height based on the number of subplots
-        fig.update_layout(title_text=plot_title,height=BASE_HEIGHT * len(Y))
+        fig.update_layout(title_text=plot_title, height=BASE_HEIGHT * len(Y))
 
     # Update layout for better visualization
     fig.update_layout(
@@ -2434,12 +2443,13 @@ def quick_plot(df, Y, X='Time Stamp', mode='default'):
     )
 
     # Place the legend at the top right corner
-    fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99))
+    fig.update_layout(legend=dict(yanchor='top', y=0.99, xanchor='right', x=0.99))
 
     # Show the figure
     # fig.show()
 
     return fig
+
 
 def plot_plotly_extimeline(events_to_plot, sample_name=''):
     """
@@ -2468,10 +2478,18 @@ def plot_plotly_extimeline(events_to_plot, sample_name=''):
     for step in events_to_plot:
         if isinstance(step, Lf_Event):
             for bounds in step.bounds:
-                rows.append({'Event': step.name, 'Start': bounds[0], 'End': bounds[1],
-                'Average Temp': step.data['Substrate Heater Temperature'].mean(),
-                'Average Pressure': step.data['PC Capman Pressure'].mean()})
-                #add more quantities if needed
+                rows.append(
+                    {
+                        'Event': step.name,
+                        'Start': bounds[0],
+                        'End': bounds[1],
+                        'Average Temp': step.data[
+                            'Substrate Heater Temperature'
+                        ].mean(),
+                        'Average Pressure': step.data['PC Capman Pressure'].mean(),
+                    }
+                )
+                # add more quantities if needed
 
     df = pd.DataFrame(rows)
 
@@ -2508,7 +2526,7 @@ def plot_plotly_extimeline(events_to_plot, sample_name=''):
             ticktext=df['Event'].unique(),
             autorange='reversed',  # Ensure tasks are displayed in order
         ),
-        template='plotly_white', # Use a white background template
+        template='plotly_white',  # Use a white background template
         hovermode='closest',
         dragmode='zoom',
         title=dict(
@@ -2588,6 +2606,7 @@ def add_event_to_events(event, all_events):
             'The event to be added to the list of all events is not of the right type'
         )
     return all_events
+
 
 def event_list_to_dict(all_events):
     if isinstance(all_events, Lf_Event):
@@ -2773,7 +2792,7 @@ def normalize_column(df, column_name):
 
 
 def formatting_logfile(data):
-    print('\n','Formatting the dataframe for conditional filtering')
+    print('\n', 'Formatting the dataframe for conditional filtering')
     # -----FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING-------
     # -------RENAME THE CRACKER COLUMNS OF THE DATAFRAME---------
     data = rename_cracker_columns(data)
@@ -2805,9 +2824,7 @@ def verify_deposition_unicity(events, raw_data):
                     'Removing deposition events smaller than',
                     f'{MIN_DEPOSITION_SIZE} steps',
                 )
-                print(
-                    'Number of deposition events before filtering:', event.events
-                )
+                print('Number of deposition events before filtering:', event.events)
                 for i in range(event.events):
                     print(
                         f'Deposition({i})start time: {event.bounds[i][0]}',
@@ -2859,7 +2876,6 @@ def select_last_event(events, raw_data, ref_event, categories):
 
 
 def read_events(data):
-
     data, source_list = formatting_logfile(data)
 
     # ---------DEFINE DE CONDITIONS FOR DIFFERENT EVENTS-------------
@@ -3021,9 +3037,11 @@ def read_events(data):
 
     return events_to_plot, main_params, step_params
 
-#----NOMAD HELPER FUNCTION-----
 
-#Helper method to get the nested value, if it exists
+# ----NOMAD HELPER FUNCTION-----
+
+
+# Helper method to get the nested value, if it exists
 def get_nested_value(dictionary, key_path):
     """
     Safely get a nested value from a dictionary.
@@ -3040,97 +3058,141 @@ def get_nested_value(dictionary, key_path):
             return None
     return dictionary
 
-def map_params_to_nomad(params,gun_list):
-        #Definiting the input, ouput and unit
-        param_nomad_map = [
-            #Deposition parameters
-            [['deposition','avg_temp_1'],
-            ['deposition_parameters','deposition_temperature'],'degC'],
 
-            # duration has no unit since it is a TimeDelta object
+def map_params_to_nomad(params, gun_list):
+    # Definiting the input, ouput and unit
+    param_nomad_map = [
+        # Deposition parameters
+        [
+            ['deposition', 'avg_temp_1'],
+            ['deposition_parameters', 'deposition_temperature'],
+            'degC',
+        ],
+        # duration has no unit since it is a TimeDelta object
+        [
+            ['deposition', 'duration'],
+            ['deposition_parameters', 'deposition_time'],
+            None,
+        ],
+        [
+            ['deposition', 'avg_capman_pressure'],
+            ['deposition_parameters', 'sputter_pressure'],
+            'mtorr',
+        ],
+        [
+            ['deposition', 'material_space'],
+            ['deposition_parameters', 'material_space'],
+            None,
+        ],
+        [
+            ['deposition', 'avg_ar_flow'],
+            ['deposition_parameters', 'ar_flow'],
+            'cm^3/minute',
+        ],
+        [
+            ['deposition', 'avg_h2s_flow'],
+            ['deposition_parameters', 'h2s_in_Ar_flow'],
+            'cm^3/minute',
+        ],
+        [
+            ['deposition', 'avg_ph3_flow'],
+            ['deposition_parameters', 'ph3_in_Ar_flow'],
+            'cm^3/minute',
+        ],
+        # End of process parameters
+        [
+            ['overview', 'end_of_process_temp'],
+            ['end_of_process', 'Heater_temperature'],
+            'degC',
+        ],
+        [
+            ['overview', 'time_in_chamber_after_deposition'],
+            ['end_of_process', 'time_in_chamber_after_ending_deposition'],
+            'second',
+        ],
+        # SCracker parameters
+        [
+            ['deposition', 'SCracker', 'zone1_temp'],
+            ['deposition_parameters', 'SCracker', 'Zone1_temperature'],
+            'degC',
+        ],
+        [
+            ['deposition', 'SCracker', 'zone2_temp'],
+            ['deposition_parameters', 'SCracker', 'Zone2_temperature'],
+            'degC',
+        ],
+        [
+            ['deposition', 'SCracker', 'zone3_temp'],
+            ['deposition_parameters', 'SCracker', 'Zone3_temperature'],
+            'degC',
+        ],
+        [
+            ['deposition', 'SCracker', 'pulse_width'],
+            ['deposition_parameters', 'SCracker', 'valve_ON_time'],
+            'millisecond',
+        ],
+        [
+            ['deposition', 'SCracker', 'pulse_freq'],
+            ['deposition_parameters', 'SCracker', 'valve_frequency'],
+            'mHz',
+        ],
+    ]
+    # Gun parameters
+    for gun in gun_list:
+        if params['deposition'].get(gun, {}).get('enabled', False):
+            param_nomad_map.append(
+                [
+                    ['deposition', gun, 'target_id'],
+                    ['deposition_parameters', gun, 'target_material'],
+                    None,
+                ]
+            )
+            param_nomad_map.append(
+                [
+                    ['deposition', gun, 'avg_output_power'],
+                    ['deposition_parameters', gun, 'applied_power'],
+                    'W',
+                ]
+            )
+            param_nomad_map.append(
+                [
+                    ['source_ramp_up', gun, 'ignition_power'],
+                    ['deposition_parameters', gun, 'plasma_ignition_power'],
+                    'W',
+                ]
+            )
+            param_nomad_map.append(
+                [
+                    ['deposition', gun, 'plasma_type'],
+                    ['deposition_parameters', gun, 'power_type'],
+                    None,
+                ]
+            )
+            param_nomad_map.append(
+                [
+                    ['deposition', gun, 'avg_voltage'],
+                    ['deposition_parameters', gun, 'stable_average_voltage'],
+                    'V',
+                ]
+            )
+    return param_nomad_map
 
-            [['deposition','duration'],
-            ['deposition_parameters','deposition_time'], None],
-
-            [['deposition','avg_capman_pressure'],
-            ['deposition_parameters','sputter_pressure'],'mtorr'],
-
-            [['deposition','material_space'],
-            ['deposition_parameters','material_space'], None],
-
-            [['deposition','avg_ar_flow'],
-            ['deposition_parameters','ar_flow'],'cm^3/minute'],
-
-            [['deposition','avg_h2s_flow'],
-            ['deposition_parameters','h2s_in_Ar_flow'],'cm^3/minute'],
-
-            [['deposition','avg_ph3_flow'],
-            ['deposition_parameters','ph3_in_Ar_flow'],'cm^3/minute'],
-
-            #End of process parameters
-            [['overview','end_of_process_temp'],
-            ['end_of_process','Heater_temperature'],'degC'],
-
-            [['overview','time_in_chamber_after_deposition'],
-            ['end_of_process','time_in_chamber_after_ending_deposition'],'second'],
-
-            #SCracker parameters
-            [['deposition','SCracker','zone1_temp'],
-            ['deposition_parameters','SCracker','Zone1_temperature'],'degC'],
-
-            [['deposition','SCracker','zone2_temp'],
-            ['deposition_parameters','SCracker','Zone2_temperature'],'degC'],
-
-            [['deposition','SCracker','zone3_temp'],
-            ['deposition_parameters','SCracker','Zone3_temperature'],'degC'],
-
-            [['deposition','SCracker','pulse_width'],
-            ['deposition_parameters','SCracker','valve_ON_time'],'millisecond'],
-
-            [['deposition','SCracker','pulse_freq'],
-            ['deposition_parameters','SCracker','valve_frequency'],'mHz'],
-        ]
-        #Gun parameters
-        for gun in gun_list:
-            if params['deposition'].get(gun, {}).get('enabled', False):
-                param_nomad_map.append(
-                    [['deposition', gun, 'target_id'],
-                    ['deposition_parameters', gun,'target_material'], None]
-                )
-                param_nomad_map.append(
-                    [['deposition', gun, 'avg_output_power'],
-                    ['deposition_parameters', gun,'applied_power'], 'W']
-                )
-                param_nomad_map.append(
-                    [['source_ramp_up', gun, 'ignition_power'],
-                    ['deposition_parameters', gun,'plasma_ignition_power'], 'W']
-                )
-                param_nomad_map.append(
-                    [['deposition', gun, 'plasma_type'],
-                    ['deposition_parameters', gun,'power_type'], None]
-                )
-                param_nomad_map.append(
-                    [['deposition', gun, 'avg_voltage'],
-                    ['deposition_parameters', gun,'stable_average_voltage'], 'V']
-                )
-        return param_nomad_map
 
 def map_step_params_to_nomad(step_params, key):
     step_param_nomad_map = [
-        [[key, 'name'],
-        ['name'], None],
+        [[key, 'name'], ['name'], None],
         # start_time has no unit since it is a TimeStamp object
-        [[key, 'start_time'],
-        ['start_time'], None],
+        [[key, 'start_time'], ['start_time'], None],
         # duration has no unit since it is a TimeDelta object
-        [[key, 'duration'],
-        ['duration'], None],
-        ]
+        [[key, 'duration'], ['duration'], None],
+    ]
 
-    #Defining the input, output and unit
+    # Defining the input, output and unit
     return step_param_nomad_map
 
+
 # ---------------MAIN-----------
+
 
 def main():
     # global events_to_plot, main_params, step_params, all_params
@@ -3143,7 +3205,7 @@ def main():
         'mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07'
     ]
 
-    #Initialize the the general param dictionary
+    # Initialize the the general param dictionary
     all_params = {}
 
     # In samples_dir, explore all the folders (samples names)
@@ -3167,7 +3229,6 @@ def main():
     # logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
     # logfiles['folder']= [
     #     r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files']
-
 
     # Loop over all the logfiles in the directory
     for i in range(len(logfiles['name'])):
@@ -3194,7 +3255,6 @@ def main():
         # Read the log file and spectrum data
         print('Extracting all the events from the logfile')
         data = read_logfile(logfile_path)
-
 
         # ----READ ALL THE EVENTS IN THE LOGFILE----
         events_to_plot, main_params, step_params = read_events(data)
@@ -3228,10 +3288,11 @@ def main():
         print('Saving the derived quantities report as a text file')
         save_report_as_text(main_params, txt_file_path, logfiles['name'][i])
 
-    #----CONSILIDATE THE DATA INTO A SINGLE CSV FILE-----
-
+    # ----CONSILIDATE THE DATA INTO A SINGLE CSV FILE-----
 
     consolidate_data_to_csv(all_params, samples_dir)
+
+
 if __name__ == '__main__':
     main()
 
