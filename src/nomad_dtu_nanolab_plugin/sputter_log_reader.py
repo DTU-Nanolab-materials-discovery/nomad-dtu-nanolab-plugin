@@ -1369,26 +1369,64 @@ def flatten_dict(d, parent_key='', sep=';'):
             items.extend(flatten_dict(v, new_key, sep=sep).items())
         else:
             items.append((new_key, v))
+
     return dict(items)
 
+def fix_single_dict_level(dict_var, sep='__'):
+    # Calculate the max depth of the dict
+    max_depth = 0
+    for key in dict_var.keys():
+        current_depth = len(key.split('__'))
+        if current_depth > max_depth:
+            max_depth = current_depth
 
-def consolidate_data_to_csv(all_params, samples_dir, sep='__'):
+    new_dict = {}
+
+    # Iterate over the original dictionary to construct the new dictionary
+    for key in list(dict_var.keys()):  # Make a list to avoid modifying the dict during iteration
+        if len(key.split('__')) == max_depth - 1:
+            key_split = key.split('__')
+            key_split[1] = f'{key_split[1]}{sep}general'
+            new_key = '__'.join(key_split)
+            new_dict[new_key] = dict_var[key]
+            del dict_var[key]  # Safely remove the key from the original dict
+
+    # Merge new keys into the original dictionary
+    dict_var.update(new_dict)
+
+    return dict_var
+
+def consolidate_data_to_csv(all_params, samples_dir,
+                            sep='__',process_NaN=False):
     # Flatten the dictionary with the specified separator
     flatten_all_params = flatten_dict(all_params, sep=sep)
+
+    #fix the level of the dict
+    flatten_all_params = fix_single_dict_level(flatten_all_params)
 
     # Convert the flattened dictionary to a DataFrame
     df = pd.DataFrame([flatten_all_params])
 
-    # Ensure columns are tuples using the same separator
+    # Split the column names using the separator and ensure consistent levels
+    split_columns = [tuple(col.split(sep)) for col in df.columns]
+
+    # Set the standardized MultiIndex for the DataFrame columns
     df.columns = pd.MultiIndex.from_tuples(
-        [tuple(col.split(sep)) for col in df.columns]
-    )
+        split_columns)
+
+    # Fill NaN values in the MultiIndex headers
+    if process_NaN:
+        df.columns = pd.MultiIndex.from_tuples(
+            [tuple('' if pd.isna(x) else x for x in col) for col in df.columns]
+        )
 
     # Save the DataFrame to a CSV file
-    df.to_csv(os.path.join(samples_dir, 'all_params.csv'), index=False)
+    output_path = os.path.join(samples_dir, 'all_params.csv')
+    df.to_csv(output_path, index=False, na_rep='')
 
+    print(f"Data successfully saved to {output_path}")
 
-def open_csv_as_multiindex(csv_path):
+def open_csv_as_multiindex(csv_path,replace_nan=False):
     """
     Reopen a CSV file as a MultiIndex DataFrame.
 
@@ -1399,10 +1437,17 @@ def open_csv_as_multiindex(csv_path):
         pd.DataFrame: The MultiIndex DataFrame.
     """
     # Read the CSV file with the appropriate header levels
-    df = pd.read_csv(csv_path, header=[0, 1, 2, 3])
+    df = pd.read_csv(csv_path, header=[0, 1, 2, 3],
+                    na_filter=False)
 
     # The columns are already MultiIndex, so no need to split them again
     df.columns = pd.MultiIndex.from_tuples(df.columns)
+
+    if replace_nan:
+        # Replace the string 'nan' with an empty string in MultiIndex column names
+        df.columns = df.columns.set_levels(
+            [level.str.replace('nan', '') for level in df.columns.levels]
+        )
 
     return df
 
@@ -3237,7 +3282,7 @@ def main():
     # Set the execution flags
     print_main_params = False
     print_step_params = False
-    test_single_logfile = False
+    test_single_logfile = True
     remove_samples = True
 
     # global events_to_plot, main_params, step_params, all_params
@@ -3334,7 +3379,8 @@ def main():
     # ----CONSILIDATE THE DATA INTO A SINGLE CSV FILE-----
 
     print('Consolidating the data into a single CSV file')
-    consolidate_data_to_csv(all_params, samples_dir)
+    consolidate_data_to_csv(all_params, samples_dir,
+                            process_NaN=True)
 
     print('\n')
     print('Processing done')
