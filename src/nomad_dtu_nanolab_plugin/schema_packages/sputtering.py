@@ -796,8 +796,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 ],
                 ['Magkeeper3', 'Magkeeper4', 'Taurus', 'SCracker'],
             )
+            platen_rot = self.instrument_reference.platen_rotation
             sample_pos_plot = plot_matplotlib_chamber_config(
-                samples_plot, guns_plot, self.instrument_reference.platen_rotation
+                samples_plot, guns_plot, platen_rot
             )
             self.figures.append(
                 Figure(
