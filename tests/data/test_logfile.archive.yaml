@@ -1,6 +1,7 @@
 data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering
   log_file: mittma_0007_Cu_Recording Set 2024.06.03-09.52.29.CSV
+  lab_id: 'mittma_0007_Cu'
   samples:
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUsamples
       relative_position: 'BR'
