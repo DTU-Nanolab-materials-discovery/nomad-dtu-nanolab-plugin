@@ -877,8 +877,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # Initializing a temporary class objects
         sputtering = DTUSputtering()
-        sputtering.samples = [DTUsamples()]
-        sputtering.steps = [DTUsteps()]
+        sputtering.samples = []
+        sputtering.steps = []
         sputtering.deposition_parameters = DepositionParameters()
 
         for gun in gun_list:
