@@ -1441,6 +1441,19 @@ def print_params(quantities, indent=''):
                 formatted_value = 'Cannot display pd.DataFrame'
             print(f'{indent}{key}: {formatted_value}')
 
+def build_file_paths(logfiles, i):
+    txt_file_dir = os.path.join(logfiles['folder'][i])
+    txt_file_name = f'{logfiles["name"][i]}_derived_quantities.txt'
+    txt_file_path = os.path.join(txt_file_dir, txt_file_name)
+
+        # Specify the plotly graph export location and file name
+    plotly_graph_file_dir = os.path.join(logfiles['folder'][i])
+    plotly_graph_file_name = f'{logfiles["name"][i]}_plotly_timeline.html'
+    plotly_graph_file_path = os.path.join(
+            plotly_graph_file_dir, plotly_graph_file_name
+        )
+
+    return txt_file_path, plotly_graph_file_path
 
 # Function to write the derived quantities in a nested format
 def write_params(quantities, indent=''):
@@ -2816,7 +2829,7 @@ def normalize_column(df, column_name):
 
 
 def formatting_logfile(data):
-    print('\n', 'Formatting the dataframe for conditional filtering')
+    print('Formatting the dataframe for conditional filtering')
     # -----FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING-------
     # -------RENAME THE CRACKER COLUMNS OF THE DATAFRAME---------
     data = rename_cracker_columns(data)
@@ -3219,15 +3232,25 @@ def map_step_params_to_nomad(step_params, key):
 
 
 def main():
+
+    # Set the execution flags
+    print_main_params = False
+    print_step_params = False
+    test_single_logfile = False
+    remove_samples = True
+
     # global events_to_plot, main_params, step_params, all_params
     samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\Samples'
     logfiles_extension = 'CSV'
 
     logfiles = {'name': [], 'folder': []}
 
-    samples_to_remove = [
-        'mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07'
-    ]
+    if remove_samples:
+        samples_to_remove = [
+            'mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07'
+        ]
+    else:
+        samples_to_remove = []
 
     # Initialize the the general param dictionary
     all_params = {}
@@ -3248,32 +3271,25 @@ def main():
                         logfiles['name'].append(logfile_name)
                         logfiles['folder'].append(sample_path)
 
-    # # Uncomment to test the script on a single logfile
-    # logfiles = {}
-    # logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
-    # logfiles['folder']= [
-    #     r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files']
+    # Uncomment to test the script on a single logfile
+    if test_single_logfile:
+        logfiles = {}
+        logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
+        logfiles['folder']= [
+            r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files']
 
     # Loop over all the logfiles in the directory
     for i in range(len(logfiles['name'])):
         # Default Logfile location
-        print(f'Processing logfile: {logfiles["name"][i]}')
+        print('\n',f'Processing logfile: {logfiles["name"][i]}')
         logfile_path = (
             f'{logfiles["folder"][i]}/{logfiles["name"][i]}.{logfiles_extension}'
         )
 
         # ---------DEFAULT EXPORT LOCATIONS-------------
         # Specify the path and filename for the report text file
-        txt_file_dir = os.path.join(logfiles['folder'][i])
-        txt_file_name = f'{logfiles["name"][i]}_derived_quantities.txt'
-        txt_file_path = os.path.join(txt_file_dir, txt_file_name)
 
-        # Specify the plotly graph export location and file name
-        plotly_graph_file_dir = os.path.join(logfiles['folder'][i])
-        plotly_graph_file_name = f'{logfiles["name"][i]}_plotly_timeline.html'
-        plotly_graph_file_path = os.path.join(
-            plotly_graph_file_dir, plotly_graph_file_name
-        )
+        txt_file_path, plotly_graph_file_path = build_file_paths(logfiles, i)
         # ---------READ THE DATA-------------
 
         # Read the log file and spectrum data
@@ -3299,13 +3315,15 @@ def main():
 
         # --------PRINT DERIVED QUANTITIES REPORTS-------------
 
-        # print(f'Derived quantities report for logfile\n{logfiles["name"][i]}:\n')
-        # print_params(main_params)
-        # print('\n')
+        if print_main_params:
+            print(f'Derived quantities report for logfile\n{logfiles["name"][i]}:\n')
+            print_params(main_params)
+            print('\n')
 
-        # print(f'Step report for logfile\n{logfiles["name"][i]}:\n')
-        # print_params(step_params)
-        # print('\n')
+        if print_step_params:
+            print(f'Step report for logfile\n{logfiles["name"][i]}:\n')
+            print_params(step_params)
+            print('\n')
 
         # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---
 
@@ -3314,8 +3332,10 @@ def main():
 
     # ----CONSILIDATE THE DATA INTO A SINGLE CSV FILE-----
 
+    print('Consolidating the data into a single CSV file')
     consolidate_data_to_csv(all_params, samples_dir)
 
+    print('\n','Processing done')
 
 if __name__ == '__main__':
     main()
