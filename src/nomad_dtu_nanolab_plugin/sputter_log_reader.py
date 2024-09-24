@@ -1387,6 +1387,7 @@ def consolidate_data_to_csv(all_params, samples_dir, sep='__'):
     # Save the DataFrame to a CSV file
     df.to_csv(os.path.join(samples_dir, 'all_params.csv'), index=False)
 
+
 def open_csv_as_multiindex(csv_path):
     """
     Reopen a CSV file as a MultiIndex DataFrame.
@@ -1404,6 +1405,7 @@ def open_csv_as_multiindex(csv_path):
     df.columns = pd.MultiIndex.from_tuples(df.columns)
 
     return df
+
 
 # Function to convert timestamps to isoformat
 def convert_timestamps(obj):
@@ -1441,19 +1443,19 @@ def print_params(quantities, indent=''):
                 formatted_value = 'Cannot display pd.DataFrame'
             print(f'{indent}{key}: {formatted_value}')
 
+
 def build_file_paths(logfiles, i):
     txt_file_dir = os.path.join(logfiles['folder'][i])
     txt_file_name = f'{logfiles["name"][i]}_derived_quantities.txt'
     txt_file_path = os.path.join(txt_file_dir, txt_file_name)
 
-        # Specify the plotly graph export location and file name
+    # Specify the plotly graph export location and file name
     plotly_graph_file_dir = os.path.join(logfiles['folder'][i])
     plotly_graph_file_name = f'{logfiles["name"][i]}_plotly_timeline.html'
-    plotly_graph_file_path = os.path.join(
-            plotly_graph_file_dir, plotly_graph_file_name
-        )
+    plotly_graph_file_path = os.path.join(plotly_graph_file_dir, plotly_graph_file_name)
 
     return txt_file_path, plotly_graph_file_path
+
 
 # Function to write the derived quantities in a nested format
 def write_params(quantities, indent=''):
@@ -3232,7 +3234,6 @@ def map_step_params_to_nomad(step_params, key):
 
 
 def main():
-
     # Set the execution flags
     print_main_params = False
     print_step_params = False
@@ -3274,9 +3275,10 @@ def main():
     # Uncomment to test the script on a single logfile
     if test_single_logfile:
         logfiles = {}
-        logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
-        logfiles['folder']= [
-            r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files']
+        logfiles['name'] = ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
+        logfiles['folder'] = [
+            r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files'
+        ]
 
     # Loop over all the logfiles in the directory
     for i in range(len(logfiles['name'])):
@@ -3336,6 +3338,7 @@ def main():
 
     print('\n')
     print('Processing done')
+
 
 if __name__ == '__main__':
     main()
