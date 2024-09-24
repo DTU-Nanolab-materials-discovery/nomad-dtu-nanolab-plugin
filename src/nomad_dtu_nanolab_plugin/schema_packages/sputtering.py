@@ -797,7 +797,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 ],
                 ['Magkeeper3', 'Magkeeper4', 'Taurus', 'SCracker'],
             )
-            platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
+            condition_for_plot = (
+                self.instruments[0].platen_rotation is not None and
+                samples_plot is not None and
+                guns_plot is not None
+            )
+            if condition_for_plot:
+                platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
+
             sample_pos_plot = plot_matplotlib_chamber_config(
                 samples_plot, guns_plot, platen_rot
             )
@@ -809,7 +816,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         except Exception as e:
             logger.warning(f'Failed to plot the sample positions: {e}')
-
     # Helper method to write the data
     def write_data(self, config: dict):
         input_dict = config.get('input_dict')
