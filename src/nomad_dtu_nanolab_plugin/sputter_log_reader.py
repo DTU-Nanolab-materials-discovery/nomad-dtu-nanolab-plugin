@@ -1372,14 +1372,38 @@ def flatten_dict(d, parent_key='', sep=';'):
     return dict(items)
 
 
-def consolidate_data_to_csv(all_params, samples_dir):
-    flatten_all_params = flatten_dict(all_params)
-    df_all = pd.DataFrame([flatten_all_params], sep=';')
-    df_all.columns = pd.MultiIndex.from_tuples(
-        [tuple(col.split(';')) for col in df_all.columns]
-    )
-    df_all.to_csv(os.path.join(samples_dir, 'all_params.csv'), index=False)
+def consolidate_data_to_csv(all_params, samples_dir, sep='__'):
+    # Flatten the dictionary with the specified separator
+    flatten_all_params = flatten_dict(all_params, sep=sep)
 
+    # Convert the flattened dictionary to a DataFrame
+    df = pd.DataFrame([flatten_all_params])
+
+    # Ensure columns are tuples using the same separator
+    df.columns = pd.MultiIndex.from_tuples(
+        [tuple(col.split(sep)) for col in df.columns]
+    )
+
+    # Save the DataFrame to a CSV file
+    df.to_csv(os.path.join(samples_dir, 'all_params.csv'), index=False)
+
+def open_csv_as_multiindex(csv_path):
+    """
+    Reopen a CSV file as a MultiIndex DataFrame.
+
+    Args:
+        csv_path (str): The path to the CSV file.
+
+    Returns:
+        pd.DataFrame: The MultiIndex DataFrame.
+    """
+    # Read the CSV file with the appropriate header levels
+    df = pd.read_csv(csv_path, header=[0, 1, 2, 3])
+
+    # The columns are already MultiIndex, so no need to split them again
+    df.columns = pd.MultiIndex.from_tuples(df.columns)
+
+    return df
 
 # Function to convert timestamps to isoformat
 def convert_timestamps(obj):
@@ -3224,7 +3248,7 @@ def main():
                         logfiles['name'].append(logfile_name)
                         logfiles['folder'].append(sample_path)
 
-    # Uncomment to test the script on a single logfile
+    # # Uncomment to test the script on a single logfile
     # logfiles = {}
     # logfiles['name']= ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
     # logfiles['folder']= [
