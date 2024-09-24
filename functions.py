@@ -11,7 +11,9 @@ from lmfit.models import PseudoVoigtModel, SplineModel,LinearModel, GaussianMode
 from lmfit import Parameters
 from scipy.signal import savgol_filter
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pickle
+from openpyxl import load_workbook
 
 
 ##########################
@@ -505,11 +507,11 @@ def coords_to_grid(coords, grid):
     griddata = coords.copy()
     for i in range(len(coords)):
         # find closest x and y coordinate
-        xminindex = np.abs(grid - coords.iloc[i,:]).idxmin()[0]
-        yminindex = np.abs(grid - coords.iloc[i,:]).idxmin()[1]
+        xminindex = np.abs(grid - coords.iloc[i,:]).idxmin().iloc[0]
+        yminindex = np.abs(grid - coords.iloc[i,:]).idxmin().iloc[1]
         # assign new coordinates
-        griddata.iloc[i,0] = grid.iloc[xminindex, 0]
-        griddata.iloc[i,1] = grid.iloc[yminindex, 1]
+        griddata.iloc[i,0] = np.round(grid.iloc[xminindex, 0], 2)
+        griddata.iloc[i,1] = np.round(grid.iloc[yminindex, 1], 2)
     return(griddata)
 
 def grid_to_MIheader(grid):
@@ -1339,6 +1341,8 @@ def new_heatmap(datatype, data=None, filepath = None, exclude=None, savepath=Non
         cbar_title = "Cu Atomic %"
     elif datatype == "Layer 1 Zr Atomic %":
         cbar_title = "Zr Atomic %"
+    elif datatype == "Layer 1 Ba Atomic %":
+        cbar_title = "Ba Atomic %"
     else:
         cbar_title = datatype
 
@@ -1366,21 +1370,23 @@ def new_heatmap(datatype, data=None, filepath = None, exclude=None, savepath=Non
 
     if savepath:
         if savepath.endswith(".png"):
-            fig.write_image(savepath, scale=2)
+            fig.write_image(savepath, scale=2) #scale sets the resolution here
         
         if savepath.endswith(".html"):
             fig.write_html(savepath)
     
     fig.show()
 
-def lp_translate_excel(filepath, new_path):
+def lp_translate_excel(folder,filename):
     """Creates a new excel file with translated coordinates, given the coordinates 
     of the corners in Sheet2, assuming they are stored rightafter the statistics"""
+    filepath =os.path.join(folder,filename+".xlsx")
+    new_path = os.path.join(folder,filename+"_translated.xlsx")
+
     first_data = pd.read_excel(filepath, sheet_name = "Sheet1")
 
     first_x = first_data["X (mm)"]
     first_y = first_data["Y (mm)"]
-    first_coords = [first_x, first_y]
 
     corners = pd.read_excel(filepath, sheet_name = "Sheet2", usecols=(6,7))
 
@@ -1474,9 +1480,9 @@ def plot_scatter_colormap(data, datatype_x, datatype_y, datatype_z, x = "all", y
 
 def closest_coord(grid, x, y):
     '''"Find closest x and y coordinate for a grid."'''
-    xminindex = np.abs(grid - x).idxmin()[0]
+    xminindex = np.abs(grid - x).idxmin().iloc[0]
     xcoord = grid.iloc[xminindex, 0]
-    yminindex = np.abs(grid[grid['x']==xcoord] - y).idxmin()[1]
+    yminindex = np.abs(grid[grid['x']==xcoord] - y).idxmin().iloc[1]
     ycoord = grid.iloc[yminindex, 1]
     return xcoord, ycoord
 
@@ -1635,31 +1641,39 @@ def rename_SE_images(folderpath):
 
     print("Renaming completed.")
 
-def EDS_coordinates(ncolumns, nrows, mag, spacing, filepath, new_path):
+def old_EDS_coordinates(ncolumns, nrows, mag, spacing, filepath, new_path, edge=4,rotate=False):
 
-    # Calculate the effective area size in the x-direction, considering magnification, 
-    # assuming the x/y ratio is constant 4.1 : 2.8
-    areax = 4.1 * 100 / mag
+    if rotate == "90":
+        ncolumns, nrows = nrows, ncolumns
+        areax = 2.8 * 100 / mag
+        areay = 4.1 * 100 / mag
+    
+    if rotate ==False:
+        # Calculate the effective area size in the x-direction, considering magnification, 
+        # assuming the x/y ratio is constant 4.1 : 2.8
+        areax = 4.1 * 100 / mag
+        areay= 2.8*100 / mag
+    
     # Calculate the spacing , gridlength and starting x-coordinate for the grid in x-direction (assuming the grid is centered)
     space_x = areax * spacing / 100
     gridlength = (ncolumns - 1) * (space_x + areax) + areax
     startx = -gridlength / 2 + (areax / 2)
 
     # do the same for the y-direction
-    areay= 2.8*100/mag
+    
     space_y = areay*spacing/100
     gridheight= (nrows-1)*(space_y+ areay) + areay
     starty = -gridheight/2 + (areay/2)
 
     # Check if the grid dimensions exceed the maximum allowed size (31x31 mm)
     # if so, reduce the spacing by 10% and try again 
-    if gridlength >= 31 or gridheight >= 31:
+    if gridlength >= 39-edge or gridheight >= 39-edge:
         print("Spacing is too large for the map")
 
         new_spacing = np.round(spacing - spacing * 0.1, 0)
         print("New spacing is", new_spacing)
 
-        return EDS_coordinates(ncolumns, nrows, mag, new_spacing)
+        return EDS_coordinates(ncolumns, nrows, mag, new_spacing, filepath, new_path,rotate)
 
     # Create a list to hold grid parameters (input of the grid function)
     grid_input = [ncolumns, nrows,np.round(-startx*2, 2), np.round(-starty*2, 2), np.round(startx, 2), np.round(starty, 2)]
@@ -1675,9 +1689,6 @@ def EDS_coordinates(ncolumns, nrows, mag, spacing, filepath, new_path):
             X.append(coord_x[j])
 
     first_data = pd.read_excel(filepath, sheet_name = "Sheet1")
-
-    first_x = first_data["X (mm)"]
-    first_y = first_data["Y (mm)"]
 
     new_data = first_data.copy()
     new_data["X (mm)"] = X
@@ -1975,6 +1986,388 @@ def fit_this_peak(data, peak_position, fit_range, withplots = True, printinfo = 
         df_fit_info = pd.DataFrame(data = fitData, columns = fit_header)
         df_fitted_peak = pd.concat([df_fitted_peak, df_fit_info, df_peak_info], axis=1)
 
-    plt.legend()
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     display(df_fitted_peak)
     return df_fitted_peak
+
+
+
+def rgba_to_hex(rgba):
+    """Convert an RGBA tuple to a hex color string."""
+    r, g, b, a = [int(c * 255) for c in rgba]
+    return f'#{r:02x}{g:02x}{b:02x}'
+
+def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_df, ref_label="Reference", title=None):
+    'interactive shifted plot for assigning phases to XRD data'
+    fig = make_subplots(
+        rows=2, 
+        cols=1, 
+        shared_xaxes=True, 
+        row_heights=[0.8, 0.2],  # Proportion of height for each plot
+        vertical_spacing=0.02    # Adjust this to reduce space between plots
+    )
+
+    x_data = []
+    y_data = []
+    #colors = ['#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A']
+    colormap = plt.get_cmap('turbo')  # You can choose any matplotlib colormap
+    colors = [rgba_to_hex(colormap(i / len(x))) for i in range(len(x))]  # Convert colors to hex
+
+    # Store all y-data to find the global maximum
+    all_y_data = []
+
+    # Loop through and plot the XRD spectra with a vertical shift in the top plot
+    for i in range(len(x)):
+        x_data = get_data(data, datatype_x, x[i], y[i], False, False)
+        y_data = get_data(data, datatype_y, x[i], y[i], False, False)
+        shifted_y_data = y_data + shift * i
+        
+        all_y_data.extend(shifted_y_data)  # Collect y-data with shift for max computation
+        
+        fig.add_trace(
+            go.Scatter(
+                x=x_data,
+                y=shifted_y_data,
+                mode='lines',
+                line=dict(color=colors[i]),
+                name=f'{x[i]}, {y[i]}'
+            ),
+            row=1, col=1
+        )
+
+    # Compute the global maximum y-value, considering shifts
+    global_max_y = max(all_y_data)
+
+    # Create traces for each reference material (hidden initially)
+    ref_traces = []
+    buttons = []
+
+    for ref_material, ref_df in ref_peaks_df.items():
+        # Reference spectrum plotted in the bottom plot
+        ref_trace = go.Scatter(
+            x=ref_df["2theta"],
+            y=ref_df["I"],
+            mode='lines',
+            name=f'{ref_material} Reference',
+            visible=False
+        )
+        
+        # Create vertical peak lines for top plot (raw data plot)
+        peak_lines = go.Scatter(
+            x=[value for peak in ref_df["Peak 2theta"] for value in [peak, peak, None]],  # x: peak, peak, None to break the line
+            y=[-100, global_max_y * 1.1, None] * len(ref_df["Peak 2theta"]),  # y: 0 -> global_max_y for each line, with None to break lines
+            mode='lines',
+            line=dict(color='grey', dash='dot'),
+            showlegend=False,
+            visible=False
+        )
+
+        # Append traces for each reference spectrum and its peaks
+        ref_traces.append(ref_trace)
+        ref_traces.append(peak_lines)
+        
+        # Create a button for each reference
+        buttons.append(dict(
+            label=ref_material,
+            method='update',
+            args=[{'visible': [True] * len(x) + [False] * len(ref_traces)},  # Show all raw spectra, hide refs by default
+                  {'title': f'{title} - {ref_material} Reference'}]
+        ))
+
+    # Add reference traces to figure (initially hidden)
+    for trace in ref_traces:
+        # Ensure trace.name is not None before checking 'Reference' in name
+        fig.add_trace(trace, row=2 if trace.name and 'Reference' in trace.name else 1, col=1)
+
+    # Update buttons to control the visibility of one reference at a time
+    for i, button in enumerate(buttons):
+        # Make the selected reference spectrum visible in the bottom plot and its peaks visible in the top plot
+        button['args'][0]['visible'][len(x):] = [False] * len(ref_traces)  # Hide all refs initially
+        button['args'][0]['visible'][len(x) + 2 * i:len(x) + 2 * i + 2] = [True, True]  # Show selected ref and peaks
+
+    # Add the dropdown menu to switch between reference spectra
+    fig.update_layout(
+        updatemenus=[{
+            'buttons': buttons,
+            'direction': 'down',
+            'showactive': True,
+            'x': 1.05,
+            'xanchor': 'left',
+            'y': 1.1,
+            'yanchor': 'top'
+        }],
+        template='plotly_white',  # Choose a template (e.g., 'plotly_dark')
+        title=title,
+        height=600,  # Adjust the height of the figure (e.g., 700)
+        width=900,   # Adjust the width of the figure (e.g., 900)
+        legend=dict(x=1.05, y=1),
+        xaxis2_title=datatype_x,
+        yaxis_title=datatype_y
+    )
+
+
+    return fig
+
+def extract_coordinates(data):
+    coords= data.columns.get_level_values(0).unique().values
+    x_values = []
+    y_values = []
+    
+    for item in coords:
+        x, y = item.split(',')
+        x_values.append(float(x))
+        y_values.append(float(y))
+    
+    return x_values, y_values
+
+
+def EDX_stage_coords(folder, filename):
+    'Calculate EDX coordinates for a given file. Requires .xlsx file with columns as in template.'
+
+    # Define file paths
+    filepath = os.path.join(folder, filename + ".xlsx")
+    newpath = os.path.join(folder, filename + "_stage_coords.xlsx")
+    
+    # Read specific columns from the Excel file, and extract values
+    file = pd.read_excel(filepath, sheet_name='Sheet2', usecols='H:P')
+    file = file.drop(file.index[3:])  # Drop the 4th row (assumes you have info for 3 points)
+
+    nrows = file['nrows'].values[0].astype(int)
+    ncolumns = file['ncolumns'].values[0].astype(int)
+    points_x = file['points x'].values[0:3]
+    points_y = file['points y'].values[0:3]
+
+    # Calculate spacing between points 1, 3, (nrows-1)
+    space_x = points_x[2] - points_x[0]
+    space_y = points_y[1] - points_y[0]
+
+    # Generate coordinates and order them as layerprobe does
+    coord_x = np.round(np.linspace(points_x[0], points_x[0] + space_x * (ncolumns - 1), ncolumns), 2)
+    coord_y = np.round(np.linspace(points_y[0], points_y[0] + space_y * (nrows - 1), nrows), 2)
+
+    X, Y = [], []
+    for j in range(ncolumns):
+        for i in range(nrows):
+            Y.append(coord_y[i])
+            X.append(coord_x[j])
+
+    # Load the workbook and insert the calculated coordinates in the first sheet
+    workbook = load_workbook(filepath)
+    
+    for i, value in enumerate(X, start=2):
+        workbook['Sheet1'][f'B{i}'] = value
+    for i, value in enumerate(Y, start=2):
+        workbook['Sheet1'][f'C{i}'] = value
+
+    workbook.save(newpath)
+    workbook.close()
+    
+    print(filename, " - coordinates calculated and saved")
+
+
+
+def EDX_sample_coords(folder, filename):
+    'Calculate and translate EDX coordinates for a given file. Requires .xlsx file with columns as in template.'
+
+    # Define file paths
+    filepath = os.path.join(folder, filename+".xlsx")
+    newpath = os.path.join(folder, filename+"_sample_coords.xlsx")
+
+    # Read specific columns from the Excel file, and extract values
+    file = pd.read_excel(filepath, sheet_name='Sheet2', usecols='H:P')
+    file = file.drop(file.index[3:])  # Drop the 4th row (assumes you have info for 3 points)
+
+    nrows= file['nrows'].values[0].astype(int)
+    ncolumns = file['ncolumns'].values[0].astype(int)
+    corners_x= file['corner x'].values[0:2]
+    corners_y= file['corner y'].values[0:2]
+    points_x = file['points x'].values[0:3]
+    points_y = file['points y'].values[0:3]
+
+    # Calculate spacing between points 1, 3, (nrows-1)
+    space_x = points_x[2] - points_x[0]
+    space_y = points_y[1] - points_y[0]
+
+    # Calculate shift from corners and correct for this translation
+    shift_x= (corners_x[1] +corners_x[0])/2
+    shift_y= (corners_y[0] +corners_y[1])/2
+    start_x = points_x[0] - shift_x
+    start_y = points_y[0] - shift_y
+
+    # Generate coordinates and order them as layerprobe does
+    coord_x = np.round(np.linspace(start_x, start_x+ space_x*(ncolumns-1), ncolumns), 2)
+    coord_y = np.round(np.linspace(start_y, start_y+ space_y*(nrows-1),    nrows), 2)
+    X,Y = [],[]
+    for j in range(0, ncolumns):
+        for i in range(0, nrows):
+            Y.append(coord_y[i])
+            X.append(coord_x[j])
+
+    # Load the workbook and insert the calculated coordinates in the first sheet
+    workbook = load_workbook(filepath)
+    sheet1= workbook['Sheet1']
+    
+    for i, value in enumerate(X, start= 2):
+        sheet1[f'B{i}']= value
+    for i, value in enumerate(Y, start= 2):
+        sheet1[f'C{i}']= value
+
+    workbook.save(newpath)
+    workbook.close()
+
+    # check for correct translation (allow 0.3 mm misalignment from sample rotation)
+    if np.abs(X[-1]+X[0]) > 0.3 or np.abs(Y[-1]+Y[0]) > 0.3:
+        print(filename, " - coordinates calculated and saved, but not symmetric")
+        print("X shift: ", X[-1]+X[0])
+        print("Y shift: ", Y[-1]+Y[0])
+    else:
+        print(filename, " - coordinates calculated, translated and saved")
+
+
+
+def EDX_coordinates(folder, filename, edge=3, rotate=False, spacing= "auto"):
+    'Calculate and translate EDX coordinates for a given file. Requires .xlsx file with columns as in template.'
+    
+    # Define file paths
+    filepath = os.path.join(folder, filename+".xlsx")
+    newpath = os.path.join(folder, filename+"_new_coords.xlsx")
+
+    # Read specific columns from the Excel file, and extract values
+    file = pd.read_excel(filepath, sheet_name='Sheet2', usecols='H:P')
+    file = file.drop(file.index[3:])  # Drop the 4th row (assumes you have info for 3 points)
+
+    nrows= file['nrows'].values[0].astype(int)
+    ncolumns = file['ncolumns'].values[0].astype(int)
+    corners_x= file['corner x'].values[0:2]
+    corners_y= file['corner y'].values[0:2]
+    mag = file['magnification'].values[0]
+    if spacing == "auto":
+        spacing = file['spacing'].values[0]
+
+    if rotate == "90":
+        ncolumns, nrows = nrows, ncolumns
+        areax = 2.8 * 100 / mag
+        areay = 4.1 * 100 / mag
+    
+    if rotate ==False:
+        # Calculate the effective area size in the x-direction, considering magnification, 
+        # assuming the x/y ratio is constant 4.1 : 2.8
+        areax = 4.1 * 100 / mag
+        areay= 2.8*100 / mag
+    
+    # Calculate the spacing , gridlength and starting x-coordinate for the grid in x-direction (assuming the grid is centered)
+    space_x = areax * spacing / 100
+    gridlength = (ncolumns - 1) * (space_x + areax) #+ areax
+    startx = -gridlength / 2 #+ (areax / 2)
+
+    # do the same for the y-direction
+    
+    space_y = areay*spacing/100
+    gridheight= (nrows-1)*(space_y+ areay) #+ areay/2
+    starty = -gridheight/2 #+ (areay/2)
+
+    samplesize = [corners_x[1]-corners_x[0], corners_y[0]-corners_y[1]]
+    print("Sample size is", samplesize)
+
+    # Check if the grid dimensions exceed the maximum allowed size (31x31 mm)
+    # if so, reduce the spacing by 10% and try again 
+    if gridlength >= samplesize[0]-edge or gridheight >= samplesize[1]-edge:
+        print("Spacing is too large for the map")
+
+        new_spacing = np.round(spacing - spacing * 0.05, 0)
+        print("New spacing is", new_spacing)
+
+        return EDX_coordinates(folder, filename, spacing=new_spacing)
+
+    # Generate coordinates for each column
+    coord_x = np.round(np.linspace(startx, -startx, ncolumns), 2)
+    coord_y = np.round(np.linspace(starty, -starty, nrows), 2)
+    X=[]
+    Y=[]
+    for j in range(0, ncolumns):
+        for i in range(0, nrows):
+            Y.append(coord_y[i])
+            X.append(coord_x[j])
+
+    # Load the workbook and insert the calculated coordinates in the first sheet
+    workbook = load_workbook(filepath)
+    sheet1= workbook['Sheet1']
+    
+    for i, value in enumerate(X, start= 2):
+        sheet1[f'B{i}']= value
+    for i, value in enumerate(Y, start= 2):
+        sheet1[f'C{i}']= value
+
+    workbook.save(newpath)
+    workbook.close()
+
+
+def select_points(data, x_min=-18, x_max=18, y_min=-18, y_max=18):
+    'get coordinates of the points within the defined range, you can call them with get_data, or plot_data, or interactive_XRD_shift'
+    grid0 = MI_to_grid(data)
+    grid = grid0.drop_duplicates().reset_index(drop=True)
+
+    grid1 = grid[grid['x'] >x_min]
+    grid2 = grid1[grid1['x'] <x_max]
+    grid3 = grid2[grid2['y'] >y_min]
+    grid4 = grid3[grid3['y'] <y_max]
+    new_x = grid4['x'].values
+    new_y = grid4['y'].values
+    return new_x, new_y
+
+
+def ternary_plot(df, el1, el2, el3, datatype, title, savepath = None): 
+    "make a ternary plot of the data in df, with el1, el2, el3 as the corners, and colorscale based on datatype"
+
+    A= f'Layer 1 {el1} Atomic %'
+    B= f'Layer 1 {el2} Atomic %'
+    C= f'Layer 1 {el3} Atomic %'
+
+    A_percent = df.xs(A, level='Data type', axis=1).values.flatten()
+    B_percent = df.xs(B, level='Data type', axis=1).values.flatten()
+    C_percent = df.xs(C, level='Data type', axis=1).values.flatten()
+    intensity = df.xs(datatype, level='Data type', axis=1).values.flatten()
+    coordinates = MI_to_grid(df).values # df.columns.get_level_values(0)[::7].values.flatten() also works, but gives a lot of decimals
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatterternary({
+        'mode': 'markers',
+        'a': A_percent,   # el1 percentages
+        'b': B_percent,   # el2 percentages
+        'c': C_percent,   # el3 percentages
+        'marker': {
+            'symbol': 100 ,
+            'size': 8,
+            'color': intensity,  # Use intensity for marker color
+            'colorscale': 'Turbo',  # Choose a colorscale
+            'colorbar': {'title': datatype},  # Add a colorbar
+            'line': {'width': 2}
+        },
+        'text': coordinates,
+        'hovertemplate': f'{el1}: %{{a:.1f}}%<br>{el2}: %{{b:.1f}}%<br>{el3}: %{{c:.1f}}%<br>{datatype}: %{{marker.color:.1f}}<br>Coordinates:%{{text:str}}',  # Custom hover text format
+        #'name': f'{datatype}: %{{text:str}}'
+        'showlegend': False
+    }))
+
+    # Update layout
+    fig.update_layout({
+        'ternary': {
+            'sum': 100,
+            'aaxis': {'title': f'{el1} %', 'min': 0, 'linewidth': 2, 'ticks': 'outside'},
+            'baxis': {'title': f'{el2} %', 'min': 0, 'linewidth': 2, 'ticks': 'outside'},
+            'caxis': {'title': f'{el3} %', 'min': 0, 'linewidth': 2, 'ticks': 'outside'}
+        },
+        'title': title},
+        width=800,
+        height=600, 
+    )       
+    if savepath:
+        if savepath.endswith(".png"):
+            fig.write_image(savepath, scale=2)
+        if savepath.endswith(".html"):
+            fig.write_html(savepath)
+
+    # Show the plot
+    fig.show()
+
+# %%
