@@ -90,9 +90,9 @@ def cartesian(r, theta):
 def read_samples(sample_list: list):
     samples = []
     for sample_obj in sample_list:
-        label = sample_obj.relative_position
-        pos_x = sample_obj.Substrate_position_x
-        pos_y = sample_obj.Substrate_position_y
+        label = str(sample_obj.relative_position)
+        pos_x = sample_obj.Substrate_position_x.to('mm').magnitude
+        pos_y = sample_obj.Substrate_position_y.to('mm').magnitude
         # size = sample_obj.reference.SIZE?
         sample = Sample(label, pos_x, pos_y)
         samples.append(sample)
@@ -103,9 +103,9 @@ def read_samples(sample_list: list):
 def read_guns(gun_list: list, gun_names: str):
     guns = []
     for gun_obj, name in zip(gun_list, gun_names):
-        # Where do i get where the gun is aiming at ?
-        gun = Gun(name, gun_obj.target_material)
-        guns.append(gun)
+        if gun_obj.target_material is not None:
+                    gun = Gun(name, gun_obj.target_material)
+                    guns.append(gun)
     return guns
 
 

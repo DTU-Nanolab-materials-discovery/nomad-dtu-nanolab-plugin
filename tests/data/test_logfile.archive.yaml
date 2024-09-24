@@ -4,12 +4,20 @@ data:
   samples:
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUsamples
       relative_position: 'BR'
-      Substrate_position_x: 25
-      Substrate_position_y: 25
+      Substrate_position_x: 0.025
+      Substrate_position_y: 0.025
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUsamples
       relative_position: 'FR'
-      Substrate_position_x: -15
-      Substrate_position_y: 25
+      Substrate_position_x: -0.015
+      Substrate_position_y: 0.025
   Magkeeper3:
     m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
     target_material: 'Cu'
+  Magkeeper4:
+    m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
+    target_material: 'Zr'
+  Taurus:
+    m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
+    target_material: 'BaS'
+  SCracker:
+    m_def: omad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
