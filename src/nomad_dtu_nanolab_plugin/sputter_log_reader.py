@@ -1443,6 +1443,9 @@ def open_csv_as_multiindex(csv_path,replace_nan=False):
     # The columns are already MultiIndex, so no need to split them again
     df.columns = pd.MultiIndex.from_tuples(df.columns)
 
+    #set the index names to ['sample','event','source','parameter']
+    df.columns.names = ['sample','event','source','parameter']
+
     if replace_nan:
         # Replace the string 'nan' with an empty string in MultiIndex column names
         df.columns = df.columns.set_levels(
@@ -1451,6 +1454,12 @@ def open_csv_as_multiindex(csv_path,replace_nan=False):
 
     return df
 
+def get_df_param(df,path:list):
+    for key in path:
+        df = df.xs(key, axis=1, level=1)
+    #set the data row index to path[-1]
+    df.index = pd.Index(df.index, name=path[-1])
+    return df
 
 # Function to convert timestamps to isoformat
 def convert_timestamps(obj):
@@ -3282,7 +3291,7 @@ def main():
     # Set the execution flags
     print_main_params = False
     print_step_params = False
-    test_single_logfile = True
+    test_single_logfile = False
     remove_samples = True
 
     # global events_to_plot, main_params, step_params, all_params
