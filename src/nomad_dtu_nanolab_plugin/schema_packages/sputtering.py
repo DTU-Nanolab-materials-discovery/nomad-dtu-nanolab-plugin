@@ -27,7 +27,7 @@ from nomad.datamodel.metainfo.basesections import (
     CompositeSystemReference,
     InstrumentReference,
 )
-from nomad.datamodel.metainfo.plot import Figure, PlotlyFigure, PlotSection
+from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_material_processing.vapor_deposition.general import (
@@ -40,11 +40,6 @@ from nomad_measurements.utils import merge_sections
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
-from nomad_dtu_nanolab_plugin.sputter_chamber_visualizer import (
-    plot_matplotlib_chamber_config,
-    read_guns,
-    read_samples,
-)
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     get_nested_value,
     map_params_to_nomad,
@@ -784,30 +779,31 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         except Exception as e:
             logger.warning(f'Failed to plot the events: {e}')
 
-        # Plotting the sample positions on the platen
-        try:
-            samples_plot = read_samples(self.samples)
-            dep_params: DepositionParameters = self.deposition_parameters
-            guns_plot = read_guns(
-                [
-                    dep_params.Magkeeper3,
-                    dep_params.Magkeeper4,
-                    dep_params.Taurus,
-                    dep_params.SCracker,
-                ],
-                ['Magkeeper3', 'Magkeeper4', 'Taurus', 'SCracker'],
-            )
-            condition_for_plot = (
-                self.instruments[0].platen_rotation is not None and
-                samples_plot is not None and
-                guns_plot is not None
-            )
-            if condition_for_plot:
-                platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
+        # # Plotting the sample positions on the platen
+        # try:
+        #     samples_plot = read_samples(self.samples)
+        #     dep_params: DepositionParameters = self.deposition_parameters
+        #     guns_plot = read_guns(
+        #         [
+        #             dep_params.Magkeeper3,
+        #             dep_params.Magkeeper4,
+        #             dep_params.Taurus,
+        #             dep_params.SCracker,
+        #         ],
+        #         ['Magkeeper3', 'Magkeeper4', 'Taurus', 'SCracker'],
+        #     )
+        #     condition_for_plot = (
+        #         self.instruments[0].platen_rotation is not None and
+        #         samples_plot is not None and
+        #         guns_plot is not None
+        #     )
+        #     if condition_for_plot:
+        #         platen_rot = (
+        # self.instruments[0].platen_rotation.to('degree').magnitude)
 
-            sample_pos_plot = plot_matplotlib_chamber_config(
-                samples_plot, guns_plot, platen_rot
-            )
+        #     sample_pos_plot = plot_matplotlib_chamber_config(
+        #         samples_plot, guns_plot, platen_rot
+        #     )
 
         except Exception as e:
             logger.warning(f'Failed to plot the sample positions: {e}')
