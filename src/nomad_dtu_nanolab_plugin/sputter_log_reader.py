@@ -3317,16 +3317,12 @@ def main():
         # --------PRINT DERIVED QUANTITIES REPORTS-------------
 
         if print_main_params:
-            print('\n')
             print(f'Derived quantities report for logfile\n{logfiles["name"][i]}:\n')
             print_params(main_params)
-            print('\n')
 
         if print_step_params:
-            print('\n')
             print(f'Step report for logfile\n{logfiles["name"][i]}:\n')
             print_params(step_params)
-            print('\n')
 
         # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---
 
