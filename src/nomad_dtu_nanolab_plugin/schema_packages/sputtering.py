@@ -479,8 +479,9 @@ class AdjustedInstrumentParameters(InstrumentReference, ArchiveSection):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        self.lab_id = self.reference.lab_id
-        self.name = self.reference.name
+        if self.reference is not None:
+            self.lab_id = self.reference.lab_id
+            self.name = self.reference.name
 
 
 class GunOverview(ArchiveSection):
@@ -796,7 +797,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 ],
                 ['Magkeeper3', 'Magkeeper4', 'Taurus', 'SCracker'],
             )
-            platen_rot = self.instruments[0].platen_rotation
+            platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
             sample_pos_plot = plot_matplotlib_chamber_config(
                 samples_plot, guns_plot, platen_rot
             )
