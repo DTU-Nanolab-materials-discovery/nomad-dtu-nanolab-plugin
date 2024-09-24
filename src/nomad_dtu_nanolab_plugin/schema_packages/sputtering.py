@@ -808,12 +808,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             sample_pos_plot = plot_matplotlib_chamber_config(
                 samples_plot, guns_plot, platen_rot
             )
-            self.figures.append(
-                Figure(
-                    label='Sample positions',
-                    figure=sample_pos_plot,
-                )
-            )
+
         except Exception as e:
             logger.warning(f'Failed to plot the sample positions: {e}')
     # Helper method to write the data
