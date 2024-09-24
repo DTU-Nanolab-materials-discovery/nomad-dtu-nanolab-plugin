@@ -37,6 +37,12 @@ GUN_PROPERTIES = {
     'Magkeeper4': {'color': 'magenta', 'location': np.radians(45)},
 }
 
+GUN_OVERVIEW_NAMES = [
+    'Taurus',
+    'Magkeeper3',
+    'Magkeeper4',
+]
+
 # ---------CLASSES-------------
 
 
@@ -103,9 +109,13 @@ def read_samples(sample_list: list):
 def read_guns(gun_list: list, gun_names: str):
     guns = []
     for gun_obj, name in zip(gun_list, gun_names):
-        if gun_obj.target_material is not None:
-                    gun = Gun(name, gun_obj.target_material)
-                    guns.append(gun)
+        if name in GUN_OVERVIEW_NAMES:
+            if gun_obj.target_material is not None:
+                gun = Gun(name, gun_obj.target_material)
+                guns.append(gun)
+        elif name == 'SCracker':
+            gun = Gun(name, 'S')
+            guns.append(gun)
     return guns
 
 
