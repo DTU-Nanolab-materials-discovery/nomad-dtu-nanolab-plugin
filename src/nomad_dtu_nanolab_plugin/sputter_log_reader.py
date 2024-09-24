@@ -3281,7 +3281,8 @@ def main():
     # Loop over all the logfiles in the directory
     for i in range(len(logfiles['name'])):
         # Default Logfile location
-        print('\n',f'Processing logfile: {logfiles["name"][i]}')
+        print('\n')
+        print(f'Processing logfile: {logfiles["name"][i]}')
         logfile_path = (
             f'{logfiles["folder"][i]}/{logfiles["name"][i]}.{logfiles_extension}'
         )
@@ -3335,7 +3336,8 @@ def main():
     print('Consolidating the data into a single CSV file')
     consolidate_data_to_csv(all_params, samples_dir)
 
-    print('\n','Processing done')
+    print('\n')
+    print('Processing done')
 
 if __name__ == '__main__':
     main()
