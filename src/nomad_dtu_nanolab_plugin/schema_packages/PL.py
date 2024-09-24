@@ -6,9 +6,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.datamodel import EntryArchive
-from nomad.datamodel.metainfo.annotations import (BrowserAnnotation,
-                                                  ELNAnnotation,
-                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.annotations import (
+    BrowserAnnotation,
+    ELNAnnotation,
+    ELNComponentEnum,
+)
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
@@ -17,7 +19,9 @@ from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    MappingMeasurement, MappingResult)
+    MappingMeasurement,
+    MappingResult,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -313,8 +317,8 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
         gratings = self.remove_unit(metadata.get('Grating', None))
         detector = metadata.get('Detector', None)
 
-        range = metadata.get('Range', None)
-        parts = [float(self.remove_unit(part)) for part in range.split('to') if part]
+        range_str = metadata.get('Range', None)
+
 
         meta= PLMetadata(
             thickness=ureg.Quantity(thickness, 'um'),
@@ -328,10 +332,13 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
             gain_factor=gain,
             temperature=ureg.Quantity(temperature, 'degC'),
             center_wafelength=ureg.Quantity(centerwavelength, 'nm'),
-            wavelength_range=[ureg.Quantity(x, 'nm') for x in parts],
             slit_width=ureg.Quantity(slitwidth, 'mm'),
             gratings=ureg.Quantity(gratings, 'g/mm'),
             detector=detector,
+            wavelength_range=[
+                (ureg.Quantity(float(self.remove_unit(part))), 'nm')
+                for part in range_str.split('to') if part
+            ],
         )
 
         merge_sections(self.metadata, meta, logger)
@@ -397,7 +404,11 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
                 )
 
 
-    def plot_spectra(self, data_dict: dict[str, Any], ) -> None:
+    def plot_spectra(self,
+                    data_dict: dict[str, Any],
+                    archive: 'EntryArchive',
+                    logger: 'BoundLogger',
+                    ) -> None:
         old_results: dict[str, PLMappingResult] = {}
         if self.results is not None:
             old_results = {
@@ -409,7 +420,7 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
 
         for key, values in data_dict.items():
             #create plot here
-            fig == go.Figure()
+            fig = go.Figure()
 
             fig = px.line(
                 data_dict,
