@@ -109,13 +109,14 @@ def read_samples(sample_list: list):
 def read_guns(gun_list: list, gun_names: str):
     guns = []
     for gun_obj, name in zip(gun_list, gun_names):
-        if name in GUN_OVERVIEW_NAMES:
-            if gun_obj.target_material is not None:
-                gun = Gun(name, gun_obj.target_material)
+        if gun_obj is not None:
+            if name in GUN_OVERVIEW_NAMES:
+                if gun_obj.target_material is not None:
+                    gun = Gun(name, gun_obj.target_material)
+                    guns.append(gun)
+            elif name == 'SCracker':
+                gun = Gun(name, 'S')
                 guns.append(gun)
-        elif name == 'SCracker':
-            gun = Gun(name, 'S')
-            guns.append(gun)
     return guns
 
 
