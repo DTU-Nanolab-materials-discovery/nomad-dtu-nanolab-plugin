@@ -75,8 +75,8 @@ POWER_FWD_REFL_THRESHOLD = 10  # watts
 # ----PLOT VALUES-----
 
 BASE_HEIGHT = 250
-WIDTH = 500
-HEIGHT = 400
+WIDTH = 800
+HEIGHT = 600
 VERTICAL_SPACING = 0.02
 # Define a dictionary for step colors in the timeline plot
 STEP_COLORS = {
@@ -1513,16 +1513,21 @@ def print_params(quantities, indent=''):
 
 
 def build_file_paths(logfiles, i):
-    txt_file_dir = os.path.join(logfiles['folder'][i])
+
+    file_dir = os.path.join(logfiles['folder'][i])
+
+    # Specify the report export location and file name
     txt_file_name = f'{logfiles["name"][i]}_derived_quantities.txt'
-    txt_file_path = os.path.join(txt_file_dir, txt_file_name)
+    txt_file_path = os.path.join(file_dir, txt_file_name)
 
-    # Specify the plotly graph export location and file name
-    plotly_graph_file_dir = os.path.join(logfiles['folder'][i])
-    plotly_graph_file_name = f'{logfiles["name"][i]}_plotly_timeline.html'
-    plotly_graph_file_path = os.path.join(plotly_graph_file_dir, plotly_graph_file_name)
+    # Specify the plotly graph export location and file name for timelines
+    timeline_file_name = f'{logfiles["name"][i]}_plotly_timeline.html'
+    timeline_file_path = os.path.join(file_dir, timeline_file_name)
 
-    return txt_file_path, plotly_graph_file_path
+    # Specify the plotly graph export location and file name for bias/power plots
+    bias_file_name = f'{logfiles["name"][i]}_plotly_bias.html'
+    bias_file_path = os.path.join(file_dir, bias_file_name)
+    return txt_file_path, timeline_file_path, bias_file_path
 
 
 # Function to write the derived quantities in a nested format
@@ -2540,10 +2545,10 @@ def quick_plot(df, Y, **kwargs):
     fig.update_layout(template='plotly_white')
     fig.update_layout(
         legend=dict(
-            yanchor='top',
-            y=0.99,
-            xanchor='right',
-            x=0.99,
+            # yanchor='top',
+            # y=0.99,
+            # xanchor='right',
+            # x=0.99,
             bgcolor='rgba(0,0,0,0)',  # Transparent legend background
         )
     )
@@ -2626,7 +2631,10 @@ def create_dual_y_plot(df, plot_params):
 
     fig.update_layout(
         yaxis=dict(title=y_axis_title),
-        yaxis2=dict(title=y2_axis_title, overlaying='y', side='right'),
+        yaxis2=dict(title=y2_axis_title,
+                    overlaying='y',
+                    side='right',
+                    showgrid=False),
         title=plot_title,
         legend_title_text='',
         width=WIDTH,
@@ -2742,6 +2750,33 @@ def plot_plotly_extimeline(events_to_plot, sample_name=''):
     )
 
     return fig
+
+def generate_bias_plot(events_to_plot):
+    deposition = extract_category_from_list(events_to_plot, 'deposition')
+
+    Y_plot = []
+    Y2_plot = []
+    for col in deposition.data.columns:
+        if re.search(
+                r'Source \d+ DC Bias', col
+                ) or re.search(
+                r'Source \d+ Voltage', col
+                ):
+            Y_plot.append(col)
+        elif re.search(
+                r'Source \d+ Power', col
+                ) or re.search(
+                r'Source \d+ Fwd Power', col
+                ):
+            Y2_plot.append(col)
+
+    bias_plot = quick_plot(
+        deposition.data,
+        Y_plot,
+        mode='dual_y',
+        Y2 = Y2_plot)
+
+    return bias_plot
 
 
 # -------HELPER FUNCTIONS TO MANIPULATE LISTS OF EVENTS--------
@@ -3011,15 +3046,15 @@ def verify_deposition_unicity(events, raw_data):
                 print('Number of deposition events before filtering:', event.events)
                 for i in range(event.events):
                     print(
-                        f'Deposition({i})start time: {event.bounds[i][0]}',
-                        f'Deposition({i})end time: {event.bounds[i][1]}',
+                        f'Deposition({i}) start time: {event.bounds[i][0]}',
+                        f'Deposition({i}) end time: {event.bounds[i][1]}',
                     )
                 event.filter_out_small_events(MIN_DEPOSITION_SIZE)
                 print('Number of deposition events after filtering:', event.events)
                 for i in range(event.events):
                     print(
-                        f'Deposition({i+1})start time: {event.bounds[i][0]}',
-                        f'Deposition({i+1})end time: {event.bounds[i][1]}',
+                        f'Deposition({i+1}) start time: {event.bounds[i][0]}',
+                        f'Deposition({i+1}) end time: {event.bounds[i][1]}',
                     )
                 if event.events != 1:
                     print(
@@ -3057,6 +3092,13 @@ def select_last_event(events, raw_data, ref_event, categories):
                     f'{event.step_id}. Error: {e}',
                 )
     return events
+
+def extract_category_from_list(events:list, category:str):
+    for event in events:
+        if event.category == category:
+            return event
+    return None
+
 
 
 def read_events(data):
@@ -3219,7 +3261,7 @@ def read_events(data):
     for event in sep_events:
         step_params = event.get_nomad_step_params(step_params, source_list)
 
-    return events_to_plot, main_params, step_params
+    return events_to_plot, main_params, step_params,
 
 
 # ----NOMAD HELPER FUNCTION-----
@@ -3437,7 +3479,8 @@ def main():
         # ---------DEFAULT EXPORT LOCATIONS-------------
         # Specify the path and filename for the report text file
 
-        txt_file_path, plotly_graph_file_path = build_file_paths(logfiles, i)
+        txt_file_path, timeline_file_path, bias_file_path = (
+            build_file_paths(logfiles, i))
         # ---------READ THE DATA-------------
 
         # Read the log file and spectrum data
@@ -3459,7 +3502,13 @@ def main():
         # plotly_timeline.show()
 
         # Save the image as an interactive html file
-        plotly_timeline.write_html(plotly_graph_file_path)
+        plotly_timeline.write_html(timeline_file_path)
+
+        #--------GRAPH THE DC BIAS AS A FUNCTION OF TIME------------
+
+        bias_plot = generate_bias_plot(events_to_plot)
+
+        bias_plot.write_html(bias_file_path)
 
         # --------PRINT DERIVED QUANTITIES REPORTS-------------
 
