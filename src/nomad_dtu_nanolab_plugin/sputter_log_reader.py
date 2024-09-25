@@ -19,6 +19,7 @@ from mendeleev import element
 from plotly.subplots import make_subplots
 
 # ---------REFERENCE VALUES-------------
+
 # Set of reference values used in different parts of the script
 # Proportion of values needed to be above the threshold to consider the
 # plasma rf or dc
@@ -70,24 +71,13 @@ WITHIN_RANGE_PARAM = 5  # %
 # on
 POWER_FWD_REFL_THRESHOLD = 10  # watts
 # Categories of events to be considered in the main report
-CATEGORIES_MAIN_REPORT = [
-    'deposition',
-    'ramp_up_temp',
-    'ramp_down_high_temp',
-    'source_presput',
-    'source_ramp_up',
-    'cracker_base_pressure',
-    'source_deprate2_film_meas',
-]
-# Categories of events to select the last event before the deposition, if possible
-CATEGORIES_LAST_EVENT = ['source_deprate2_film_meas', 'ramp_up_temp', 'source_ramp_up']
-# Categories of events to put in the bottom of the timeline plot
-CATEGORIES_FIRST = {
-    'deposition',
-    'ramp_up_temp',
-    'ramp_down_high_temp',
-    'ramp_down_low_temp',
-}
+
+# ----PLOT VALUES-----
+
+BASE_HEIGHT = 250
+WIDTH = 500
+HEIGHT = 400
+VERTICAL_SPACING = 0.02
 # Define a dictionary for step colors in the timeline plot
 STEP_COLORS = {
     'Deposition': 'blue',
@@ -116,6 +106,27 @@ STEP_COLORS = {
     'Ar On': 'black',
     'S Dep Rate Meas': '#B22222',  # Firebrick
     'Cracker Pressure Meas': 'brown',
+}
+
+CATEGORIES_MAIN_REPORT = [
+    'deposition',
+    'ramp_up_temp',
+    'ramp_down_high_temp',
+    'source_presput',
+    'source_ramp_up',
+    'cracker_base_pressure',
+    'source_deprate2_film_meas',
+]
+# ------OTHER VALUES------
+
+# Categories of events to select the last event before the deposition, if possible
+CATEGORIES_LAST_EVENT = ['source_deprate2_film_meas', 'ramp_up_temp', 'source_ramp_up']
+# Categories of events to put in the bottom of the timeline plot
+CATEGORIES_FIRST = {
+    'deposition',
+    'ramp_up_temp',
+    'ramp_down_high_temp',
+    'ramp_down_low_temp',
 }
 SOURCE_NAME = {'1': 'Taurus', '3': 'Magkeeper3', '4': 'Magkeeper4', 'all': 'All'}
 GAS_NUMBER = {
@@ -2470,7 +2481,6 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
 # -------PLOTTING DEFINITIONS------------
 
 
-
 def quick_plot(df, Y, **kwargs):
     """
     Plots a time series using Plotly.
@@ -2494,7 +2504,7 @@ def quick_plot(df, Y, **kwargs):
     # Extract keyword arguments
     X = kwargs.get('X', 'Time Stamp')
     mode = kwargs.get('mode', 'default')
-    plot_type = kwargs.get('plot_type', 'line')
+    plot_type = kwargs.get('plot_type', 'scatter')
     Y2 = kwargs.get('Y2', [])
 
     # Ensure Y and Y2 are lists
@@ -2508,52 +2518,91 @@ def quick_plot(df, Y, **kwargs):
     y2_axis_title = Y2[0] if len(Y2) == 1 else 'Values'
     plot_title = 'Quick Plot'
 
+    # Consolidate the parameters into a single dictionary
+    plot_params = {
+        'X': X,
+        'Y': Y,
+        'Y2': Y2,
+        'plot_type': plot_type,
+        'plot_title': plot_title,
+        'y_axis_title': y_axis_title,
+        'y2_axis_title': y2_axis_title,
+    }
+
     if mode == 'default':
-        fig = create_default_plot(df, X, Y, plot_type, plot_title, y_axis_title)
+        fig = create_default_plot(df, plot_params)
     elif mode == 'stack':
-        fig = create_stack_plot(df, X, Y, plot_type, plot_title)
+        fig = create_stack_plot(df, plot_params)
     elif mode == 'dual_y':
-        fig = create_dual_y_plot(df, X, Y, Y2, plot_type, plot_title,
-                                 y_axis_title, y2_axis_title)
+        fig = create_dual_y_plot(df, plot_params)
 
     # Update layout for better visualization
     fig.update_layout(template='plotly_white')
-    fig.update_layout(legend=dict(yanchor='top', y=0.99,
-                                xanchor='right', x=0.99))
+    fig.update_layout(
+        legend=dict(
+            yanchor='top',
+            y=0.99,
+            xanchor='right',
+            x=0.99,
+            bgcolor='rgba(0,0,0,0)',  # Transparent legend background
+        )
+    )
 
     return fig
 
-def create_default_plot(df, X, Y, plot_type,
-                            plot_title, y_axis_title):
+
+def create_default_plot(df, plot_params):
+    X = plot_params['X']
+    Y = plot_params['Y']
+    plot_type = plot_params['plot_type']
+    plot_title = plot_params['plot_title']
+    y_axis_title = plot_params['y_axis_title']
+
     if plot_type == 'line':
         fig = px.line(df, x=X, y=Y, title=plot_title)
     elif plot_type == 'scatter':
         fig = px.scatter(df, x=X, y=Y, title=plot_title)
 
-    fig.update_layout(yaxis_title=y_axis_title, legend_title_text='')
+    fig.update_layout(
+        yaxis_title=y_axis_title, legend_title_text='', width=WIDTH, height=HEIGHT
+    )
     return fig
 
-def create_stack_plot(df, X, Y, plot_type, plot_title):
-    BASE_HEIGHT = 250
-    VERTICAL_SPACING = 0.02
 
-    fig = make_subplots(rows=len(Y), cols=1, shared_xaxes=True,
-                        vertical_spacing=VERTICAL_SPACING)
+def create_stack_plot(df, plot_params):
+    X = plot_params['X']
+    Y = plot_params['Y']
+    plot_type = plot_params['plot_type']
+    plot_title = plot_params['plot_title']
+
+    fig = make_subplots(
+        rows=len(Y), cols=1, shared_xaxes=True, vertical_spacing=VERTICAL_SPACING
+    )
 
     for i, y_col in enumerate(Y):
         trace = go.Scatter(
             x=df[X],
             y=df[y_col],
-            mode='lines' if plot_type == 'line' else 'markers', name=y_col)
+            mode='lines' if plot_type == 'line' else 'markers',
+            name=y_col,
+        )
         fig.add_trace(trace, row=i + 1, col=1)
         fig.update_yaxes(title_text=y_col, row=i + 1, col=1)
 
     fig.update_xaxes(title_text='Time', row=len(Y), col=1)
-    fig.update_layout(title_text=plot_title, height=BASE_HEIGHT * len(Y))
+    fig.update_layout(title_text=plot_title, height=BASE_HEIGHT * len(Y), width=WIDTH)
     return fig
 
-def create_dual_y_plot(df, X, Y, Y2, plot_type, plot_title,
-                       y_axis_title, y2_axis_title):
+
+def create_dual_y_plot(df, plot_params):
+    X = plot_params['X']
+    Y = plot_params['Y']
+    Y2 = plot_params['Y2']
+    plot_type = plot_params['plot_type']
+    plot_title = plot_params['plot_title']
+    y_axis_title = plot_params['y_axis_title']
+    y2_axis_title = plot_params['y2_axis_title']
+
     fig = go.Figure()
 
     for y_col in Y:
@@ -2561,21 +2610,27 @@ def create_dual_y_plot(df, X, Y, Y2, plot_type, plot_title,
             x=df[X],
             y=df[y_col],
             mode='lines' if plot_type == 'line' else 'markers',
-            name=f'{y_col} (Left)')
+            name=f'{y_col} (Left)',
+        )
         fig.add_trace(trace)
 
     for y2_col in Y2:
-        trace = go.Scatter(x=df[X],
-                           y=df[y2_col],
-                           mode='lines' if plot_type == 'line' else 'markers',
-                            name=f'{y2_col} (Right)', yaxis='y2')
+        trace = go.Scatter(
+            x=df[X],
+            y=df[y2_col],
+            mode='lines' if plot_type == 'line' else 'markers',
+            name=f'{y2_col} (Right)',
+            yaxis='y2',
+        )
         fig.add_trace(trace)
 
     fig.update_layout(
         yaxis=dict(title=y_axis_title),
         yaxis2=dict(title=y2_axis_title, overlaying='y', side='right'),
         title=plot_title,
-        legend_title_text=''
+        legend_title_text='',
+        width=WIDTH,
+        height=HEIGHT,
     )
     return fig
 
