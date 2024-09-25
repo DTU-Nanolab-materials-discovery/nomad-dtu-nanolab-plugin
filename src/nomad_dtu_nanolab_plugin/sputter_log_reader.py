@@ -2470,80 +2470,113 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
 # -------PLOTTING DEFINITIONS------------
 
 
-def quick_plot(df, Y, X='Time Stamp', mode='default'):
+
+def quick_plot(df, Y, **kwargs):
     """
     Plots a time series using Plotly.
 
     Args:
-        data (pd.DataFrame): DataFrame containing the data.
+        df (pd.DataFrame): DataFrame containing the data.
         Y (list or str): Column name(s) for the y-axis.
-        X (str): Column name for the x-axis (pd.Timestamp)
-            Default is 'Time Stamp'.
-        mode (str): Plotting mode, either 'default' or 'stack'.
-            Default is 'default'.
+        **kwargs: Additional keyword arguments:
+            - X (str): Column name for the x-axis (pd.Timestamp).
+                Default is 'Time Stamp'.
+            - mode (str): Plotting mode, either 'default', 'stack', or
+                'dual_y'. Default is 'default'.
+            - plot_type (str): Type of plot, either 'line' or 'scatter'.
+                Default is 'line'.
+            - Y2 (list or str): Column name(s) for the right y-axis (Y2).
+                Default is an empty list.
 
     Returns:
         fig (plotly.graph_objects.Figure): The Plotly figure object.
     """
-    # Define useful constants
-    BASE_HEIGHT = 250  # Base height for the 'stack' verion of the plot
-    VERTICAL_SPACING = 0.02  # Vertical spacing between subplots
+    # Extract keyword arguments
+    X = kwargs.get('X', 'Time Stamp')
+    mode = kwargs.get('mode', 'default')
+    plot_type = kwargs.get('plot_type', 'line')
+    Y2 = kwargs.get('Y2', [])
 
-    # Ensure Y is a list
+    # Ensure Y and Y2 are lists
     if isinstance(Y, str):
         Y = [Y]
+    if isinstance(Y2, str):
+        Y2 = [Y2]
 
-    # Set y-axis title based on the number of columns
-    if len(Y) == 1:
-        y_axis_title = 'Time'  # Use the column name as the title if only one column
-    else:
-        y_axis_title = 'Values'  # Default to 'Values' if multiple columns
-
+    # Set y-axis titles
+    y_axis_title = Y[0] if len(Y) == 1 else 'Values'
+    y2_axis_title = Y2[0] if len(Y2) == 1 else 'Values'
     plot_title = 'Quick Plot'
 
     if mode == 'default':
-        # Create a Plotly figure
-        fig = px.line(df, x=X, y=Y, title=plot_title)
-
-        # Update layout for better visualization
-        fig.update_layout(
-            yaxis_title=y_axis_title,
-            legend_title_text='',  # Remove the legend title
-        )
-
+        fig = create_default_plot(df, X, Y, plot_type, plot_title, y_axis_title)
     elif mode == 'stack':
-        # Create subplots with shared x-axis
-        fig = make_subplots(
-            rows=len(Y), cols=1, shared_xaxes=True, vertical_spacing=VERTICAL_SPACING
-        )
-
-        # Add a trace for each y-axis column
-        for i, y_col in enumerate(Y):
-            fig.add_trace(
-                go.Scatter(x=df[X], y=df[y_col], mode='lines', name=y_col),
-                row=i + 1,
-                col=1,
-            )
-
-            fig.update_yaxes(title_text=y_col, row=i + 1, col=1)
-
-        # Set the x-axis title for the bottom subplot only
-        fig.update_xaxes(title_text='Time', row=len(Y), col=1)
-
-        # Adjust the height based on the number of subplots
-        fig.update_layout(title_text=plot_title, height=BASE_HEIGHT * len(Y))
+        fig = create_stack_plot(df, X, Y, plot_type, plot_title)
+    elif mode == 'dual_y':
+        fig = create_dual_y_plot(df, X, Y, Y2, plot_type, plot_title,
+                                 y_axis_title, y2_axis_title)
 
     # Update layout for better visualization
+    fig.update_layout(template='plotly_white')
+    fig.update_layout(legend=dict(yanchor='top', y=0.99,
+                                xanchor='right', x=0.99))
+
+    return fig
+
+def create_default_plot(df, X, Y, plot_type,
+                            plot_title, y_axis_title):
+    if plot_type == 'line':
+        fig = px.line(df, x=X, y=Y, title=plot_title)
+    elif plot_type == 'scatter':
+        fig = px.scatter(df, x=X, y=Y, title=plot_title)
+
+    fig.update_layout(yaxis_title=y_axis_title, legend_title_text='')
+    return fig
+
+def create_stack_plot(df, X, Y, plot_type, plot_title):
+    BASE_HEIGHT = 250
+    VERTICAL_SPACING = 0.02
+
+    fig = make_subplots(rows=len(Y), cols=1, shared_xaxes=True,
+                        vertical_spacing=VERTICAL_SPACING)
+
+    for i, y_col in enumerate(Y):
+        trace = go.Scatter(
+            x=df[X],
+            y=df[y_col],
+            mode='lines' if plot_type == 'line' else 'markers', name=y_col)
+        fig.add_trace(trace, row=i + 1, col=1)
+        fig.update_yaxes(title_text=y_col, row=i + 1, col=1)
+
+    fig.update_xaxes(title_text='Time', row=len(Y), col=1)
+    fig.update_layout(title_text=plot_title, height=BASE_HEIGHT * len(Y))
+    return fig
+
+def create_dual_y_plot(df, X, Y, Y2, plot_type, plot_title,
+                       y_axis_title, y2_axis_title):
+    fig = go.Figure()
+
+    for y_col in Y:
+        trace = go.Scatter(
+            x=df[X],
+            y=df[y_col],
+            mode='lines' if plot_type == 'line' else 'markers',
+            name=f'{y_col} (Left)')
+        fig.add_trace(trace)
+
+    for y2_col in Y2:
+        trace = go.Scatter(x=df[X],
+                           y=df[y2_col],
+                           mode='lines' if plot_type == 'line' else 'markers',
+                            name=f'{y2_col} (Right)', yaxis='y2')
+        fig.add_trace(trace)
+
     fig.update_layout(
-        template='plotly_white',  # Use a white background template
+        yaxis=dict(title=y_axis_title),
+        yaxis2=dict(title=y2_axis_title, overlaying='y', side='right'),
+        title=plot_title,
+        legend_title_text=''
     )
-
-    # Place the legend at the top right corner
-    fig.update_layout(legend=dict(yanchor='top', y=0.99, xanchor='right', x=0.99))
-
-    # Show the figure
-    # fig.show()
-
     return fig
 
 
