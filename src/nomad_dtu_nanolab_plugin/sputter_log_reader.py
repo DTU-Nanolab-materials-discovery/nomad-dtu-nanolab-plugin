@@ -75,7 +75,7 @@ POWER_FWD_REFL_THRESHOLD = 10  # watts
 # ----PLOT VALUES-----
 
 BASE_HEIGHT = 250
-WIDTH = 800
+WIDTH = 900
 HEIGHT = 600
 VERTICAL_SPACING = 0.02
 # Define a dictionary for step colors in the timeline plot
