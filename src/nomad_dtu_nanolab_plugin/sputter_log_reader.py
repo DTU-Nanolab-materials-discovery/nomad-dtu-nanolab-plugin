@@ -2751,8 +2751,7 @@ def plot_plotly_extimeline(events_to_plot, sample_name=''):
 
     return fig
 
-def generate_bias_plot(events_to_plot):
-    deposition = extract_category_from_list(events_to_plot, 'deposition')
+def generate_bias_plot(deposition):
 
     Y_plot = []
     Y2_plot = []
@@ -3506,7 +3505,9 @@ def main():
 
         #--------GRAPH THE DC BIAS AS A FUNCTION OF TIME------------
 
-        bias_plot = generate_bias_plot(events_to_plot)
+        deposition = extract_category_from_list(events_to_plot, 'deposition')
+
+        bias_plot = generate_bias_plot(deposition)
 
         bias_plot.write_html(bias_file_path)
 
