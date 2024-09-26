@@ -2806,18 +2806,12 @@ def plot_plotly_extimeline(
 
 def generate_bias_plot(deposition):
     Y_plot = []
-    Y2_plot = []
     for col in deposition.data.columns:
         if re.search(r'Source \d+ DC Bias', col) or re.search(
             r'Source \d+ Voltage', col
         ):
             Y_plot.append(col)
-        elif re.search(r'Source \d+ Power', col) or re.search(
-            r'Source \d+ Fwd Power', col
-        ):
-            Y2_plot.append(col)
-
-    bias_plot = quick_plot(deposition.data, Y_plot, mode='dual_y', Y2=Y2_plot)
+    bias_plot = quick_plot(deposition.data, Y_plot, plot_type='line')
 
     return bias_plot
 
