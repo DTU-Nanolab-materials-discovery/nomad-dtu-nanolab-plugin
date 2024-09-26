@@ -807,6 +807,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         except Exception as e:
             logger.warning(f'Failed to plot the sample positions: {e}')
+
     # Helper method to write the data
     def write_data(self, config: dict):
         input_dict = config.get('input_dict')

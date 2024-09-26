@@ -75,8 +75,8 @@ POWER_FWD_REFL_THRESHOLD = 10  # watts
 # ----PLOT VALUES-----
 
 BASE_HEIGHT = 250
-WIDTH = 900
-HEIGHT = 600
+WIDTH = 700
+HEIGHT = 450
 VERTICAL_SPACING = 0.02
 # Define a dictionary for step colors in the timeline plot
 STEP_COLORS = {
@@ -139,7 +139,9 @@ GAS_NUMBER = {
 
 
 class Lf_Event:
-    def __init__(self, name: str, source=None, category=None, step_number=None):
+    def __init__(
+        self, name: str, source=None, category=None, step_number=None, step_id=None
+    ):
         # human readable name of the event
         self.name = name
         # category of the event (Ex: deposition, ramp_up_temp, etc)
@@ -151,7 +153,8 @@ class Lf_Event:
 
         # here we create a unique identifier for the event
         # based on the name, category, source and step number
-        if category is not None:
+        self.step_id = step_id  # Default: None
+        if category is not None and step_id is None:
             self.step_id = category
         else:
             self.step_id = name
@@ -1513,7 +1516,6 @@ def print_params(quantities, indent=''):
 
 
 def build_file_paths(logfiles, i):
-
     file_dir = os.path.join(logfiles['folder'][i])
 
     # Specify the report export location and file name
@@ -2511,6 +2513,9 @@ def quick_plot(df, Y, **kwargs):
     mode = kwargs.get('mode', 'default')
     plot_type = kwargs.get('plot_type', 'scatter')
     Y2 = kwargs.get('Y2', [])
+    width = kwargs.get('width', WIDTH)
+    height = kwargs.get('height', HEIGHT)
+    plot_title = kwargs.get('plot_title', 'Quick Plot')
 
     # Ensure Y and Y2 are lists
     if isinstance(Y, str):
@@ -2521,7 +2526,6 @@ def quick_plot(df, Y, **kwargs):
     # Set y-axis titles
     y_axis_title = Y[0] if len(Y) == 1 else 'Values'
     y2_axis_title = Y2[0] if len(Y2) == 1 else 'Values'
-    plot_title = 'Quick Plot'
 
     # Consolidate the parameters into a single dictionary
     plot_params = {
@@ -2532,12 +2536,14 @@ def quick_plot(df, Y, **kwargs):
         'plot_title': plot_title,
         'y_axis_title': y_axis_title,
         'y2_axis_title': y2_axis_title,
+        'width': width,
+        'height': height,
     }
 
     if mode == 'default':
         fig = create_default_plot(df, plot_params)
     elif mode == 'stack':
-        fig = create_stack_plot(df, plot_params)
+        fig, num_plot = create_stack_plot(df, plot_params)
     elif mode == 'dual_y':
         fig = create_dual_y_plot(df, plot_params)
 
@@ -2552,6 +2558,37 @@ def quick_plot(df, Y, **kwargs):
             bgcolor='rgba(0,0,0,0)',  # Transparent legend background
         )
     )
+    if mode == 'stack':
+        shapes = []
+        for i in range(num_plot):
+            shapes.append(
+                dict(
+                    type='rect',
+                    x0=0,
+                    x1=1,
+                    y0=i * (1 / num_plot),
+                    y1=(i + 1) * (1 / num_plot),
+                    xref='paper',
+                    yref='paper',
+                    line=dict(color='black', width=1)
+                )
+            )
+        fig.update_layout(shapes=shapes)
+    else:
+        fig.update_layout(
+            shapes=[
+                dict(
+                    type='rect',
+                    x0=0,
+                    x1=1,
+                    y0=0,
+                    y1=1,
+                    xref='paper',
+                    yref='paper',
+                    line=dict(color='black', width=1),
+                )
+            ]
+        )
 
     return fig
 
@@ -2562,6 +2599,8 @@ def create_default_plot(df, plot_params):
     plot_type = plot_params['plot_type']
     plot_title = plot_params['plot_title']
     y_axis_title = plot_params['y_axis_title']
+    width = plot_params['width']
+    height = plot_params['height']
 
     if plot_type == 'line':
         fig = px.line(df, x=X, y=Y, title=plot_title)
@@ -2569,7 +2608,7 @@ def create_default_plot(df, plot_params):
         fig = px.scatter(df, x=X, y=Y, title=plot_title)
 
     fig.update_layout(
-        yaxis_title=y_axis_title, legend_title_text='', width=WIDTH, height=HEIGHT
+        yaxis_title=y_axis_title, legend_title_text='', width=width, height=height
     )
     return fig
 
@@ -2579,6 +2618,8 @@ def create_stack_plot(df, plot_params):
     Y = plot_params['Y']
     plot_type = plot_params['plot_type']
     plot_title = plot_params['plot_title']
+    width = plot_params['width']
+    height = plot_params['height']
 
     fig = make_subplots(
         rows=len(Y), cols=1, shared_xaxes=True, vertical_spacing=VERTICAL_SPACING
@@ -2594,9 +2635,12 @@ def create_stack_plot(df, plot_params):
         fig.add_trace(trace, row=i + 1, col=1)
         fig.update_yaxes(title_text=y_col, row=i + 1, col=1)
 
-    fig.update_xaxes(title_text='Time', row=len(Y), col=1)
-    fig.update_layout(title_text=plot_title, height=BASE_HEIGHT * len(Y), width=WIDTH)
-    return fig
+    num_plot = len(Y)
+    fig.update_xaxes(title_text='Time', row=num_plot, col=1)
+    fig.update_layout(title_text=plot_title,
+                      height=height * 0.5 * num_plot,
+                      width=width,)
+    return fig,num_plot
 
 
 def create_dual_y_plot(df, plot_params):
@@ -2607,6 +2651,8 @@ def create_dual_y_plot(df, plot_params):
     plot_title = plot_params['plot_title']
     y_axis_title = plot_params['y_axis_title']
     y2_axis_title = plot_params['y2_axis_title']
+    width = plot_params['width']
+    height = plot_params['height']
 
     fig = go.Figure()
 
@@ -2631,19 +2677,17 @@ def create_dual_y_plot(df, plot_params):
 
     fig.update_layout(
         yaxis=dict(title=y_axis_title),
-        yaxis2=dict(title=y2_axis_title,
-                    overlaying='y',
-                    side='right',
-                    showgrid=False),
+        yaxis2=dict(title=y2_axis_title, overlaying='y', side='right', showgrid=False),
         title=plot_title,
         legend_title_text='',
-        width=WIDTH,
-        height=HEIGHT,
+        width=width,
+        height=height,
     )
     return fig
 
 
-def plot_plotly_extimeline(events_to_plot, sample_name=''):
+def plot_plotly_extimeline(events_to_plot, sample_name='',
+                           width=WIDTH, height=HEIGHT):
     """
     args:
         logfile_name: str
@@ -2685,18 +2729,13 @@ def plot_plotly_extimeline(events_to_plot, sample_name=''):
 
     df = pd.DataFrame(rows)
 
+    # Set the time extend of the plot
     time_margin = pd.Timedelta(minutes=15)
     # Determine the timeline duration
     min_start_time = df['Start'].min() - time_margin
     # Calculate end time overlooking the Ar On event
     max_end_time = df[df['Event'] != 'Ar On']['End'].max() + time_margin
-    # Duration in hours
-    timeline_duration = (max_end_time - min_start_time).total_seconds() / 3600
 
-    # Calculate dynamic width and height
-    num_events = len(df['Event'].unique())
-    width = max(900, timeline_duration * 50)  # Minimum width 800px, scale with duration
-    height = max(500, num_events * 30)  # Minimum height 600px,scale with num. of events
     # Create the plot with plotly express.timeline
     fig = px.timeline(
         df,
@@ -2751,29 +2790,21 @@ def plot_plotly_extimeline(events_to_plot, sample_name=''):
 
     return fig
 
-def generate_bias_plot(deposition):
 
+def generate_bias_plot(deposition):
     Y_plot = []
     Y2_plot = []
     for col in deposition.data.columns:
-        if re.search(
-                r'Source \d+ DC Bias', col
-                ) or re.search(
-                r'Source \d+ Voltage', col
-                ):
+        if re.search(r'Source \d+ DC Bias', col) or re.search(
+            r'Source \d+ Voltage', col
+        ):
             Y_plot.append(col)
-        elif re.search(
-                r'Source \d+ Power', col
-                ) or re.search(
-                r'Source \d+ Fwd Power', col
-                ):
+        elif re.search(r'Source \d+ Power', col) or re.search(
+            r'Source \d+ Fwd Power', col
+        ):
             Y2_plot.append(col)
 
-    bias_plot = quick_plot(
-        deposition.data,
-        Y_plot,
-        mode='dual_y',
-        Y2 = Y2_plot)
+    bias_plot = quick_plot(deposition.data, Y_plot, mode='dual_y', Y2=Y2_plot)
 
     return bias_plot
 
@@ -3092,12 +3123,13 @@ def select_last_event(events, raw_data, ref_event, categories):
                 )
     return events
 
-def extract_category_from_list(events:list, category:str):
+
+def extract_category_from_list(events: list, category: str):
+    list_of_events = []
     for event in events:
         if event.category == category:
-            return event
-    return None
-
+            list_of_events.append(event)
+    return list_of_events
 
 
 def read_events(data):
@@ -3260,7 +3292,11 @@ def read_events(data):
     for event in sep_events:
         step_params = event.get_nomad_step_params(step_params, source_list)
 
-    return events_to_plot, main_params, step_params,
+    return (
+        events_to_plot,
+        main_params,
+        step_params,
+    )
 
 
 # ----NOMAD HELPER FUNCTION-----
@@ -3423,7 +3459,7 @@ def main():
     # Set the execution flags
     print_main_params = False
     print_step_params = False
-    test_single_logfile = False
+    test_single_logfile = True
     remove_samples = True
 
     # global events_to_plot, main_params, step_params, all_params
@@ -3478,8 +3514,9 @@ def main():
         # ---------DEFAULT EXPORT LOCATIONS-------------
         # Specify the path and filename for the report text file
 
-        txt_file_path, timeline_file_path, bias_file_path = (
-            build_file_paths(logfiles, i))
+        txt_file_path, timeline_file_path, bias_file_path = build_file_paths(
+            logfiles, i
+        )
         # ---------READ THE DATA-------------
 
         # Read the log file and spectrum data
@@ -3503,9 +3540,9 @@ def main():
         # Save the image as an interactive html file
         plotly_timeline.write_html(timeline_file_path)
 
-        #--------GRAPH THE DC BIAS AS A FUNCTION OF TIME------------
+        # --------GRAPH THE DC BIAS AS A FUNCTION OF TIME------------
 
-        deposition = extract_category_from_list(events_to_plot, 'deposition')
+        deposition = event_list_to_dict(events_to_plot)['deposition']
 
         bias_plot = generate_bias_plot(deposition)
 
