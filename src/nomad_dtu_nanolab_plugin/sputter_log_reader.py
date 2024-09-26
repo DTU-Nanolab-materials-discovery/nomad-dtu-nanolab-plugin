@@ -117,6 +117,13 @@ CATEGORIES_MAIN_REPORT = [
     'cracker_base_pressure',
     'source_deprate2_film_meas',
 ]
+CATEGORIES_STEPS = [
+    'deposition',
+    'ramp_up_temp',
+    'ramp_down_high_temp',
+    'source_presput',
+    'source_ramp_up',
+]
 # ------OTHER VALUES------
 
 # Categories of events to select the last event before the deposition, if possible
@@ -3280,8 +3287,13 @@ def read_events(data):
         main_params = event.get_params(data, source_list, params=main_params)
     main_params = get_end_of_process(data, main_params)
 
+    # We only get the events that are in the CATEGORIES_STEPS
+    events_steps = [
+        copy.deepcopy(event) for event in events if event.category in CATEGORIES_STEPS
+    ]
+
     # unfold all the events_main_report events to get sep_events
-    sep_events = unfold_events(copy.deepcopy(events_main_report), data)
+    sep_events = unfold_events(copy.deepcopy(events_steps), data)
 
     # Sort the subevents by the start time
     sep_events = sort_events_by_start_time(sep_events)
