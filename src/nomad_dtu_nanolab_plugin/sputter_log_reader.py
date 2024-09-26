@@ -157,20 +157,6 @@ class Lf_Event:
         # None if the event is not associated with no or more than one
         # source (Ex: deposition)
         self.source = source
-
-        # here we create a unique identifier for the event
-        # based on the name, category, source and step number
-        self.step_id = step_id  # Default: None
-        if category is not None and step_id is None:
-            self.step_id = category
-        else:
-            self.step_id = name
-        if category != 'deposition':
-            if source is not None:
-                self.step_id += f'_s{source}'
-            if step_number is not None:
-                self.step_id += f'_n{step_number}'
-
         # the avg_timestep is the average time difference between two
         # consecutive timestamps in the raw_logfile. It is used as a reference
         # time to determine the continuity of the time domains
@@ -198,6 +184,23 @@ class Lf_Event:
         self.sep_name = ['']
         # the bounds of each subevent
         self.sep_bounds = []
+
+        # here we create a unique identifier for the event
+        # based on the name, category, source and step number
+        if step_id is None:
+            self.step_id = self.generate_step_id()
+
+    def generate_step_id(self):
+        if self.category is not None:
+            step_id = self.category
+        else:
+            step_id = self.name
+        if self.category != 'deposition':
+            if self.source is not None:
+                step_id += f'_s{self.source}'
+            if self.step_number is not None:
+                step_id += f'_n{self.step_number}'
+        return step_id
 
     # method to populate the data attribute of the event, using the raw_data,
     # and the CONTINUITY_LIMIT (threshold for time continuity)
@@ -298,6 +301,27 @@ class Lf_Event:
     def set_source(self, source):
         self.source = source
 
+    # simple method to exlude events that are too small
+    def filter_out_small_events(self, min_domain_size):
+        data_list = []
+        for i in range(self.events):
+            if len(self.sep_data[i]) > min_domain_size:
+                data_list.append(self.sep_data[i])
+        # Concatenate the list of DataFrames
+        data = pd.concat(data_list, ignore_index=True)
+        self.set_data(data, data)
+
+    # method to only select events that come before a certain reference time
+    # with the option of selecting any event before the reference time
+    def select_event(self, raw_data, event_loc: int, ref_time=None):
+        event_list = []
+        if ref_time is None:
+            ref_time = self.data['Time Stamp'].iloc[-1]
+        for i in range(self.events):
+            if self.bounds[i][1] < ref_time:
+                event_list.append(self.sep_data[i])
+        self.set_data(event_list[event_loc], raw_data)
+
     # specific method to stitch the source ramp up events together,
     # in the case a source is ramped up in several steps.
     # it essentially merges the events if the last output setpoint power
@@ -337,27 +361,6 @@ class Lf_Event:
             else:
                 i += 1  # Only increment i if no merge occurred
         self.update_events_and_separated_data()
-
-    # simple method to exlude events that are too small
-    def filter_out_small_events(self, min_domain_size):
-        data_list = []
-        for i in range(self.events):
-            if len(self.sep_data[i]) > min_domain_size:
-                data_list.append(self.sep_data[i])
-        # Concatenate the list of DataFrames
-        data = pd.concat(data_list, ignore_index=True)
-        self.set_data(data, data)
-
-    # method to only select events that come before a certain reference time
-    # with the option of selecting any event before the reference time
-    def select_event(self, raw_data, event_loc: int, ref_time=None):
-        event_list = []
-        if ref_time is None:
-            ref_time = self.data['Time Stamp'].iloc[-1]
-        for i in range(self.events):
-            if self.bounds[i][1] < ref_time:
-                event_list.append(self.sep_data[i])
-        self.set_data(event_list[event_loc], raw_data)
 
     # DTUsteps parameters extraction methods
 
@@ -442,34 +445,16 @@ class Lf_Event:
 
     # DTUSputtering parameters extraction methods
 
-    # method to attribute the right method to extract the parameters of the event
-    # based on its category
-    def get_params(self, raw_data, source_list, params=None):
-        if self.category == 'deposition':
-            params = self.get_all_deposition_params(
-                source_list, raw_data, params=params
-            )
-        if self.category == 'ramp_up_temp':
-            params = self.get_sub_ramp_up_params(raw_data, params=params)
-        if self.category == 'ramp_down_high_temp':
-            params = self.get_sub_ramp_down_high_temp_params(params=params)
-        if self.category == 'ramp_down_low_temp':
-            params = self.get_sub_ramp_down_low_temp_params(params=params)
-        if self.category == 'source_presput':
-            params = self.get_source_presput_params(params=params)
-        if self.category == 'source_ramp_up':
-            params = self.get_source_ramp_up_params(raw_data, params=params)
-        if self.category == 'cracker_base_pressure':
-            params = self.get_cracker_pressure_params(params=params)
-        if self.category == 'source_deprate2_film_meas':
-            params = self.get_deposition_rate_params(params=params)
-        return params
+
+class Deposition_Event(Lf_Event):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('category', None)
+
+        super().__init__(*args, category='deposition', **kwargs)
+        self.step_id = self.generate_step_id()
 
     # master parameters extraction method for the deposition event
-    def get_all_deposition_params(self, source_list, raw_data, params=None):
-        if self.category != 'deposition':
-            raise ValueError('This method is only available for the deposition event')
-
+    def get_params(self, raw_data=None, source_list=None, params=None):
         if params is None:
             params = {}
         if self.category not in params:
@@ -489,8 +474,6 @@ class Lf_Event:
         # - the temperature control is disabled or
         # - the temperature control is enabled but the temperature setpoint
         # is below the RT threshold defined in the reference values
-        if self.category != 'deposition':
-            raise ValueError
 
         if params is None:
             params = {}
@@ -513,8 +496,6 @@ class Lf_Event:
         # For all sources, we check if the source is enabled during deposition
         # and if it is, we set the source as the source enabled for deposition
         # which implies that the source was also ramped up and presputtered
-        if self.category != 'deposition':
-            raise ValueError('This method is only available for the deposition event')
 
         if params is None:
             params = {}
@@ -548,8 +529,6 @@ class Lf_Event:
         # different zones being above the minimum temperatures
         # defined in the reference values
 
-        if self.category != 'deposition':
-            raise ValueError('This method is only available for the deposition event')
         if params is None:
             params = {}
         if self.category not in params:
@@ -606,9 +585,6 @@ class Lf_Event:
         # then the base pressure is measured accurately and we set the
         # true_base_pressure_meas to True
 
-        if self.category != 'deposition':
-            raise ValueError('This method is only available for the deposition event')
-
         if params is None:
             params = {}
         if 'overview' not in params:
@@ -637,9 +613,6 @@ class Lf_Event:
 
     # method to extract simple deposition parameters, that are not source specific
     def get_simple_deposition_params(self, params=None):
-        if self.category != 'deposition':
-            raise ValueError('This method is only available for the deposition event')
-
         if params is None:
             params = {}
         if self.category not in params:
@@ -725,9 +698,6 @@ class Lf_Event:
     # this method uses different sub-methods to extract the parameters of the
     # sources used during deposition
     def get_source_depostion_params(self, source_list, params=None):
-        if self.category != 'deposition':
-            raise ValueError('This method is only available for the deposition event')
-
         if params is None:
             params = {}
         if self.category not in params:
@@ -873,11 +843,16 @@ class Lf_Event:
 
         return params, elements
 
-    # method to extract the pressure induced by the cracker
-    def get_cracker_pressure_params(self, params=None):
-        if self.category != 'cracker_base_pressure':
-            raise ValueError
 
+class SCracker_Pressure_Event(Lf_Event):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('category', None)
+
+        super().__init__(*args, category='cracker_base_pressure', **kwargs)
+        self.step_id = self.generate_step_id()
+
+    # method to extract the pressure induced by the cracker
+    def get_params(self, raw_data=None, source_list=None, params=None):
         if params is None:
             params = {}
         if self.category not in params:
@@ -894,13 +869,17 @@ class Lf_Event:
             params['cracker_pressure_meas'] = False
         return params
 
-    # method to extract source dependent presputtering parameters
-    def get_source_presput_params(self, params=None):
-        if self.category != 'source_presput':
-            raise ValueError(
-                'This method is only available for the source presput event'
-            )
 
+class Source_Presput_Event(Lf_Event):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('category', None)
+
+        super().__init__(*args, category='source_presput', **kwargs)
+
+        self.step_id = self.generate_step_id()
+
+    # method to extract source dependent presputtering parameters
+    def get_params(self, raw_data=None, source_list=None, params=None):
         if params is None:
             params = {}
         if self.category not in params:
@@ -937,14 +916,16 @@ class Lf_Event:
             ] = self.data['PC MFC 1 Flow'].mean()
         return params
 
-    # method to extract the source ramp up and ignition parameters
-    def get_source_ramp_up_params(self, raw_data, params=None):
-        # Here, we interate over the sources to extract many relevant parameters
 
-        if self.category != 'source_ramp_up':
-            raise ValueError(
-                'This method is only available for the source ramp up event'
-            )
+class Source_Ramp_Up_Event(Lf_Event):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('category', None)
+        super().__init__(*args, category='source_ramp_up', **kwargs)
+        self.step_id = self.generate_step_id()
+
+    # method to extract the source ramp up and ignition parameters
+    def get_params(self, raw_data=None, source_list=None, params=None):
+        # Here, we interate over the sources to extract many relevant parameters
 
         if params is None:
             params = {}
@@ -1005,13 +986,15 @@ class Lf_Event:
 
         return params
 
-    # method to extract the substrate ramp up parameters
-    def get_sub_ramp_up_params(self, raw_data, params=None):
-        if self.category != 'ramp_up_temp':
-            raise ValueError(
-                'This method is only available for the substrate ramp up event'
-            )
 
+class Sub_Ramp_Up_Event(Lf_Event):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('category', None)
+        super().__init__(*args, category='ramp_up_temp', **kwargs)
+        self.step_id = self.generate_step_id()
+
+    # method to extract the substrate ramp up parameters
+    def get_params(self, raw_data=None, source_list=None, params=None):
         if 'deposition' not in params:
             raise ValueError('Missing deposition info, run get_rt_bool first')
         if self.category not in params:
@@ -1102,13 +1085,17 @@ class Lf_Event:
                 params[self.category]['SCracker']['enabled'] = False
         return params
 
-    # method to extract the substatre temperature ramp down parameters,
-    def get_sub_ramp_down_params(self, params=None):
-        if self.category != 'sub_ramp_down':
-            raise ValueError(
-                'This method is only available for the substrate ramp down event'
-            )
 
+class Sub_Ramp_Down_Event(Lf_Event):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('category', None)
+
+        super().__init__(*args, category='sub_ramp_down', **kwargs)
+
+        self.step_id = self.generate_step_id()
+
+    # method to extract the substatre temperature ramp down parameters,
+    def get_params(self, raw_data=None, source_list=None, params=None):
         if params is None:
             params = {}
         if self.category not in params:
@@ -1136,15 +1123,18 @@ class Lf_Event:
             )
         return params
 
+
+class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('category', None)
+
+        super().__init__(*args, category='ramp_down_high_temp', **kwargs)
+        self.step_id = self.generate_step_id()
+
     # method to extract the high temperature ramp down parameters (meaning when
     # the substrate temperature is above the temperature where anions tend to
     # escape the film)
-    def get_sub_ramp_down_high_temp_params(self, params=None):
-        if self.category != 'ramp_down_high_temp':
-            raise ValueError(
-                'This method is only available for the high temperature '
-                'substrate ramp down event'
-            )
+    def get_params(self, raw_data=None, source_list=None, params=None):
         if params is None:
             params = {}
         if self.category not in params:
@@ -1245,15 +1235,18 @@ class Lf_Event:
             ].iloc[-1]
         return params
 
+
+class Sub_Ramp_Down_Low_Temp_Event(Lf_Event):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('category', None)
+
+        super().__init__(*args, category='ramp_down_low_temp', **kwargs)
+        self.step_id = self.generate_step_id()
+
     # method to extract the low temperature ramp down parameters (meaning when
     # the substrate temperature is below the temperature where anions tend to
     # escape the film)
-    def get_sub_ramp_down_low_temp_params(self, params=None):
-        if self.category != 'ramp_down_low_temp':
-            raise ValueError(
-                'This method is only available for',
-                'the low temperature substrate ramp down event',
-            )
+    def get_params(self, raw_data=None, source_list=None, params=None):
         if params is None:
             params = {}
         if self.category not in params:
@@ -1267,9 +1260,17 @@ class Lf_Event:
             params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
         return params
 
+
+class DepRate_Meas_Event(Lf_Event):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('category', None)
+
+        super().__init__(*args, category='source_deprate2_film_meas', **kwargs)
+        self.step_id = self.generate_step_id()
+
     # method to extract the film deposition rate parameters
-    def get_deposition_rate_params(self, params=None):
-        list_allowed_categories = ['s_deprate2_film_meas', 'source_deprate2_film_meas']
+    def get_params(self, raw_data=None, source_list=None, params=None):
+        list_allowed_categories = ['source_deprate2_film_meas']
         if self.category not in list_allowed_categories:
             raise ValueError(
                 'This method is only available for the film deposition rate event'
@@ -1814,7 +1815,7 @@ def filter_data_plasma_on_ramp_up(data, source_list):
         source_on_open[str(source_number)].filter_data(data)
 
         # Initiate source_ramp_up[str(source_number)] as a Lf_Event object
-        source_ramp_up[str(source_number)] = Lf_Event(
+        source_ramp_up[str(source_number)] = Source_Ramp_Up_Event(
             f'Source {source_number} Ramp Up',
             source=source_number,
             category='source_ramp_up',
@@ -1945,7 +1946,7 @@ def filter_data_deposition(data, source_list, **kwargs):
         'Any Source On and Open', category='any_source_on_open'
     )
     # We create a deposition event that is not tied to any source in particular
-    deposition = Lf_Event('Deposition', category='deposition', source=None)
+    deposition = Deposition_Event('Deposition', category='deposition', source=None)
 
     # Define a list of condition containing each source being on and open
     # at the same time
@@ -2032,7 +2033,7 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
                 & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
             )
 
-            source_presput[str(source_number)] = Lf_Event(
+            source_presput[str(source_number)] = Source_Presput_Event(
                 f'Source {source_number} Presput',
                 source=source_number,
                 category='source_presput',
@@ -2064,7 +2065,7 @@ def filter_data_cracker_pressure(data, **kwargs):
     ar = kwargs.get('ar')
     deposition = kwargs.get('deposition')
 
-    cracker_base_pressure = Lf_Event(
+    cracker_base_pressure = SCracker_Pressure_Event(
         'Cracker Pressure Meas', category='cracker_base_pressure'
     )
     if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
@@ -2148,7 +2149,9 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
     xtal2_open = Lf_Event('Xtal 2 Shutter Open', category='xtal2_shutter_open')
     deprate2_meas = Lf_Event('Deposition Rate Measurement', category='deprate2_meas')
     deprate2_film_meas = {}
-    deprate2_sulfur_meas = Lf_Event('S Dep Rate Meas', category='s_deprate2_film_meas')
+    deprate2_sulfur_meas = DepRate_Meas_Event(
+        'S Dep Rate Meas', category='source_deprate2_film_meas'
+    )
 
     xtal2_open, deprate2_meas = define_xtal2_open_conditions(
         data, xtal2_open, deprate2_meas
@@ -2313,7 +2316,7 @@ def define_film_meas_conditions(data, source_list, **kwargs):
             )
             deprate2_film_meas_cond_list.append(deprate2_film_meas_cond)
 
-            deprate2_film_meas[str(source_number)] = Lf_Event(
+            deprate2_film_meas[str(source_number)] = DepRate_Meas_Event(
                 f'Source {source_number} Film Dep Rate Meas',
                 source=source_number,
                 category='source_deprate2_film_meas',
@@ -2328,7 +2331,7 @@ def define_film_meas_conditions(data, source_list, **kwargs):
             # as the combination of al the film dep rate conditions above
 
     deprate2_ternary_meas_cond = reduce(operator.and_, deprate2_film_meas_cond_list)
-    deprate2_ternary_meas = Lf_Event(
+    deprate2_ternary_meas = DepRate_Meas_Event(
         'All Source Film Dep Rate Meas',
         source=None,
         category='source_deprate2_film_meas',
@@ -2425,12 +2428,14 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
     h2s = kwargs.get('h2s')
     deposition = kwargs.get('deposition')
 
-    ramp_up_temp = Lf_Event('Sub Temp Ramp Up', category='ramp_up_temp')
-    ramp_down_temp = Lf_Event('Sub Temp Ramp Down', category='ramp_down_temp')
-    ramp_down_high_temp = Lf_Event(
+    ramp_up_temp = Sub_Ramp_Up_Event('Sub Temp Ramp Up', category='ramp_up_temp')
+    ramp_down_temp = Sub_Ramp_Down_Event(
+        'Sub Temp Ramp Down', category='ramp_down_temp'
+    )
+    ramp_down_high_temp = Sub_Ramp_Down_High_Temp_Event(
         'Sub High Temp Ramp Down', category='ramp_down_high_temp'
     )
-    ramp_down_low_temp = Lf_Event(
+    ramp_down_low_temp = Sub_Ramp_Down_Low_Temp_Event(
         'Sub Low Temp Ramp Down', category='ramp_down_low_temp'
     )
 
@@ -3284,7 +3289,9 @@ def read_events(data):
     # the class Lf_Event to get the params dict
     main_params = get_overview(data)
     for event in events_main_report:
-        main_params = event.get_params(data, source_list, params=main_params)
+        main_params = event.get_params(
+            raw_data=data, source_list=source_list, params=main_params
+        )
     main_params = get_end_of_process(data, main_params)
 
     # We only get the events that are in the CATEGORIES_STEPS
@@ -3472,7 +3479,7 @@ def main():
     # Set the execution flags
     print_main_params = False
     print_step_params = False
-    test_single_logfile = True
+    test_single_logfile = False
     remove_samples = True
 
     # global events_to_plot, main_params, step_params, all_params
