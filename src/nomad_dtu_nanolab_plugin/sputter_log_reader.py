@@ -2551,10 +2551,6 @@ def quick_plot(df, Y, **kwargs):
     fig.update_layout(template='plotly_white')
     fig.update_layout(
         legend=dict(
-            # yanchor='top',
-            # y=0.99,
-            # xanchor='right',
-            # x=0.99,
             bgcolor='rgba(0,0,0,0)',  # Transparent legend background
         )
     )
@@ -2570,7 +2566,7 @@ def quick_plot(df, Y, **kwargs):
                     y1=(i + 1) * (1 / num_plot),
                     xref='paper',
                     yref='paper',
-                    line=dict(color='black', width=1)
+                    line=dict(color='black', width=1),
                 )
             )
         fig.update_layout(shapes=shapes)
@@ -2637,10 +2633,12 @@ def create_stack_plot(df, plot_params):
 
     num_plot = len(Y)
     fig.update_xaxes(title_text='Time', row=num_plot, col=1)
-    fig.update_layout(title_text=plot_title,
-                      height=height * 0.5 * num_plot,
-                      width=width,)
-    return fig,num_plot
+    fig.update_layout(
+        title_text=plot_title,
+        height=height * 0.5 * num_plot,
+        width=width,
+    )
+    return fig, num_plot
 
 
 def create_dual_y_plot(df, plot_params):
@@ -2686,8 +2684,13 @@ def create_dual_y_plot(df, plot_params):
     return fig
 
 
-def plot_plotly_extimeline(events_to_plot, sample_name='',
-                           width=WIDTH, height=HEIGHT):
+def plot_plotly_extimeline(
+    events_to_plot,
+    sample_name=None,
+    plot_title='Process Timeline',
+    width=WIDTH,
+    height=HEIGHT,
+):
     """
     args:
         logfile_name: str
@@ -2736,6 +2739,10 @@ def plot_plotly_extimeline(events_to_plot, sample_name='',
     # Calculate end time overlooking the Ar On event
     max_end_time = df[df['Event'] != 'Ar On']['End'].max() + time_margin
 
+    # Define the title of the plot
+    if sample_name is not None:
+        plot_title += f':\n{sample_name}'
+
     # Create the plot with plotly express.timeline
     fig = px.timeline(
         df,
@@ -2744,10 +2751,11 @@ def plot_plotly_extimeline(events_to_plot, sample_name='',
         y='Event',
         color='Event',
         color_discrete_map=STEP_COLORS,
-        title='Process Timeline',
+        title=plot_title,
         hover_data=['Average Temp', 'Average Pressure'],
     )
     fig.update_xaxes(range=[min_start_time, max_end_time])
+
     # Update the layout to include a border around the plot area
     fig.update_layout(
         xaxis_title='Time',
@@ -2760,14 +2768,7 @@ def plot_plotly_extimeline(events_to_plot, sample_name='',
         template='plotly_white',  # Use a white background template
         hovermode='closest',
         dragmode='zoom',
-        title=dict(
-            text=f'{sample_name} Process Timeline ',  # Title text
-            x=0.5,  # Center the title horizontally
-            y=0.85,  # Position the title vertically
-            xanchor='center',  # Anchor the title at the center horizontally
-            yanchor='top',  # Anchor the title at the top vertically
-            font=dict(size=16),  # Font size of the title
-        ),
+        title=plot_title,
         margin=dict(l=50, r=50, t=120, b=50),  # Increased top margin for title
         width=width,  # Dynamic width
         height=height,  # Dynamic height
