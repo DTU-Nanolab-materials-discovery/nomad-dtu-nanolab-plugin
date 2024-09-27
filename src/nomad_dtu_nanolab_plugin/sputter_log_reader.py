@@ -18,6 +18,14 @@ import plotly.graph_objects as go
 from mendeleev import element
 from plotly.subplots import make_subplots
 
+# ---------MAIN FUNCTION PARAMETERS------------
+
+# Set the execution flags
+PRINT_MAIN_PARAMS = False
+PRINT_STEP_PARAMS = False
+TEST_SINGLE_LOGFILE = False
+REMOVE_SAMPLES = True
+
 # ---------REFERENCE VALUES-------------
 
 # Set of reference values used in different parts of the script
@@ -72,6 +80,43 @@ WITHIN_RANGE_PARAM = 5  # %
 POWER_FWD_REFL_THRESHOLD = 10  # watts
 # Categories of events to be considered in the main report
 
+
+# ---REPORT VALUES---
+
+CATEGORIES_MAIN_REPORT = [
+    'deposition',
+    'ramp_up_temp',
+    'ramp_down_high_temp',
+    'source_presput',
+    'source_ramp_up',
+    'cracker_base_pressure',
+    'source_deprate2_film_meas',
+]
+CATEGORIES_STEPS = [
+    'deposition',
+    'ramp_up_temp',
+    'ramp_down_high_temp',
+    'source_presput',
+    'source_ramp_up',
+]
+# ------OTHER VALUES------
+
+# Categories of events to select the last event before the deposition, if possible
+CATEGORIES_LAST_EVENT = ['source_deprate2_film_meas', 'ramp_up_temp', 'source_ramp_up']
+# Categories of events to put in the bottom of the timeline plot
+CATEGORIES_FIRST = {
+    'deposition',
+    'ramp_up_temp',
+    'ramp_down_high_temp',
+    'ramp_down_low_temp',
+}
+SOURCE_NAME = {'1': 'Taurus', '3': 'Magkeeper3', '4': 'Magkeeper4', 'all': 'All'}
+GAS_NUMBER = {
+    'ar': 1,
+    'ph3': 4,
+    'h2s': 6,
+}
+
 # ----PLOT VALUES-----
 
 BASE_HEIGHT = 250
@@ -107,40 +152,14 @@ STEP_COLORS = {
     'S Dep Rate Meas': '#B22222',  # Firebrick
     'Cracker Pressure Meas': 'brown',
 }
-
-CATEGORIES_MAIN_REPORT = [
-    'deposition',
-    'ramp_up_temp',
-    'ramp_down_high_temp',
-    'source_presput',
-    'source_ramp_up',
-    'cracker_base_pressure',
-    'source_deprate2_film_meas',
+# Choosing what to plot in the overview plot
+OVERVIEW_PLOT = [
+    'PC Capman Pressure',
+    'Substrate Heater Temperature',
 ]
-CATEGORIES_STEPS = [
-    'deposition',
-    'ramp_up_temp',
-    'ramp_down_high_temp',
-    'source_presput',
-    'source_ramp_up',
-]
-# ------OTHER VALUES------
+for gas in ['ar', 'ph3', 'h2s']:
+    OVERVIEW_PLOT.append(f'PC MFC {GAS_NUMBER[gas]} Flow')
 
-# Categories of events to select the last event before the deposition, if possible
-CATEGORIES_LAST_EVENT = ['source_deprate2_film_meas', 'ramp_up_temp', 'source_ramp_up']
-# Categories of events to put in the bottom of the timeline plot
-CATEGORIES_FIRST = {
-    'deposition',
-    'ramp_up_temp',
-    'ramp_down_high_temp',
-    'ramp_down_low_temp',
-}
-SOURCE_NAME = {'1': 'Taurus', '3': 'Magkeeper3', '4': 'Magkeeper4', 'all': 'All'}
-GAS_NUMBER = {
-    'ar': 1,
-    'ph3': 4,
-    'h2s': 6,
-}
 
 ##------EVENT CLASS DEFINITION------
 
@@ -1478,6 +1497,8 @@ def open_csv_as_multiindex(csv_path, replace_nan=False):
     return df
 
 
+# method to get a parameter from a MultiIndex DataFrame
+# path being a list of strings pointing to the parameter
 def get_df_param(df, path: list):
     for key in path:
         df = df.xs(key, axis=1, level=1)
@@ -1537,7 +1558,18 @@ def build_file_paths(logfiles, i):
     # Specify the plotly graph export location and file name for bias/power plots
     bias_file_name = f'{logfiles["name"][i]}_plotly_bias.html'
     bias_file_path = os.path.join(file_dir, bias_file_name)
-    return txt_file_path, timeline_file_path, bias_file_path
+
+    # Specify the plotly graph export location and file name
+    # for the overview plot
+    overview_file_name = f'{logfiles["name"][i]}_plotly_overview.html'
+    overview_file_path = os.path.join(file_dir, overview_file_name)
+
+    return (
+        txt_file_path,
+        timeline_file_path,
+        bias_file_path,
+        overview_file_path,
+    )
 
 
 # Function to write the derived quantities in a nested format
@@ -2816,7 +2848,20 @@ def generate_bias_plot(deposition):
     return bias_plot
 
 
-# -------HELPER FUNCTIONS TO MANIPULATE LISTS OF EVENTS--------
+def generate_overview_plot(data):
+    Y_plot = OVERVIEW_PLOT
+    overview_plot = quick_plot(
+        data,
+        Y_plot,
+        plot_type='line',
+        plot_title='Overview Plot',
+        mode='stack',
+        width=WIDTH / 2,
+    )
+    return overview_plot
+
+
+# HELPER FUNCTIONS TO MANIPULATE LISTS OF EVENTS--------
 
 
 def unfold_events(all_lf_events, data):
@@ -3470,19 +3515,13 @@ def map_step_params_to_nomad(step_params, key):
 
 
 def main():
-    # Set the execution flags
-    print_main_params = False
-    print_step_params = False
-    test_single_logfile = False
-    remove_samples = True
-
     # global events_to_plot, main_params, step_params, all_params
     samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\Samples'
     logfiles_extension = 'CSV'
 
     logfiles = {'name': [], 'folder': []}
 
-    if remove_samples:
+    if REMOVE_SAMPLES:
         samples_to_remove = [
             'mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07'
         ]
@@ -3509,7 +3548,7 @@ def main():
                         logfiles['folder'].append(sample_path)
 
     # Uncomment to test the script on a single logfile
-    if test_single_logfile:
+    if TEST_SINGLE_LOGFILE:
         logfiles = {}
         logfiles['name'] = ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
         logfiles['folder'] = [
@@ -3528,8 +3567,8 @@ def main():
         # ---------DEFAULT EXPORT LOCATIONS-------------
         # Specify the path and filename for the report text file
 
-        txt_file_path, timeline_file_path, bias_file_path = build_file_paths(
-            logfiles, i
+        (txt_file_path, timeline_file_path, bias_file_path, overview_file_path) = (
+            build_file_paths(logfiles, i)
         )
         # ---------READ THE DATA-------------
 
@@ -3562,13 +3601,19 @@ def main():
 
         bias_plot.write_html(bias_file_path)
 
+        # --------GRAPH THE OVERVIEW PLOT----------------
+
+        overview_plot = generate_overview_plot(data)
+
+        overview_plot.write_html(overview_file_path)
+
         # --------PRINT DERIVED QUANTITIES REPORTS-------------
 
-        if print_main_params:
+        if PRINT_MAIN_PARAMS:
             print(f'Derived quantities report for logfile\n{logfiles["name"][i]}:\n')
             print_params(main_params)
 
-        if print_step_params:
+        if PRINT_STEP_PARAMS:
             print(f'Step report for logfile\n{logfiles["name"][i]}:\n')
             print_params(step_params)
 
