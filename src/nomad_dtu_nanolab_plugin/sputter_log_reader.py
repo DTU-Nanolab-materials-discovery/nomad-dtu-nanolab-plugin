@@ -632,15 +632,17 @@ class Deposition_Event(Lf_Event):
 
     # method to extract simple deposition parameters, that are not source specific
     def get_simple_deposition_params(self, params=None):
-        #helper method to calculate the partial pressure of a gas
+        # helper method to calculate the partial pressure of a gas
         def add_partial_pressures(gas, params):
             params[self.category][f'avg_{gas}_partial_pressure'] = (
-                params[self.category]['avg_capman_pressure'] *
-                0.1 * params[self.category][f'avg_{gas}_flow']
-                /
-                (params[self.category][f'avg_ar_flow']
-                + params[self.category][f'avg_ph3_flow']
-                + params[self.category][f'avg_h2s_flow'])
+                params[self.category]['avg_capman_pressure']
+                * 0.1
+                * params[self.category][f'avg_{gas}_flow']
+                / (
+                    params[self.category]['avg_ar_flow']
+                    + params[self.category]['avg_ph3_flow']
+                    + params[self.category]['avg_h2s_flow']
+                )
             )
             return params
 
@@ -685,9 +687,10 @@ class Deposition_Event(Lf_Event):
 
         for gas in ['ar', 'ph3', 'h2s']:
             params[self.category][f'avg_{gas}_flow'] = self.data[
-                f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+                f'PC MFC {GAS_NUMBER[gas]} Flow'
+            ].mean()
 
-        #calculate the partial pressure of the gases
+        # calculate the partial pressure of the gases
         for gas in ['ph3', 'h2s']:
             params = add_partial_pressures(gas, params)
 
@@ -1037,7 +1040,8 @@ class Sub_Ramp_Up_Event(Lf_Event):
 
             for gas in ['ar', 'ph3', 'h2s']:
                 params[self.category][f'avg_{gas}_flow'] = self.data[
-                    f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+                    f'PC MFC {GAS_NUMBER[gas]} Flow'
+                ].mean()
 
             # Extract if the cracker has been used during ramp up
             # The column 'Sulfur Cracker Control Enabled' correspond to the
@@ -1159,7 +1163,8 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
             # Extract the gases used during the high substrate ramp down
             for gas in ['ar', 'ph3', 'h2s']:
                 params[self.category][f'avg_{gas}_flow'] = self.data[
-                    f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+                    f'PC MFC {GAS_NUMBER[gas]} Flow'
+                ].mean()
 
             # Extract if the cracker has been used during ramp down
             if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
