@@ -632,6 +632,18 @@ class Deposition_Event(Lf_Event):
 
     # method to extract simple deposition parameters, that are not source specific
     def get_simple_deposition_params(self, params=None):
+        #helper method to calculate the partial pressure of a gas
+        def add_partial_pressures(gas, params):
+            params[self.category][f'avg_{gas}_partial_pressure'] = (
+                params[self.category]['avg_capman_pressure'] *
+                0.1 * params[self.category][f'avg_{gas}_flow']
+                /
+                (params[self.category][f'avg_ar_flow']
+                + params[self.category][f'avg_ph3_flow']
+                + params[self.category][f'avg_h2s_flow'])
+            )
+            return params
+
         if params is None:
             params = {}
         if self.category not in params:
@@ -671,35 +683,13 @@ class Deposition_Event(Lf_Event):
             'PC Capman Pressure'
         ].mean()
 
-        # Extract the MF1 Ar, MFC4 PH3 and MFC6 H2S flow during deposition
-        # only if the flow is above 1sccm, if not we set the flow to 0
-        params[self.category]['avg_ar_flow'] = (
-            self.data[self.data['PC MFC 1 Flow'] > MFC_FLOW_THRESHOLD][
-                'PC MFC 1 Flow'
-            ].mean()
-            if not self.data[self.data['PC MFC 1 Flow'] > MFC_FLOW_THRESHOLD][
-                'PC MFC 1 Flow'
-            ].empty
-            else 0
-        )
-        params[self.category]['avg_ph3_flow'] = (
-            self.data[self.data['PC MFC 4 Flow'] > MFC_FLOW_THRESHOLD][
-                'PC MFC 4 Flow'
-            ].mean()
-            if not self.data[self.data['PC MFC 4 Flow'] > MFC_FLOW_THRESHOLD][
-                'PC MFC 4 Flow'
-            ].empty
-            else 0
-        )
-        params[self.category]['avg_h2s_flow'] = (
-            self.data[self.data['PC MFC 6 Flow'] > MFC_FLOW_THRESHOLD][
-                'PC MFC 6 Flow'
-            ].mean()
-            if not self.data[self.data['PC MFC 6 Flow'] > MFC_FLOW_THRESHOLD][
-                'PC MFC 6 Flow'
-            ].empty
-            else 0
-        )
+        for gas in ['ar', 'ph3', 'h2s']:
+            params[self.category][f'avg_{gas}_flow'] = self.data[
+                f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+
+        #calculate the partial pressure of the gases
+        for gas in ['ph3', 'h2s']:
+            params = add_partial_pressures(gas, params)
 
         # calculate the ratio between the PH3 and H2S flow
         if (
@@ -1044,23 +1034,11 @@ class Sub_Ramp_Up_Event(Lf_Event):
                 'PC Capman Pressure'
             ].mean()
             # Extract the gas flows during the substrate ramp up
-            # If the flows are below the noise level threshold,
-            # we set the flow to 0
-            params[self.category]['avg_ar_flow'] = (
-                self.data['PC MFC 1 Flow'].mean()
-                if not self.data[self.data['PC MFC 1 Flow'] > 1]['PC MFC 1 Flow'].empty
-                else 0
-            )
-            params[self.category]['avg_ph3_flow'] = (
-                self.data['PC MFC 4 Flow'].mean()
-                if not self.data[self.data['PC MFC 4 Flow'] > 1]['PC MFC 4 Flow'].empty
-                else 0
-            )
-            params[self.category]['avg_h2s_flow'] = (
-                self.data['PC MFC 6 Flow'].mean()
-                if not self.data[self.data['PC MFC 6 Flow'] > 1]['PC MFC 6 Flow'].empty
-                else 0
-            )
+
+            for gas in ['ar', 'ph3', 'h2s']:
+                params[self.category][f'avg_{gas}_flow'] = self.data[
+                    f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+
             # Extract if the cracker has been used during ramp up
             # The column 'Sulfur Cracker Control Enabled' correspond to the
             # act of opening the cracker pulse valve (1 open, 0 closed)
@@ -1179,33 +1157,10 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
             ].iloc[-1]
 
             # Extract the gases used during the high substrate ramp down
-            params[self.category]['avg_ar_flow'] = (
-                self.data[self.data['PC MFC 1 Flow'] > MFC_FLOW_THRESHOLD][
-                    'PC MFC 1 Flow'
-                ].mean()
-                if not self.data[self.data['PC MFC 1 Flow'] > MFC_FLOW_THRESHOLD][
-                    'PC MFC 1 Flow'
-                ].empty
-                else 0
-            )
-            params[self.category]['avg_ph3_flow'] = (
-                self.data[self.data['PC MFC 4 Flow'] > MFC_FLOW_THRESHOLD][
-                    'PC MFC 4 Flow'
-                ].mean()
-                if not self.data[self.data['PC MFC 4 Flow'] > MFC_FLOW_THRESHOLD][
-                    'PC MFC 4 Flow'
-                ].empty
-                else 0
-            )
-            params[self.category]['avg_h2s_flow'] = (
-                self.data[self.data['PC MFC 6 Flow'] > MFC_FLOW_THRESHOLD][
-                    'PC MFC 6 Flow'
-                ].mean()
-                if not self.data[self.data['PC MFC 6 Flow'] > MFC_FLOW_THRESHOLD][
-                    'PC MFC 6 Flow'
-                ].empty
-                else 0
-            )
+            for gas in ['ar', 'ph3', 'h2s']:
+                params[self.category][f'avg_{gas}_flow'] = self.data[
+                    f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+
             # Extract if the cracker has been used during ramp down
             if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
                 if (
@@ -2856,7 +2811,7 @@ def generate_overview_plot(data):
         plot_type='line',
         plot_title='Overview Plot',
         mode='stack',
-        width=WIDTH / 2,
+        heigth=HEIGHT / 2,
     )
     return overview_plot
 
