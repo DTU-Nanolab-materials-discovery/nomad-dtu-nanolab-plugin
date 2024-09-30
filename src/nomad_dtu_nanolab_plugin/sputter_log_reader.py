@@ -110,7 +110,12 @@ CATEGORIES_FIRST = {
     'ramp_down_high_temp',
     'ramp_down_low_temp',
 }
-SOURCE_NAME = {'1': 'Taurus', '3': 'Magkeeper3', '4': 'Magkeeper4', 'all': 'All'}
+SOURCE_NAME = {
+            '0': 'SCracker',
+            '1': 'Taurus',
+            '3': 'Magkeeper3',
+            '4': 'Magkeeper4',
+            'all': 'All'}
 GAS_NUMBER = {
     'ar': 1,
     'ph3': 4,
@@ -1268,7 +1273,7 @@ class DepRate_Meas_Event(Lf_Event):
         if SOURCE_NAME[str(source_number)] not in params[self.category]:
             params[self.category][SOURCE_NAME[str(source_number)]] = {}
 
-        if self.source is not None:
+        if self.source is not None and self.source != 0:
             source_number = self.source
             source_element = str(
                 self.data[f'PC Source {source_number} Material'].iloc[0]
@@ -1277,6 +1282,12 @@ class DepRate_Meas_Event(Lf_Event):
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
                 element(source_element).symbol
             )
+        if self.source == 0:
+            source_number = 0
+            source_element = 'S'
+            params[self.category][
+                f'{SOURCE_NAME[str(source_number)]}'
+                ]['material'] = source_element
 
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['dep_rate'] = (
             self.data['Thickness Rate'].mean()
@@ -2126,7 +2137,8 @@ def filter_data_cracker_pressure(data, **kwargs):
     deposition = kwargs.get('deposition')
 
     cracker_base_pressure = SCracker_Pressure_Event(
-        'Cracker Pressure Meas', category='cracker_base_pressure'
+        'Cracker Pressure Meas', category='cracker_base_pressure',
+        source=0
     )
     if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
         cracker_temp_cond = (
@@ -2210,7 +2222,8 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
     deprate2_meas = Lf_Event('Deposition Rate Measurement', category='deprate2_meas')
     deprate2_film_meas = {}
     deprate2_sulfur_meas = DepRate_Meas_Event(
-        'S Dep Rate Meas', category='source_deprate2_film_meas'
+        'S Dep Rate Meas', category='source_deprate2_film_meas',
+        source=0
     )
 
     xtal2_open, deprate2_meas = define_xtal2_open_conditions(
