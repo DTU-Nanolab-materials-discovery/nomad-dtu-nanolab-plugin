@@ -174,6 +174,7 @@ for gas in ['ar', 'ph3', 'h2s']:
 
 ##------EVENT CLASS DEFINITION------
 
+
 class Lf_Event:
     def __init__(
         self, name: str, source=None, category=None, step_number=None, step_id=None
@@ -1540,7 +1541,7 @@ def build_file_paths(logfiles, i):
     overview_file_name = f'{logfiles["name"][i]}_plotly_overview.html'
     overview_file_path = os.path.join(file_dir, overview_file_name)
 
-    #Specify the chamber config plot export location and file name
+    # Specify the chamber config plot export location and file name
     chamber_config_file_name = f'{logfiles["name"][i]}_chamber_config.png'
     chamber_config_file_path = os.path.join(file_dir, chamber_config_file_name)
 
@@ -2578,13 +2579,15 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
 
 # -------PLOTTING DEFINITIONS------------
 
+
 def plot_logfile_chamber(main_params):
-    #Reading guns
+    # Reading guns
     guns = []
-    for gun_param in ['Taurus', 'Magkeeper3', 'Magkeeper4','SCracker']:
-        if gun_param in main_params['deposition'] and (
-            main_params['deposition'][gun_param]['enabled']
-            ):
+    for gun_param in ['Taurus', 'Magkeeper3', 'Magkeeper4', 'SCracker']:
+        if (
+            gun_param in main_params['deposition']
+            and (main_params['deposition'][gun_param]['enabled'])
+        ):
             if 'material' in main_params['deposition'][gun_param]:
                 material = main_params['deposition'][gun_param]['material']
             elif gun_param == 'SCracker':
@@ -2592,7 +2595,7 @@ def plot_logfile_chamber(main_params):
             gun = Gun(gun_param, material)
             guns.append(gun)
 
-    #Assuming dummy samples for now
+    # Assuming dummy samples for now
     samples = [
         Sample('BR', 20, 35, 40),
         Sample('BL', -20, 35, 40),
@@ -2602,10 +2605,10 @@ def plot_logfile_chamber(main_params):
 
     platen_rot = main_params['deposition']['platen_position']
 
-    #Plotting
-    fig = plot_matplotlib_chamber_config(
-        samples, guns, platen_rot)
+    # Plotting
+    fig = plot_matplotlib_chamber_config(samples, guns, platen_rot)
     return fig
+
 
 def quick_plot(df, Y, **kwargs):
     """
@@ -3642,14 +3645,13 @@ def main():
         # ---------DEFAULT EXPORT LOCATIONS-------------
         # Specify the path and filename for the report text file
 
-        (txt_file_path,
-        timeline_file_path,
-        bias_file_path,
-        overview_file_path,
-        chamber_file_path,
-        ) = (
-            build_file_paths(logfiles, i)
-        )
+        (
+            txt_file_path,
+            timeline_file_path,
+            bias_file_path,
+            overview_file_path,
+            chamber_file_path,
+        ) = build_file_paths(logfiles, i)
         # ---------READ THE DATA-------------
 
         # Read the log file and spectrum data
@@ -3687,11 +3689,11 @@ def main():
 
         overview_plot.write_html(overview_file_path)
 
-        #-----GRAPH THE CHAMBER CONFIG---
+        # -----GRAPH THE CHAMBER CONFIG---
         if 'platen_position' in main_params['deposition']:
             chamber_plot = plot_logfile_chamber(main_params)
-            #export matplotlib plot as png
-            chamber_plot.savefig(chamber_file_path)
+            # export matplotlib plot as png
+            chamber_plot.savefig(chamber_file_path, dpi=300)
 
         # --------PRINT DERIVED QUANTITIES REPORTS-------------
 

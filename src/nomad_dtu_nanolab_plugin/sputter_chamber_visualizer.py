@@ -364,7 +364,7 @@ def plot_matplotlib_chamber_config(
     plt.ylim(Y_LIM)
     ax.set_aspect('equal', adjustable='box')
 
-    #make layout tight
+    # make layout tight
     plt.tight_layout()
 
     return fig
