@@ -1648,45 +1648,49 @@ def within_range(data_col, ref_col_mean, diff_param):
         )
     return cond
 
+def format_time_stamp(time, df, timestamp_col='Time Stamp'):
 
-# Helper function to check if a column is within a time range
-def within_time_range(df, start_time, end_time, timestamp_col='Time Stamp'):
     len_hh_mm = 2
     len_hh_mm_ss = 3
-        # Format time string or pd.Timestamp object
-    def format_time_stamp(time_str, df):
-        if not isinstance(time_str, pd.Timestamp):
-            # Check if the input string contains only the time part
-            if isinstance(time_str, str):
-                parts = time_str.split(':')
 
-                if len(parts) == len_hh_mm:  # If format is HH:MM, assume seconds as :00
-                    time_str += ':00'
-                elif len(parts) == 1 or len(parts) > len_hh_mm_ss:
-                    raise ValueError(
-                        f"Invalid time format: {time_str}. Exp. 'HH:MM' or 'HH:MM:SS'."
-                    )
+    if not isinstance(time, pd.Timestamp):
+        # Check if the input string contains only the time part
+        if isinstance(time, str):
 
-                # Handle case where df is empty to avoid IndexError
-                if df.empty:
-                    raise ValueError(
-                        'DataFrame is empty, cannot infer date for time conversion.'
-                    )
+            parts = time.split(':')
+            if len(parts) == len_hh_mm: # If format is HH:MM, assume seconds as :00
+                time += ':00'
+            elif len(parts) == 1 or len(parts) > len_hh_mm_ss:
+                raise ValueError(
+                    f"Invalid time format: {time}. Exp. 'HH:MM' or 'HH:MM:SS'."
+                )
+
+            # Handle case where df is empty to avoid IndexError
+            if df.empty:
+                raise ValueError(
+                    'DataFrame is empty, cannot infer date for time conversion.'
+                )
 
                 # Assume the date of the first row of df[timestamp_col]
                 # if only time is provided
+            if len(time.split()) == 1:
                 first_date = pd.to_datetime(df[timestamp_col].iloc[0]).strftime(
                     '%Y-%m-%d'
                 )
-                time_str = f'{first_date} {time_str}'
-
+                time = f'{first_date} {time}'
         try:
             # Create the Timestamp
-            timestamp = pd.Timestamp(time_str)
+            timestamp = pd.to_datetime(time, format = '%Y-%m-%d %H:%M:%S')
         except Exception as e:
-            raise ValueError(f'Invalid timestamp format: {time_str}. Error: {e}')
+            raise ValueError(f'Invalid timestamp format: {time}. Error: {e}')
+    else:
+        timestamp = time
 
-        return timestamp
+    return timestamp
+
+
+# Helper function to check if a column is within a time range
+def within_time_range(df, start_time, end_time, timestamp_col='Time Stamp'):
 
     # Check if the dataframe has the specified column
     if timestamp_col not in df.columns:
@@ -1699,6 +1703,14 @@ def within_time_range(df, start_time, end_time, timestamp_col='Time Stamp'):
     # Format start_time and end_time
     start_time = format_time_stamp(start_time, df)
     end_time = format_time_stamp(end_time, df)
+
+    # Ensure both timestamps and DataFrame column are timezone-naive
+    if start_time.tzinfo is not None:
+        start_time = start_time.tz_convert(None)
+    if end_time.tzinfo is not None:
+        end_time = end_time.tz_convert(None)
+    if pd.api.types.is_datetime64tz_dtype(df[timestamp_col]):
+        df[timestamp_col] = df[timestamp_col].dt.tz_convert(None)
 
     # Return the boolean mask for rows within the time range
     time_cond = (df[timestamp_col] >= start_time) & (df[timestamp_col] <= end_time)
