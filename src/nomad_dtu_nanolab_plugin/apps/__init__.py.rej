@@ -1,0 +1,9 @@
+diff a/src/nomad_dtu_nanolab_plugin/apps/__init__.py b/src/nomad_dtu_nanolab_plugin/apps/__init__.py	(rejected hunks)
+@@ -1,7 +1,6 @@
+ from nomad.config.models.plugins import AppEntryPoint
+ from nomad.config.models.ui import App, Column, Columns, FilterMenu, FilterMenus
+ 
+-
+ app_entry_point = AppEntryPoint(
+     name='NewApp',
+     description='New app entry point configuration.',
