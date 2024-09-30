@@ -32,7 +32,7 @@ TOXIC_GAS_INLET_ANGLE = np.radians(-58)
 # Define a dictionary to map names to their colors and locations
 GUN_PROPERTIES = {
     'SCracker': {'color': 'red', 'location': np.radians(180)},
-    'Taurus': {'color': 'green', 'location': np.radians(90)},
+    'Taurus': {'color': 'green', 'location': np.radians(135)},
     'Magkeeper3': {'color': 'blue', 'location': np.radians(315)},
     'Magkeeper4': {'color': 'magenta', 'location': np.radians(45)},
 }
@@ -364,6 +364,9 @@ def plot_matplotlib_chamber_config(
     plt.ylim(Y_LIM)
     ax.set_aspect('equal', adjustable='box')
 
+    #make layout tight
+    plt.tight_layout()
+
     return fig
 
 
@@ -371,10 +374,10 @@ def main():
     # Dummy samples and guns
 
     samples = [
-        Sample('1', -15, -15, 40),
-        Sample('2', -15, 25, 40),
-        Sample('3', 25, -15, 40),
-        Sample('4', 25, 25, 40),
+        Sample('BR', 20, 35, 40),
+        Sample('BL', -20, 35, 40),
+        Sample('FR', 20, -15, 40),
+        Sample('FL', -20, -15, 40),
     ]
 
     guns = [

@@ -17,6 +17,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 from mendeleev import element
 from plotly.subplots import make_subplots
+from sputter_chamber_visualizer import (
+    Gun,
+    Sample,
+    plot_matplotlib_chamber_config,
+)
 
 # ---------MAIN FUNCTION PARAMETERS------------
 
@@ -168,7 +173,6 @@ for gas in ['ar', 'ph3', 'h2s']:
 
 
 ##------EVENT CLASS DEFINITION------
-
 
 class Lf_Event:
     def __init__(
@@ -1536,11 +1540,16 @@ def build_file_paths(logfiles, i):
     overview_file_name = f'{logfiles["name"][i]}_plotly_overview.html'
     overview_file_path = os.path.join(file_dir, overview_file_name)
 
+    #Specify the chamber config plot export location and file name
+    chamber_config_file_name = f'{logfiles["name"][i]}_chamber_config.png'
+    chamber_config_file_path = os.path.join(file_dir, chamber_config_file_name)
+
     return (
         txt_file_path,
         timeline_file_path,
         bias_file_path,
         overview_file_path,
+        chamber_config_file_path,
     )
 
 
@@ -2569,6 +2578,34 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
 
 # -------PLOTTING DEFINITIONS------------
 
+def plot_logfile_chamber(main_params):
+    #Reading guns
+    guns = []
+    for gun_param in ['Taurus', 'Magkeeper3', 'Magkeeper4','SCracker']:
+        if gun_param in main_params['deposition'] and (
+            main_params['deposition'][gun_param]['enabled']
+            ):
+            if 'material' in main_params['deposition'][gun_param]:
+                material = main_params['deposition'][gun_param]['material']
+            elif gun_param == 'SCracker':
+                material = 'S'
+            gun = Gun(gun_param, material)
+            guns.append(gun)
+
+    #Assuming dummy samples for now
+    samples = [
+        Sample('BR', 20, 35, 40),
+        Sample('BL', -20, 35, 40),
+        Sample('FR', 20, -5, 40),
+        Sample('FL', -20, -5, 40),
+    ]
+
+    platen_rot = main_params['deposition']['platen_position']
+
+    #Plotting
+    fig = plot_matplotlib_chamber_config(
+        samples, guns, platen_rot)
+    return fig
 
 def quick_plot(df, Y, **kwargs):
     """
@@ -3605,7 +3642,12 @@ def main():
         # ---------DEFAULT EXPORT LOCATIONS-------------
         # Specify the path and filename for the report text file
 
-        (txt_file_path, timeline_file_path, bias_file_path, overview_file_path) = (
+        (txt_file_path,
+        timeline_file_path,
+        bias_file_path,
+        overview_file_path,
+        chamber_file_path,
+        ) = (
             build_file_paths(logfiles, i)
         )
         # ---------READ THE DATA-------------
@@ -3645,6 +3687,12 @@ def main():
 
         overview_plot.write_html(overview_file_path)
 
+        #-----GRAPH THE CHAMBER CONFIG---
+        if 'platen_position' in main_params['deposition']:
+            chamber_plot = plot_logfile_chamber(main_params)
+            #export matplotlib plot as png
+            chamber_plot.savefig(chamber_file_path)
+
         # --------PRINT DERIVED QUANTITIES REPORTS-------------
 
         if PRINT_MAIN_PARAMS:
@@ -3665,7 +3713,6 @@ def main():
     print('Consolidating the data into a single CSV file')
     consolidate_data_to_csv(all_params, samples_dir, process_NaN=True)
 
-    print('\n')
     print('Processing done')
 
 
