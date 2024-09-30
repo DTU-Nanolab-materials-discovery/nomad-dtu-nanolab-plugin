@@ -111,11 +111,12 @@ CATEGORIES_FIRST = {
     'ramp_down_low_temp',
 }
 SOURCE_NAME = {
-            '0': 'SCracker',
-            '1': 'Taurus',
-            '3': 'Magkeeper3',
-            '4': 'Magkeeper4',
-            'all': 'All'}
+    '0': 'SCracker',
+    '1': 'Taurus',
+    '3': 'Magkeeper3',
+    '4': 'Magkeeper4',
+    'all': 'All',
+}
 GAS_NUMBER = {
     'ar': 1,
     'ph3': 4,
@@ -1285,9 +1286,9 @@ class DepRate_Meas_Event(Lf_Event):
         if self.source == 0:
             source_number = 0
             source_element = 'S'
-            params[self.category][
-                f'{SOURCE_NAME[str(source_number)]}'
-                ]['material'] = source_element
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
+                source_element
+            )
 
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['dep_rate'] = (
             self.data['Thickness Rate'].mean()
@@ -1659,17 +1660,16 @@ def within_range(data_col, ref_col_mean, diff_param):
         )
     return cond
 
-def format_time_stamp(time, df, timestamp_col='Time Stamp'):
 
+def format_time_stamp(time, df, timestamp_col='Time Stamp'):
     len_hh_mm = 2
     len_hh_mm_ss = 3
 
     if not isinstance(time, pd.Timestamp):
         # Check if the input string contains only the time part
         if isinstance(time, str):
-
             parts = time.split(':')
-            if len(parts) == len_hh_mm: # If format is HH:MM, assume seconds as :00
+            if len(parts) == len_hh_mm:  # If format is HH:MM, assume seconds as :00
                 time += ':00'
             elif len(parts) == 1 or len(parts) > len_hh_mm_ss:
                 raise ValueError(
@@ -1691,7 +1691,7 @@ def format_time_stamp(time, df, timestamp_col='Time Stamp'):
                 time = f'{first_date} {time}'
         try:
             # Create the Timestamp
-            timestamp = pd.to_datetime(time, format = '%Y-%m-%d %H:%M:%S')
+            timestamp = pd.to_datetime(time, format='%Y-%m-%d %H:%M:%S')
         except Exception as e:
             raise ValueError(f'Invalid timestamp format: {time}. Error: {e}')
     else:
@@ -1702,7 +1702,6 @@ def format_time_stamp(time, df, timestamp_col='Time Stamp'):
 
 # Helper function to check if a column is within a time range
 def within_time_range(df, start_time, end_time, timestamp_col='Time Stamp'):
-
     # Check if the dataframe has the specified column
     if timestamp_col not in df.columns:
         raise ValueError(f"'{timestamp_col}' column not found in DataFrame.")
@@ -2137,8 +2136,7 @@ def filter_data_cracker_pressure(data, **kwargs):
     deposition = kwargs.get('deposition')
 
     cracker_base_pressure = SCracker_Pressure_Event(
-        'Cracker Pressure Meas', category='cracker_base_pressure',
-        source=0
+        'Cracker Pressure Meas', category='cracker_base_pressure', source=0
     )
     if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
         cracker_temp_cond = (
@@ -2222,8 +2220,7 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
     deprate2_meas = Lf_Event('Deposition Rate Measurement', category='deprate2_meas')
     deprate2_film_meas = {}
     deprate2_sulfur_meas = DepRate_Meas_Event(
-        'S Dep Rate Meas', category='source_deprate2_film_meas',
-        source=0
+        'S Dep Rate Meas', category='source_deprate2_film_meas', source=0
     )
 
     xtal2_open, deprate2_meas = define_xtal2_open_conditions(
