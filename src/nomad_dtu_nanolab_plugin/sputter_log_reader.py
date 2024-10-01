@@ -6,28 +6,27 @@ Created on Fri Jun  7 10:46:17 2024
 """
 # ---------PACKAGES-------------
 
-#Core
+# Core
 import copy
 import operator
 import os
 import re
 from functools import reduce
 
-#Data manipulation
-import pandas as pd
-import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
-from mendeleev import element
-from plotly.subplots import make_subplots
-
-#Chamber visualization
+# Chamber visualization
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
+
+# Data manipulation
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 from matplotlib import patches
 from matplotlib.transforms import Affine2D
+from mendeleev import element
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+from plotly.subplots import make_subplots
 
 # ---------MAIN FUNCTION PARAMETERS------------
 
@@ -37,7 +36,7 @@ PRINT_STEP_PARAMS = False
 TEST_SINGLE_LOGFILE = False
 REMOVE_SAMPLES = True
 
-#----SPUTTER LOG READER METHODS----
+# ----SPUTTER LOG READER METHODS----
 
 # ---------REFERENCE VALUES-------------
 
@@ -181,6 +180,7 @@ for gas in ['ar', 'ph3', 'h2s']:
 
 
 ##------EVENT CLASS DEFINITION------
+
 
 class Lf_Event:
     def __init__(
@@ -2584,7 +2584,6 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
     return ramp_up_temp, ramp_down_temp, ramp_down_high_temp, ramp_down_low_temp
 
 
-
 # -------PLOTTING DEFINITIONS------------
 
 
@@ -2820,7 +2819,7 @@ def plot_plotly_extimeline(
     plot_title='Process Timeline',
     width=WIDTH,
     height=HEIGHT,
-    ):
+):
     """
     args:
         logfile_name: str
@@ -3596,7 +3595,8 @@ def map_step_params_to_nomad(step_params, key):
     # Defining the input, output and unit
     return step_param_nomad_map
 
-#-------CHAMBER VISUALIZATION PLOTTING METHODS-----------
+
+# -------CHAMBER VISUALIZATION PLOTTING METHODS-----------
 
 # ----DEFINE GRAPHICAL PARAMETERS, SPUTTER CHAMBER AND PLATEN ----------
 
@@ -3629,6 +3629,7 @@ GUN_OVERVIEW_NAMES = [
     'Magkeeper4',
 ]
 
+
 # Very simples classes to store the samples and guns information
 class Sample:
     # Note that sample positions are the position of the center of
@@ -3659,6 +3660,8 @@ class Gun:
         self.location = GUN_PROPERTIES[name]['location']
 
         # Function to go back in forth between polar and cartesian
+
+
 def polar(x, y):
     r = np.sqrt(x**2 + y**2)
     theta = np.arctan2(y, x)
@@ -3947,7 +3950,6 @@ def plot_matplotlib_chamber_config(
     plt.tight_layout()
 
     return fig
-
 
 
 # ---------------MAIN-----------
