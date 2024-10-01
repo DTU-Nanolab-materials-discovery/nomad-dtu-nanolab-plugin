@@ -17,11 +17,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 from mendeleev import element
 from plotly.subplots import make_subplots
-from sputter_chamber_visualizer import (
-    Gun,
-    Sample,
-    plot_matplotlib_chamber_config,
-)
+# from sputter_chamber_visualizer import (
+#     Gun,
+#     Sample,
+#     plot_matplotlib_chamber_config,
+# )
 
 # ---------MAIN FUNCTION PARAMETERS------------
 
@@ -2812,7 +2812,7 @@ def plot_plotly_extimeline(
     plot_title='Process Timeline',
     width=WIDTH,
     height=HEIGHT,
-):
+    ):
     """
     args:
         logfile_name: str
