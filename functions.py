@@ -2020,7 +2020,7 @@ def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_d
     for i in range(len(x)):
         x_data = get_data(data, datatype_x, x[i], y[i], False, False)
         y_data = get_data(data, datatype_y, x[i], y[i], False, False)
-        shifted_y_data = y_data + shift * i
+        shifted_y_data = y_data - shift * i
         
         all_y_data.extend(shifted_y_data)  # Collect y-data with shift for max computation
         
@@ -2036,7 +2036,7 @@ def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_d
         )
 
     # Compute the global maximum y-value, considering shifts
-    global_max_y = max(all_y_data)
+    global_min_y = min(all_y_data)
 
     # Create traces for each reference material (hidden initially)
     ref_traces = []
@@ -2055,7 +2055,7 @@ def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_d
         # Create vertical peak lines for top plot (raw data plot)
         peak_lines = go.Scatter(
             x=[value for peak in ref_df["Peak 2theta"] for value in [peak, peak, None]],  # x: peak, peak, None to break the line
-            y=[-100, global_max_y * 1.1, None] * len(ref_df["Peak 2theta"]),  # y: 0 -> global_max_y for each line, with None to break lines
+            y=[global_min_y, 1000 * 1.1, None] * len(ref_df["Peak 2theta"]),  # y: 0 -> global_max_y for each line, with None to break lines
             mode='lines',
             line=dict(color='grey', dash='dot'),
             showlegend=False,
