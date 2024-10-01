@@ -443,6 +443,7 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
             )
 
 
+
             #add plot to the right subsection
             if key in old_results:
                 result = old_results[key]
