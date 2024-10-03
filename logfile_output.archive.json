@@ -1,0 +1,576 @@
+Formatting the dataframe for conditional filtering
+Defining the conditions and filtering the data
+{
+  "data": {
+    "m_def": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+    "name": "test logfile",
+    "datetime": "2024-06-03T09:52:30.696000+00:00",
+    "lab_id": "mittma_0007_Cu",
+    "end_time": "2024-06-03T14:08:03.281000+00:00",
+    "log_file": "mittma_0007_Cu_Recording Set 2024.06.03-09.52.29.CSV",
+    "log_file_report": "overview:\n    log_start_time: 2024-06-03 09:52:30\n    log_end_time: 2024-06-03 14:08:03\n    lower_pressure_before_deposition: 5e-05\n    true_base_pressure_meas: False\n    end_of_process_temp: 25.2922925196\n    time_in_chamber_after_deposition: 03:21:39\ndeposition:\n    rt: False\n    Magkeeper4:\n        enabled: True\n        avg_output_power: 25.0\n        RF: True\n        plasma_type: RF\n        DC: False\n        pulsed: False\n        start_voltage: 158.98876404494382\n        end_voltage: 158.8988764044944\n        avg_voltage: 158.9765625\n        min_voltage: 158\n        max_voltage: 159\n        std_voltage: 0.15133064180488606\n        range_voltage: 1\n        start_minus_end_voltage: 0.08988764044943309\n        material: Cu\n        target_id: Untracked Material\n    SCracker:\n        enabled: False\n    start_time: 10:16:24\n    end_time: 10:46:24\n    duration: 00:29:59\n    avg_temp_1: 199.99870714622426\n    avg_temp_2: 200.33621590218212\n    avg_temp_setpoint: 200.0\n    avg_true_temp: 193.1515526794039\n    avg_capman_pressure: 5.0000185267857145\n    avg_ar_flow: 0\n    avg_ph3_flow: 20.035434007622428\n    avg_h2s_flow: 130.05527687072595\n    material_space: Cu-P-S\nramp_up_temp:\n    SCracker:\n        enabled: False\n    start_time: 09:55:05\n    end_time: 10:03:57\n    duration: 00:08:51\n    temp_slope: 19.99389604049227\n    avg_capman_pressure: 14.999942264150944\n    avg_ar_flow: 100.01430750432378\n    avg_ph3_flow: 0\n    avg_h2s_flow: 0\nramp_down_high_temp:\n    SCracker:\n        enabled: False\n    start_time: 10:48:40\n    end_time: 14:05:09\n    start_setpoint_temp: 199.58335\n    end_setpoint_temp: 25.4922315909\n    avg_ar_flow: 0\n    avg_ph3_flow: 4.036997741096621\n    avg_h2s_flow: 26.055340004410763\n    anion_input_cutoff_temp: 25.4922315909\n    anion_input_cutoff_time: 14:05:09\nsource_ramp_up:\n    Magkeeper4:\n        ignition: True\n        ignition_time: 10:08:16\n        ignition_power: 12.75\n        ignition_pressure: 15.0016\nsource_presput:\n    Magkeeper4:\n        duration: 00:02:13\n        avg_output_power: 25.0\n        avg_capman_pressure: 6.609834328358208\n        avg_ar_flow: 100.0194212500694",
+    "steps": [
+      {},
+      {
+        "name": "Sub Temp Ramp Up(0)",
+        "start_time": "2024-06-03T09:55:05.485000+00:00",
+        "duration": 531.657
+      },
+      {
+        "name": "Source 4 Ramp Up(0)",
+        "start_time": "2024-06-03T10:08:03.281000+00:00",
+        "duration": 26.109
+      },
+      {
+        "name": "Source 4 Presput(0)",
+        "start_time": "2024-06-03T10:08:30.391000+00:00",
+        "duration": 133.716
+      },
+      {
+        "name": "Deposition(0)",
+        "start_time": "2024-06-03T10:16:24.672000+00:00",
+        "duration": 1799.549
+      },
+      {
+        "name": "Sub High Temp Ramp Down(0)",
+        "start_time": "2024-06-03T10:48:40.937000+00:00",
+        "duration": 11788.455
+      }
+    ],
+    "instruments": [
+      {}
+    ],
+    "samples": [
+      {}
+    ],
+    "end_of_process": {
+      "Heater_temperature": 298.44229251959996,
+      "time_in_chamber_after_ending_deposition": 12099.06
+    },
+    "deposition_parameters": {
+      "deposition_temperature": 473.14870714622424,
+      "deposition_time": 1799.549,
+      "sputter_pressure": 0.6666143121402138,
+      "material_space": "Cu-P-S",
+      "ar_flow": 0.0,
+      "ar_partial_pressure": 0.5999528809261925,
+      "h2s_in_Ar_flow": 2.167587947845433e-06,
+      "h2s_partial_pressure": 0.057762874480389075,
+      "ph3_in_Ar_flow": 3.339239001270405e-07,
+      "ph3_partial_pressure": 0.008898556733632311,
+      "Magkeeper4": {
+        "target_material": "Untracked Material",
+        "applied_power": 25.0,
+        "plasma_ignition_power": 12.75,
+        "power_type": "RF",
+        "stable_average_voltage": 158.9765625
+      },
+      "SCracker": {}
+    }
+  },
+  "workflow2": {
+    "name": "test logfile"
+  },
+  "metadata": {
+    "entry_name": "test_logfile.archive.yaml",
+    "entry_type": "DTUSputtering",
+    "mainfile": "/workspaces/nomad-dtu-nanolab-plugin/tests/data/test_logfile.archive.yaml",
+    "text_search_contents": [
+      "test logfile",
+      "overview:\n    log_start_time: 2024-06-03 09:52:30\n    log_end_time: 2024-06-03 14:08:03\n    lower_pressure_before_deposition: 5e-05\n    true_base_pressure_meas: False\n    end_of_process_temp: 25.2922925196\n    time_in_chamber_after_deposition: 03:21:39\ndeposition:\n    rt: False\n    Magkeeper4:\n        enabled: True\n        avg_output_power: 25.0\n        RF: True\n        plasma_type: RF\n        DC: False\n        pulsed: False\n        start_voltage: 158.98876404494382\n        end_voltage: 158.8988",
+      "Cu-P-S",
+      "Source 4 Presput(0)",
+      "Sub High Temp Ramp Down(0)",
+      "mittma_0007_Cu_Recording Set 2024.06.03-09.52.29.CSV",
+      "mittma_0007_Cu",
+      "Deposition(0)",
+      "Sub Temp Ramp Up(0)",
+      "RF",
+      "Untracked Material",
+      "Source 4 Ramp Up(0)"
+    ],
+    "n_quantities": 63,
+    "quantities": [
+      "",
+      "data",
+      "data.datetime",
+      "data.deposition_parameters",
+      "data.deposition_parameters.Magkeeper4",
+      "data.deposition_parameters.Magkeeper4.applied_power",
+      "data.deposition_parameters.Magkeeper4.plasma_ignition_power",
+      "data.deposition_parameters.Magkeeper4.power_type",
+      "data.deposition_parameters.Magkeeper4.stable_average_voltage",
+      "data.deposition_parameters.Magkeeper4.target_material",
+      "data.deposition_parameters.SCracker",
+      "data.deposition_parameters.ar_flow",
+      "data.deposition_parameters.ar_partial_pressure",
+      "data.deposition_parameters.deposition_temperature",
+      "data.deposition_parameters.deposition_time",
+      "data.deposition_parameters.h2s_in_Ar_flow",
+      "data.deposition_parameters.h2s_partial_pressure",
+      "data.deposition_parameters.material_space",
+      "data.deposition_parameters.ph3_in_Ar_flow",
+      "data.deposition_parameters.ph3_partial_pressure",
+      "data.deposition_parameters.sputter_pressure",
+      "data.end_of_process",
+      "data.end_of_process.Heater_temperature",
+      "data.end_of_process.time_in_chamber_after_ending_deposition",
+      "data.end_time",
+      "data.instruments",
+      "data.lab_id",
+      "data.log_file",
+      "data.log_file_report",
+      "data.name",
+      "data.samples",
+      "data.steps",
+      "data.steps.duration",
+      "data.steps.name",
+      "data.steps.start_time",
+      "metadata",
+      "metadata.entry_name",
+      "metadata.entry_type",
+      "metadata.mainfile",
+      "metadata.quantities",
+      "metadata.section_defs",
+      "metadata.section_defs.definition_id",
+      "metadata.section_defs.definition_qualified_name",
+      "metadata.section_defs.used_directly",
+      "metadata.sections",
+      "results",
+      "results.eln",
+      "results.eln.methods",
+      "results.eln.names",
+      "results.eln.sections",
+      "results.properties",
+      "workflow2",
+      "workflow2.name"
+    ],
+    "sections": [
+      "nomad.datamodel.datamodel.EntryArchive",
+      "nomad.datamodel.datamodel.EntryMetadata",
+      "nomad.datamodel.metainfo.workflow.Workflow",
+      "nomad.datamodel.results.ELN",
+      "nomad.datamodel.results.Properties",
+      "nomad.datamodel.results.Results",
+      "nomad_dtu_nanolab_plugin.schema_packages.sputtering.AdjustedInstrumentParameters",
+      "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+      "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUsamples",
+      "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUsteps",
+      "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters",
+      "nomad_dtu_nanolab_plugin.schema_packages.sputtering.EndOfProcess",
+      "nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview",
+      "nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker"
+    ],
+    "section_defs": [
+      {
+        "definition_qualified_name": "nomad.datamodel.data.ArchiveSection",
+        "definition_id": "7047cbff9980abff17cce4b1b6b0d1c783505b7f",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.data.EntryData",
+        "definition_id": "538f52fd8d52b29372066f878319c6aeb03b74d2",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.datamodel.EntryArchive",
+        "definition_id": "f1714301c7ba757a6f15734660ff1bc2393660c4",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.datamodel.EntryMetadata",
+        "definition_id": "6edfa503af63b84d6a6021c227d00137b4c1cc9c",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.Activity",
+        "definition_id": "bd0abbd05794fb9a22acf98127f53b6c621a2649",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.ActivityStep",
+        "definition_id": "a99fab14031097eb4b33562274029bd735d753fa",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.BaseSection",
+        "definition_id": "106bafb5140238b4afe8128b8c341b5b3e927838",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.CompositeSystemReference",
+        "definition_id": "8d15d90f49865ce533e6708c2b7b504884ac01bb",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.EntityReference",
+        "definition_id": "20e9c021c113f4fc5bfc05cb244ab34232fa2ef6",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.InstrumentReference",
+        "definition_id": "601022b26b7ea2e93dc4f6af70510a247d5d7153",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.Process",
+        "definition_id": "937d37a2a0a3bdd1ee31d1e4c919497c018dfb44",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.SectionReference",
+        "definition_id": "6209630d895b001f43398d35b588115dc8492933",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.basesections.SynthesisMethod",
+        "definition_id": "26ee7ee91f1d5d8d54f6681b92ee98421f8b7173",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.plot.PlotSection",
+        "definition_id": "555977314942695d1e52ec37b39f2d9b3fc5f7fa",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.workflow.Task",
+        "definition_id": "ac62fdff74f54fd477531446ca111c0dd9df6ba2",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.metainfo.workflow.Workflow",
+        "definition_id": "fc65ae24157492e422afe61173a71403fc5e1fd7",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.results.ELN",
+        "definition_id": "eeed330bd18d40f3a2a00cc35ba6f58808d0c543",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.results.Properties",
+        "definition_id": "6fb112524bb10f9ac23e8d162e4d7ad2e5862be3",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad.datamodel.results.Results",
+        "definition_id": "72fc7fdff28b055cec563fb9df2cadc21b225fc0",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.AdjustedInstrumentParameters",
+        "definition_id": "89b17aaf2ee85771be02192322a27ec345412e27",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition_id": "81a64d31ab7de2982d684211a6f67fe9bbc4a509",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUsamples",
+        "definition_id": "026dfc80a3edddafe7a6a7bad04e94092868319d",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUsteps",
+        "definition_id": "e14707cd3df8162ce265ffece1e41585c61bfd8e",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters",
+        "definition_id": "3ded57b44b2dbd3f2e6ba6ac864d7a8251f1d739",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.EndOfProcess",
+        "definition_id": "b290a100bd78bfc2905ef983d971c9eeb3c0890f",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview",
+        "definition_id": "1f8bb67e43cf6dfa00dfdba0cd0bca74ce09053f",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker",
+        "definition_id": "e69451d67048f27df5cfc8911eccc8352f622863",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_material_processing.general.SampleDeposition",
+        "definition_id": "65f4a676d34d2373bcd7edd84d51a01900feb259",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad_material_processing.vapor_deposition.general.VaporDeposition",
+        "definition_id": "3f663c75400089b65977ce6a636183212dc98138",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad_material_processing.vapor_deposition.general.VaporDepositionStep",
+        "definition_id": "80618bdb3b9c68a676c0a4ca07eb259699317e9c",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad_material_processing.vapor_deposition.pvd.general.PVDStep",
+        "definition_id": "e67e31f9643cb8d77fb8421fe0d75eea131be3aa",
+        "used_directly": true
+      },
+      {
+        "definition_qualified_name": "nomad_material_processing.vapor_deposition.pvd.general.PhysicalVaporDeposition",
+        "definition_id": "11431447fc7788800138cf6764342a07ad55110a",
+        "used_directly": false
+      },
+      {
+        "definition_qualified_name": "nomad_material_processing.vapor_deposition.pvd.sputtering.SputterDeposition",
+        "definition_id": "c08a17e23379b4a3f42d383ec8d92c290414189c",
+        "used_directly": true
+      }
+    ],
+    "search_quantities": [
+      {
+        "id": "data.log_file#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering.log_file",
+        "path_archive": "data.log_file",
+        "str_value": "mittma_0007_Cu_Recording Set 2024.06.03-09.52.29.CSV"
+      },
+      {
+        "id": "data.steps.name#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.ActivityStep.name",
+        "path_archive": "data.steps.1.name",
+        "str_value": "Sub Temp Ramp Up(0)"
+      },
+      {
+        "id": "data.steps.start_time#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.ActivityStep.start_time",
+        "path_archive": "data.steps.1.start_time",
+        "datetime_value": "2024-06-03T09:55:05.485000+00:00"
+      },
+      {
+        "id": "data.steps.duration#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_material_processing.vapor_deposition.general.VaporDepositionStep.duration",
+        "path_archive": "data.steps.1.duration",
+        "float_value": 531.657
+      },
+      {
+        "id": "data.steps.name#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.ActivityStep.name",
+        "path_archive": "data.steps.2.name",
+        "str_value": "Source 4 Ramp Up(0)"
+      },
+      {
+        "id": "data.steps.start_time#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.ActivityStep.start_time",
+        "path_archive": "data.steps.2.start_time",
+        "datetime_value": "2024-06-03T10:08:03.281000+00:00"
+      },
+      {
+        "id": "data.steps.duration#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_material_processing.vapor_deposition.general.VaporDepositionStep.duration",
+        "path_archive": "data.steps.2.duration",
+        "float_value": 26.109
+      },
+      {
+        "id": "data.steps.name#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.ActivityStep.name",
+        "path_archive": "data.steps.3.name",
+        "str_value": "Source 4 Presput(0)"
+      },
+      {
+        "id": "data.steps.start_time#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.ActivityStep.start_time",
+        "path_archive": "data.steps.3.start_time",
+        "datetime_value": "2024-06-03T10:08:30.391000+00:00"
+      },
+      {
+        "id": "data.steps.duration#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_material_processing.vapor_deposition.general.VaporDepositionStep.duration",
+        "path_archive": "data.steps.3.duration",
+        "float_value": 133.716
+      },
+      {
+        "id": "data.steps.name#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.ActivityStep.name",
+        "path_archive": "data.steps.4.name",
+        "str_value": "Deposition(0)"
+      },
+      {
+        "id": "data.steps.start_time#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.ActivityStep.start_time",
+        "path_archive": "data.steps.4.start_time",
+        "datetime_value": "2024-06-03T10:16:24.672000+00:00"
+      },
+      {
+        "id": "data.steps.duration#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_material_processing.vapor_deposition.general.VaporDepositionStep.duration",
+        "path_archive": "data.steps.4.duration",
+        "float_value": 1799.549
+      },
+      {
+        "id": "data.steps.name#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.ActivityStep.name",
+        "path_archive": "data.steps.5.name",
+        "str_value": "Sub High Temp Ramp Down(0)"
+      },
+      {
+        "id": "data.steps.start_time#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.ActivityStep.start_time",
+        "path_archive": "data.steps.5.start_time",
+        "datetime_value": "2024-06-03T10:48:40.937000+00:00"
+      },
+      {
+        "id": "data.steps.duration#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_material_processing.vapor_deposition.general.VaporDepositionStep.duration",
+        "path_archive": "data.steps.5.duration",
+        "float_value": 11788.455
+      },
+      {
+        "id": "data.name#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.BaseSection.name",
+        "path_archive": "data.name",
+        "str_value": "test logfile"
+      },
+      {
+        "id": "data.datetime#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.Activity.datetime",
+        "path_archive": "data.datetime",
+        "datetime_value": "2024-06-03T09:52:30.696000+00:00"
+      },
+      {
+        "id": "data.lab_id#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering.lab_id",
+        "path_archive": "data.lab_id",
+        "str_value": "mittma_0007_Cu"
+      },
+      {
+        "id": "data.end_time#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad.datamodel.metainfo.basesections.Process.end_time",
+        "path_archive": "data.end_time",
+        "datetime_value": "2024-06-03T14:08:03.281000+00:00"
+      },
+      {
+        "id": "data.log_file_report#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering.log_file_report",
+        "path_archive": "data.log_file_report",
+        "str_value": "overview:\n    log_start_time: 2024-06-03 09:52:30\n    log_end_time: 2024-06-03 14:08:03\n    lower_pressure_before_deposition: 5e-05\n    true_base_pressure_meas: False\n    end_of_process_temp: 25.2922925196\n    time_in_chamber_after_deposition: 03:21:39\ndeposition:\n    rt: False\n    Magkeeper4:\n        enabled: True\n        avg_output_power: 25.0\n        RF: True\n        plasma_type: RF\n        DC: False\n        pulsed: False\n        start_voltage: 158.98876404494382\n        end_voltage: 158.8988764044944\n        avg_voltage: 158.9765625\n        min_voltage: 158\n        max_voltage: 159\n        std_voltage: 0.15133064180488606\n        range_voltage: 1\n        start_minus_end_voltage: 0.08988764044943309\n        material: Cu\n        target_id: Untracked Material\n    SCracker:\n        enabled: False\n    start_time: 10:16:24\n    end_time: 10:46:24\n    duration: 00:29:59\n    avg_temp_1: 199.99870714622426\n    avg_temp_2: 200.33621590218212\n    avg_temp_setpoint: 200.0\n    avg_true_temp: 193.1515526794039\n    avg_capman_pressure: 5.0000185267857145\n    avg_ar_flow: 0\n    avg_ph3_flow: 20.035434007622428\n    avg_h2s_flow: 130.05527687072595\n    material_space: Cu-P-S\nramp_up_temp:\n    SCracker:\n        enabled: False\n    start_time: 09:55:05\n    end_time: 10:03:57\n    duration: 00:08:51\n    temp_slope: 19.99389604049227\n    avg_capman_pressure: 14.999942264150944\n    avg_ar_flow: 100.01430750432378\n    avg_ph3_flow: 0\n    avg_h2s_flow: 0\nramp_down_high_temp:\n    SCracker:\n        enabled: False\n    start_time: 10:48:40\n    end_time: 14:05:09\n    start_setpoint_temp: 199.58335\n    end_setpoint_temp: 25.4922315909\n    avg_ar_flow: 0\n    avg_ph3_flow: 4.036997741096621\n    avg_h2s_flow: 26.055340004410763\n    anion_input_cutoff_temp: 25.4922315909\n    anion_input_cutoff_time: 14:05:09\nsource_ramp_up:\n    Magkeeper4:\n        ignition: True\n        ignition_time: 10:08:16\n        ignition_power: 12.75\n        ignition_pressure: 15.0016\nsource_presput:\n    Magkeeper4:\n        duration: 00:02:13\n        avg_output_power: 25.0\n        avg_capman_pressure: 6.609834328358208\n        avg_ar_flow: 100.0194212500694"
+      },
+      {
+        "id": "data.end_of_process.Heater_temperature#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.EndOfProcess.Heater_temperature",
+        "path_archive": "data.end_of_process.Heater_temperature",
+        "float_value": 298.44229251959996
+      },
+      {
+        "id": "data.end_of_process.time_in_chamber_after_ending_deposition#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.EndOfProcess.time_in_chamber_after_ending_deposition",
+        "path_archive": "data.end_of_process.time_in_chamber_after_ending_deposition",
+        "float_value": 12099.06
+      },
+      {
+        "id": "data.deposition_parameters.Magkeeper4.target_material#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview.target_material",
+        "path_archive": "data.deposition_parameters.Magkeeper4.target_material",
+        "str_value": "Untracked Material"
+      },
+      {
+        "id": "data.deposition_parameters.Magkeeper4.applied_power#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview.applied_power",
+        "path_archive": "data.deposition_parameters.Magkeeper4.applied_power",
+        "float_value": 25.0
+      },
+      {
+        "id": "data.deposition_parameters.Magkeeper4.plasma_ignition_power#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview.plasma_ignition_power",
+        "path_archive": "data.deposition_parameters.Magkeeper4.plasma_ignition_power",
+        "float_value": 12.75
+      },
+      {
+        "id": "data.deposition_parameters.Magkeeper4.power_type#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview.power_type",
+        "path_archive": "data.deposition_parameters.Magkeeper4.power_type",
+        "str_value": "RF"
+      },
+      {
+        "id": "data.deposition_parameters.Magkeeper4.stable_average_voltage#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview.stable_average_voltage",
+        "path_archive": "data.deposition_parameters.Magkeeper4.stable_average_voltage",
+        "float_value": 158.9765625
+      },
+      {
+        "id": "data.deposition_parameters.deposition_temperature#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters.deposition_temperature",
+        "path_archive": "data.deposition_parameters.deposition_temperature",
+        "float_value": 473.14870714622424
+      },
+      {
+        "id": "data.deposition_parameters.deposition_time#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters.deposition_time",
+        "path_archive": "data.deposition_parameters.deposition_time",
+        "float_value": 1799.549
+      },
+      {
+        "id": "data.deposition_parameters.sputter_pressure#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters.sputter_pressure",
+        "path_archive": "data.deposition_parameters.sputter_pressure",
+        "float_value": 0.6666143121402138
+      },
+      {
+        "id": "data.deposition_parameters.material_space#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters.material_space",
+        "path_archive": "data.deposition_parameters.material_space",
+        "str_value": "Cu-P-S"
+      },
+      {
+        "id": "data.deposition_parameters.ar_flow#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters.ar_flow",
+        "path_archive": "data.deposition_parameters.ar_flow",
+        "float_value": 0.0
+      },
+      {
+        "id": "data.deposition_parameters.h2s_in_Ar_flow#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters.h2s_in_Ar_flow",
+        "path_archive": "data.deposition_parameters.h2s_in_Ar_flow",
+        "float_value": 2.167587947845433e-06
+      },
+      {
+        "id": "data.deposition_parameters.ph3_in_Ar_flow#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters.ph3_in_Ar_flow",
+        "path_archive": "data.deposition_parameters.ph3_in_Ar_flow",
+        "float_value": 3.339239001270405e-07
+      },
+      {
+        "id": "data.deposition_parameters.ar_partial_pressure#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters.ar_partial_pressure",
+        "path_archive": "data.deposition_parameters.ar_partial_pressure",
+        "float_value": 0.5999528809261925
+      },
+      {
+        "id": "data.deposition_parameters.h2s_partial_pressure#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters.h2s_partial_pressure",
+        "path_archive": "data.deposition_parameters.h2s_partial_pressure",
+        "float_value": 0.057762874480389075
+      },
+      {
+        "id": "data.deposition_parameters.ph3_partial_pressure#nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering",
+        "definition": "nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters.ph3_partial_pressure",
+        "path_archive": "data.deposition_parameters.ph3_partial_pressure",
+        "float_value": 0.008898556733632311
+      }
+    ]
+  },
+  "results": {
+    "properties": {},
+    "eln": {
+      "sections": [
+        "DTUSputtering"
+      ],
+      "names": [
+        "test logfile"
+      ],
+      "methods": [
+        "Sputter Deposition"
+      ]
+    }
+  }
+}
