@@ -42,6 +42,7 @@ from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     get_nested_value,
+    map_gas_flow_params_to_nomad,
     map_params_to_nomad,
     map_step_params_to_nomad,
     plot_plotly_extimeline,
@@ -924,11 +925,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Initializing a temporary step object
             step = DTUsteps()
 
-            # step.sputter_parameters = DTUsputter_parameters()
-            # step.environment = DTUChamberEnvironment()
-            # step.sources = [DTUsource()]
-            # step.environment.gas_flow = [DTUGasFlow()]
-
             step_param_nomad_map = map_step_params_to_nomad(step_params, key)
 
             # Looping through the step_param_nomad_map
@@ -944,9 +940,71 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 }
                 self.write_data(config)
 
+            step.environment = DTUChamberEnvironment()
+
+            environment = self.generate_environment_log_data(
+                step_params, key, step, logger
+            )
+
+            step.environment = environment
+
             steps.append(step)
 
         return steps
+
+    def generate_environment_log_data(
+        self, step_params: dict, key: str, logger: 'BoundLogger'
+    ) -> None:
+        environment = DTUChamberEnvironment()
+        environment.gas_flow = []
+
+        environment_param_nomad_map = map_step_params_to_nomad(step_params, key)
+
+        # Looping through the environment_param_nomad_map
+        for input_keys, output_keys, unit in environment_param_nomad_map:
+            config = {
+                'input_dict': step_params,
+                'input_keys': input_keys,
+                'output_obj': environment,
+                'output_obj_name': 'environment',
+                'output_keys': output_keys,
+                'unit': unit,
+                'logger': logger,
+            }
+            self.write_data(config)
+
+        # gas_flow = self.generate_gas_flow_log_data(step_params, key, logger)
+
+        # environment.gas_flow.append(gas_flow)
+
+        return environment
+
+    def generate_gas_flow_log_data(
+        self, step_params: dict, key: str, logger: 'BoundLogger'
+    ) -> None:
+        gas_flow = []
+
+        for gas in ['ar', 'h2s', 'ph3']:
+            single_gas = DTUGasFlow()
+
+            gas_flow_param_nomad_map = map_gas_flow_params_to_nomad(key, gas)
+
+            # Looping through the gas_flow_param_nomad_map
+            for input_keys, output_keys, unit in gas_flow_param_nomad_map:
+                config = {
+                    'input_dict': step_params,
+                    'input_keys': input_keys,
+                    'output_obj': single_gas,
+                    'output_obj_name': 'gas_flow',
+                    'output_keys': output_keys,
+                    'unit': unit,
+                    'logger': logger,
+                }
+                self.write_data(config)
+
+            gas_flow.append(single_gas)
+
+        return gas_flow
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """

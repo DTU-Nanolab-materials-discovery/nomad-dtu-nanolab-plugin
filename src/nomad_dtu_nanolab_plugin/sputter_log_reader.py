@@ -443,6 +443,9 @@ class Lf_Event:
     # method to extract the so called environment parameters (gases, sources, etc)
     # of single steps
     def get_step_environment_params(self, params):
+        # Extract the gas flow parameters
+        params[self.step_id]['environment']['gas_flow'] = {}
+
         for gas_name in ['ar', 'ph3', 'h2s']:
             params[self.step_id]['environment']['gas_flow'][gas_name] = {}
             params[self.step_id]['environment']['gas_flow'][gas_name]['gas'] = {}
@@ -470,6 +473,18 @@ class Lf_Event:
             params[self.step_id]['environment']['gas_flow'][gas_name]['gas']['name'] = (
                 gas_name
             )
+        # Extract the pressure parameters
+        params[self.step_id]['environment']['pressure']['set_value'] = self.data[
+            'PC Wide Range Gauge Setpoint'
+        ].iloc[-1]
+        params[self.step_id]['environment']['pressure']['value'] = self.data[
+            'PC Wide Range Gauge'
+        ]
+        params[self.step_id]['environment']['pressure']['time'] = self.data[
+            'Time Stamp'
+        ]
+        # Extract the heater parameters
+
         return params
 
     # method to extract the so called sources parameters of single steps
@@ -3583,7 +3598,7 @@ def map_params_to_nomad(params, gun_list):
     return param_nomad_map
 
 
-def map_step_params_to_nomad(step_params, key):
+def map_step_params_to_nomad(key):
     step_param_nomad_map = [
         [[key, 'name'], ['name'], None],
         # start_time has no unit since it is a TimeStamp object
@@ -3594,6 +3609,22 @@ def map_step_params_to_nomad(step_params, key):
 
     # Defining the input, output and unit
     return step_param_nomad_map
+
+
+def map_environment_params_to_nomad(key):
+    environment_param_nomad_map = [
+        [[key, 'environment', 'pressure', 'set_value'], ['pressure'], 'mTorr'],
+        [[key, 'environment', 'pressure', 'value'], ['value'], None],
+        [[key, 'environment', 'temperature', 'time'], ['time'], None],
+    ]
+
+    return environment_param_nomad_map
+
+
+def map_gas_flow_params_to_nomad(key, gas):
+    gas_flow_param_nomad_map = []
+
+    return gas_flow_param_nomad_map
 
 
 # -------CHAMBER VISUALIZATION PLOTTING METHODS-----------
