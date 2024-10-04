@@ -35,7 +35,6 @@ from nomad_material_processing.vapor_deposition.general import (
     GasFlow,
     Pressure,
 )
-
 from nomad_material_processing.vapor_deposition.pvd.general import PVDSource, PVDStep
 from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
 from nomad_measurements.utils import merge_sections
@@ -44,10 +43,10 @@ from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     get_nested_value,
+    map_environment_params_to_nomad,
     map_gas_flow_params_to_nomad,
     map_params_to_nomad,
     map_step_params_to_nomad,
-    map_environment_params_to_nomad,
     plot_plotly_extimeline,
     read_events,
     read_logfile,
@@ -832,31 +831,28 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         if value is None:
             logger.warning(f'Missing {params_str}: Could not set {subsection_str}')
             return
-
-        # Check if the value is a list
-        if isinstance(value, list):
+        # We check if the value is a TimeDelta object and convert it to seconds
+        if isinstance(value, pd._libs.tslibs.timedeltas.Timedelta):
             try:
-                # Convert each element in the list
-                value = [ureg.Quantity(v, unit).to(unit).magnitude for v in value]
-            except Exception as e:
-                logger.warning(f'Failed to convert list {params_str} to {unit}: {e}')
+                value = value.total_seconds()
+            except AttributeError:
+                logger.warning(f'{params_str}.total_seconds method is invalid')
                 return
-        else:
-            # We check if the value is a TimeDelta object and convert it to seconds
-            if isinstance(value, pd._libs.tslibs.timedeltas.Timedelta):
+            value = ureg.Quantity(value, 'second')
+        elif unit is not None:
+            if isinstance(value, list):
+                for i in range(len(value)):
+                    try:
+                        value[i] = ureg.Quantity(value[i], unit)
+                    except Exception as e:
+                        logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
+                        return
+            else:
                 try:
-                    value = value.total_seconds()
-                except AttributeError:
-                    logger.warning(f'{params_str}.total_seconds method is invalid')
-                    return
-                value = ureg.Quantity(value, 'second')
-            elif unit is not None:
-                try:
-                    value = ureg.Quantity(value, unit).to(unit).magnitude
+                    value = ureg.Quantity(value, unit)
                 except Exception as e:
                     logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
                     return
-
         # Traverse the path to set the nested attribute
         try:
             obj = output_obj
@@ -952,9 +948,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             step.environment = DTUChamberEnvironment()
 
-            environment = self.generate_environment_log_data(
-                step_params, key, logger
-            )
+            environment = self.generate_environment_log_data(step_params, key, logger)
 
             step.environment = environment
 
