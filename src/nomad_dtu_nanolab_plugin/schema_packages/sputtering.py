@@ -33,10 +33,9 @@ from nomad.units import ureg
 from nomad_material_processing.vapor_deposition.general import (
     ChamberEnvironment,
     GasFlow,
+    Pressure,
 )
-from nomad_material_processing.vapor_deposition.general.ChamberEnvironment import (
-    pressure,
-)
+
 from nomad_material_processing.vapor_deposition.pvd.general import PVDSource, PVDStep
 from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
 from nomad_measurements.utils import merge_sections
@@ -957,7 +956,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     ) -> None:
         environment = DTUChamberEnvironment()
         environment.gas_flow = []
-        environment.pressure = pressure()
+        environment.pressure = Pressure()
 
         environment_param_nomad_map = map_environment_params_to_nomad(key)
 
