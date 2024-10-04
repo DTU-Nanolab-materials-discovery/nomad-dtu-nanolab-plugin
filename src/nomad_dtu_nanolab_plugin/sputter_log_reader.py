@@ -3625,10 +3625,10 @@ def map_environment_params_to_nomad(key):
         [
             [key, 'environment', 'pressure', 'set_value'],
             ['pressure', 'set_value'],
-            'mTorr',
+            'mtorr',
         ],
-        [[key, 'environment', 'pressure', 'value'], ['pressure', 'value'], None],
-        [[key, 'environment', 'temperature', 'time'], ['pressure', 'time'], None],
+        [[key, 'environment', 'pressure', 'value'], ['pressure', 'set_value'], None],
+        [[key, 'environment', 'pressure', 'time'], ['pressure', 'time'], None],
     ]
 
     return environment_param_nomad_map
