@@ -45,6 +45,7 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     map_gas_flow_params_to_nomad,
     map_params_to_nomad,
     map_step_params_to_nomad,
+    map_environment_params_to_nomad,
     plot_plotly_extimeline,
     read_events,
     read_logfile,
@@ -954,7 +955,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         environment = DTUChamberEnvironment()
         environment.gas_flow = []
 
-        environment_param_nomad_map = map_step_params_to_nomad(key)
+        environment_param_nomad_map = map_environment_params_to_nomad(key)
 
         # Looping through the environment_param_nomad_map
         for input_keys, output_keys, unit in environment_param_nomad_map:
