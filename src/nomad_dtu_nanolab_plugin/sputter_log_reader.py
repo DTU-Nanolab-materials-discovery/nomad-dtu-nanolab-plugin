@@ -488,10 +488,10 @@ class Lf_Event:
             ].iloc[-1]
             params[self.step_id]['environment']['pressure']['value'] = self.data[
                 pressure_col
-            ]
+            ].tolist()
             params[self.step_id]['environment']['pressure']['time'] = self.data[
                 'Time Stamp'
-            ]
+            ].tolist()
         # Extract the heater parameters
 
         return params
