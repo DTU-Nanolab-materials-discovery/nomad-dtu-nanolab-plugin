@@ -832,20 +832,31 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         if value is None:
             logger.warning(f'Missing {params_str}: Could not set {subsection_str}')
             return
-        # We check if the value is a TimeDelta object and convert it to seconds
-        if isinstance(value, pd._libs.tslibs.timedeltas.Timedelta):
+
+        # Check if the value is a list
+        if isinstance(value, list):
             try:
-                value = value.total_seconds()
-            except AttributeError:
-                logger.warning(f'{params_str}.total_seconds method is invalid')
-                return
-            value = ureg.Quantity(value, 'second')
-        elif unit is not None:
-            try:
-                value = ureg.Quantity(value, unit)
+                # Convert each element in the list
+                value = [ureg.Quantity(v, unit).to('pascal').magnitude for v in value]
             except Exception as e:
-                logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
+                logger.warning(f'Failed to convert list {params_str} to pascal: {e}')
                 return
+        else:
+            # We check if the value is a TimeDelta object and convert it to seconds
+            if isinstance(value, pd._libs.tslibs.timedeltas.Timedelta):
+                try:
+                    value = value.total_seconds()
+                except AttributeError:
+                    logger.warning(f'{params_str}.total_seconds method is invalid')
+                    return
+                value = ureg.Quantity(value, 'second')
+            elif unit is not None:
+                try:
+                    value = ureg.Quantity(value, unit).to('pascal').magnitude
+                except Exception as e:
+                    logger.warning(f'Failed to convert {params_str} to pascal: {e}')
+                    return
+
         # Traverse the path to set the nested attribute
         try:
             obj = output_obj

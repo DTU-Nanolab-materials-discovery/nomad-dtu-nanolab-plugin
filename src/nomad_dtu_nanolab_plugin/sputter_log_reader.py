@@ -3631,8 +3631,8 @@ def map_environment_params_to_nomad(key):
             ['pressure', 'set_value'],
             'mtorr',
         ],
-        [[key, 'environment', 'pressure', 'value'], ['pressure', 'set_value'], None],
-        [[key, 'environment', 'pressure', 'time'], ['pressure', 'time'], None],
+        [[key, 'environment', 'pressure', 'value'], ['pressure', 'set_value'], 'mtorr'],
+        [[key, 'environment', 'pressure', 'time'], ['pressure', 'time'], 'second'],
     ]
 
     return environment_param_nomad_map
