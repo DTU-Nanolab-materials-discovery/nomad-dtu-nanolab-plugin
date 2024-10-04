@@ -63,6 +63,7 @@ CRACKER_ZONE_3_MIN_TEMP = 200  # degrees
 RT_TEMP_THRESHOLD = 30  # degrees
 # Time for the qcm to stabilize after the Xtal 2 shutter opens
 STAB_TIME = 30  # seconds
+CAPMAN_PRESSURE_THRESHOLD = 0
 # Threshold above which the flow of the mfc is considered on
 MFC_FLOW_THRESHOLD = 1  # sccm
 # Fraction of the length of the deposition dataframe to consider for the
@@ -473,16 +474,24 @@ class Lf_Event:
             params[self.step_id]['environment']['gas_flow'][gas_name]['gas']['name'] = (
                 gas_name
             )
-        # Extract the pressure parameters
-        params[self.step_id]['environment']['pressure']['set_value'] = self.data[
-            'PC Wide Range Gauge Setpoint'
-        ].iloc[-1]
-        params[self.step_id]['environment']['pressure']['value'] = self.data[
-            'PC Wide Range Gauge'
-        ]
-        params[self.step_id]['environment']['pressure']['time'] = self.data[
-            'Time Stamp'
-        ]
+        if (self.data['PC Capman Pressure'] < CAPMAN_PRESSURE_THRESHOLD).all():
+            pressure_col = 'PC Wide Range Gauge'
+        elif (self.data['PC Wide Range Gauge'] > CAPMAN_PRESSURE_THRESHOLD).all():
+            pressure_col = 'PC Capman Pressure'
+        else:
+            pressure_col = None
+
+        if pressure_col is not None:
+            # Extract the pressure parameters
+            params[self.step_id]['environment']['pressure']['set_value'] = self.data[
+                pressure_col
+            ].iloc[-1]
+            params[self.step_id]['environment']['pressure']['value'] = self.data[
+                pressure_col
+            ]
+            params[self.step_id]['environment']['pressure']['time'] = self.data[
+                'Time Stamp'
+            ]
         # Extract the heater parameters
 
         return params
@@ -3613,10 +3622,13 @@ def map_step_params_to_nomad(key):
 
 def map_environment_params_to_nomad(key):
     environment_param_nomad_map = [
-        [[key, 'environment', 'pressure', 'set_value'], ['pressure','set_value'],
-        'mTorr'],
-        [[key, 'environment', 'pressure', 'value'], ['pressure','value'], None],
-        [[key, 'environment', 'temperature', 'time'], ['pressure','time'], None],
+        [
+            [key, 'environment', 'pressure', 'set_value'],
+            ['pressure', 'set_value'],
+            'mTorr',
+        ],
+        [[key, 'environment', 'pressure', 'value'], ['pressure', 'value'], None],
+        [[key, 'environment', 'temperature', 'time'], ['pressure', 'time'], None],
     ]
 
     return environment_param_nomad_map
