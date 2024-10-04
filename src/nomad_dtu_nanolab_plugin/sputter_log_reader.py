@@ -484,14 +484,14 @@ class Lf_Event:
         if pressure_col is not None:
             # Extract the pressure parameters
             start_time = self.data['Time Stamp'].iloc[0]
-            params[self.step_id]['environment']['pressure']['set_time'] = [
-                start_time.to_pydatetime()
-            ]
-            params[self.step_id]['environment']['pressure']['set_value'] = [
-                self.data[
-                pressure_col
-            ].iloc[-1]
-            ]
+            # params[self.step_id]['environment']['pressure']['set_time'] = [
+            #     start_time.to_pydatetime()
+            # ]
+            # params[self.step_id]['environment']['pressure']['set_value'] = [
+            #     self.data[
+            #     pressure_col
+            # ].iloc[-1]
+            # ]
             params[self.step_id]['environment']['pressure']['time'] = (
                 (self.data['Time Stamp'] - start_time).dt.total_seconds().tolist()
             )
@@ -3629,11 +3629,11 @@ def map_step_params_to_nomad(key):
 
 def map_environment_params_to_nomad(key):
     environment_param_nomad_map = [
-        [
-            [key, 'environment', 'pressure', 'set_value'],
-            ['pressure', 'set_value'],
-            'mtorr',
-        ],
+        # [
+        #     [key, 'environment', 'pressure', 'set_value'],
+        #     ['pressure', 'set_value'],
+        #     'mtorr',
+        # ],
         [[key, 'environment', 'pressure', 'value'], ['pressure', 'set_value'], 'mtorr'],
         [[key, 'environment', 'pressure', 'time'], ['pressure', 'time'], 'second'],
     ]
