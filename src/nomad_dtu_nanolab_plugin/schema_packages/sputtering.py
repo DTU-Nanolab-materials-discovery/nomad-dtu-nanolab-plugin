@@ -1028,10 +1028,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 events_plot, params, step_params = read_events(log_df)
             if params is not None:
                 # Writing logfile data to the respective sections
-                sputtering = self.generate_general_log_data(params, archive, logger)
+                sputtering = self.generate_general_log_data(params, logger)
 
             if step_params is not None and sputtering is not None:
-                steps = self.generate_step_log_data(step_params, archive, logger)
+                steps = self.generate_step_log_data(step_params, logger)
                 sputtering.steps.extend(steps)
 
             # Merging the sputtering object with self
