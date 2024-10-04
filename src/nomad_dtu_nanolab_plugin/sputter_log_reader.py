@@ -484,21 +484,19 @@ class Lf_Event:
         if pressure_col is not None:
             # Extract the pressure parameters
             start_time = self.data['Time Stamp'].iloc[0]
-            params[self.step_id]['environment']['pressure']['set_time'] = list(
-                start_time)
-            params[self.step_id]['environment']['pressure']['set_value'] = list(
-                self.data[
-                pressure_col
-            ].iloc[-1])
+            params[self.step_id]['environment']['pressure']['set_time'] = [
+                start_time.to_pydatetime()
+                ]
+            params[self.step_id]['environment']['pressure']['set_value'] = self.data[
+                pressure_col].iloc[-1]
             params[self.step_id]['environment']['pressure']['time'] = (
                 (self.data['Time Stamp'] - start_time).total_seconds().tolist()
             )
             params[self.step_id]['environment']['pressure']['value'] = self.data[
-                pressure_col
-            ].tolist()
-        # Extract the heater parameters
+                pressure_col].tolist()
+                # Extract the heater parameters
 
-        return params
+            return params
 
     # method to extract the so called sources parameters of single steps
     def get_step_sources_params(self, source_list, params):
