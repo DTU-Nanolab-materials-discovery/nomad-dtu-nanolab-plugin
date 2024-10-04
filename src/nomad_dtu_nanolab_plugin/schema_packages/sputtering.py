@@ -939,7 +939,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             step.environment = DTUChamberEnvironment()
 
             environment = self.generate_environment_log_data(
-                step_params, key, step, logger
+                step_params, key, logger
             )
 
             step.environment = environment
