@@ -921,7 +921,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Initializing a temporary step object
             step = DTUsteps()
 
-            step_param_nomad_map = map_step_params_to_nomad(step_params, key)
+            step_param_nomad_map = map_step_params_to_nomad(key)
 
             # Looping through the step_param_nomad_map
             for input_keys, output_keys, unit in step_param_nomad_map:
@@ -954,7 +954,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         environment = DTUChamberEnvironment()
         environment.gas_flow = []
 
-        environment_param_nomad_map = map_step_params_to_nomad(step_params, key)
+        environment_param_nomad_map = map_step_params_to_nomad(key)
 
         # Looping through the environment_param_nomad_map
         for input_keys, output_keys, unit in environment_param_nomad_map:
