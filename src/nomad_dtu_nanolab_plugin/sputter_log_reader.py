@@ -487,9 +487,11 @@ class Lf_Event:
             params[self.step_id]['environment']['pressure']['set_time'] = [
                 start_time.to_pydatetime()
             ]
-            params[self.step_id]['environment']['pressure']['set_value'] = self.data[
+            params[self.step_id]['environment']['pressure']['set_value'] = [
+                self.data[
                 pressure_col
             ].iloc[-1]
+            ]
             params[self.step_id]['environment']['pressure']['time'] = (
                 (self.data['Time Stamp'] - start_time).dt.total_seconds().tolist()
             )
