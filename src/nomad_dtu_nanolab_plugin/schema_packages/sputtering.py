@@ -1057,7 +1057,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             # Triggering the plotting of the timeline and the sample position plot
             self.figures = []
-            self.plot(events_plot, archive, logger)
+            # self.plot(events_plot, archive, logger)
 
             # sample_number = len(self.samples)
             # j = 0
