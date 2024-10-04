@@ -837,9 +837,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         if isinstance(value, list):
             try:
                 # Convert each element in the list
-                value = [ureg.Quantity(v, unit).to('pascal').magnitude for v in value]
+                value = [ureg.Quantity(v, unit).to(unit).magnitude for v in value]
             except Exception as e:
-                logger.warning(f'Failed to convert list {params_str} to pascal: {e}')
+                logger.warning(f'Failed to convert list {params_str} to {unit}: {e}')
                 return
         else:
             # We check if the value is a TimeDelta object and convert it to seconds
@@ -852,9 +852,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 value = ureg.Quantity(value, 'second')
             elif unit is not None:
                 try:
-                    value = ureg.Quantity(value, unit).to('pascal').magnitude
+                    value = ureg.Quantity(value, unit).to(unit).magnitude
                 except Exception as e:
-                    logger.warning(f'Failed to convert {params_str} to pascal: {e}')
+                    logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
                     return
 
         # Traverse the path to set the nested attribute
