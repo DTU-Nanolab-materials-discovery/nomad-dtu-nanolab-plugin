@@ -3630,12 +3630,15 @@ def map_step_params_to_nomad(key):
 
 
 def map_environment_params_to_nomad(key):
+    """
+    Heater section missing arguments
+    In nomad
+    (nomad-material-processing/src/nomad_material_processing/vapor_deposition/general.py)
+
+    class SubstrateHeater(ArchiveSection):
+        pass
+    """
     environment_param_nomad_map = [
-        # [
-        #     [key, 'environment', 'pressure', 'set_value'],
-        #     ['pressure', 'set_value'],
-        #     'mtorr',
-        # ],
         [[key, 'environment', 'pressure', 'value'], ['pressure', 'value'], 'mtorr'],
         [[key, 'environment', 'pressure', 'time'], ['pressure', 'time'], 'second'],
     ]

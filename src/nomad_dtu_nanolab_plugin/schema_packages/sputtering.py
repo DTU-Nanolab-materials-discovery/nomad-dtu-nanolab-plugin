@@ -1053,8 +1053,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Run the normalizer of the deposition.parameters subsection
             self.deposition_parameters.normalize(archive, logger)
 
+            # Run the nomalizer of the environment subsection
+            for step in self.steps:
+                for gas_flow in step.environment.gas_flow:
+                    gas_flow.normalize(archive, logger)
+                    gas_flow.gas.normalize(archive, logger)
+
             # Triggering the plotting of the timeline and the sample position plot
-            self.figures = []
+            # self.figures = []
             # self.plot(events_plot, archive, logger)
 
             # sample_number = len(self.samples)
@@ -1064,17 +1070,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # str(self.name) + '_' + str(self.samples[j].relative_position))
             #    self.samples[j].name = sample_name
             #    self.samples[j].lab_id = sample_name
-
-            # to automate the take over of te references
-            # for the further processing see in the respective sections
-            # if gas flow of whatever gas is not 0
-            #   self.steps.environment.gas_flow.gas_name =
-            #   self.depositsition_parameters.used_gas.gas_name
-            #   self.steps.environment.gas_flow.used_gas_supply =
-            #   self.depositsition_parameters.used_gas.used_gas_supply
-
-        # ToDos:
-        # next test to autofill all lab_id fields from their respective references
 
 
 m_package.__init_metainfo__()
