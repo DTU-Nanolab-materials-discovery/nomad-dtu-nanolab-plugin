@@ -453,6 +453,7 @@ class Lf_Event:
         for gas_name in ['ar', 'ph3', 'h2s']:
             # initialize the gas_flow dictionary
             gas_flow = {}
+            gas_flow[gas_name] = {}
 
             gas_flow[gas_name]['gas'] = {}
             gas_flow[gas_name]['flow_rate'] = {}

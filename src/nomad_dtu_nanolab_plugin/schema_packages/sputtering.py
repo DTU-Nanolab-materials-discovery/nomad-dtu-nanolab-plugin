@@ -978,9 +978,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             }
             self.write_data(config)
 
-        # gas_flow = self.generate_gas_flow_log_data(step_params, key, logger)
+        gas_flow = self.generate_gas_flow_log_data(step_params, key, logger)
 
-        # environment.gas_flow.append(gas_flow)
+        environment.gas_flow.append(gas_flow)
 
         return environment
 
