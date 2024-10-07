@@ -447,33 +447,36 @@ class Lf_Event:
         # Extract the gas flow parameters
         params[self.step_id]['environment']['gas_flow'] = {}
 
-        for gas_name in ['ar', 'ph3', 'h2s']:
-            params[self.step_id]['environment']['gas_flow'][gas_name] = {}
-            params[self.step_id]['environment']['gas_flow'][gas_name]['gas'] = {}
-            params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'] = {}
+        # Get the strat time of the step
+        start_time = self.data['Time Stamp'].iloc[0]
 
-            params[self.step_id]['environment']['gas_flow'][gas_name]['gas_name'] = (
-                gas_name
-            )
+        for gas_name in ['ar', 'ph3', 'h2s']:
+            # initialize the gas_flow dictionary
+            gas_flow = {}
+
+            gas_flow[gas_name]['gas'] = {}
+            gas_flow[gas_name]['flow_rate'] = {}
+
+            gas_flow[gas_name]['gas_name'] = gas_name
             # In the following entry, we add the time series of the
             # corresponding gas flow rate
-            params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'][
-                'set_value'
-            ] = self.data[f'PC MFC {GAS_NUMBER[gas_name]} Setpoint'].iloc[-1]
+            # params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'][
+            #     'set_value'
+            # ] = self.data[f'PC MFC {GAS_NUMBER[gas_name]} Setpoint'].iloc[-1]
             # In the following entry, we set the value of the gas flow rate
-            params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'][
-                'value'
-            ] = self.data[f'PC MFC {GAS_NUMBER[gas_name]} Flow']
+            gas_flow[gas_name]['flow_rate']['value'] = self.data[
+                f'PC MFC {GAS_NUMBER[gas_name]} Flow'
+            ].tolist()
             # In the following entry, we set the time values
-            params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'][
-                'time'
-            ] = self.data['Time Stamp']
-            params[self.step_id]['environment']['gas_flow'][gas_name][
-                'measurement_type'
-            ] = 'Mass Flow Controller'
-            params[self.step_id]['environment']['gas_flow'][gas_name]['gas']['name'] = (
-                gas_name
+            gas_flow[gas_name]['flow_rate']['time'] = (
+                (self.data['Time Stamp'] - start_time).dt.total_seconds().tolist()
             )
+            gas_flow[gas_name]['measurement_type'] = 'Mass Flow Controller'
+            gas_flow[gas_name]['gas']['name'] = gas_name
+
+        params[self.step_id]['environment']['gas_flow'] = gas_flow
+
+        # Extract the pressure parameters
         if (self.data['PC Capman Pressure'] < CAPMAN_PRESSURE_THRESHOLD).all():
             pressure_col = 'PC Wide Range Gauge'
         elif (self.data['PC Wide Range Gauge'] > CAPMAN_PRESSURE_THRESHOLD).all():
@@ -483,7 +486,7 @@ class Lf_Event:
 
         if pressure_col is not None:
             # Extract the pressure parameters
-            start_time = self.data['Time Stamp'].iloc[0]
+
             # params[self.step_id]['environment']['pressure']['set_time'] = [
             #     start_time.to_pydatetime()
             # ]
@@ -3634,15 +3637,37 @@ def map_environment_params_to_nomad(key):
         #     ['pressure', 'set_value'],
         #     'mtorr',
         # ],
-        [[key, 'environment', 'pressure', 'value'], ['pressure', 'set_value'], 'mtorr'],
+        [[key, 'environment', 'pressure', 'value'], ['pressure', 'value'], 'mtorr'],
         [[key, 'environment', 'pressure', 'time'], ['pressure', 'time'], 'second'],
     ]
 
     return environment_param_nomad_map
 
 
-def map_gas_flow_params_to_nomad(key, gas):
-    gas_flow_param_nomad_map = []
+def map_gas_flow_params_to_nomad(key, gas_name):
+    gas_flow_param_nomad_map = [
+        [[key, 'environment', 'gas_flow', gas_name, 'gas', 'name'], ['gas_name'], None],
+        [
+            [key, 'environment', 'gas_flow', gas_name, 'gas', 'name'],
+            ['gas', 'name'],
+            None,
+        ],
+        [
+            [key, 'environment', 'gas_flow', gas_name, 'flow_rate', 'value'],
+            ['flow_rate', 'value'],
+            'cm^3/minute',
+        ],
+        [
+            [key, 'environment', 'gas_flow', gas_name, 'flow_rate', 'time'],
+            ['flow_rate', 'time'],
+            'second',
+        ],
+        [
+            [key, 'environment', 'gas_flow', gas_name, 'flow_rate', 'measurement_type'],
+            ['flow_rate', 'measurement_type'],
+            None,
+        ],
+    ]
 
     return gas_flow_param_nomad_map
 
