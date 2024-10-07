@@ -33,8 +33,8 @@ from nomad.units import ureg
 from nomad_material_processing.vapor_deposition.general import (
     ChamberEnvironment,
     GasFlow,
-    gas,
-    flow_rate,
+    PureSubstanceSection,
+    VolumetricFlowRate,
     Pressure,
 )
 from nomad_material_processing.vapor_deposition.pvd.general import PVDSource, PVDStep
@@ -993,8 +993,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         for gas_name in ['ar', 'h2s', 'ph3']:
             single_gas = DTUGasFlow()
-            single_gas.flow_rate = flow_rate()
-            single_gas.gas = gas()
+            single_gas.flow_rate = VolumetricFlowRate()
+            single_gas.gas = PureSubstanceSection()
 
             gas_flow_param_nomad_map = map_gas_flow_params_to_nomad(key, gas_name)
 
