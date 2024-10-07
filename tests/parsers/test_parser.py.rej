@@ -1,0 +1,9 @@
+diff a/tests/parsers/test_parser.py b/tests/parsers/test_parser.py	(rejected hunks)
+@@ -1,6 +1,7 @@
+ import logging
+ 
+ from nomad.datamodel import EntryArchive
++
+ from nomad_dtu_nanolab_plugin.parsers.parser import NewParser
+ 
+ 
