@@ -467,10 +467,10 @@ class Lf_Event:
                 f'PC MFC {GAS_NUMBER[gas_name]} Flow'
             ].tolist()
             # In the following entry, we set the time values
-            gas_flow[gas_name]['flow_rate']['time'] = (
+            gas_flow['flow_rate']['time'] = (
                 (self.data['Time Stamp'] - start_time).dt.total_seconds().tolist()
             )
-            gas_flow['measurement_type'] = 'Mass Flow Controller'
+            gas_flow['flow_rate']['measurement_type'] = 'Mass Flow Controller'
             gas_flow['gas']['name'] = gas_name
 
             params[self.step_id]['environment']['gas_flow'][gas_name] = gas_flow
