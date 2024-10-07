@@ -452,29 +452,28 @@ class Lf_Event:
         for gas_name in ['ar', 'ph3', 'h2s']:
             # initialize the gas_flow dictionary
             gas_flow = {}
-            gas_flow[gas_name] = {}
 
-            gas_flow[gas_name]['gas'] = {}
-            gas_flow[gas_name]['flow_rate'] = {}
+            gas_flow['gas'] = {}
+            gas_flow['flow_rate'] = {}
 
-            gas_flow[gas_name]['gas_name'] = gas_name
+            gas_flow['gas_name'] = gas_name
             # In the following entry, we add the time series of the
             # corresponding gas flow rate
             # params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'][
             #     'set_value'
             # ] = self.data[f'PC MFC {GAS_NUMBER[gas_name]} Setpoint'].iloc[-1]
             # In the following entry, we set the value of the gas flow rate
-            gas_flow[gas_name]['flow_rate']['value'] = self.data[
+            gas_flow['flow_rate']['value'] = self.data[
                 f'PC MFC {GAS_NUMBER[gas_name]} Flow'
             ].tolist()
             # In the following entry, we set the time values
             gas_flow[gas_name]['flow_rate']['time'] = (
                 (self.data['Time Stamp'] - start_time).dt.total_seconds().tolist()
             )
-            gas_flow[gas_name]['measurement_type'] = 'Mass Flow Controller'
-            gas_flow[gas_name]['gas']['name'] = gas_name
+            gas_flow['measurement_type'] = 'Mass Flow Controller'
+            gas_flow['gas']['name'] = gas_name
 
-        params[self.step_id]['environment']['gas_flow'] = gas_flow
+            params[self.step_id]['environment']['gas_flow'][gas_name] = gas_flow
 
         # Extract the pressure parameters
         if (self.data['PC Capman Pressure'] < CAPMAN_PRESSURE_THRESHOLD).all():
