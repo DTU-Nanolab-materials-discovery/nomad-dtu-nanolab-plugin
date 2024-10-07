@@ -445,7 +445,6 @@ class Lf_Event:
     # of single steps
     def get_step_environment_params(self, params):
         # Extract the gas flow parameters
-        params[self.step_id]['environment']['gas_flow'] = {}
 
         # Get the strat time of the step
         start_time = self.data['Time Stamp'].iloc[0]
