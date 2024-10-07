@@ -3533,9 +3533,19 @@ def map_params_to_nomad(params, gun_list):
             'cm^3/minute',
         ],
         [
+            ['deposition', 'avg_h2s_partial_pressure'],
+            ['deposition_parameters', 'h2s_partial_pressure'],
+            'mtorr',
+        ],
+                [
             ['deposition', 'avg_ph3_flow'],
             ['deposition_parameters', 'ph3_in_Ar_flow'],
             'cm^3/minute',
+        ],
+        [
+            ['deposition', 'avg_ph3_partial_pressure'],
+            ['deposition_parameters', 'ph3_partial_pressure'],
+            'mtorr',
         ],
         # End of process parameters
         [
