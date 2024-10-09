@@ -358,8 +358,16 @@ class Lf_Event:
         for i in range(self.events):
             if self.bounds[i][1] < ref_time:
                 event_list.append(self.sep_data[i])
-        self.set_data(event_list[event_loc], raw_data)
-
+            elif self.bounds[i][1] > ref_time and self.bounds[i][0] < ref_time:
+                # If the event is not entirely before the reference time, we
+                # filter the data to only keep the data before the reference time
+                event_list.append(self.sep_data[i][
+                    self.sep_data[i]['Time Stamp'] < ref_time
+                    ])
+        if event_loc < len(event_list):
+            self.set_data(event_list[event_loc], raw_data)
+        else:
+            raise IndexError("event_loc is out of the range of the event_list")
     # specific method to stitch the source ramp up events together,
     # in the case a source is ramped up in several steps.
     # it essentially merges the events if the last output setpoint power
