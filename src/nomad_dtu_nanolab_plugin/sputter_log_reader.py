@@ -175,10 +175,24 @@ STEP_COLORS = {
 OVERVIEW_PLOT = [
     'PC Capman Pressure',
     'Substrate Heater Temperature',
+    'Sulfur Cracker Control Enabled',
+    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
+    'Sulfur Cracker Control Setpoint Feedback',
 ]
 for gas in ['ar', 'ph3', 'h2s']:
     OVERVIEW_PLOT.append(f'PC MFC {GAS_NUMBER[gas]} Flow')
 
+for source_number in ['1', '3', '4']:
+    OVERVIEW_PLOT.append(f'Source {source_number} DC Bias')
+    OVERVIEW_PLOT.append(f'Source {source_number} Voltage')
+    OVERVIEW_PLOT.append(f'Source {source_number} Output Setpoint')
+
+# Set y-axis titles
+DICT_RENAME = {
+    'Sulfur Cracker Control Enabled': 'Cracker Open',
+    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback': 'Cracker Pulse Width',
+    'Sulfur Cracker Control Setpoint Feedback': 'Cracker Frequency',
+}
 
 ##------EVENT CLASS DEFINITION------
 
@@ -361,13 +375,14 @@ class Lf_Event:
             elif self.bounds[i][1] > ref_time and self.bounds[i][0] < ref_time:
                 # If the event is not entirely before the reference time, we
                 # filter the data to only keep the data before the reference time
-                event_list.append(self.sep_data[i][
-                    self.sep_data[i]['Time Stamp'] < ref_time
-                    ])
+                event_list.append(
+                    self.sep_data[i][self.sep_data[i]['Time Stamp'] < ref_time]
+                )
         if event_loc < len(event_list):
             self.set_data(event_list[event_loc], raw_data)
         else:
-            raise IndexError("event_loc is out of the range of the event_list")
+            raise IndexError('event_loc is out of the range of the event_list')
+
     # specific method to stitch the source ramp up events together,
     # in the case a source is ramped up in several steps.
     # it essentially merges the events if the last output setpoint power
@@ -2678,37 +2693,8 @@ def quick_plot(df, Y, **kwargs):
     Returns:
         fig (plotly.graph_objects.Figure): The Plotly figure object.
     """
-    # Extract keyword arguments
-    X = kwargs.get('X', 'Time Stamp')
-    mode = kwargs.get('mode', 'default')
-    plot_type = kwargs.get('plot_type', 'scatter')
-    Y2 = kwargs.get('Y2', [])
-    width = kwargs.get('width', WIDTH)
-    height = kwargs.get('height', HEIGHT)
-    plot_title = kwargs.get('plot_title', 'Quick Plot')
-
-    # Ensure Y and Y2 are lists
-    if isinstance(Y, str):
-        Y = [Y]
-    if isinstance(Y2, str):
-        Y2 = [Y2]
-
-    # Set y-axis titles
-    y_axis_title = Y[0] if len(Y) == 1 else 'Values'
-    y2_axis_title = Y2[0] if len(Y2) == 1 else 'Values'
-
-    # Consolidate the parameters into a single dictionary
-    plot_params = {
-        'X': X,
-        'Y': Y,
-        'Y2': Y2,
-        'plot_type': plot_type,
-        'plot_title': plot_title,
-        'y_axis_title': y_axis_title,
-        'y2_axis_title': y2_axis_title,
-        'width': width,
-        'height': height,
-    }
+    plot_params = setup_plot_params(df, Y, **kwargs)
+    mode = plot_params['mode']
 
     if mode == 'default':
         fig = create_default_plot(df, plot_params)
@@ -2724,22 +2710,10 @@ def quick_plot(df, Y, **kwargs):
             bgcolor='rgba(0,0,0,0)',  # Transparent legend background
         )
     )
+
+    # Add vertical lines to separate the plots
     if mode == 'stack':
-        shapes = []
-        for i in range(num_plot):
-            shapes.append(
-                dict(
-                    type='rect',
-                    x0=0,
-                    x1=1,
-                    y0=i * (1 / num_plot),
-                    y1=(i + 1) * (1 / num_plot),
-                    xref='paper',
-                    yref='paper',
-                    line=dict(color='black', width=1),
-                )
-            )
-        fig.update_layout(shapes=shapes)
+        add_vertical_lines(fig, num_plot)
     else:
         fig.update_layout(
             shapes=[
@@ -2757,6 +2731,62 @@ def quick_plot(df, Y, **kwargs):
         )
 
     return fig
+
+
+def get_axis_title(column, default_title='Values'):
+    """Helper function to get the axis title from DICT_RENAME or use the column name."""
+    return DICT_RENAME.get(column, column) if isinstance(column, str) else default_title
+
+
+def setup_plot_params(df, Y, **kwargs):
+    """Helper function to setup plot parameters."""
+    X = kwargs.get('X', 'Time Stamp')
+    mode = kwargs.get('mode', 'default')
+    plot_type = kwargs.get('plot_type', 'scatter')
+    Y2 = kwargs.get('Y2', [])
+    width = kwargs.get('width', WIDTH)
+    height = kwargs.get('height', HEIGHT)
+    plot_title = kwargs.get('plot_title', 'Quick Plot')
+
+    # Ensure Y and Y2 are lists
+    if isinstance(Y, str):
+        Y = [Y]
+    if isinstance(Y2, str):
+        Y2 = [Y2]
+
+    y_axis_title = get_axis_title(Y[0]) if len(Y) == 1 else 'Values'
+    y2_axis_title = get_axis_title(Y2[0]) if len(Y2) == 1 else 'Values'
+
+    return {
+        'X': X,
+        'Y': Y,
+        'Y2': Y2,
+        'plot_type': plot_type,
+        'plot_title': plot_title,
+        'y_axis_title': y_axis_title,
+        'y2_axis_title': y2_axis_title,
+        'width': width,
+        'height': height,
+        'mode': mode,
+    }
+
+
+def add_vertical_lines(fig, num_plot):
+    """Helper function to add vertical lines to separate the plots."""
+    shapes = [
+        dict(
+            type='rect',
+            x0=0,
+            x1=1,
+            y0=i * (1 / num_plot),
+            y1=(i + 1) * (1 / num_plot),
+            xref='paper',
+            yref='paper',
+            line=dict(color='black', width=1),
+        )
+        for i in range(num_plot)
+    ]
+    fig.update_layout(shapes=shapes)
 
 
 def create_default_plot(df, plot_params):
@@ -2792,14 +2822,21 @@ def create_stack_plot(df, plot_params):
     )
 
     for i, y_col in enumerate(Y):
+        # Setup y-axis titles
+
+        if y_col in DICT_RENAME:
+            y_axis_title = DICT_RENAME[y_col]
+        else:
+            y_axis_title = y_col
+
         trace = go.Scatter(
             x=df[X],
             y=df[y_col],
             mode='lines' if plot_type == 'line' else 'markers',
-            name=y_col,
+            name=y_axis_title,
         )
         fig.add_trace(trace, row=i + 1, col=1)
-        fig.update_yaxes(title_text=y_col, row=i + 1, col=1)
+        fig.update_yaxes(title_text=y_axis_title, row=i + 1, col=1)
 
     num_plot = len(Y)
     fig.update_xaxes(title_text='Time', row=num_plot, col=1)
@@ -2807,6 +2844,7 @@ def create_stack_plot(df, plot_params):
         title_text=plot_title,
         height=height * 0.5 * num_plot,
         width=width,
+        showlegend=False,  # Hide the legend
     )
     return fig, num_plot
 
@@ -2964,25 +3002,34 @@ def plot_plotly_extimeline(
 
 def generate_bias_plot(deposition):
     Y_plot = []
+    patterns = [
+        r'Source \d+ DC Bias',
+        r'Source \d+ Voltage',
+    ]
+
     for col in deposition.data.columns:
-        if re.search(r'Source \d+ DC Bias', col) or re.search(
-            r'Source \d+ Voltage', col
-        ):
+        if any(re.search(pattern, col) for pattern in patterns):
             Y_plot.append(col)
-    bias_plot = quick_plot(deposition.data, Y_plot, plot_type='line')
+
+    bias_plot = quick_plot(
+        deposition.data, Y_plot, mode='default', plot_type='line', width=1.5 * WIDTH
+    )
 
     return bias_plot
 
 
 def generate_overview_plot(data):
     Y_plot = OVERVIEW_PLOT
+    # Check if the columns are in the data
+    Y_plot = [col for col in Y_plot if col in data.columns]
     overview_plot = quick_plot(
         data,
         Y_plot,
         plot_type='line',
         plot_title='Overview Plot',
         mode='stack',
-        heigth=HEIGHT / 2,
+        heigth=0.5 * HEIGHT,
+        width=WIDTH,
     )
     return overview_plot
 
@@ -3545,7 +3592,7 @@ def map_params_to_nomad(params, gun_list):
             ['deposition_parameters', 'h2s_partial_pressure'],
             'mtorr',
         ],
-                [
+        [
             ['deposition', 'avg_ph3_flow'],
             ['deposition_parameters', 'ph3_in_Ar_flow'],
             'cm^3/minute',
