@@ -12,6 +12,8 @@ from lmfit import Parameters
 from scipy.signal import savgol_filter
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import plotly.express as px
+import matplotlib.colors as mcolors
 import pickle
 from openpyxl import load_workbook
 
@@ -1978,8 +1980,8 @@ def rgba_to_hex(rgba):
     r, g, b, a = [int(c * 255) for c in rgba]
     return f'#{r:02x}{g:02x}{b:02x}'
 
-def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_df, ref_label="Reference", title=None):
-    'interactive shifted plot for assigning phases to XRD data'
+def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_df, ref_label="Reference", title=None, colors='rows'):
+    'interactive shifted plot for assigning phases to XRD data, specify if you want different colors per each row or a rainbow colormap'
     fig = make_subplots(
         rows=2, 
         cols=1, 
@@ -1987,16 +1989,35 @@ def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_d
         row_heights=[0.8, 0.2],  # Proportion of height for each plot
         vertical_spacing=0.02    # Adjust this to reduce space between plots
     )
+    
+    if colors == 'rows':
+        # Define a color palette with as many colors as there are unique values in y
+        coords_colors = pd.DataFrame({'X': x, 'Y': y})
+        unique_y_values = coords_colors['Y'].unique()
+        
+        color_palette = px.colors.qualitative.Plotly[:len(unique_y_values)]
+        
+        unique_x_values = coords_colors['X'].unique()
+        color_dict = {}
+        for i, color in enumerate(color_palette):
+            # Generate lighter hues of the color for each x value
+            base_color = mcolors.to_rgb(color)
+            lighter_hues = [mcolors.to_hex((base_color[0] + (1 - base_color[0]) * (j / len(unique_x_values)),
+                                            base_color[1] + (1 - base_color[1]) * (j / len(unique_x_values)),
+                                            base_color[2] + (1 - base_color[2]) * (j / len(unique_x_values))))
+                            for j in range(len(unique_x_values))]
+            color_dict[unique_y_values[i]] = lighter_hues
+        coords_colors['Color'] = coords_colors.apply(lambda row: color_dict[row['Y']][list(unique_x_values).index(row['X'])], axis=1)
+        colors = coords_colors['Color'].values
 
+    elif colors == 'rainbow':
+        colormap = plt.get_cmap('turbo')  # You can choose any matplotlib colormap
+        colors = [rgba_to_hex(colormap(i / len(x))) for i in range(len(x))]  # Convert colors to hex
+    
     x_data = []
     y_data = []
-    #colors = ['#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A']
-    colormap = plt.get_cmap('turbo')  # You can choose any matplotlib colormap
-    colors = [rgba_to_hex(colormap(i / len(x))) for i in range(len(x))]  # Convert colors to hex
-
     # Store all y-data to find the global maximum
     all_y_data = []
-
     # Loop through and plot the XRD spectra with a vertical shift in the top plot
     for i in range(len(x)):
         x_data = get_data(data, datatype_x, x[i], y[i], False, False)
@@ -2085,7 +2106,6 @@ def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_d
         xaxis2_title=datatype_x,
         yaxis_title=datatype_y
     )
-
 
     return fig
 
