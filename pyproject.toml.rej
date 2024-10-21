@@ -1,0 +1,13 @@
+diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
+@@ -25,7 +25,10 @@ maintainers = [
+     { name = "Lena Mittman", email = "LeAnMi@users.noreply.github.com" },
+ ]
+ license = { file = "LICENSE" }
+-dependencies = ["nomad-lab>=1.3.0"]
++dependencies = [
++    "nomad-lab>=1.3.0",
++    "python-magic-bin; sys_platform == 'win32'",
++]
+ 
+ [project.urls]
+ Repository = "https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin"
