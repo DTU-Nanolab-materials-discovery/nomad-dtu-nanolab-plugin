@@ -24,9 +24,131 @@ import plotly.express as px
 import plotly.graph_objects as go
 from matplotlib import patches
 from matplotlib.transforms import Affine2D
-from mendeleev import element
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from plotly.subplots import make_subplots
+
+# Elements name to symbol dict
+ELEMENTS = {
+    '': 'X',
+    'Hydrogen': 'H',
+    'Helium': 'He',
+    'Lithium': 'Li',
+    'Beryllium': 'Be',
+    'Boron': 'B',
+    'Carbon': 'C',
+    'Nitrogen': 'N',
+    'Oxygen': 'O',
+    'Fluorine': 'F',
+    'Neon': 'Ne',
+    'Sodium': 'Na',
+    'Magnesium': 'Mg',
+    'Aluminium': 'Al',
+    'Silicon': 'Si',
+    'Phosphorus': 'P',
+    'Sulfur': 'S',
+    'Chlorine': 'Cl',
+    'Argon': 'Ar',
+    'Potassium': 'K',
+    'Calcium': 'Ca',
+    'Scandium': 'Sc',
+    'Titanium': 'Ti',
+    'Vanadium': 'V',
+    'Chromium': 'Cr',
+    'Manganese': 'Mn',
+    'Iron': 'Fe',
+    'Cobalt': 'Co',
+    'Nickel': 'Ni',
+    'Copper': 'Cu',
+    'Zinc': 'Zn',
+    'Gallium': 'Ga',
+    'Germanium': 'Ge',
+    'Arsenic': 'As',
+    'Selenium': 'Se',
+    'Bromine': 'Br',
+    'Krypton': 'Kr',
+    'Rubidium': 'Rb',
+    'Strontium': 'Sr',
+    'Yttrium': 'Y',
+    'Zirconium': 'Zr',
+    'Niobium': 'Nb',
+    'Molybdenum': 'Mo',
+    'Technetium': 'Tc',
+    'Ruthenium': 'Ru',
+    'Rhodium': 'Rh',
+    'Palladium': 'Pd',
+    'Silver': 'Ag',
+    'Cadmium': 'Cd',
+    'Indium': 'In',
+    'Tin': 'Sn',
+    'Antimony': 'Sb',
+    'Tellurium': 'Te',
+    'Iodine': 'I',
+    'Xenon': 'Xe',
+    'Caesium': 'Cs',
+    'Barium': 'Ba',
+    'Lanthanum': 'La',
+    'Cerium': 'Ce',
+    'Praseodymium': 'Pr',
+    'Neodymium': 'Nd',
+    'Promethium': 'Pm',
+    'Samarium': 'Sm',
+    'Europium': 'Eu',
+    'Gadolinium': 'Gd',
+    'Terbium': 'Tb',
+    'Dysprosium': 'Dy',
+    'Holmium': 'Ho',
+    'Erbium': 'Er',
+    'Thulium': 'Tm',
+    'Ytterbium': 'Yb',
+    'Lutetium': 'Lu',
+    'Hafnium': 'Hf',
+    'Tantalum': 'Ta',
+    'Tungsten': 'W',
+    'Rhenium': 'Re',
+    'Osmium': 'Os',
+    'Iridium': 'Ir',
+    'Platinum': 'Pt',
+    'Gold': 'Au',
+    'Mercury': 'Hg',
+    'Thallium': 'Tl',
+    'Lead': 'Pb',
+    'Bismuth': 'Bi',
+    'Polonium': 'Po',
+    'Astatine': 'At',
+    'Radon': 'Rn',
+    'Francium': 'Fr',
+    'Radium': 'Ra',
+    'Actinium': 'Ac',
+    'Thorium': 'Th',
+    'Protactinium': 'Pa',
+    'Uranium': 'U',
+    'Neptunium': 'Np',
+    'Plutonium': 'Pu',
+    'Americium': 'Am',
+    'Curium': 'Cm',
+    'Berkelium': 'Bk',
+    'Californium': 'Cf',
+    'Einsteinium': 'Es',
+    'Fermium': 'Fm',
+    'Mendelevium': 'Md',
+    'Nobelium': 'No',
+    'Lawrencium': 'Lr',
+    'Rutherfordium': 'Rf',
+    'Dubnium': 'Db',
+    'Seaborgium': 'Sg',
+    'Bohrium': 'Bh',
+    'Hassium': 'Hs',
+    'Meitnerium': 'Mt',
+    'Darmastadtium': 'Ds',
+    'Roentgenium': 'Rg',
+    'Copernicium': 'Cn',
+    'Nihonium': 'Nh',
+    'Flerovium': 'Fl',
+    'Moscovium': 'Mc',
+    'Livermorium': 'Lv',
+    'Tennessine': 'Ts',
+    'Oganesson': 'Og',
+}
 
 # ---------MAIN FUNCTION PARAMETERS------------
 
@@ -921,12 +1043,12 @@ class Deposition_Event(Lf_Event):
         source_element = str(self.data[f'PC Source {source_number} Material'].iloc[0])
         source_element = re.split(r'\s+', source_element)[0]
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
-            element(source_element).symbol
+            ELEMENTS[source_element]
         )
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_id'] = (
             self.data[f'PC Source {source_number} Loaded Target'].iloc[0]
         )
-        elements.append(element(source_element).symbol)
+        elements.append(ELEMENTS[source_element])
 
         return params, elements
 
@@ -1350,7 +1472,7 @@ class DepRate_Meas_Event(Lf_Event):
             )
             source_element = re.split(r'\s+', source_element)[0]
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
-                element(source_element).symbol
+                ELEMENTS[source_element]
             )
         if self.source == 0:
             source_number = 0
