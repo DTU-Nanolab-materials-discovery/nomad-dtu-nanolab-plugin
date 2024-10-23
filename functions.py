@@ -609,7 +609,7 @@ def make_model_raman(num,i,peaks,col_counts,col_theta,params):
                                     ))
     return model
 
-def initial_peaks(data,dataRangeMin, dataRangeMax,filterstrength, peakprominence,peakwidth, withplots = True, plotscale = 'log'):
+def initial_peaks(data,dataRangeMin, dataRangeMax,filterstrength, peakprominence,peakwidth, peakheight=0, withplots = True, plotscale = 'log'):
     '''finds peaks using scipy find_peaks on filtered data to construct a model for fitting, filter strength is based on filtervalue and 
     peak find sensitivity based on peakprominence, withplots and plotscale allows toggling plots on/off and picking scale.
     Output: dataframe with peak locations and intensity, to be used for raman_fit or xrd_fit, and data limited by the dataRangemin/max, in index'''
@@ -639,7 +639,7 @@ def initial_peaks(data,dataRangeMin, dataRangeMax,filterstrength, peakprominence
         
 
         #find peaks
-        peaks, _ = find_peaks(dataSelect,prominence= peakprominence,width = peakwidth)
+        peaks, _ = find_peaks(dataSelect,height=peakheight,prominence= peakprominence,width = peakwidth)
 
         #plot
         if withplots == 1:
@@ -2536,4 +2536,28 @@ def ternary_discrete_attempt(df, el1, el2, el3, intensity_label, shape_label, ti
 
     # Show the plot
     fig.show()
+
+def rotate_coordinates(data_df, how ='clockwise'):
+    'Rotate the coordinates of the data by 90 degrees clockwise, counterclockwise or 180 degrees'
+    MI_rotated=[]
+    initial_coordinates = MI_to_grid(data_df)
+
+    if how == 'clockwise':
+        xx = initial_coordinates['y']
+        yy = - initial_coordinates['x']
+
+    if how == 'counterclockwise':
+        xx = - initial_coordinates['y']
+        yy = initial_coordinates['x']
+
+    if how == '180':
+        xx = - initial_coordinates['x']
+        yy = - initial_coordinates['y']
+
+    for i in range(len(xx)):
+        MI_rotated = np.append(MI_rotated,('{},{}'.format(xx[i], yy[i])))
+    rotated_columns = pd.MultiIndex.from_tuples([(str(coord), col) for coord, col in zip(MI_rotated, data_df.columns.get_level_values(1))])
+    data_rotated = data_df.copy()
+    data_rotated.columns = rotated_columns
+    return data_rotated
 # %%
