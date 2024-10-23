@@ -8,6 +8,7 @@ Created on Fri Jun  7 10:46:17 2024
 
 # Core
 import copy
+import json
 import operator
 import os
 import re
@@ -24,9 +25,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 from matplotlib import patches
 from matplotlib.transforms import Affine2D
-from mendeleev import element
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from plotly.subplots import make_subplots
+
+# Elements symbol to name dict
+with open('elements.json') as f:
+    ELEMENTS = json.load(f)
 
 # ---------MAIN FUNCTION PARAMETERS------------
 
@@ -920,12 +924,12 @@ class Deposition_Event(Lf_Event):
         source_element = str(self.data[f'PC Source {source_number} Material'].iloc[0])
         source_element = re.split(r'\s+', source_element)[0]
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
-            element(source_element).symbol
+            ELEMENTS[source_element]
         )
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_id'] = (
             self.data[f'PC Source {source_number} Loaded Target'].iloc[0]
         )
-        elements.append(element(source_element).symbol)
+        elements.append(ELEMENTS[source_element])
 
         return params, elements
 
@@ -1349,7 +1353,7 @@ class DepRate_Meas_Event(Lf_Event):
             )
             source_element = re.split(r'\s+', source_element)[0]
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
-                element(source_element).symbol
+                ELEMENTS[source_element]
             )
         if self.source == 0:
             source_number = 0

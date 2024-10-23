@@ -30,7 +30,6 @@ dependencies = [
     "nomad-material-processing>=0.1.0",
     "nomad-measurements>=0.1.0",
     "fairmat-readers-xrd>=0.0.6",
-    "mendeleev>=0.17.0",
 ]
 
 [project.urls]
