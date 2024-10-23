@@ -360,8 +360,9 @@ class Lf_Event:
             if len(self.sep_data[i]) > min_domain_size:
                 data_list.append(self.sep_data[i])
         # Concatenate the list of DataFrames
-        data = pd.concat(data_list, ignore_index=True)
-        self.set_data(data, data)
+        if data_list:
+            data = pd.concat(data_list, ignore_index=True)
+            self.set_data(data, data)
 
     # method to only select events that come before a certain reference time
     # with the option of selecting any event before the reference time
@@ -575,11 +576,11 @@ class Deposition_Event(Lf_Event):
 
         if (
             self.data['Substrate Heater Temperature Setpoint'] < RT_TEMP_THRESHOLD
-        ).all():
+        ).mean() >= TOLERANCE:
             params[self.category]['rt'] = True
         elif (
             self.data['Substrate Heater Temperature Setpoint'] > RT_TEMP_THRESHOLD
-        ).all():
+        ).mean() >= TOLERANCE:
             params[self.category]['rt'] = False
         return params
 
@@ -770,8 +771,8 @@ class Deposition_Event(Lf_Event):
 
         # calculate the ratio between the PH3 and H2S flow
         if (
-            params[self.category]['avg_h2s_flow'] != 0
-            and params[self.category]['avg_ph3_flow'] != 0
+            params[self.category]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD
+            and params[self.category]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD
         ):
             params[self.category]['ph3_h2s_ratio'] = (
                 params[self.category]['avg_ph3_flow']
@@ -1724,12 +1725,16 @@ def calculate_avg_true_temp(temp_1, temp_2):
 
 
 # Helper function to check if a column is within a certain range
-def within_range(data_col, ref_col_mean, diff_param):
+def within_range(data_col, ref_col_mean, diff_param,mode='percent'):
     if ref_col_mean == 0:
         cond = (data_col > (-MFC_FLOW_THRESHOLD)) & (data_col < (+MFC_FLOW_THRESHOLD))
-    else:
+    elif mode == 'percent':
         cond = (data_col > (1 - 0.01 * diff_param) * ref_col_mean) & (
             data_col < (1 + 0.01 * diff_param) * ref_col_mean
+        )
+    elif mode == 'absolute':
+        cond = (data_col > (ref_col_mean - diff_param)) & (
+            data_col < (ref_col_mean + diff_param)
         )
     return cond
 
@@ -2621,9 +2626,12 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
         # Define the ramp down high temperature condition as a events after
         # the beginning of the ramp down of the temperature ramp down
         # where we flow H2S, PH3 or the cracker is on
-        ramp_down_high_temp_cond = (
+        try:
+            ramp_down_high_temp_cond = (
             data['Time Stamp'] > ramp_down_temp.data['Time Stamp'].iloc[0]
         ) & (h2s.cond | cracker_on_open.cond | ph3.cond)
+        except  Exception:
+            ramp_down_high_temp_cond = pd.Series(False, index=data.index)
         ramp_down_high_temp.set_condition(ramp_down_high_temp_cond)
         ramp_down_high_temp.filter_data(data)
         ramp_down_high_temp.filter_out_small_events(MIN_TEMP_RAMP_DOWN_SIZE)
@@ -2631,9 +2639,12 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
         # Define the ramp down low temperature condition as a events after
         # the beginning of the ramp down of the temperature ramp down
         # where we do not flow H2S, PH3 or the cracker is off
-        ramp_down_low_temp_cond = (
-            data['Time Stamp'] > ramp_down_temp.data['Time Stamp'].iloc[0]
-        ) & ~(h2s.cond | cracker_on_open.cond | ph3.cond)
+        try:
+            ramp_down_low_temp_cond = (
+                data['Time Stamp'] > ramp_down_temp.data['Time Stamp'].iloc[0]
+            ) & ~(h2s.cond | cracker_on_open.cond | ph3.cond)
+        except Exception:
+            ramp_down_low_temp_cond = pd.Series(False, index=data.index)
         ramp_down_low_temp.set_condition(ramp_down_low_temp_cond)
         ramp_down_low_temp.filter_data(data)
 
@@ -2678,21 +2689,16 @@ def quick_plot(df, Y, **kwargs):
     Plots a time series using Plotly.
 
     Args:
-        df (pd.DataFrame): DataFrame containing the data.
-        Y (list or str): Column name(s) for the y-axis.
-        **kwargs: Additional keyword arguments:
-            - X (str): Column name for the x-axis (pd.Timestamp).
-                Default is 'Time Stamp'.
-            - mode (str): Plotting mode, either 'default', 'stack', or
-                'dual_y'. Default is 'default'.
-            - plot_type (str): Type of plot, either 'line' or 'scatter'.
-                Default is 'line'.
-            - Y2 (list or str): Column name(s) for the right y-axis (Y2).
-                Default is an empty list.
+        df (pandas.DataFrame): The DataFrame containing the data.
+        Y (str or list): The column name(s) to plot.
+        **kwargs: Additional keyword arguments to pass to the plot.
 
     Returns:
         fig (plotly.graph_objects.Figure): The Plotly figure object.
     """
+    if isinstance(Y, str):
+        Y = [Y]
+
     plot_params = setup_plot_params(df, Y, **kwargs)
     mode = plot_params['mode']
 
@@ -3342,9 +3348,9 @@ def select_last_event(events, raw_data, ref_event, categories):
             try:
                 event.select_event(raw_data, -1, ref_event.bounds[0][0])
             except Exception as e:
-                print(
-                    'Warning: Failed to find any event before ref_event for',
-                    f'{event.step_id}. Error: {e}',
+                print('Warning: ',
+                    f'Failed to find any event before {ref_event.bounds[0][0]}',
+                    f'for {event.step_id}. Error: {e}',
                 )
     return events
 
@@ -4107,7 +4113,7 @@ def main():
 
     if REMOVE_SAMPLES:
         samples_to_remove = [
-            'mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07'
+            'mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07',
         ]
     else:
         samples_to_remove = []
@@ -4134,10 +4140,12 @@ def main():
     # Uncomment to test the script on a single logfile
     if TEST_SINGLE_LOGFILE:
         logfiles = {}
-        logfiles['name'] = ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
         logfiles['folder'] = [
-            r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\mittma_0007_Cu\log_files'
+            r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\eugbe_0009_Sb\log_files'
         ]
+        logfiles['name'] = ['eugbe_0009_Sb_Recording Set 2024.10.14-09.23.31']
+        # logfiles['name'] = ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
+
 
     # Loop over all the logfiles in the directory
     for i in range(len(logfiles['name'])):
