@@ -1980,7 +1980,7 @@ def rgba_to_hex(rgba):
     r, g, b, a = [int(c * 255) for c in rgba]
     return f'#{r:02x}{g:02x}{b:02x}'
 
-def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_df, ref_label="Reference", title=None, colors='rows'):
+def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_df, title=None, colors='rows', savepath=None):
     'interactive shifted plot for assigning phases to XRD data, specify if you want different colors per each row or a rainbow colormap'
     fig = make_subplots(
         rows=2, 
@@ -1995,7 +1995,7 @@ def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_d
         coords_colors = pd.DataFrame({'X': x, 'Y': y})
         unique_y_values = coords_colors['Y'].unique()
         
-        color_palette = px.colors.qualitative.Plotly[:len(unique_y_values)]
+        color_palette = px.colors.qualitative.G10[:len(unique_y_values)]
         
         unique_x_values = coords_colors['X'].unique()
         color_dict = {}
@@ -2032,7 +2032,7 @@ def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_d
                 y=shifted_y_data,
                 mode='lines',
                 line=dict(color=colors[i]),
-                name=f'{x[i]}, {y[i]}'
+                name=f'{i+1}: {x[i]}, {y[i]}'
             ),
             row=1, col=1
         )
@@ -2107,6 +2107,10 @@ def interactive_XRD_shift(data, datatype_x, datatype_y, shift, x, y, ref_peaks_d
         yaxis_title=datatype_y
     )
 
+    if savepath:
+        fig.write_html(savepath)
+        
+    fig.show()
     return fig
 
 def extract_coordinates(data):
@@ -2361,11 +2365,13 @@ def ternary_plot(df, el1, el2, el3, datatype, title, savepath = None):
     B= f'Layer 1 {el2} Atomic %'
     C= f'Layer 1 {el3} Atomic %'
 
-    A_percent = df.xs(A, level='Data type', axis=1).values.flatten()
-    B_percent = df.xs(B, level='Data type', axis=1).values.flatten()
-    C_percent = df.xs(C, level='Data type', axis=1).values.flatten()
-    intensity = df.xs(datatype, level='Data type', axis=1).values.flatten()
-    coordinates = MI_to_grid(df).values # df.columns.get_level_values(0)[::7].values.flatten() also works, but gives a lot of decimals
+    A_percent = get_data(df, A).loc[0].values.flatten()
+    B_percent = get_data(df, B).loc[0].values.flatten()
+    C_percent = get_data(df, C).loc[0].values.flatten()
+    intensity = get_data(df, datatype).loc[0]
+    X,Y= extract_coordinates(df)
+    
+    custom_data = list(zip(X,Y, intensity))
 
     fig = go.Figure()
     fig.add_trace(go.Scatterternary({
@@ -2381,9 +2387,11 @@ def ternary_plot(df, el1, el2, el3, datatype, title, savepath = None):
             'colorbar': {'title': datatype},  # Add a colorbar
             'line': {'width': 2}
         },
-        'text': coordinates,
-        'hovertemplate': f'{el1}: %{{a:.1f}}%<br>{el2}: %{{b:.1f}}%<br>{el3}: %{{c:.1f}}%<br>{datatype}: %{{marker.color:.1f}}<br>Coordinates:%{{text:str}}',  # Custom hover text format
-        #'name': f'{datatype}: %{{text:str}}'
+        # 'text': coordinates,
+        'customdata': custom_data,
+        'hovertemplate': f'{el1}: %{{a:.1f}}%<br>{el2}: %{{b:.1f}}%<br>{el3}: %{{c:.1f}}%'
+                        f'<br>{datatype}: %{{marker.color:.1f}}'
+                        f'<br>Coordinates: (%{{customdata[0]:.1f}}, %{{customdata[1]:.1f}})',
         'showlegend': False
     }))
 
@@ -2428,7 +2436,7 @@ def add_info(data, info_dict):
 
     return new_frame
 
-def ternary_discrete_attempt(df, el1, el2, el3, intensity_label, shape_label, title, savepath=None):
+def ternary_discrete_attempt(df, el1, el2, el3, intensity_label, shape_label, title, include_id=True ,savepath=None):
     """
     Create a ternary plot with discrete colors for string intensities and different marker shapes for phases.
 
@@ -2443,17 +2451,21 @@ def ternary_discrete_attempt(df, el1, el2, el3, intensity_label, shape_label, ti
     """
 
     # Extract element percentages, intensity, and phase
-    A= 'Layer 1 Cu Atomic %'
-    B= 'Layer 1 P Atomic %'
-    C= 'Layer 1 S Atomic %'
+    A= f'Layer 1 {el1} Atomic %'
+    B= f'Layer 1 {el2} Atomic %'
+    C= f'Layer 1 {el3} Atomic %'
 
     A_percent = get_data(df, A).loc[0].values.flatten()
     B_percent = get_data(df, B).loc[0].values.flatten()
     C_percent = get_data(df, C).loc[0].values.flatten()
     intensity = get_data(df, intensity_label).loc[0]
     phase = get_data(df, shape_label).loc[0]
+    if include_id==True:
+        sample_id = get_data(df, 'Sample ID').loc[0]
+    elif include_id==False:
+        sample_id = ['unknown sample']*len(intensity)
     # coords = MI_to_grid(df).values
-    X,Y= extract_coordinates(df)
+    X,Y= extract_coordinates(df) # problems if more than one point with same coords
 
     # Create a color mapping for unique intensity values
 
@@ -2467,7 +2479,8 @@ def ternary_discrete_attempt(df, el1, el2, el3, intensity_label, shape_label, ti
     shape_map = {val: marker_shapes[i % len(marker_shapes)] for i, val in enumerate(unique_phases)}
     shapes = [shape_map[val] for val in phase]
 
-    custom_data = list(zip(X,Y, intensity, phase))
+    # custom_data = list(zip(X,Y, intensity, phase))
+    custom_data = list(zip(X,Y, intensity, phase, sample_id))
 
     # Create the ternary plot with custom hover text, colored markers, and different shapes
     fig = go.Figure(go.Scatterternary({
@@ -2491,9 +2504,10 @@ def ternary_discrete_attempt(df, el1, el2, el3, intensity_label, shape_label, ti
         # 'text': coords,#df.columns.get_level_values(0).unique(),  # Labels for the points
         # 'hovertemplate': f'{el1}: %{{a:.1f}}%<br>{el2}: %{{b:.1f}}%<br>{el3}: %{{c:.1f}}%<br>Coordinates: %{{text}}<br>{intensity_label}: %{{marker.color}}%',  # Custom hover text format
         'hovertemplate': f'{el1}: %{{a:.1f}}%<br>{el2}: %{{b:.1f}}%<br>{el3}: %{{c:.1f}}%'
-                        f'<br>Coordinates: (%{{customdata[0]}}, %{{customdata[1]}})'
+                        f'<br>Coordinates: (%{{customdata[0]:.1f}}, %{{customdata[1]:.1f}})'
                         f'<br>{intensity_label}: %{{customdata[2]}}'
-                        f'<br>{shape_label}: %{{customdata[3]}}',  # Custom hover text format
+                        f'<br>{shape_label}: %{{customdata[3]}}'
+                        f'<br>Sample: %{{customdata[4]:.0f}}',  # Custom hover text format
         'name': 'Data Points',
         'showlegend': False
     }))
@@ -2560,4 +2574,115 @@ def rotate_coordinates(data_df, how ='clockwise'):
     data_rotated = data_df.copy()
     data_rotated.columns = rotated_columns
     return data_rotated
+
+
+def assign_phases_labels(data):
+    """Function to assign phases to specific points in a dataset.
+    Returns:
+        phase_info (dict): Dictionary where the key is the phase and the value is a list of 'unknown', 'amorphous', or the phase name
+                           corresponding to the presence of that phase at each coordinate.
+    """
+    coords = data.columns.get_level_values(0).unique()
+
+    phase_info = {}  # Dictionary to store phase information for each point
+    num_coords = len(coords)
+    
+    # Initialize the presence array with 'unknown'
+    phase_present = ["unknown"] * num_coords
+
+    # Ask user for the main phase name
+    main_phase = input("What is the main phase present? (or type 'exit' to finish): ").strip()
+    if main_phase.lower() == 'exit':
+        phase_info["Phase"] = phase_present
+        return phase_info  # Return the dictionary with 'unknown' if user exits
+
+    # Assign the main phase to all points initially
+    phase_present = [main_phase] * num_coords
+
+    while True:
+        # Ask if there is any other phase
+        other_phase_response = input("Is there any other phase present? (yes/no): ").strip().lower()
+        if other_phase_response == 'no':
+            break
+
+        # Ask user for the other phase name
+        other_phase = input("What is the other phase name? (or type 'exit' to finish): ").strip()
+        if other_phase.lower() == 'exit':
+            break
+
+        # Display available points
+        print("\nAvailable points (coordinates):")
+        for i, coord in enumerate(coords):
+            print(f"{i + 1}: {coord}")
+
+        # Ask which points should be set to the other phase
+        selected_points = input(f"\nWhich points should be set to '{other_phase}'? (Enter numbers separated by commas): ").strip()
+        selected_indices = [int(idx.strip()) - 1 for idx in selected_points.split(',') if idx.strip().isdigit()]
+        for idx in selected_indices:
+            if 0 <= idx < num_coords:
+                phase_present[idx] = other_phase
+
+    # Store this phase's information in the dictionary
+    phase_info["Phase"] = phase_present
+    print(f"\nPhase '{main_phase}' assigned to the remaining points.")
+    print(phase_info)
+    
+    return phase_info
+
+
+
+def assign_phases_numbers(data):
+    # obsolete, use phase labels instead
+    """Function to assign phases to specific points in a dataset.  coords (list of tuples): List of coordinates available for selection.
+    Returns:
+        phase_info (dict): Dictionary where the key is the phase and the value is a list of 'yes'/'no'
+                           corresponding to the presence of that phase at each coordinate.
+    """
+    coords= data.columns.get_level_values(0).unique()
+
+    phase_info = {}  # Dictionary to store phase information for each point
+    num_coords = len(coords)
+    
+    # Ask user for the phase name
+    phase = input("What is the phase name? (or type 'exit' to finish): ").strip()
+    if phase.lower() == 'exit':
+        return phase_info  # Return empty dictionary if user exits
+
+    # Determine if phase is present in most or few points
+    presence_type = input("Is the phase present in most points or few points? (type 'most' or 'few'): ").strip().lower()
+
+    # Initialize the presence array based on user input
+    if presence_type == 'most':
+        phase_present = [1] * num_coords  # Start with all points as 'yes'
+    elif presence_type == 'few':
+        phase_present = [0] * num_coords  # Start with all points as 'no'
+    else:
+        print("Invalid input. Please enter 'most' or 'few'.")
+
+    # Display available points
+    print("\nAvailable points (coordinates):")
+    for i, coord in enumerate(coords):
+        print(f"{i + 1}: {coord}")
+
+    # Ask which points should be changed
+    if presence_type == 'most':
+        selected_points = input(f"\nWhich points should be set to 'no'? (Enter numbers separated by commas): ").strip()
+        selected_indices = [int(idx.strip()) - 1 for idx in selected_points.split(',') if idx.strip().isdigit()]
+        for idx in selected_indices:
+            if 0 <= idx < num_coords:
+                phase_present[idx] = 0
+    else:  # presence_type == 'few'
+        selected_points = input(f"\nWhich points should be set to 'yes'? (Enter numbers separated by commas): ").strip()
+        selected_indices = [int(idx.strip()) - 1 for idx in selected_points.split(',') if idx.strip().isdigit()]
+        for idx in selected_indices:
+            if 0 <= idx < num_coords:
+                phase_present[idx] = 1
+
+    # Store this phase's information in the dictionary
+    phase_info[phase] = phase_present
+    print(f"\nPhase '{phase}' assigned to the selected points.")
+    print(phase_info)
+    
+    return phase_info
+
 # %%
