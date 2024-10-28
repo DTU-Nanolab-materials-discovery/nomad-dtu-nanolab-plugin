@@ -2685,4 +2685,65 @@ def assign_phases_numbers(data):
     
     return phase_info
 
+# edx functions
+
+def find_composition(data, el1,el2,el3, range1=[0,100], range2=[0,100], range3=[0,100], display_option=True, stoichiometry= None, tolerance= 3):
+    'find te points in the sample where the composition is in a certain range, given in % ranges or in stoichiometry and tolerance'
+
+    if stoichiometry: 
+        tot= sum(stoichiometry)
+        range1= [(stoichiometry[0]*100/tot)-tolerance, (stoichiometry[0]*100/tot)+tolerance]
+        range2= [(stoichiometry[1]*100/tot)-tolerance, (stoichiometry[1]*100/tot)+tolerance]
+        range3= [(stoichiometry[2]*100/tot)-tolerance, (stoichiometry[2]*100/tot)+tolerance]
+
+    ranges= [range1, range2, range3]
+    elements= [el1, el2, el3]
+
+    for i in range(0,len(elements)):
+        idx_min= np.where(get_data(data, type= f'Layer 1 {elements[i]} Atomic %').values[0] >ranges[i][0])[0]
+        idx_max= np.where(get_data(data, type= f'Layer 1 {elements[i]} Atomic %').values[0] <ranges[i][1])[0]
+        idx= np.intersect1d(idx_max, idx_min)
+        if i==0:
+            idx1= idx
+        elif i==1:
+            idx2= idx
+        elif i==2:
+            idx3= idx
+    idx= np.intersect1d(idx1, idx2) 
+    idx= np.intersect1d(idx, idx3)
+    x,y= extract_coordinates(data)
+    good_comp= {'X': [], 'Y': []}
+    for i in range(0,len(idx)):
+        good_comp['X'].append(x[idx[i]])
+        good_comp['Y'].append(y[idx[i]])
+
+    good_comp= pd.DataFrame(good_comp)
+    # display(good_comp)
+    plt.scatter(good_comp['X'], good_comp['Y'], c='r', s=80)
+    plt.scatter(x,y, c='b', s=10)
+    plt.xlabel('x position (mm)')
+    plt.ylabel('y position (mm)')
+    if stoichiometry: 
+        plt.title(f'{sample} - Positions where composition is around {el1}{stoichiometry[0]}, {el2}{stoichiometry[1]}, {el3}{stoichiometry[2]}')
+    else:
+        plt.title(f'{sample} - Positions where {el1}: {range1[0]:.1f}-{range1[1]:.1f}%, {el2}: {range2[0]:.1f}-{range2[1]:.1f}%, {el3}: {range3[0]:.1f}-{range3[1]:.1f}%')
+    if display_option==True:
+        for i in range(0,len(good_comp)):
+            display(get_data(data, x= good_comp['X'][i], y= good_comp['Y'][i]))
+    return good_comp
+
+def calculate_ratio(df, el1, el2, rename= None):
+    df= math_on_columns(df, f'Layer 1 {el1} Atomic %', f'Layer 1 {el2} Atomic %', "/")
+    if rename:
+        df.rename(columns={f'Layer 1 {el1} Atomic % / Layer 1 {el2} Atomic %': rename}, inplace=True)
+    else:
+        df.rename(columns={f'Layer 1 {el1} Atomic % / Layer 1 {el2} Atomic %': f'{el1}/{el2}'}, inplace=True)
+    return df
+
+def calculate_el_thickness(df, el):
+    df= math_on_columns(df, f'Layer 1 {el} Atomic %', "Layer 1 Thickness (nm)", "*")
+    df= math_on_columns(df, f'Layer 1 {el} Atomic % * Layer 1 Thickness (nm)',100, "/")
+    df.rename(columns={f'Layer 1 {el} Atomic % * Layer 1 Thickness (nm) / 100': f'{el} [nm]'}, inplace=True)
+    df.drop(columns=f'Layer 1 {el} Atomic % * Layer 1 Thickness (nm)', level=1, inplace=True)
+    return df
 # %%
