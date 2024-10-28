@@ -3741,33 +3741,36 @@ def map_params_to_nomad(params, gun_list):
             ['end_of_process', 'time_in_chamber_after_ending_deposition'],
             'second',
         ],
-        # SCracker parameters
-        [
-            ['deposition', 'SCracker', 'zone1_temp'],
-            ['deposition_parameters', 'SCracker', 'Zone1_temperature'],
-            'degC',
-        ],
-        [
-            ['deposition', 'SCracker', 'zone2_temp'],
-            ['deposition_parameters', 'SCracker', 'Zone2_temperature'],
-            'degC',
-        ],
-        [
-            ['deposition', 'SCracker', 'zone3_temp'],
-            ['deposition_parameters', 'SCracker', 'Zone3_temperature'],
-            'degC',
-        ],
-        [
-            ['deposition', 'SCracker', 'pulse_width'],
-            ['deposition_parameters', 'SCracker', 'valve_ON_time'],
-            'millisecond',
-        ],
-        [
-            ['deposition', 'SCracker', 'pulse_freq'],
-            ['deposition_parameters', 'SCracker', 'valve_frequency'],
-            'mHz',
-        ],
     ]
+    if params['deposition'].get('SCracker', {}).get('enabled', False):
+        # SCracker parameters
+        param_nomad_map.extend([
+            [
+                ['deposition', 'SCracker', 'zone1_temp'],
+                ['deposition_parameters', 'SCracker', 'Zone1_temperature'],
+                'degC',
+            ],
+            [
+                ['deposition', 'SCracker', 'zone2_temp'],
+                ['deposition_parameters', 'SCracker', 'Zone2_temperature'],
+                'degC',
+            ],
+            [
+                ['deposition', 'SCracker', 'zone3_temp'],
+                ['deposition_parameters', 'SCracker', 'Zone3_temperature'],
+                'degC',
+            ],
+            [
+                ['deposition', 'SCracker', 'pulse_width'],
+                ['deposition_parameters', 'SCracker', 'valve_ON_time'],
+                'millisecond',
+            ],
+            [
+                ['deposition', 'SCracker', 'pulse_freq'],
+                ['deposition_parameters', 'SCracker', 'valve_frequency'],
+                'mHz',
+            ],
+        ])
     # Gun parameters
     for gun in gun_list:
         if params['deposition'].get(gun, {}).get('enabled', False):
