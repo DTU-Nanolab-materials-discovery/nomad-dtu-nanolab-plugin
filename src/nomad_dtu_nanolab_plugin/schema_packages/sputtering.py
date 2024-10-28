@@ -894,7 +894,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             if params['deposition'].get(gun, {}).get('enabled', False):
                 setattr(sputtering.deposition_parameters, gun, GunOverview())
 
-        sputtering.deposition_parameters.SCracker = SCracker()
+        if params.get('SCracker', {}).get('enabled', False):
+            sputtering.deposition_parameters.SCracker = SCracker()
+
         sputtering.end_of_process = EndOfProcess()
 
         # Writing the params dict in the form of a report
