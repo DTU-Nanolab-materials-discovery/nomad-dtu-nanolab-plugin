@@ -2023,7 +2023,7 @@ def rename_cracker_columns(data):
 # directly use the source number to create the conditions if we handle
 # the case where the column does not exist in the dataframe
 def filter_data_plasma_on_ramp_up(data, source_list):
-    print('Defining the conditions and filtering the data')
+    # print('Defining the conditions and filtering the data')
     # Initialize dictionaries to store the ramp up, plasma on
     # conditions and corresponding data for each source
     source_ramp_up = {}
