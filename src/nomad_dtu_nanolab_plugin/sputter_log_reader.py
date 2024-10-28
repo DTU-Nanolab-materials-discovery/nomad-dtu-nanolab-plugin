@@ -3771,44 +3771,38 @@ def map_params_to_nomad(params, gun_list):
                 'mHz',
             ],
         ])
+
     # Gun parameters
     for gun in gun_list:
         if params['deposition'].get(gun, {}).get('enabled', False):
-            param_nomad_map.append(
+            param_nomad_map.extend([
                 [
                     ['deposition', gun, 'target_id'],
                     ['deposition_parameters', gun, 'target_material'],
                     None,
-                ]
-            )
-            param_nomad_map.append(
+                ],
                 [
                     ['deposition', gun, 'avg_output_power'],
                     ['deposition_parameters', gun, 'applied_power'],
                     'W',
-                ]
-            )
-            param_nomad_map.append(
+                ],
                 [
                     ['source_ramp_up', gun, 'ignition_power'],
                     ['deposition_parameters', gun, 'plasma_ignition_power'],
                     'W',
-                ]
-            )
-            param_nomad_map.append(
+                ],
                 [
                     ['deposition', gun, 'plasma_type'],
                     ['deposition_parameters', gun, 'power_type'],
                     None,
-                ]
-            )
-            param_nomad_map.append(
+                ],
                 [
                     ['deposition', gun, 'avg_voltage'],
                     ['deposition_parameters', gun, 'stable_average_voltage'],
                     'V',
-                ]
-            )
+                ],
+            ])
+
     return param_nomad_map
 
 
