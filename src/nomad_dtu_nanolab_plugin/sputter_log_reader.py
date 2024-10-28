@@ -1847,7 +1847,7 @@ def calculate_avg_true_temp(temp_1, temp_2):
 
 
 # Helper function to check if a column is within a certain range
-def within_range(data_col, ref_col_mean, diff_param,mode='percent'):
+def within_range(data_col, ref_col_mean, diff_param, mode='percent'):
     if ref_col_mean == 0:
         cond = (data_col > (-MFC_FLOW_THRESHOLD)) & (data_col < (+MFC_FLOW_THRESHOLD))
     elif mode == 'percent':
@@ -2750,9 +2750,9 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
         # where we flow H2S, PH3 or the cracker is on
         try:
             ramp_down_high_temp_cond = (
-            data['Time Stamp'] > ramp_down_temp.data['Time Stamp'].iloc[0]
-        ) & (h2s.cond | cracker_on_open.cond | ph3.cond)
-        except  Exception:
+                data['Time Stamp'] > ramp_down_temp.data['Time Stamp'].iloc[0]
+            ) & (h2s.cond | cracker_on_open.cond | ph3.cond)
+        except Exception:
             ramp_down_high_temp_cond = pd.Series(False, index=data.index)
         ramp_down_high_temp.set_condition(ramp_down_high_temp_cond)
         ramp_down_high_temp.filter_data(data)
@@ -3470,7 +3470,8 @@ def select_last_event(events, raw_data, ref_event, categories):
             try:
                 event.select_event(raw_data, -1, ref_event.bounds[0][0])
             except Exception as e:
-                print('Warning: ',
+                print(
+                    'Warning: ',
                     f'Failed to find any event before {ref_event.bounds[0][0]}',
                     f'for {event.step_id}. Error: {e}',
                 )
@@ -3744,64 +3745,68 @@ def map_params_to_nomad(params, gun_list):
     ]
     if params['deposition'].get('SCracker', {}).get('enabled', False):
         # SCracker parameters
-        param_nomad_map.extend([
+        param_nomad_map.extend(
             [
-                ['deposition', 'SCracker', 'zone1_temp'],
-                ['deposition_parameters', 'SCracker', 'Zone1_temperature'],
-                'degC',
-            ],
-            [
-                ['deposition', 'SCracker', 'zone2_temp'],
-                ['deposition_parameters', 'SCracker', 'Zone2_temperature'],
-                'degC',
-            ],
-            [
-                ['deposition', 'SCracker', 'zone3_temp'],
-                ['deposition_parameters', 'SCracker', 'Zone3_temperature'],
-                'degC',
-            ],
-            [
-                ['deposition', 'SCracker', 'pulse_width'],
-                ['deposition_parameters', 'SCracker', 'valve_ON_time'],
-                'millisecond',
-            ],
-            [
-                ['deposition', 'SCracker', 'pulse_freq'],
-                ['deposition_parameters', 'SCracker', 'valve_frequency'],
-                'mHz',
-            ],
-        ])
+                [
+                    ['deposition', 'SCracker', 'zone1_temp'],
+                    ['deposition_parameters', 'SCracker', 'Zone1_temperature'],
+                    'degC',
+                ],
+                [
+                    ['deposition', 'SCracker', 'zone2_temp'],
+                    ['deposition_parameters', 'SCracker', 'Zone2_temperature'],
+                    'degC',
+                ],
+                [
+                    ['deposition', 'SCracker', 'zone3_temp'],
+                    ['deposition_parameters', 'SCracker', 'Zone3_temperature'],
+                    'degC',
+                ],
+                [
+                    ['deposition', 'SCracker', 'pulse_width'],
+                    ['deposition_parameters', 'SCracker', 'valve_ON_time'],
+                    'millisecond',
+                ],
+                [
+                    ['deposition', 'SCracker', 'pulse_freq'],
+                    ['deposition_parameters', 'SCracker', 'valve_frequency'],
+                    'mHz',
+                ],
+            ]
+        )
 
     # Gun parameters
     for gun in gun_list:
         if params['deposition'].get(gun, {}).get('enabled', False):
-            param_nomad_map.extend([
+            param_nomad_map.extend(
                 [
-                    ['deposition', gun, 'target_id'],
-                    ['deposition_parameters', gun, 'target_material'],
-                    None,
-                ],
-                [
-                    ['deposition', gun, 'avg_output_power'],
-                    ['deposition_parameters', gun, 'applied_power'],
-                    'W',
-                ],
-                [
-                    ['source_ramp_up', gun, 'ignition_power'],
-                    ['deposition_parameters', gun, 'plasma_ignition_power'],
-                    'W',
-                ],
-                [
-                    ['deposition', gun, 'plasma_type'],
-                    ['deposition_parameters', gun, 'power_type'],
-                    None,
-                ],
-                [
-                    ['deposition', gun, 'avg_voltage'],
-                    ['deposition_parameters', gun, 'stable_average_voltage'],
-                    'V',
-                ],
-            ])
+                    [
+                        ['deposition', gun, 'target_id'],
+                        ['deposition_parameters', gun, 'target_material'],
+                        None,
+                    ],
+                    [
+                        ['deposition', gun, 'avg_output_power'],
+                        ['deposition_parameters', gun, 'applied_power'],
+                        'W',
+                    ],
+                    [
+                        ['source_ramp_up', gun, 'ignition_power'],
+                        ['deposition_parameters', gun, 'plasma_ignition_power'],
+                        'W',
+                    ],
+                    [
+                        ['deposition', gun, 'plasma_type'],
+                        ['deposition_parameters', gun, 'power_type'],
+                        None,
+                    ],
+                    [
+                        ['deposition', gun, 'avg_voltage'],
+                        ['deposition_parameters', gun, 'stable_average_voltage'],
+                        'V',
+                    ],
+                ]
+            )
 
     return param_nomad_map
 
@@ -4264,7 +4269,6 @@ def main():
         ]
         logfiles['name'] = ['eugbe_0009_Sb_Recording Set 2024.10.14-09.23.31']
         # logfiles['name'] = ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
-
 
     # Loop over all the logfiles in the directory
     for i in range(len(logfiles['name'])):
