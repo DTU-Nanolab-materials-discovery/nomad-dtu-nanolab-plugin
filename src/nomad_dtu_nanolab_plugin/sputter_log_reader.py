@@ -3394,7 +3394,7 @@ def normalize_column(df, column_name):
 
 
 def formatting_logfile(data):
-    print('Formatting the dataframe for conditional filtering')
+    # print('Formatting the dataframe for conditional filtering')
     # -----FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING-------
     # -------RENAME THE CRACKER COLUMNS OF THE DATAFRAME---------
     data = rename_cracker_columns(data)
