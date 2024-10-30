@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import kaleido
 from matplotlib import patches
 from matplotlib.transforms import Affine2D
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
@@ -268,6 +269,7 @@ BASE_HEIGHT = 250
 WIDTH = 700
 HEIGHT = 450
 VERTICAL_SPACING = 0.02
+ROLLING_NUM = 50
 
 EXPORT_SCALE = 20
 # Define a dictionary for step colors in the timeline plot
@@ -3194,9 +3196,36 @@ def generate_bias_plot(deposition):
         r'Source \d+ Voltage',
     ]
 
+    '''
+    #one can see that the DC Bias jumping eraticaly during the deposition event. Let us see
+    # if we can smooth the data using the rolling mean method of pandas.
+    deposition.data['Source 4 DC Bias Smoothed'] = (
+        deposition.data['Source 4 DC Bias'].rolling(50).mean())
+
+
+    #The PLOTLY_CONFIG is a config dict that allows the user to export the plot
+    #with a better resolutio when clicking the 'Download plot as png' button.
+    fig_dc_bias_smoothed = slr.quick_plot(deposition.data, ['Source 4 DC Bias', 'Source 4 DC Bias Smoothed'])
+    fig_dc_bias_smoothed.show(config=slr.PLOTLY_CONFIG)
+
+    #Let's try to exclude the point with DC BIAS bellow 1 before smoothing
+    # Exclude points with DC BIAS below 1 before smoothing
+    deposition.data['Source 4 DC Bias No Zero'] = deposition.data['Source 4 DC Bias'].where(deposition.data['Source 4 DC Bias'] > 1, None)
+
+    # Apply rolling mean to the filtered data
+    deposition.data['Source 4 DC Bias Smoothed No Zero'] = deposition.data['Source 4 DC Bias No Zero'].rolling(50, min_periods=1).mean()
+    '''
+
     for col in deposition.data.columns:
         if any(re.search(pattern, col) for pattern in patterns):
+            # Add the original column to the list of columns to plot
             Y_plot.append(col)
+
+            # Add the smoothed column to the list of columns to plot
+            deposition.data[f'{col} Smoothed {ROLLING_NUM}'] =(
+                deposition.data[col].rolling(ROLLING_NUM).mean()
+            )
+            Y_plot.append(f'{col} Smoothed {ROLLING_NUM}')
 
     bias_plot = quick_plot(
         deposition.data, Y_plot, mode='default', plot_type='line', width=1.5 * WIDTH
