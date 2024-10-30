@@ -682,6 +682,7 @@ class Deposition_Event(Lf_Event):
         params = self.get_pressure_params(raw_data, params=params)
         params = self.get_simple_deposition_params(params=params)
         params = self.get_source_depostion_params(source_list, params=params)
+        params = self.get_platen_bias_params(params=params)
         return params
 
     # method to deduce if the deposition was done at room temperature or not
@@ -1051,6 +1052,35 @@ class Deposition_Event(Lf_Event):
         elements.append(ELEMENTS[source_element])
 
         return params, elements
+
+    def get_platen_bias_params(self, params=None):
+        # Extract the platen bias during deposition
+        if params is None:
+            params = {}
+        if self.category not in params:
+            params[self.category] = {}
+
+        params[self.category]['platen_bias'] = {}
+
+        if 'Power Supply 7 Output Setpoint' in self.data:
+            if (
+                self.data['Power Supply 7 DC Bias'] > BIAS_THRESHOLD
+            ).mean() >= TOLERANCE:
+                params[self.category]['platen_bias']['enabled'] = True
+            else:
+                params[self.category]['platen_bias']['enabled'] = False
+        else:
+            params[self.category]['platen_bias']['enabled'] = False
+
+        if params[self.category]['platen_bias']['enabled']:
+            params[self.category]['platen_bias']['platen_power'] = self.data[
+                'Power Supply 7 Output Setpoint'
+            ].mean()
+            params[self.category]['platen_bias']['avg_platen_bias'] = self.data[
+                'Power Supply 7 DC Bias'
+            ].mean()
+
+        return params
 
 
 class SCracker_Pressure_Event(Lf_Event):
@@ -2773,6 +2803,20 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
     return ramp_up_temp, ramp_down_temp, ramp_down_high_temp, ramp_down_low_temp
 
 
+def filter_data_platen_bias_on(data):
+    platen_bias_on = Lf_Event('Platen Bias On', category='platen_bias_on')
+    if 'Power Supply 7 Enabled' in data.columns:
+        platen_bias_on_cond = (data['Power Supply 7 Enabled'] == 1) & (
+            data['Power Supply 7 DC Bias'] > BIAS_THRESHOLD
+        )
+    else:
+        platen_bias_on_cond = pd.Series(False, index=data.index)
+    platen_bias_on.set_condition(platen_bias_on_cond)
+    platen_bias_on.filter_data(data)
+
+    return platen_bias_on
+
+
 # -------PLOTTING DEFINITIONS------------
 
 
@@ -3594,6 +3638,12 @@ def read_events(data):
     add_event_to_events(
         [ramp_up_temp, ramp_down_temp, ramp_down_high_temp, ramp_down_low_temp], events
     )
+
+    # ----10/CONDITIONS FOR THE PLATEN BIAS BEING ON----------
+    # Filter the data for the platen bias being on
+    platen_bias_on = filter_data_platen_bias_on(data)
+
+    add_event_to_events(platen_bias_on, events)
 
     # Remove the empty events from the events
     events = [event for event in events if event.bounds]
