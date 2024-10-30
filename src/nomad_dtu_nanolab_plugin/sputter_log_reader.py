@@ -216,6 +216,8 @@ POWER_FWD_REFL_THRESHOLD = 10  # watts
 # Categories of events to be considered in the main report
 
 
+
+
 # ---REPORT VALUES---
 
 CATEGORIES_MAIN_REPORT = [
@@ -260,10 +262,14 @@ GAS_NUMBER = {
 
 # ----PLOT VALUES-----
 
+
+
 BASE_HEIGHT = 250
 WIDTH = 700
 HEIGHT = 450
 VERTICAL_SPACING = 0.02
+
+EXPORT_SCALE = 20
 # Define a dictionary for step colors in the timeline plot
 STEP_COLORS = {
     'Deposition': 'blue',
@@ -315,6 +321,15 @@ DICT_RENAME = {
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback': 'Cracker Pulse Width',
     'Sulfur Cracker Control Setpoint Feedback': 'Cracker Frequency',
 }
+
+PLOTLY_CONFIG = {
+                'toImageButtonOptions': {
+                    'format': 'png',
+                    # 'width': 10*WIDTH,
+                    # 'height': 10*HEIGHT,
+                    'scale': 10
+                }
+                }
 
 ##------EVENT CLASS DEFINITION------
 
