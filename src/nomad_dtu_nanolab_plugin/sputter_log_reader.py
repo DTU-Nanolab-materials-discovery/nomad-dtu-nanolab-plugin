@@ -22,7 +22,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import kaleido
 from matplotlib import patches
 from matplotlib.transforms import Affine2D
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
@@ -217,8 +216,6 @@ POWER_FWD_REFL_THRESHOLD = 10  # watts
 # Categories of events to be considered in the main report
 
 
-
-
 # ---REPORT VALUES---
 
 CATEGORIES_MAIN_REPORT = [
@@ -264,12 +261,12 @@ GAS_NUMBER = {
 # ----PLOT VALUES-----
 
 
-
 BASE_HEIGHT = 250
 WIDTH = 700
 HEIGHT = 450
 VERTICAL_SPACING = 0.02
 ROLLING_NUM = 50
+ROLLING_FRAC_MAX = 0.2
 
 EXPORT_SCALE = 20
 # Define a dictionary for step colors in the timeline plot
@@ -325,13 +322,13 @@ DICT_RENAME = {
 }
 
 PLOTLY_CONFIG = {
-                'toImageButtonOptions': {
-                    'format': 'png',
-                    # 'width': 10*WIDTH,
-                    # 'height': 10*HEIGHT,
-                    'scale': 10
-                }
-                }
+    'toImageButtonOptions': {
+        'format': 'png',
+        # 'width': 10*WIDTH,
+        # 'height': 10*HEIGHT,
+        'scale': 10,
+    }
+}
 
 ##------EVENT CLASS DEFINITION------
 
@@ -3189,32 +3186,14 @@ def plot_plotly_extimeline(
     return fig
 
 
-def generate_bias_plot(deposition):
+def generate_bias_plot(
+    deposition, logfile_name, rolling_num=ROLLING_NUM, rolling_frac_max=ROLLING_FRAC_MAX
+):
     Y_plot = []
     patterns = [
         r'Source \d+ DC Bias',
         r'Source \d+ Voltage',
     ]
-
-    '''
-    #one can see that the DC Bias jumping eraticaly during the deposition event. Let us see
-    # if we can smooth the data using the rolling mean method of pandas.
-    deposition.data['Source 4 DC Bias Smoothed'] = (
-        deposition.data['Source 4 DC Bias'].rolling(50).mean())
-
-
-    #The PLOTLY_CONFIG is a config dict that allows the user to export the plot
-    #with a better resolutio when clicking the 'Download plot as png' button.
-    fig_dc_bias_smoothed = slr.quick_plot(deposition.data, ['Source 4 DC Bias', 'Source 4 DC Bias Smoothed'])
-    fig_dc_bias_smoothed.show(config=slr.PLOTLY_CONFIG)
-
-    #Let's try to exclude the point with DC BIAS bellow 1 before smoothing
-    # Exclude points with DC BIAS below 1 before smoothing
-    deposition.data['Source 4 DC Bias No Zero'] = deposition.data['Source 4 DC Bias'].where(deposition.data['Source 4 DC Bias'] > 1, None)
-
-    # Apply rolling mean to the filtered data
-    deposition.data['Source 4 DC Bias Smoothed No Zero'] = deposition.data['Source 4 DC Bias No Zero'].rolling(50, min_periods=1).mean()
-    '''
 
     for col in deposition.data.columns:
         if any(re.search(pattern, col) for pattern in patterns):
@@ -3222,10 +3201,29 @@ def generate_bias_plot(deposition):
             Y_plot.append(col)
 
             # Add the smoothed column to the list of columns to plot
-            deposition.data[f'{col} Smoothed {ROLLING_NUM}'] =(
-                deposition.data[col].rolling(ROLLING_NUM).mean()
+            deposition.data[f'{col} Smoothed {rolling_num}pt'] = (
+                deposition.data[col].rolling(rolling_num).mean()
             )
-            Y_plot.append(f'{col} Smoothed {ROLLING_NUM}')
+            Y_plot.append(f'{col} Smoothed {rolling_num}pt')
+            # check that the sample name contains eugbe
+            if 'eugbe' in logfile_name:
+                rolling_num_max = int(rolling_num * rolling_frac_max)
+                # add the max instead of the mean after rolling
+                deposition.data[f'{col} Max {rolling_num_max}pt'] = (
+                    deposition.data[col]
+                    .rolling(int(rolling_num * rolling_frac_max))
+                    .max()
+                )
+                Y_plot.append(f'{col} Max {rolling_num_max}pt')
+                # smooth the max curve
+                deposition.data[
+                    f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt'
+                ] = (
+                    deposition.data[f'{col} Max {rolling_num_max}pt']
+                    .rolling(rolling_num)
+                    .mean()
+                )
+                Y_plot.append(f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt')
 
     bias_plot = quick_plot(
         deposition.data, Y_plot, mode='default', plot_type='line', width=1.5 * WIDTH
@@ -4410,7 +4408,7 @@ def main():
 
         deposition = event_list_to_dict(events_to_plot)['deposition']
 
-        bias_plot = generate_bias_plot(deposition)
+        bias_plot = generate_bias_plot(deposition, logfiles['name'][i])
 
         bias_plot.write_html(bias_file_path)
 
