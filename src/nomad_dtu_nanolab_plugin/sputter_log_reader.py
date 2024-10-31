@@ -2866,15 +2866,25 @@ def plot_logfile_chamber(main_params):
 
 def quick_plot(df, Y, **kwargs):
     """
-    Plots a time series using Plotly.
+    Quick plot function to plot the data in the dataframe.
 
     Args:
-        df (pandas.DataFrame): The DataFrame containing the data.
-        Y (str or list): The column name(s) to plot.
-        **kwargs: Additional keyword arguments to pass to the plot.
+        df (pd.DataFrame): The dataframe containing the data to plot.
+        Y (list or str): The column name(s) for the y-axis.
+        **kwargs: Additional keyword arguments for plot customization:
+            - X (str): Column name for the x-axis. Default is 'Time Stamp'.
+            - mode (str): Plotting mode, either 'default', 'stack', or 'dual_y'.
+                Default is 'default'.
+            - plot_type (str): Type of plot, either 'line' or 'scatter'.
+                Default is 'scatter'.
+            - Y2 (list or str): Column name(s) for the right y-axis (Y2).
+                Default is an empty list.
+            - width (int): Width of the plot. Default is WIDTH.
+            - height (int): Height of the plot. Default is HEIGHT.
+            - plot_title (str): Title of the plot. Default is 'Quick Plot'.
 
     Returns:
-        fig (plotly.graph_objects.Figure): The Plotly figure object.
+        plotly.graph_objects.Figure: The Plotly figure object.
     """
     if isinstance(Y, str):
         Y = [Y]
@@ -2920,12 +2930,43 @@ def quick_plot(df, Y, **kwargs):
 
 
 def get_axis_title(column, default_title='Values'):
-    """Helper function to get the axis title from DICT_RENAME or use the column name."""
+    """
+    Helper function to get the axis title from DICT_RENAME
+    or use the column name.
+
+    Args:
+        column (str): The column name.
+        default_title (str): The default title to use if the column
+        name is not found in DICT_RENAME.
+
+    Returns:
+        str: The axis title.
+    """
     return DICT_RENAME.get(column, column) if isinstance(column, str) else default_title
 
 
 def setup_plot_params(df, Y, **kwargs):
-    """Helper function to setup plot parameters."""
+    """
+    Helper function to setup plot parameters.
+
+    Args:
+        df (pd.DataFrame): The dataframe containing the data to plot.
+        Y (list or str): The column name(s) for the y-axis.
+        **kwargs: Additional keyword arguments for plot customization:
+            - X (str): Column name for the x-axis. Default is 'Time Stamp'.
+            - mode (str): Plotting mode, either 'default', 'stack',
+                or 'dual_y'. Default is 'default'.
+            - plot_type (str): Type of plot, either 'line' or 'scatter'.
+                Default is 'scatter'.
+            - Y2 (list or str): Column name(s) for the right y-axis (Y2).
+                Default is an empty list.
+            - width (int): Width of the plot. Default is WIDTH.
+            - height (int): Height of the plot. Default is HEIGHT.
+            - plot_title (str): Title of the plot. Default is 'Quick Plot'.
+
+    Returns:
+        dict: A dictionary containing the plot parameters.
+    """
     X = kwargs.get('X', 'Time Stamp')
     mode = kwargs.get('mode', 'default')
     plot_type = kwargs.get('plot_type', 'scatter')
@@ -2958,7 +2999,16 @@ def setup_plot_params(df, Y, **kwargs):
 
 
 def add_vertical_lines(fig, num_plot):
-    """Helper function to add vertical lines to separate the plots."""
+    """
+    Helper function to add vertical lines to separate the plots.
+
+    Args:
+        fig (plotly.graph_objects.Figure): The Plotly figure object.
+        num_plot (int): The number of plots.
+
+    Returns:
+        None
+    """
     shapes = [
         dict(
             type='rect',
@@ -2976,6 +3026,16 @@ def add_vertical_lines(fig, num_plot):
 
 
 def create_default_plot(df, plot_params):
+    """
+    Create a default plot.
+
+    Args:
+        df (pd.DataFrame): The dataframe containing the data to plot.
+        plot_params (dict): A dictionary containing the plot parameters.
+
+    Returns:
+        plotly.graph_objects.Figure: The Plotly figure object.
+    """
     X = plot_params['X']
     Y = plot_params['Y']
     plot_type = plot_params['plot_type']
@@ -2996,6 +3056,17 @@ def create_default_plot(df, plot_params):
 
 
 def create_stack_plot(df, plot_params):
+    """
+    Create a stacked plot.
+
+    Args:
+        df (pd.DataFrame): The dataframe containing the data to plot.
+        plot_params (dict): A dictionary containing the plot parameters.
+
+    Returns:
+        tuple: A tuple containing the Plotly figure objec
+        and the number of plots.
+    """
     X = plot_params['X']
     Y = plot_params['Y']
     plot_type = plot_params['plot_type']
@@ -3036,6 +3107,16 @@ def create_stack_plot(df, plot_params):
 
 
 def create_dual_y_plot(df, plot_params):
+    """
+    Create a default plot.
+
+    Args:
+        df (pd.DataFrame): The dataframe containing the data to plot.
+        plot_params (dict): A dictionary containing the plot parameters.
+
+    Returns:
+        plotly.graph_objects.Figure: The Plotly figure object.
+    """
     X = plot_params['X']
     Y = plot_params['Y']
     Y2 = plot_params['Y2']
