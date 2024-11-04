@@ -1,0 +1,6 @@
+diff a/tests/apps/test_app.py b/tests/apps/test_app.py	(rejected hunks)
+@@ -3,4 +3,3 @@ def test_importing_app():
+     from nomad_dtu_nanolab_plugin.apps import app_entry_point
+ 
+     assert app_entry_point.app.label == 'NewApp'
+-
