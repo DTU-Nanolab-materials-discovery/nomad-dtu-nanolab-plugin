@@ -589,7 +589,7 @@ class Lf_Event:
 
         params = self.get_step_sample_params(params)
 
-        #Get the sputter parameters
+        # Get the sputter parameters
 
         self.get_step_sputter_params(params)
 
@@ -667,10 +667,8 @@ class Lf_Event:
                 params[self.step_id]['sources'][source_key] = {}
         return params
 
-
     def get_step_sample_params(self, params):
         # Extract the sample parameters
-
 
         return params
 
