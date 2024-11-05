@@ -401,10 +401,10 @@ CATEGORIES_FIRST = {
     'ramp_down_low_temp',
 }
 SOURCE_NAME = {
-    '0': 'SCracker',
-    '1': 'Taurus',
-    '3': 'Magkeeper3',
-    '4': 'Magkeeper4',
+    '0': 's_cracker',
+    '1': 'taurus',
+    '3': 'magkeeper3',
+    '4': 'magkeeper4',
     'all': 'All',
 }
 GAS_NUMBER = {
@@ -461,7 +461,6 @@ OVERVIEW_PLOT = [
     'Sulfur Cracker Control Enabled',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'Sulfur Cracker Control Setpoint Feedback',
-    '',
 ]
 for gas in ['ar', 'ph3', 'h2s']:
     OVERVIEW_PLOT.append(f'PC MFC {GAS_NUMBER[gas]} Flow')
@@ -752,7 +751,7 @@ class Lf_Event:
 
         params = self.get_step_environment_params(params)
 
-        # Get the source parameters
+        # Get the sources parameters
 
         params = self.get_step_sources_params(source_list, params)
 
@@ -830,7 +829,15 @@ class Lf_Event:
                 params[self.step_id]['sources'][source_key] = {}
         return params
 
-    # DTUSputtering parameters extraction methods
+    def get_step_sample_params(self, params):
+        # Extract the sample parameters
+
+        return params
+
+    def get_step_sputter_params(self, params):
+        # Extract the sputter parameters
+
+        return params
 
 
 class Deposition_Event(Lf_Event):
@@ -910,7 +917,7 @@ class Deposition_Event(Lf_Event):
 
         return params
 
-    # method to extract the SCracker parameters
+    # method to extract the s_cracker parameters
     def get_cracker_params(self, params=None):
         # Extract if the cracker has been used during deposition as the
         # cracker control being enabled and the temperatures of the
@@ -921,8 +928,8 @@ class Deposition_Event(Lf_Event):
             params = {}
         if self.category not in params:
             params[self.category] = {}
-        if 'SCracker' not in params[self.category]:
-            params[self.category]['SCracker'] = {}
+        if 's_cracker' not in params[self.category]:
+            params[self.category]['s_cracker'] = {}
 
         if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
             if (
@@ -940,26 +947,26 @@ class Deposition_Event(Lf_Event):
                     > CRACKER_ZONE_3_MIN_TEMP
                 ).all()
             ):
-                params[self.category]['SCracker']['enabled'] = True
-                params[self.category]['SCracker']['zone1_temp'] = self.data[
+                params[self.category]['s_cracker']['enabled'] = True
+                params[self.category]['s_cracker']['zone1_temp'] = self.data[
                     'Sulfur Cracker Zone 1 Current Temperature'
                 ].mean()
-                params[self.category]['SCracker']['zone2_temp'] = self.data[
+                params[self.category]['s_cracker']['zone2_temp'] = self.data[
                     'Sulfur Cracker Zone 2 Current Temperature'
                 ].mean()
-                params[self.category]['SCracker']['zone3_temp'] = self.data[
+                params[self.category]['s_cracker']['zone3_temp'] = self.data[
                     'Sulfur Cracker Zone 3 Current Temperature'
                 ].mean()
-                params[self.category]['SCracker']['pulse_width'] = self.data[
+                params[self.category]['s_cracker']['pulse_width'] = self.data[
                     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                 ].mean()
-                params[self.category]['SCracker']['pulse_freq'] = self.data[
+                params[self.category]['s_cracker']['pulse_freq'] = self.data[
                     'Sulfur Cracker Control Setpoint Feedback'
                 ].mean()
             else:
-                params[self.category]['SCracker']['enabled'] = False
+                params[self.category]['s_cracker']['enabled'] = False
         else:
-            params[self.category]['SCracker']['enabled'] = False
+            params[self.category]['s_cracker']['enabled'] = False
         return params
 
     # method to extract important pressure parameters
@@ -990,9 +997,9 @@ class Deposition_Event(Lf_Event):
             min_pressure_before_depostion
         )
         if min_pressure_before_depostion < MAX_BASE_PRESSURE:
-            if not params[self.category]['SCracker']['enabled']:
+            if not params[self.category]['s_cracker']['enabled']:
                 params['overview']['true_base_pressure_meas'] = True
-            elif params[self.category]['SCracker']['enabled']:
+            elif params[self.category]['s_cracker']['enabled']:
                 params['overview']['true_base_pressure_meas'] = False
         else:
             params['overview']['true_base_pressure_meas'] = False
@@ -1098,7 +1105,7 @@ class Deposition_Event(Lf_Event):
         if params[self.category]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD:
             elements = elements + ['P']
         if (params[self.category]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD) or (
-            params[self.category]['SCracker']['enabled']
+            params[self.category]['s_cracker']['enabled']
         ):
             elements = elements + ['S']
         # add the element as an hypen separated string
@@ -1214,9 +1221,9 @@ class Deposition_Event(Lf_Event):
     def get_source_material_and_target(self, params, source_number, elements):
         source_element = str(self.data[f'PC Source {source_number} Material'].iloc[0])
         source_element = re.split(r'\s+', source_element)[0]
-        params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
-            ELEMENTS[source_element]
-        )
+        params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+            'target_material'
+        ] = ELEMENTS[source_element]
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_id'] = (
             self.data[f'PC Source {source_number} Loaded Target'].iloc[0]
         )
@@ -1409,8 +1416,8 @@ class Sub_Ramp_Up_Event(Lf_Event):
             raise ValueError('Missing deposition info, run get_rt_bool first')
         if self.category not in params:
             params[self.category] = {}
-        if 'SCracker' not in params[self.category]:
-            params[self.category]['SCracker'] = {}
+        if 's_cracker' not in params[self.category]:
+            params[self.category]['s_cracker'] = {}
 
         if not params['deposition']['rt']:
             # ------Extract the substrate ramp up parameters------
@@ -1461,27 +1468,27 @@ class Sub_Ramp_Up_Event(Lf_Event):
                         > CRACKER_ZONE_3_MIN_TEMP
                     ).all()
                 ):
-                    params[self.category]['SCracker']['enabled'] = True
+                    params[self.category]['s_cracker']['enabled'] = True
                     # If the cracker has been used, extract the cracker parameters
-                    params[self.category]['SCracker']['zone1_temp'] = self.data[
+                    params[self.category]['s_cracker']['zone1_temp'] = self.data[
                         'Sulfur Cracker Zone 1 Current Temperature'
                     ].mean()
-                    params[self.category]['SCracker']['zone2_temp'] = self.data[
+                    params[self.category]['s_cracker']['zone2_temp'] = self.data[
                         'Sulfur Cracker Zone 2 Current Temperature'
                     ].mean()
-                    params[self.category]['SCracker']['zone3_temp'] = self.data[
+                    params[self.category]['s_cracker']['zone3_temp'] = self.data[
                         'Sulfur Cracker Zone 3 Current Temperature'
                     ].mean()
-                    params[self.category]['SCracker']['pulse_width'] = self.data[
+                    params[self.category]['s_cracker']['pulse_width'] = self.data[
                         'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                     ].mean()
-                    params[self.category]['SCracker']['pulse_freq'] = self.data[
+                    params[self.category]['s_cracker']['pulse_freq'] = self.data[
                         'Sulfur Cracker Control Setpoint Feedback'
                     ].mean()
                 else:
-                    params[self.category]['SCracker']['enabled'] = False
+                    params[self.category]['s_cracker']['enabled'] = False
             else:
-                params[self.category]['SCracker']['enabled'] = False
+                params[self.category]['s_cracker']['enabled'] = False
         return params
 
 
@@ -1539,8 +1546,8 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
         if self.category not in params:
             params[self.category] = {}
 
-        if 'SCracker' not in params[self.category]:
-            params[self.category]['SCracker'] = {}
+        if 's_cracker' not in params[self.category]:
+            params[self.category]['s_cracker'] = {}
 
         if 'deposition' not in params:
             raise ValueError('Missing deposition info, run get_rt_bool first')
@@ -1581,27 +1588,27 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
                         > CRACKER_ZONE_3_MIN_TEMP
                     ).all()
                 ):
-                    params[self.category]['SCracker']['enabled'] = True
+                    params[self.category]['s_cracker']['enabled'] = True
                     # if the crack has been used, extract the cracker parameters
-                    params[self.category]['SCracker']['zone1_temp'] = self.data[
+                    params[self.category]['s_cracker']['zone1_temp'] = self.data[
                         'Sulfur Cracker Zone 1 Current Temperature'
                     ].mean()
-                    params[self.category]['SCracker']['zone2_temp'] = self.data[
+                    params[self.category]['s_cracker']['zone2_temp'] = self.data[
                         'Sulfur Cracker Zone 2 Current Temperature'
                     ].mean()
-                    params[self.category]['SCracker']['zone3_temp'] = self.data[
+                    params[self.category]['s_cracker']['zone3_temp'] = self.data[
                         'Sulfur Cracker Zone 3 Current Temperature'
                     ].mean()
-                    params[self.category]['SCracker']['pulse_width'] = self.data[
+                    params[self.category]['s_cracker']['pulse_width'] = self.data[
                         'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                     ].mean()
-                    params[self.category]['SCracker']['pulse_freq'] = self.data[
+                    params[self.category]['s_cracker']['pulse_freq'] = self.data[
                         'Sulfur Cracker Control Setpoint Feedback'
                     ].mean()
                 else:
-                    params[self.category]['SCracker']['enabled'] = False
+                    params[self.category]['s_cracker']['enabled'] = False
             else:
-                params[self.category]['SCracker']['enabled'] = False
+                params[self.category]['s_cracker']['enabled'] = False
             # Extract the anion input cutoff temperature as the last temperature of
             # the high temperature ramp down
             params[self.category]['anion_input_cutoff_temp'] = self.data[
@@ -1672,15 +1679,15 @@ class DepRate_Meas_Event(Lf_Event):
                 self.data[f'PC Source {source_number} Material'].iloc[0]
             )
             source_element = re.split(r'\s+', source_element)[0]
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
-                ELEMENTS[source_element]
-            )
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                'target_material'
+            ] = ELEMENTS[source_element]
         if self.source == 0:
             source_number = 0
             source_element = 'S'
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
-                source_element
-            )
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                'target_material'
+            ] = source_element
 
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['dep_rate'] = (
             self.data['Thickness Rate'].mean()
@@ -3005,14 +3012,14 @@ def filter_data_platen_bias_on(data):
 def plot_logfile_chamber(main_params):
     # Reading guns
     guns = []
-    for gun_param in ['Taurus', 'Magkeeper3', 'Magkeeper4', 'SCracker']:
+    for gun_param in ['taurus', 'magkeeper3', 'magkeeper4', 's_cracker']:
         if (
             gun_param in main_params['deposition']
             and (main_params['deposition'][gun_param]['enabled'])
         ):
-            if 'material' in main_params['deposition'][gun_param]:
-                material = main_params['deposition'][gun_param]['material']
-            elif gun_param == 'SCracker':
+            if 'target_material' in main_params['deposition'][gun_param]:
+                material = main_params['deposition'][gun_param]['target_material']
+            elif gun_param == 's_cracker':
                 material = 'S'
             gun = Gun(gun_param, material)
             guns.append(gun)
@@ -4046,7 +4053,7 @@ def map_params_to_nomad(params, gun_list):
         # Deposition parameters
         [
             ['deposition', 'avg_temp_1'],
-            ['deposition_parameters', 'deposition_temperature'],
+            ['deposition_parameters', 'deposition_temp'],
             'degC',
         ],
         # duration has no unit since it is a TimeDelta object
@@ -4093,12 +4100,12 @@ def map_params_to_nomad(params, gun_list):
         # End of process parameters
         [
             ['overview', 'end_of_process_temp'],
-            ['end_of_process', 'Heater_temperature'],
+            ['end_of_process', 'heater_temp'],
             'degC',
         ],
         [
             ['overview', 'time_in_chamber_after_deposition'],
-            ['end_of_process', 'time_in_chamber_after_ending_deposition'],
+            ['end_of_process', 'time_in_chamber_after_deposition'],
             'second',
         ],
     ]
@@ -4133,15 +4140,19 @@ def map_params_to_nomad(params, gun_list):
                 ],
             ]
         )
-
     # Gun parameters
     for gun in gun_list:
         if params['deposition'].get(gun, {}).get('enabled', False):
             param_nomad_map.extend(
                 [
                     [
-                        ['deposition', gun, 'target_id'],
+                        ['deposition', gun, 'target_material'],
                         ['deposition_parameters', gun, 'target_material'],
+                        None,
+                    ],
+                    [
+                        ['deposition', gun, 'target_id'],
+                        ['deposition_parameters', gun, 'target_id', 'lab_id'],
                         None,
                     ],
                     [
@@ -4161,7 +4172,7 @@ def map_params_to_nomad(params, gun_list):
                     ],
                     [
                         ['deposition', gun, 'avg_voltage'],
-                        ['deposition_parameters', gun, 'stable_average_voltage'],
+                        ['deposition_parameters', gun, 'average_voltage'],
                         'V',
                     ],
                 ]
@@ -4249,16 +4260,16 @@ TOXIC_GAS_INLET_ANGLE = np.radians(-58)
 
 # Define a dictionary to map names to their colors and locations
 GUN_PROPERTIES = {
-    'SCracker': {'color': 'red', 'location': np.radians(180)},
-    'Taurus': {'color': 'green', 'location': np.radians(135)},
-    'Magkeeper3': {'color': 'blue', 'location': np.radians(315)},
-    'Magkeeper4': {'color': 'magenta', 'location': np.radians(45)},
+    's_cracker': {'color': 'red', 'location': np.radians(180)},
+    'taurus': {'color': 'green', 'location': np.radians(135)},
+    'magkeeper3': {'color': 'blue', 'location': np.radians(315)},
+    'magkeeper4': {'color': 'magenta', 'location': np.radians(45)},
 }
 
 GUN_OVERVIEW_NAMES = [
-    'Taurus',
-    'Magkeeper3',
-    'Magkeeper4',
+    'taurus',
+    'magkeeper3',
+    'magkeeper4',
 ]
 
 
@@ -4311,8 +4322,8 @@ def read_samples(sample_list: list):
     samples = []
     for sample_obj in sample_list:
         label = str(sample_obj.relative_position)
-        pos_x = sample_obj.Substrate_position_x.to('mm').magnitude
-        pos_y = sample_obj.Substrate_position_y.to('mm').magnitude
+        pos_x = sample_obj.sub_xpos.to('mm').magnitude
+        pos_y = sample_obj.sub_ypos.to('mm').magnitude
         # size = sample_obj.reference.SIZE?
         sample = Sample(label, pos_x, pos_y)
         samples.append(sample)
@@ -4328,7 +4339,7 @@ def read_guns(gun_list: list, gun_names: str):
                 if gun_obj.target_material is not None:
                     gun = Gun(name, gun_obj.target_material)
                     guns.append(gun)
-            elif name == 'SCracker':
+            elif name == 's_cracker':
                 gun = Gun(name, 'S')
                 guns.append(gun)
     return guns
