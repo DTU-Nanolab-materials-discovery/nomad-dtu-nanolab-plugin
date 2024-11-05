@@ -197,17 +197,17 @@ class SCracker(ArchiveSection):
     """
 
     m_def = Section()
-    z1_temp = Quantity(
+    zone1_temp = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    z2_temp = Quantity(
+    zone2_temp = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    z3_temp = Quantity(
+    zone3_temp = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
