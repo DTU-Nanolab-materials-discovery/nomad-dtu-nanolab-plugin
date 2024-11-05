@@ -27,161 +27,6 @@ from matplotlib.transforms import Affine2D
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from plotly.subplots import make_subplots
 
-# column names dictionary
-COL = {
-    'time': 'Time Stamp',
-    'pressure_wrg': 'PC Wide Range Gauge',
-    'pressure': 'PC Capman Pressure',
-    'pressure_sp': 'PC Capman Pressure Setpoint',
-    'ps1_en': 'Power Supply 1 Enable',
-    'ps1_ed': 'Power Supply 1 Enabled',
-    'ps1_out_sp': 'Power Supply 1 Output Setpoint',
-    'ps1_volt_sp': 'Power Supply 1 Voltage Setpoint',
-    'ps1_curr_sp': 'Power Supply 1 Current Setpoint',
-    'ps1_power': 'Power Supply 1 Power',
-    'ps1_volt': 'Power Supply 1 Voltage',
-    'ps1_curr': 'Power Supply 1 Current',
-    'ps1_pulse_en': 'Power Supply 1 Pulse Enable',
-    'ps1_pulse_freq_sp': 'Power Supply 1 Pulse Frequency Setpoint',
-    'ps1_pulse_freq': 'Power Supply 1 Pulse Frequency',
-    'ps1_rev_time_sp': 'Power Supply 1 Reverse Time Setpoint',
-    'ps1_rev_time': 'Power Supply 1 Reverse Time',
-    'ps2_en': 'Power Supply 2 Enable',
-    'ps2_ed': 'Power Supply 2 Enabled',
-    'ps2_out_sp': 'Power Supply 2 Output Setpoint',
-    'ps2_fwd_pwr': 'Power Supply 2 Fwd Power',
-    'ps2_rfl_pwr': 'Power Supply 2 Rfl Power',
-    'ps2_dc_bias': 'Power Supply 2 DC Bias',
-    'ps2_load_cap_pos': 'Power Supply 2 Load Cap Position',
-    'ps2_tune_cap_pos': 'Power Supply 2 Tune Cap Position',
-    'ps3_en': 'Power Supply 3 Enable',
-    'ps3_ed': 'Power Supply 3 Enabled',
-    'ps3_out_sp': 'Power Supply 3 Output Setpoint',
-    'ps3_fwd_pwr': 'Power Supply 3 Fwd Power',
-    'ps3_rfl_pwr': 'Power Supply 3 Rfl Power',
-    'ps3_dc_bias': 'Power Supply 3 DC Bias',
-    'ps3_load_cap_pos': 'Power Supply 3 Load Cap Position',
-    'ps3_tune_cap_pos': 'Power Supply 3 Tune Cap Position',
-    'mfc1_flow': 'PC MFC 1 Flow',
-    'mfc1_sp': 'PC MFC 1 Setpoint',
-    'ar_flow': 'PC MFC 1 Flow',
-    'ar_sp': 'PC MFC 1 Setpoint',
-    'mfc2_flow': 'PC MFC 2 Flow',
-    'mfc2_sp': 'PC MFC 2 Setpoint',
-    # "n2_flow": "PC MFC 2 Flow",  # Need to check
-    # "n2_sp": "PC MFC 2 Setpoint",  # Need to check
-    'mfc3_flow': 'PC MFC 3 Flow',
-    'mfc3_sp': 'PC MFC 3 Setpoint',
-    # "o2_flow": "PC MFC 3 Flow",   # Need to check
-    # "o2_sp": "PC MFC 3 Setpoint",   # Need to check
-    'mfc4_flow': 'PC MFC 4 Flow',
-    'mfc4_sp': 'PC MFC 4 Setpoint',
-    'ph3_flow': 'PC MFC 4 Flow',
-    'ph3_sp': 'PC MFC 4 Setpoint',
-    'mfc5_flow': 'PC MFC 5 Flow',
-    'mfc5_sp': 'PC MFC 5 Setpoint',
-    'nh3_flow': 'PC MFC 5 Flow',
-    'nh3_sp': 'PC MFC 5 Setpoint',
-    'mfc6_flow': 'PC MFC 6 Flow',
-    'mfc6_sp': 'PC MFC 6 Setpoint',
-    'h2s_flow': 'PC MFC 6 Flow',
-    'h2s_sp': 'PC MFC 6 Setpoint',
-    'sub_shutter_open': 'PC Substrate Shutter Open',
-    'proc_phase': 'Process Phase',
-    'proc_time_tracker': 'Process Time Tracker',
-    'thk_rate': 'Thickness Rate',
-    'thk': 'Thickness',
-    'thk_tooling': 'Thickness Tooling',
-    'thk_active_mat': 'Thickness Active Material',
-    'thk_mat_density': 'Thickness Material Density',
-    'thk_mat_z': 'Thickness Material Z',
-    'thk_q': 'Thickness Q',
-    'thk_err': 'Thickness Error',
-    'sub_temp_ctrl_en': 'Substrate Heater Temperature Control Enable',
-    'sub_temp_sp': 'Substrate Heater Temperature Setpoint',
-    'sub_temp': 'Substrate Heater Temperature',
-    'sub_temp2': 'Substrate Heater Temperature 2',
-    'sub_curr': 'Substrate Heater Current',
-    'sul_crk_zone1_temp': 'Sulfur Cracker Zone 1 Current Temperature',
-    'sul_crk_zone1_en': 'Sulfur Cracker Zone 1 Enabled',
-    'sul_crk_zone1_sp': 'Sulfur Cracker Zone 1 Temperature Setpoint',
-    'sul_crk_zone2_temp': 'Sulfur Cracker Zone 2 Current Temperature',
-    'sul_crk_zone2_en': 'Sulfur Cracker Zone 2 Enabled',
-    'sul_crk_zone2_sp': 'Sulfur Cracker Zone 2 Temperature Setpoint',
-    'sul_crk_zone3_temp': 'Sulfur Cracker Zone 3 Current Temperature',
-    'sul_crk_zone3_en': 'Sulfur Cracker Zone 3 Enabled',
-    'sul_crk_zone3_sp': 'Sulfur Cracker Zone 3 Temperature Setpoint',
-    'sul_crk_ctrl_en': 'Sulfur Cracker Control Enabled',
-    'sul_crk_ctrl_mode': 'Sulfur Cracker Control Mode',
-    'sul_crk_ctrl_sensor': 'Sulfur Cracker Control Sensor Value',
-    'sul_crk_ctrl_sp': 'Sulfur Cracker Control Setpoint',
-    'sul_crk_ctrl_fb': 'Sulfur Cracker Control Setpoint Feedback',
-    'sul_crk_valve_freq_sp': 'Sulfur Cracker Control Valve InitFrequency Setpoint',
-    'sul_crk_valve_pw_sp': 'Sulfur Cracker Control Valve PulseWidth Setpoint',
-    'sul_crk_valve_pw_fb': 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
-    'sul_crk_valve_sp': 'Sulfur Cracker Control Valve Setpoint',
-    'sul_crk_valve_val': 'Sulfur Cracker Control Valve Value',
-    'src1_load': 'PC Source 1 Loaded Target',
-    'src1_mat': 'PC Source 1 Material',
-    'src1_shutter': 'PC Source 1 Shutter Open',
-    'src1_pdc_ps1': 'PC Source 1 Switch-PDC-PWS1',
-    'src1_rf1_ps2': 'PC Source 1 Switch-RF1-PWS2',
-    'src1_rf2_ps3': 'PC Source 1 Switch-RF2-PWS3',
-    'src1_usage': 'PC Source 1 Usage',
-    'src1_usage_calc': 'PC Source 1 Usage Calculation',
-    'src3_load': 'PC Source 3 Loaded Target',
-    'src3_mat': 'PC Source 3 Material',
-    'src3_shutter': 'PC Source 3 Shutter Open',
-    'src3_pdc_ps1': 'PC Source 3 Switch-PDC-PWS1',
-    'src3_rf1_ps2': 'PC Source 3 Switch-RF1-PWS2',
-    'src3_rf2_ps3': 'PC Source 3 Switch-RF2-PWS3',
-    'src3_usage': 'PC Source 3 Usage',
-    'src3_usage_calc': 'PC Source 3 Usage Calculation',
-    'src4_load': 'PC Source 4 Loaded Target',
-    'src4_mat': 'PC Source 4 Material',
-    'src4_shutter': 'PC Source 4 Shutter Open',
-    'src4_pdc_ps1': 'PC Source 4 Switch-PDC-PWS1',
-    'src4_rf1_ps2': 'PC Source 4 Switch-RF1-PWS2',
-    'src4_rf2_ps3': 'PC Source 4 Switch-RF2-PWS3',
-    'src4_usage': 'PC Source 4 Usage',
-    'src4_usage_calc': 'PC Source 4 Usage Calculation',
-    'sub_rot_pos': 'Substrate Rotation_Position',
-    'sub_rot_pos_sp': 'Substrate Rotation_PositionSetpoint',
-    'xtal1_shutter': 'Xtal 1 Shutter Open',
-    'xtal2_shutter': 'Xtal 2 Shutter Open',
-    'ps7_en': 'Power Supply 7 Enable',
-    'ps7_ed': 'Power Supply 7 Enabled',
-    'ps7_out_sp': 'Power Supply 7 Output Setpoint',
-    'ps7_fwd_pwr': 'Power Supply 7 Fwd Power',
-    'ps7_rfl_pwr': 'Power Supply 7 Rfl Power',
-    'ps7_dc_bias': 'Power Supply 7 DC Bias',
-    'ps7_load_cap_pos': 'Power Supply 7 Load Cap Position',
-    'ps7_tune_cap_pos': 'Power Supply 7 Tune Cap Position',
-}
-for source_number in ['1', '3', '4']:
-    COL[f's{source_number}_en'] = f'Source {source_number} Enable'
-    COL[f's{source_number}_ed'] = f'Source {source_number} Enabled'
-    COL[f's{source_number}_out_sp'] = f'Source {source_number} Output Setpoint'
-    COL[f's{source_number}_volt_sp'] = f'Source {source_number} Voltage Setpoint'
-    COL[f's{source_number}_curr_sp'] = f'Source {source_number} Current Setpoint'
-    COL[f's{source_number}_power'] = f'Source {source_number} Power'
-    COL[f's{source_number}_volt'] = f'Source {source_number} Voltage'
-    COL[f's{source_number}_curr'] = f'Source {source_number} Current'
-    COL[f's{source_number}_pulse_en'] = f'Source {source_number} Pulse Enable'
-    COL[f's{source_number}_pulse_freq_sp'] = (
-        f'Source {source_number} Pulse Frequency Setpoint'
-    )
-    COL[f's{source_number}_pulse_freq'] = f'Source {source_number} Pulse Frequency'
-    COL[f's{source_number}_rev_time_sp'] = (
-        f'Source {source_number} Reverse Time Setpoint'
-    )
-    COL[f's{source_number}_rev_time'] = f'Source {source_number} Reverse Time'
-    COL[f's{source_number}_fwd_pwr'] = f'Source {source_number} Fwd Power'
-    COL[f's{source_number}_rfl_pwr'] = f'Source {source_number} Rfl Power'
-    COL[f's{source_number}_dc_bias'] = f'Source {source_number} DC Bias'
-    COL[f's{source_number}_load_cap_pos'] = f'Source {source_number} Load Cap Position'
-    COL[f's{source_number}_tune_cap_pos'] = f'Source {source_number} Tune Cap Position'
-
 # Elements name to symbol dict
 ELEMENTS = {
     '': 'X',
@@ -401,10 +246,10 @@ CATEGORIES_FIRST = {
     'ramp_down_low_temp',
 }
 SOURCE_NAME = {
-    '0': 'SCracker',
-    '1': 'Taurus',
-    '3': 'Magkeeper3',
-    '4': 'Magkeeper4',
+    '0': 's_cracker',
+    '1': 'taurus',
+    '3': 'magkeeper3',
+    '4': 'magkeeper4',
     'all': 'All',
 }
 GAS_NUMBER = {
@@ -415,15 +260,10 @@ GAS_NUMBER = {
 
 # ----PLOT VALUES-----
 
-
 BASE_HEIGHT = 250
 WIDTH = 700
 HEIGHT = 450
 VERTICAL_SPACING = 0.02
-ROLLING_NUM = 50
-ROLLING_FRAC_MAX = 0.2
-
-EXPORT_SCALE = 20
 # Define a dictionary for step colors in the timeline plot
 STEP_COLORS = {
     'Deposition': 'blue',
@@ -455,13 +295,11 @@ STEP_COLORS = {
 }
 # Choosing what to plot in the overview plot
 OVERVIEW_PLOT = [
-    'PC Substrate Shutter Open',
     'PC Capman Pressure',
     'Substrate Heater Temperature',
     'Sulfur Cracker Control Enabled',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'Sulfur Cracker Control Setpoint Feedback',
-    '',
 ]
 for gas in ['ar', 'ph3', 'h2s']:
     OVERVIEW_PLOT.append(f'PC MFC {GAS_NUMBER[gas]} Flow')
@@ -476,15 +314,6 @@ DICT_RENAME = {
     'Sulfur Cracker Control Enabled': 'Cracker Open',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback': 'Cracker Pulse Width',
     'Sulfur Cracker Control Setpoint Feedback': 'Cracker Frequency',
-}
-
-PLOTLY_CONFIG = {
-    'toImageButtonOptions': {
-        'format': 'png',
-        # 'width': 10*WIDTH,
-        # 'height': 10*HEIGHT,
-        'scale': 10,
-    }
 }
 
 ##------EVENT CLASS DEFINITION------
@@ -752,9 +581,17 @@ class Lf_Event:
 
         params = self.get_step_environment_params(params)
 
-        # Get the source parameters
+        # Get the sources parameters
 
         params = self.get_step_sources_params(source_list, params)
+
+        # Get the sample parameters
+
+        params = self.get_step_sample_params(params)
+
+        #Get the sputter parameters
+
+        self.get_step_sputter_params(params)
 
         return params
 
@@ -830,7 +667,17 @@ class Lf_Event:
                 params[self.step_id]['sources'][source_key] = {}
         return params
 
-    # DTUSputtering parameters extraction methods
+
+    def get_step_sample_params(self, params):
+        # Extract the sample parameters
+
+
+        return params
+
+    def get_step_sputter_params(self, params):
+        # Extract the sputter parameters
+
+        return params
 
 
 class Deposition_Event(Lf_Event):
@@ -853,7 +700,6 @@ class Deposition_Event(Lf_Event):
         params = self.get_pressure_params(raw_data, params=params)
         params = self.get_simple_deposition_params(params=params)
         params = self.get_source_depostion_params(source_list, params=params)
-        params = self.get_platen_bias_params(params=params)
         return params
 
     # method to deduce if the deposition was done at room temperature or not
@@ -910,7 +756,7 @@ class Deposition_Event(Lf_Event):
 
         return params
 
-    # method to extract the SCracker parameters
+    # method to extract the s_cracker parameters
     def get_cracker_params(self, params=None):
         # Extract if the cracker has been used during deposition as the
         # cracker control being enabled and the temperatures of the
@@ -921,8 +767,8 @@ class Deposition_Event(Lf_Event):
             params = {}
         if self.category not in params:
             params[self.category] = {}
-        if 'SCracker' not in params[self.category]:
-            params[self.category]['SCracker'] = {}
+        if 's_cracker' not in params[self.category]:
+            params[self.category]['s_cracker'] = {}
 
         if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
             if (
@@ -940,26 +786,26 @@ class Deposition_Event(Lf_Event):
                     > CRACKER_ZONE_3_MIN_TEMP
                 ).all()
             ):
-                params[self.category]['SCracker']['enabled'] = True
-                params[self.category]['SCracker']['zone1_temp'] = self.data[
+                params[self.category]['s_cracker']['enabled'] = True
+                params[self.category]['s_cracker']['zone1_temp'] = self.data[
                     'Sulfur Cracker Zone 1 Current Temperature'
                 ].mean()
-                params[self.category]['SCracker']['zone2_temp'] = self.data[
+                params[self.category]['s_cracker']['zone2_temp'] = self.data[
                     'Sulfur Cracker Zone 2 Current Temperature'
                 ].mean()
-                params[self.category]['SCracker']['zone3_temp'] = self.data[
+                params[self.category]['s_cracker']['zone3_temp'] = self.data[
                     'Sulfur Cracker Zone 3 Current Temperature'
                 ].mean()
-                params[self.category]['SCracker']['pulse_width'] = self.data[
+                params[self.category]['s_cracker']['pulse_width'] = self.data[
                     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                 ].mean()
-                params[self.category]['SCracker']['pulse_freq'] = self.data[
+                params[self.category]['s_cracker']['pulse_freq'] = self.data[
                     'Sulfur Cracker Control Setpoint Feedback'
                 ].mean()
             else:
-                params[self.category]['SCracker']['enabled'] = False
+                params[self.category]['s_cracker']['enabled'] = False
         else:
-            params[self.category]['SCracker']['enabled'] = False
+            params[self.category]['s_cracker']['enabled'] = False
         return params
 
     # method to extract important pressure parameters
@@ -990,9 +836,9 @@ class Deposition_Event(Lf_Event):
             min_pressure_before_depostion
         )
         if min_pressure_before_depostion < MAX_BASE_PRESSURE:
-            if not params[self.category]['SCracker']['enabled']:
+            if not params[self.category]['s_cracker']['enabled']:
                 params['overview']['true_base_pressure_meas'] = True
-            elif params[self.category]['SCracker']['enabled']:
+            elif params[self.category]['s_cracker']['enabled']:
                 params['overview']['true_base_pressure_meas'] = False
         else:
             params['overview']['true_base_pressure_meas'] = False
@@ -1098,7 +944,7 @@ class Deposition_Event(Lf_Event):
         if params[self.category]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD:
             elements = elements + ['P']
         if (params[self.category]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD) or (
-            params[self.category]['SCracker']['enabled']
+            params[self.category]['s_cracker']['enabled']
         ):
             elements = elements + ['S']
         # add the element as an hypen separated string
@@ -1214,44 +1060,15 @@ class Deposition_Event(Lf_Event):
     def get_source_material_and_target(self, params, source_number, elements):
         source_element = str(self.data[f'PC Source {source_number} Material'].iloc[0])
         source_element = re.split(r'\s+', source_element)[0]
-        params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
-            ELEMENTS[source_element]
-        )
+        params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+            'target_material'
+        ] = ELEMENTS[source_element]
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_id'] = (
             self.data[f'PC Source {source_number} Loaded Target'].iloc[0]
         )
         elements.append(ELEMENTS[source_element])
 
         return params, elements
-
-    def get_platen_bias_params(self, params=None):
-        # Extract the platen bias during deposition
-        if params is None:
-            params = {}
-        if self.category not in params:
-            params[self.category] = {}
-
-        params[self.category]['platen_bias'] = {}
-
-        if 'Power Supply 7 Output Setpoint' in self.data:
-            if (
-                self.data['Power Supply 7 DC Bias'] > BIAS_THRESHOLD
-            ).mean() >= TOLERANCE:
-                params[self.category]['platen_bias']['enabled'] = True
-            else:
-                params[self.category]['platen_bias']['enabled'] = False
-        else:
-            params[self.category]['platen_bias']['enabled'] = False
-
-        if params[self.category]['platen_bias']['enabled']:
-            params[self.category]['platen_bias']['platen_power'] = self.data[
-                'Power Supply 7 Output Setpoint'
-            ].mean()
-            params[self.category]['platen_bias']['avg_platen_bias'] = self.data[
-                'Power Supply 7 DC Bias'
-            ].mean()
-
-        return params
 
 
 class SCracker_Pressure_Event(Lf_Event):
@@ -1409,8 +1226,8 @@ class Sub_Ramp_Up_Event(Lf_Event):
             raise ValueError('Missing deposition info, run get_rt_bool first')
         if self.category not in params:
             params[self.category] = {}
-        if 'SCracker' not in params[self.category]:
-            params[self.category]['SCracker'] = {}
+        if 's_cracker' not in params[self.category]:
+            params[self.category]['s_cracker'] = {}
 
         if not params['deposition']['rt']:
             # ------Extract the substrate ramp up parameters------
@@ -1461,27 +1278,27 @@ class Sub_Ramp_Up_Event(Lf_Event):
                         > CRACKER_ZONE_3_MIN_TEMP
                     ).all()
                 ):
-                    params[self.category]['SCracker']['enabled'] = True
+                    params[self.category]['s_cracker']['enabled'] = True
                     # If the cracker has been used, extract the cracker parameters
-                    params[self.category]['SCracker']['zone1_temp'] = self.data[
+                    params[self.category]['s_cracker']['zone1_temp'] = self.data[
                         'Sulfur Cracker Zone 1 Current Temperature'
                     ].mean()
-                    params[self.category]['SCracker']['zone2_temp'] = self.data[
+                    params[self.category]['s_cracker']['zone2_temp'] = self.data[
                         'Sulfur Cracker Zone 2 Current Temperature'
                     ].mean()
-                    params[self.category]['SCracker']['zone3_temp'] = self.data[
+                    params[self.category]['s_cracker']['zone3_temp'] = self.data[
                         'Sulfur Cracker Zone 3 Current Temperature'
                     ].mean()
-                    params[self.category]['SCracker']['pulse_width'] = self.data[
+                    params[self.category]['s_cracker']['pulse_width'] = self.data[
                         'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                     ].mean()
-                    params[self.category]['SCracker']['pulse_freq'] = self.data[
+                    params[self.category]['s_cracker']['pulse_freq'] = self.data[
                         'Sulfur Cracker Control Setpoint Feedback'
                     ].mean()
                 else:
-                    params[self.category]['SCracker']['enabled'] = False
+                    params[self.category]['s_cracker']['enabled'] = False
             else:
-                params[self.category]['SCracker']['enabled'] = False
+                params[self.category]['s_cracker']['enabled'] = False
         return params
 
 
@@ -1539,8 +1356,8 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
         if self.category not in params:
             params[self.category] = {}
 
-        if 'SCracker' not in params[self.category]:
-            params[self.category]['SCracker'] = {}
+        if 's_cracker' not in params[self.category]:
+            params[self.category]['s_cracker'] = {}
 
         if 'deposition' not in params:
             raise ValueError('Missing deposition info, run get_rt_bool first')
@@ -1581,27 +1398,27 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
                         > CRACKER_ZONE_3_MIN_TEMP
                     ).all()
                 ):
-                    params[self.category]['SCracker']['enabled'] = True
+                    params[self.category]['s_cracker']['enabled'] = True
                     # if the crack has been used, extract the cracker parameters
-                    params[self.category]['SCracker']['zone1_temp'] = self.data[
+                    params[self.category]['s_cracker']['zone1_temp'] = self.data[
                         'Sulfur Cracker Zone 1 Current Temperature'
                     ].mean()
-                    params[self.category]['SCracker']['zone2_temp'] = self.data[
+                    params[self.category]['s_cracker']['zone2_temp'] = self.data[
                         'Sulfur Cracker Zone 2 Current Temperature'
                     ].mean()
-                    params[self.category]['SCracker']['zone3_temp'] = self.data[
+                    params[self.category]['s_cracker']['zone3_temp'] = self.data[
                         'Sulfur Cracker Zone 3 Current Temperature'
                     ].mean()
-                    params[self.category]['SCracker']['pulse_width'] = self.data[
+                    params[self.category]['s_cracker']['pulse_width'] = self.data[
                         'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                     ].mean()
-                    params[self.category]['SCracker']['pulse_freq'] = self.data[
+                    params[self.category]['s_cracker']['pulse_freq'] = self.data[
                         'Sulfur Cracker Control Setpoint Feedback'
                     ].mean()
                 else:
-                    params[self.category]['SCracker']['enabled'] = False
+                    params[self.category]['s_cracker']['enabled'] = False
             else:
-                params[self.category]['SCracker']['enabled'] = False
+                params[self.category]['s_cracker']['enabled'] = False
             # Extract the anion input cutoff temperature as the last temperature of
             # the high temperature ramp down
             params[self.category]['anion_input_cutoff_temp'] = self.data[
@@ -1672,15 +1489,15 @@ class DepRate_Meas_Event(Lf_Event):
                 self.data[f'PC Source {source_number} Material'].iloc[0]
             )
             source_element = re.split(r'\s+', source_element)[0]
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
-                ELEMENTS[source_element]
-            )
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                'target_material'
+            ] = ELEMENTS[source_element]
         if self.source == 0:
             source_number = 0
             source_element = 'S'
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['material'] = (
-                source_element
-            )
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                'target_material'
+            ] = source_element
 
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['dep_rate'] = (
             self.data['Thickness Rate'].mean()
@@ -2224,7 +2041,7 @@ def rename_cracker_columns(data):
 # directly use the source number to create the conditions if we handle
 # the case where the column does not exist in the dataframe
 def filter_data_plasma_on_ramp_up(data, source_list):
-    # print('Defining the conditions and filtering the data')
+    print('Defining the conditions and filtering the data')
     # Initialize dictionaries to store the ramp up, plasma on
     # conditions and corresponding data for each source
     source_ramp_up = {}
@@ -2493,28 +2310,17 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
 
     for source_number in source_list:
         if not source_on[str(source_number)].data.empty:
-            try:
-                source_presput_cond = (
-                    source_on[str(source_number)].cond
-                    & (data['Time Stamp'] < deposition.bounds[0][0])
-                    & (
-                        data['Time Stamp']
-                        > (
-                            source_ramp_up[str(source_number)]
-                            .data['Time Stamp']
-                            .iloc[-1]
-                        )
-                    )
-                    & ~source_ramp_up[str(source_number)].cond
-                    & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
+            source_presput_cond = (
+                source_on[str(source_number)].cond
+                & (data['Time Stamp'] < deposition.bounds[0][0])
+                & (
+                    data['Time Stamp']
+                    > (source_ramp_up[str(source_number)].data['Time Stamp'].iloc[-1])
                 )
-            except IndexError:
-                source_presput_cond = (
-                    source_on[str(source_number)].cond
-                    & (data['Time Stamp'] < deposition.bounds[0][0])
-                    & ~source_ramp_up[str(source_number)].cond
-                    & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
-                )
+                & ~source_ramp_up[str(source_number)].cond
+                & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
+            )
+
             source_presput[str(source_number)] = Source_Presput_Event(
                 f'Source {source_number} Presput',
                 source=source_number,
@@ -2985,34 +2791,20 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
     return ramp_up_temp, ramp_down_temp, ramp_down_high_temp, ramp_down_low_temp
 
 
-def filter_data_platen_bias_on(data):
-    platen_bias_on = Lf_Event('Platen Bias On', category='platen_bias_on')
-    if 'Power Supply 7 Enabled' in data.columns:
-        platen_bias_on_cond = (data['Power Supply 7 Enabled'] == 1) & (
-            data['Power Supply 7 DC Bias'] > BIAS_THRESHOLD
-        )
-    else:
-        platen_bias_on_cond = pd.Series(False, index=data.index)
-    platen_bias_on.set_condition(platen_bias_on_cond)
-    platen_bias_on.filter_data(data)
-
-    return platen_bias_on
-
-
 # -------PLOTTING DEFINITIONS------------
 
 
 def plot_logfile_chamber(main_params):
     # Reading guns
     guns = []
-    for gun_param in ['Taurus', 'Magkeeper3', 'Magkeeper4', 'SCracker']:
+    for gun_param in ['taurus', 'magkeeper3', 'magkeeper4', 's_cracker']:
         if (
             gun_param in main_params['deposition']
             and (main_params['deposition'][gun_param]['enabled'])
         ):
-            if 'material' in main_params['deposition'][gun_param]:
-                material = main_params['deposition'][gun_param]['material']
-            elif gun_param == 'SCracker':
+            if 'target_material' in main_params['deposition'][gun_param]:
+                material = main_params['deposition'][gun_param]['target_material']
+            elif gun_param == 's_cracker':
                 material = 'S'
             gun = Gun(gun_param, material)
             guns.append(gun)
@@ -3034,25 +2826,15 @@ def plot_logfile_chamber(main_params):
 
 def quick_plot(df, Y, **kwargs):
     """
-    Quick plot function to plot the data in the dataframe.
+    Plots a time series using Plotly.
 
     Args:
-        df (pd.DataFrame): The dataframe containing the data to plot.
-        Y (list or str): The column name(s) for the y-axis.
-        **kwargs: Additional keyword arguments for plot customization:
-            - X (str): Column name for the x-axis. Default is 'Time Stamp'.
-            - mode (str): Plotting mode, either 'default', 'stack', or 'dual_y'.
-                Default is 'default'.
-            - plot_type (str): Type of plot, either 'line' or 'scatter'.
-                Default is 'scatter'.
-            - Y2 (list or str): Column name(s) for the right y-axis (Y2).
-                Default is an empty list.
-            - width (int): Width of the plot. Default is WIDTH.
-            - height (int): Height of the plot. Default is HEIGHT.
-            - plot_title (str): Title of the plot. Default is 'Quick Plot'.
+        df (pandas.DataFrame): The DataFrame containing the data.
+        Y (str or list): The column name(s) to plot.
+        **kwargs: Additional keyword arguments to pass to the plot.
 
     Returns:
-        plotly.graph_objects.Figure: The Plotly figure object.
+        fig (plotly.graph_objects.Figure): The Plotly figure object.
     """
     if isinstance(Y, str):
         Y = [Y]
@@ -3098,43 +2880,12 @@ def quick_plot(df, Y, **kwargs):
 
 
 def get_axis_title(column, default_title='Values'):
-    """
-    Helper function to get the axis title from DICT_RENAME
-    or use the column name.
-
-    Args:
-        column (str): The column name.
-        default_title (str): The default title to use if the column
-        name is not found in DICT_RENAME.
-
-    Returns:
-        str: The axis title.
-    """
+    """Helper function to get the axis title from DICT_RENAME or use the column name."""
     return DICT_RENAME.get(column, column) if isinstance(column, str) else default_title
 
 
 def setup_plot_params(df, Y, **kwargs):
-    """
-    Helper function to setup plot parameters.
-
-    Args:
-        df (pd.DataFrame): The dataframe containing the data to plot.
-        Y (list or str): The column name(s) for the y-axis.
-        **kwargs: Additional keyword arguments for plot customization:
-            - X (str): Column name for the x-axis. Default is 'Time Stamp'.
-            - mode (str): Plotting mode, either 'default', 'stack',
-                or 'dual_y'. Default is 'default'.
-            - plot_type (str): Type of plot, either 'line' or 'scatter'.
-                Default is 'scatter'.
-            - Y2 (list or str): Column name(s) for the right y-axis (Y2).
-                Default is an empty list.
-            - width (int): Width of the plot. Default is WIDTH.
-            - height (int): Height of the plot. Default is HEIGHT.
-            - plot_title (str): Title of the plot. Default is 'Quick Plot'.
-
-    Returns:
-        dict: A dictionary containing the plot parameters.
-    """
+    """Helper function to setup plot parameters."""
     X = kwargs.get('X', 'Time Stamp')
     mode = kwargs.get('mode', 'default')
     plot_type = kwargs.get('plot_type', 'scatter')
@@ -3167,16 +2918,7 @@ def setup_plot_params(df, Y, **kwargs):
 
 
 def add_vertical_lines(fig, num_plot):
-    """
-    Helper function to add vertical lines to separate the plots.
-
-    Args:
-        fig (plotly.graph_objects.Figure): The Plotly figure object.
-        num_plot (int): The number of plots.
-
-    Returns:
-        None
-    """
+    """Helper function to add vertical lines to separate the plots."""
     shapes = [
         dict(
             type='rect',
@@ -3194,16 +2936,6 @@ def add_vertical_lines(fig, num_plot):
 
 
 def create_default_plot(df, plot_params):
-    """
-    Create a default plot.
-
-    Args:
-        df (pd.DataFrame): The dataframe containing the data to plot.
-        plot_params (dict): A dictionary containing the plot parameters.
-
-    Returns:
-        plotly.graph_objects.Figure: The Plotly figure object.
-    """
     X = plot_params['X']
     Y = plot_params['Y']
     plot_type = plot_params['plot_type']
@@ -3224,17 +2956,6 @@ def create_default_plot(df, plot_params):
 
 
 def create_stack_plot(df, plot_params):
-    """
-    Create a stacked plot.
-
-    Args:
-        df (pd.DataFrame): The dataframe containing the data to plot.
-        plot_params (dict): A dictionary containing the plot parameters.
-
-    Returns:
-        tuple: A tuple containing the Plotly figure objec
-        and the number of plots.
-    """
     X = plot_params['X']
     Y = plot_params['Y']
     plot_type = plot_params['plot_type']
@@ -3275,16 +2996,6 @@ def create_stack_plot(df, plot_params):
 
 
 def create_dual_y_plot(df, plot_params):
-    """
-    Create a default plot.
-
-    Args:
-        df (pd.DataFrame): The dataframe containing the data to plot.
-        plot_params (dict): A dictionary containing the plot parameters.
-
-    Returns:
-        plotly.graph_objects.Figure: The Plotly figure object.
-    """
     X = plot_params['X']
     Y = plot_params['Y']
     Y2 = plot_params['Y2']
@@ -3435,9 +3146,7 @@ def plot_plotly_extimeline(
     return fig
 
 
-def generate_bias_plot(
-    deposition, logfile_name, rolling_num=ROLLING_NUM, rolling_frac_max=ROLLING_FRAC_MAX
-):
+def generate_bias_plot(deposition):
     Y_plot = []
     patterns = [
         r'Source \d+ DC Bias',
@@ -3446,60 +3155,16 @@ def generate_bias_plot(
 
     for col in deposition.data.columns:
         if any(re.search(pattern, col) for pattern in patterns):
-            # Add the original column to the list of columns to plot
             Y_plot.append(col)
 
-            # Add the smoothed column to the list of columns to plot
-            deposition.data[f'{col} Smoothed {rolling_num}pt'] = (
-                deposition.data[col].rolling(rolling_num, center=True).mean()
-            )
-            Y_plot.append(f'{col} Smoothed {rolling_num}pt')
-
-            # check that the sample name contains Sb
-            if '_Sb_' in logfile_name:
-                rolling_num_max = int(rolling_num * rolling_frac_max)
-                # add the max instead of the mean after rolling
-                deposition.data[f'{col} Max {rolling_num_max}pt'] = (
-                    deposition.data[col]
-                    .rolling(int(rolling_num * rolling_frac_max), center=True)
-                    .max()
-                )
-                Y_plot.append(f'{col} Max {rolling_num_max}pt')
-                # smooth the max curve
-                deposition.data[
-                    f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt'
-                ] = (
-                    deposition.data[f'{col} Max {rolling_num_max}pt']
-                    .rolling(rolling_num, center=True)
-                    .mean()
-                )
-                Y_plot.append(f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt')
-                # iterate over the columns to plot and change zeros for NaN
-                deposition.data[f'{col} No Zero'] = deposition.data[col].replace(
-                    0, np.nan
-                )
-                Y_plot.append(f'{col} No Zero')
-                # smooth the no zero curve
-                deposition.data[f'{col} No Zero Smoothed {rolling_num}pt'] = (
-                    deposition.data[f'{col} No Zero']
-                    .rolling(rolling_num, min_periods=1, center=True)
-                    .mean()
-                )
-                Y_plot.append(f'{col} No Zero Smoothed {rolling_num}pt')
-
     bias_plot = quick_plot(
-        deposition.data,
-        Y_plot,
-        mode='default',
-        plot_type='line',
-        width=WIDTH,
-        plot_title=f'Bias Plot: {logfile_name}',
+        deposition.data, Y_plot, mode='default', plot_type='line', width=1.5 * WIDTH
     )
 
     return bias_plot
 
 
-def generate_overview_plot(data, logfile_name):
+def generate_overview_plot(data):
     Y_plot = OVERVIEW_PLOT
     # Check if the columns are in the data
     Y_plot = [col for col in Y_plot if col in data.columns]
@@ -3507,7 +3172,7 @@ def generate_overview_plot(data, logfile_name):
         data,
         Y_plot,
         plot_type='line',
-        plot_title=f'Overview Plot: {logfile_name}',
+        plot_title='Overview Plot',
         mode='stack',
         heigth=0.5 * HEIGHT,
         width=WIDTH,
@@ -3747,7 +3412,7 @@ def normalize_column(df, column_name):
 
 
 def formatting_logfile(data):
-    # print('Formatting the dataframe for conditional filtering')
+    print('Formatting the dataframe for conditional filtering')
     # -----FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING-------
     # -------RENAME THE CRACKER COLUMNS OF THE DATAFRAME---------
     data = rename_cracker_columns(data)
@@ -3948,12 +3613,6 @@ def read_events(data):
         [ramp_up_temp, ramp_down_temp, ramp_down_high_temp, ramp_down_low_temp], events
     )
 
-    # ----10/CONDITIONS FOR THE PLATEN BIAS BEING ON----------
-    # Filter the data for the platen bias being on
-    platen_bias_on = filter_data_platen_bias_on(data)
-
-    add_event_to_events(platen_bias_on, events)
-
     # Remove the empty events from the events
     events = [event for event in events if event.bounds]
 
@@ -4046,7 +3705,7 @@ def map_params_to_nomad(params, gun_list):
         # Deposition parameters
         [
             ['deposition', 'avg_temp_1'],
-            ['deposition_parameters', 'deposition_temperature'],
+            ['deposition_parameters', 'deposition_temp'],
             'degC',
         ],
         # duration has no unit since it is a TimeDelta object
@@ -4093,55 +3752,63 @@ def map_params_to_nomad(params, gun_list):
         # End of process parameters
         [
             ['overview', 'end_of_process_temp'],
-            ['end_of_process', 'Heater_temperature'],
+            ['end_of_process', 'heater_temp'],
             'degC',
         ],
         [
             ['overview', 'time_in_chamber_after_deposition'],
-            ['end_of_process', 'time_in_chamber_after_ending_deposition'],
+            ['end_of_process', 'time_in_chamber_after_deposition'],
             'second',
         ],
+        # s_cracker parameters
+        [
+            ['deposition', 's_cracker', 'zone1_temp'],
+            ['deposition_parameters', 's_cracker', 'z1_temp'],
+            'degC',
+        ],
+        [
+            ['deposition', 's_cracker', 'zone2_temp'],
+            ['deposition_parameters', 's_cracker', 'z2_temp'],
+            'degC',
+        ],
+        [
+            ['deposition', 's_cracker', 'zone3_temp'],
+            ['deposition_parameters', 's_cracker', 'z3_temp'],
+            'degC',
+        ],
+        [
+            ['deposition', 's_cracker', 'pulse_width'],
+            ['deposition_parameters', 's_cracker', 'valve_on_time'],
+            'millisecond',
+        ],
+        [
+            ['deposition', 's_cracker', 'pulse_freq'],
+            ['deposition_parameters', 's_cracker', 'valve_frequency'],
+            'mHz',
+        ],
     ]
-    if params['deposition'].get('SCracker', {}).get('enabled', False):
-        # SCracker parameters
-        param_nomad_map.extend(
+    # if applicable add the cracker S pressure induced pressure
+    if params['deposition'].get('s_cracker', {}).get('cracker_pressure_meas', False):
+        param_nomad_map.append(
             [
-                [
-                    ['deposition', 'SCracker', 'zone1_temp'],
-                    ['deposition_parameters', 'SCracker', 'Zone1_temperature'],
-                    'degC',
-                ],
-                [
-                    ['deposition', 'SCracker', 'zone2_temp'],
-                    ['deposition_parameters', 'SCracker', 'Zone2_temperature'],
-                    'degC',
-                ],
-                [
-                    ['deposition', 'SCracker', 'zone3_temp'],
-                    ['deposition_parameters', 'SCracker', 'Zone3_temperature'],
-                    'degC',
-                ],
-                [
-                    ['deposition', 'SCracker', 'pulse_width'],
-                    ['deposition_parameters', 'SCracker', 'valve_ON_time'],
-                    'millisecond',
-                ],
-                [
-                    ['deposition', 'SCracker', 'pulse_freq'],
-                    ['deposition_parameters', 'SCracker', 'valve_frequency'],
-                    'mHz',
-                ],
+                ['deposition', 's_cracker', 'cracker_pressure'],
+                ['deposition_parameters', 's_cracker', 'sulfur_partial_pressure'],
+                'mtorr',
             ]
         )
-
     # Gun parameters
     for gun in gun_list:
         if params['deposition'].get(gun, {}).get('enabled', False):
             param_nomad_map.extend(
                 [
                     [
-                        ['deposition', gun, 'target_id'],
+                        ['deposition', gun, 'target_material'],
                         ['deposition_parameters', gun, 'target_material'],
+                        None,
+                    ],
+                    [
+                        ['deposition', gun, 'target_id'],
+                        ['deposition_parameters', gun, 'target_id', 'lab_id'],
                         None,
                     ],
                     [
@@ -4161,7 +3828,7 @@ def map_params_to_nomad(params, gun_list):
                     ],
                     [
                         ['deposition', gun, 'avg_voltage'],
-                        ['deposition_parameters', gun, 'stable_average_voltage'],
+                        ['deposition_parameters', gun, 'average_voltage'],
                         'V',
                     ],
                 ]
@@ -4249,16 +3916,16 @@ TOXIC_GAS_INLET_ANGLE = np.radians(-58)
 
 # Define a dictionary to map names to their colors and locations
 GUN_PROPERTIES = {
-    'SCracker': {'color': 'red', 'location': np.radians(180)},
-    'Taurus': {'color': 'green', 'location': np.radians(135)},
-    'Magkeeper3': {'color': 'blue', 'location': np.radians(315)},
-    'Magkeeper4': {'color': 'magenta', 'location': np.radians(45)},
+    's_cracker': {'color': 'red', 'location': np.radians(180)},
+    'taurus': {'color': 'green', 'location': np.radians(135)},
+    'magkeeper3': {'color': 'blue', 'location': np.radians(315)},
+    'magkeeper4': {'color': 'magenta', 'location': np.radians(45)},
 }
 
 GUN_OVERVIEW_NAMES = [
-    'Taurus',
-    'Magkeeper3',
-    'Magkeeper4',
+    'taurus',
+    'magkeeper3',
+    'magkeeper4',
 ]
 
 
@@ -4311,8 +3978,8 @@ def read_samples(sample_list: list):
     samples = []
     for sample_obj in sample_list:
         label = str(sample_obj.relative_position)
-        pos_x = sample_obj.Substrate_position_x.to('mm').magnitude
-        pos_y = sample_obj.Substrate_position_y.to('mm').magnitude
+        pos_x = sample_obj.sub_xpos.to('mm').magnitude
+        pos_y = sample_obj.sub_ypos.to('mm').magnitude
         # size = sample_obj.reference.SIZE?
         sample = Sample(label, pos_x, pos_y)
         samples.append(sample)
@@ -4328,7 +3995,7 @@ def read_guns(gun_list: list, gun_names: str):
                 if gun_obj.target_material is not None:
                     gun = Gun(name, gun_obj.target_material)
                     guns.append(gun)
-            elif name == 'SCracker':
+            elif name == 's_cracker':
                 gun = Gun(name, 'S')
                 guns.append(gun)
     return guns
@@ -4675,13 +4342,13 @@ def main():
 
         deposition = event_list_to_dict(events_to_plot)['deposition']
 
-        bias_plot = generate_bias_plot(deposition, logfiles['name'][i])
+        bias_plot = generate_bias_plot(deposition)
 
         bias_plot.write_html(bias_file_path)
 
         # --------GRAPH THE OVERVIEW PLOT----------------
 
-        overview_plot = generate_overview_plot(data, logfiles['name'][i])
+        overview_plot = generate_overview_plot(data)
 
         overview_plot.write_html(overview_file_path)
 
