@@ -3451,7 +3451,7 @@ def generate_bias_plot(
 
             # Add the smoothed column to the list of columns to plot
             deposition.data[f'{col} Smoothed {rolling_num}pt'] = (
-                deposition.data[col].rolling(rolling_num).mean()
+                deposition.data[col].rolling(rolling_num,center=True ).mean()
             )
             Y_plot.append(f'{col} Smoothed {rolling_num}pt')
 
@@ -3461,7 +3461,7 @@ def generate_bias_plot(
                 # add the max instead of the mean after rolling
                 deposition.data[f'{col} Max {rolling_num_max}pt'] = (
                     deposition.data[col]
-                    .rolling(int(rolling_num * rolling_frac_max))
+                    .rolling(int(rolling_num * rolling_frac_max),center=True )
                     .max()
                 )
                 Y_plot.append(f'{col} Max {rolling_num_max}pt')
@@ -3470,7 +3470,7 @@ def generate_bias_plot(
                     f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt'
                 ] = (
                     deposition.data[f'{col} Max {rolling_num_max}pt']
-                    .rolling(rolling_num)
+                    .rolling(rolling_num,center=True )
                     .mean()
                 )
                 Y_plot.append(f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt')
@@ -3482,7 +3482,7 @@ def generate_bias_plot(
                 # smooth the no zero curve
                 deposition.data[f'{col} No Zero Smoothed {rolling_num}pt'] = (
                     deposition.data[f'{col} No Zero']
-                    .rolling(rolling_num, min_periods=1)
+                    .rolling(rolling_num, min_periods=1,center=True )
                     .mean()
                 )
                 Y_plot.append(f'{col} No Zero Smoothed {rolling_num}pt')
