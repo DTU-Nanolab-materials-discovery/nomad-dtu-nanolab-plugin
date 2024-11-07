@@ -111,6 +111,7 @@ COL = {
     'sul_crk_zone3_temp': 'Sulfur Cracker Zone 3 Current Temperature',
     'sul_crk_zone3_en': 'Sulfur Cracker Zone 3 Enabled',
     'sul_crk_zone3_sp': 'Sulfur Cracker Zone 3 Temperature Setpoint',
+    'sul_crk_lambda': 'Sulfur Cracker Control Sensor Value',
     'sul_crk_ctrl_en': 'Sulfur Cracker Control Enabled',
     'sul_crk_ctrl_mode': 'Sulfur Cracker Control Mode',
     'sul_crk_ctrl_sensor': 'Sulfur Cracker Control Sensor Value',
@@ -310,8 +311,16 @@ ELEMENTS = {
 # Set the execution flags
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
-TEST_SINGLE_LOGFILE = False
+TEST_SPECIFIC_LOGFILE = False
 REMOVE_SAMPLES = True
+
+SAMPLES_TO_REMOVE = [
+    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
+]
+
+SAMPLES_TO_TEST = [
+    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29'
+]
 
 # ----SPUTTER LOG READER METHODS----
 
@@ -461,6 +470,7 @@ OVERVIEW_PLOT = [
     'Sulfur Cracker Control Enabled',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'Sulfur Cracker Control Setpoint Feedback',
+    'Sulfur Cracker Control Sensor Value',
 ]
 for gas in ['ar', 'ph3', 'h2s']:
     OVERVIEW_PLOT.append(f'PC MFC {GAS_NUMBER[gas]} Flow')
@@ -848,11 +858,20 @@ class Deposition_Event(Lf_Event):
         self.step_id = self.generate_step_id()
 
     # master parameters extraction method for the deposition event
-    def get_params(self, raw_data=None, source_list=None, params=None):
+    def get_params(
+        self, raw_data=None, source_list=None, params=None, interrupt_deposition=False
+    ):
         if params is None:
             params = {}
         if self.category not in params:
             params[self.category] = {}
+
+        # Extract if the deposition has beem interrupted based the interrupt_deposition
+        # flag
+        if interrupt_deposition:
+            params[self.category]['interrupted'] = True
+        else:
+            params[self.category]['interrupted'] = False
 
         params = self.get_rt_bool(params=params)
         params = self.get_source_used_deposition(source_list, params=params)
@@ -3777,7 +3796,9 @@ def verify_deposition_unicity(events, raw_data):
             # if a deposition event time between the bounds is lower
             # than MIN_DEPOSITION_SIZE, we consider that the deposition
             # event is not valid
-            if event.events == 0:
+            if event.events == 1:
+                interrupt_deposition = False
+            elif event.events == 0:
                 print('Error: No deposition event found')
                 break
             elif event.events > 1:
@@ -3799,6 +3820,9 @@ def verify_deposition_unicity(events, raw_data):
                         f'Deposition({i+1}) start time: {event.bounds[i][0]}',
                         f'Deposition({i+1}) end time: {event.bounds[i][1]}',
                     )
+                if event.events == 1:
+                    print('A unique deposition event was succesfully filtered')
+                    interrupt_deposition = False
                 if event.events != 1:
                     print(
                         'Removal failed. The number of deposition events is not 1.',
@@ -3814,6 +3838,7 @@ def verify_deposition_unicity(events, raw_data):
                     )
                     if event.events == 1:
                         print('A unique deposition event was succesfully filtered')
+                        interrupt_deposition = True
                     else:
                         raise ValueError(
                             'Error: The number of deposition events is not 1 ',
@@ -3821,7 +3846,8 @@ def verify_deposition_unicity(events, raw_data):
                             'smaller events',
                         )
                         break
-    return events
+
+    return events, interrupt_deposition
 
 
 def select_last_event(events, raw_data, ref_event, categories):
@@ -3973,7 +3999,7 @@ def read_events(data):
     events_to_plot = copy.deepcopy(events)
 
     # We verify the unicity of the deposition event, and try to fix it if needed
-    events = verify_deposition_unicity(events, data)
+    events,interrupt_deposition = verify_deposition_unicity(events, data)
 
     # To make a list sutable for making a report, we remove
     # all the events that do not match the CATEGORIES_MAIN_REPORT
@@ -3996,8 +4022,14 @@ def read_events(data):
     # the class Lf_Event to get the params dict
     main_params = get_overview(data)
     for event in events_main_report:
-        main_params = event.get_params(
-            raw_data=data, source_list=source_list, params=main_params
+        if event.category == 'deposition':
+            main_params = event.get_params(
+                raw_data=data, source_list=source_list, params=main_params,
+                interrupt_deposition=interrupt_deposition
+            )
+        else:
+            main_params = event.get_params(
+            raw_data=data, source_list=source_list, params=main_params,
         )
     main_params = get_end_of_process(data, main_params)
 
@@ -4605,13 +4637,6 @@ def main():
 
     logfiles = {'name': [], 'folder': []}
 
-    if REMOVE_SAMPLES:
-        samples_to_remove = [
-            'mittma_0002_Cu__H2S_and_PH3_RT_Recording Set 2024.04.17-17.54.07',
-        ]
-    else:
-        samples_to_remove = []
-
     # Initialize the the general param dictionary
     all_params = {}
 
@@ -4627,18 +4652,19 @@ def main():
                     f'.{logfiles_extension}'
                 ):
                     logfile_name = re.sub(rf'\.{logfiles_extension}$', '', file)
-                    if logfile_name not in samples_to_remove:
-                        logfiles['name'].append(logfile_name)
-                        logfiles['folder'].append(sample_path)
+                    if TEST_SPECIFIC_LOGFILE:
+                        if logfile_name in SAMPLES_TO_TEST:
+                            logfiles['name'].append(logfile_name)
+                            logfiles['folder'].append(sample_path)
+                    elif not TEST_SPECIFIC_LOGFILE:
+                        if REMOVE_SAMPLES and (logfile_name not in SAMPLES_TO_REMOVE):
+                            logfiles['name'].append(logfile_name)
+                            logfiles['folder'].append(sample_path)
+                        elif not REMOVE_SAMPLES:
+                            logfiles['name'].append(logfile_name)
+                            logfiles['folder'].append(sample_path)
 
-    # Uncomment to test the script on a single logfile
-    if TEST_SINGLE_LOGFILE:
-        logfiles = {}
-        logfiles['folder'] = [
-            r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\eugbe_0009_Sb\log_files'
-        ]
-        logfiles['name'] = ['eugbe_0009_Sb_Recording Set 2024.10.14-09.23.31']
-        # logfiles['name'] = ['mittma_0007_Cu_Recording Set 2024.06.03-09.52.29']
+
 
     # Loop over all the logfiles in the directory
     for i in range(len(logfiles['name'])):
