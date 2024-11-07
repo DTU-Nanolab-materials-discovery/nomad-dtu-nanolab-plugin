@@ -27,13 +27,12 @@ from matplotlib.transforms import Affine2D
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from plotly.subplots import make_subplots
 
-
 # ---------MAIN FUNCTION PARAMETERS------------
 
 # Set the execution flags
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
-TEST_SPECIFIC_LOGFILE = False
+TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 
 SAMPLES_TO_REMOVE = [
@@ -46,7 +45,7 @@ SAMPLES_TO_TEST = [
     'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
 ]
 
-#-----USEFUL DICTIONARIES AND LISTS-----
+# -----USEFUL DICTIONARIES AND LISTS-----
 
 # column names dictionary
 COL = {
@@ -363,7 +362,7 @@ FRAQ_ROWS_AVG_VOLTAGE = 5  # %
 # Number of timesteps to consider for the continuity limit
 CONTINUITY_LIMIT = 10
 # Special continuity limit for deposition events
-DEPOSITION_CONTINUITY_LIMIT = 2000
+DEPOSITION_CONTINUITY_LIMIT = 20
 # Minimum size of a domain in terms of numbers of average timestep
 MIN_DOMAIN_SIZE = 10
 # Minimum size of a deposition in terms of numbers of average timestep
@@ -4012,7 +4011,7 @@ def read_events(data):
     events_to_plot = copy.deepcopy(events)
 
     # We verify the unicity of the deposition event, and try to fix it if needed
-    events,interrupt_deposition = verify_deposition_unicity(events, data)
+    events, interrupt_deposition = verify_deposition_unicity(events, data)
 
     # To make a list sutable for making a report, we remove
     # all the events that do not match the CATEGORIES_MAIN_REPORT
@@ -4037,13 +4036,17 @@ def read_events(data):
     for event in events_main_report:
         if event.category == 'deposition':
             main_params = event.get_params(
-                raw_data=data, source_list=source_list, params=main_params,
-                interrupt_deposition=interrupt_deposition
+                raw_data=data,
+                source_list=source_list,
+                params=main_params,
+                interrupt_deposition=interrupt_deposition,
             )
         else:
             main_params = event.get_params(
-            raw_data=data, source_list=source_list, params=main_params,
-        )
+                raw_data=data,
+                source_list=source_list,
+                params=main_params,
+            )
     main_params = get_end_of_process(data, main_params)
 
     # We only get the events that are in the CATEGORIES_STEPS
@@ -4640,18 +4643,23 @@ def plot_matplotlib_chamber_config(
     return fig
 
 
-# ---------------MAIN-----------
+def explore_log_files(samples_dir, logfiles_extension):
+    """
+    Explore all the folders in samples_dir and collect log files based on
+    the specified conditions.
 
+    Args:
+        samples_dir (str): The directory containing sample folders.
+        logfiles_extension (str): The extension of the log files to look for.
+        TEST_SPECIFIC_LOGFILE (bool): Flag to test specific log files.
+        SAMPLES_TO_TEST (list): List of sample names to test.
+        REMOVE_SAMPLES (bool): Flag to remove specific samples.
+        SAMPLES_TO_REMOVE (list): List of sample names to remove.
 
-def main():
-    # global events_to_plot, main_params, step_params, all_params
-    samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\Samples'
-    logfiles_extension = 'CSV'
-
+    Returns:
+        dict: A dictionary with log file names and their corresponding folders.
+    """
     logfiles = {'name': [], 'folder': []}
-
-    # Initialize the the general param dictionary
-    all_params = {}
 
     # In samples_dir, explore all the folders (samples names)
     for folder in os.listdir(samples_dir):
@@ -4677,7 +4685,21 @@ def main():
                             logfiles['name'].append(logfile_name)
                             logfiles['folder'].append(sample_path)
 
+    return logfiles
 
+
+# ---------------MAIN-----------
+
+
+def main():
+    # global events_to_plot, main_params, step_params, all_params
+    samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\Samples'
+    logfiles_extension = 'CSV'
+
+    # Initialize the the general param dictionary
+    all_params = {}
+
+    logfiles = explore_log_files(samples_dir, logfiles_extension)
 
     # Loop over all the logfiles in the directory
     for i in range(len(logfiles['name'])):
