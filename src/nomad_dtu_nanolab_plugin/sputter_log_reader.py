@@ -27,6 +27,27 @@ from matplotlib.transforms import Affine2D
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from plotly.subplots import make_subplots
 
+
+# ---------MAIN FUNCTION PARAMETERS------------
+
+# Set the execution flags
+PRINT_MAIN_PARAMS = False
+PRINT_STEP_PARAMS = False
+TEST_SPECIFIC_LOGFILE = False
+REMOVE_SAMPLES = True
+
+SAMPLES_TO_REMOVE = [
+    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
+    'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
+]
+
+SAMPLES_TO_TEST = [
+    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
+    'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
+]
+
+#-----USEFUL DICTIONARIES AND LISTS-----
+
 # column names dictionary
 COL = {
     'time': 'Time Stamp',
@@ -306,22 +327,6 @@ ELEMENTS = {
     'Oganesson': 'Og',
 }
 
-# ---------MAIN FUNCTION PARAMETERS------------
-
-# Set the execution flags
-PRINT_MAIN_PARAMS = False
-PRINT_STEP_PARAMS = False
-TEST_SPECIFIC_LOGFILE = False
-REMOVE_SAMPLES = True
-
-SAMPLES_TO_REMOVE = [
-    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
-]
-
-SAMPLES_TO_TEST = [
-    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29'
-]
-
 # ----SPUTTER LOG READER METHODS----
 
 # ---------REFERENCE VALUES-------------
@@ -358,7 +363,7 @@ FRAQ_ROWS_AVG_VOLTAGE = 5  # %
 # Number of timesteps to consider for the continuity limit
 CONTINUITY_LIMIT = 10
 # Special continuity limit for deposition events
-DEPOSITION_CONTINUITY_LIMIT = 200
+DEPOSITION_CONTINUITY_LIMIT = 2000
 # Minimum size of a domain in terms of numbers of average timestep
 MIN_DOMAIN_SIZE = 10
 # Minimum size of a deposition in terms of numbers of average timestep
