@@ -416,6 +416,14 @@ SOURCE_NAME = {
     '4': 'magkeeper4',
     'all': 'All',
 }
+
+SOURCE_LABEL = {
+    's_cracker': 'S Cracker',
+    'taurus': 'Taurus',
+    'magkeeper3': 'Magkeeper3',
+    'magkeeper4': 'Magkeeper4',
+    'all': 'All',
+}
 GAS_NUMBER = {
     'ar': 1,
     'ph3': 4,
@@ -4550,7 +4558,7 @@ def plot_matplotlib_chamber_config(
         ax.text(
             cartesian(GUN_TO_PLATEN * PLATEN_DIAM, gun.location)[0],
             cartesian(GUN_TO_PLATEN * PLATEN_DIAM, gun.location)[1],
-            f'{gun.name}\n({gun.mat})',
+            f'{SOURCE_LABEL[gun.name]}\n({gun.mat})',
             ha='center',
             va='center',
             color=gun.gcolor,
