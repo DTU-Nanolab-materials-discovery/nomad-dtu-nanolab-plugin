@@ -925,9 +925,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 source_overview = SourceOverview()
                 setattr(sputtering.deposition_parameters, gun, source_overview)
 
-                # Set the lab_id attribute of the SourceOverview object
+                # Set the target_id attribute of the SourceOverview object
                 target_reference = DTUTargetReference()
-                setattr(source_overview, 'lab_id', target_reference)
+                setattr(source_overview, 'target_id', target_reference)
 
         if params.get('s_cracker', {}).get('enabled', False):
             sputtering.deposition_parameters.s_cracker = SCracker()
