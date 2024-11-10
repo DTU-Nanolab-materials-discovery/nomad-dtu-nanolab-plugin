@@ -391,8 +391,8 @@ def read_UPS(filename, grid):
     dataframe = pd.concat(data_list, axis = 1)
 
     # adjust range to center coords on 0,0 instead of upper left corner
-    coords['x'] = coords['x'] - max(coords['x'])/2
-    coords['y'] = coords['y'] - max(coords['y'])/2
+    # coords['x'] = coords['x'] - max(coords['x'])/2
+    # coords['y'] = coords['y'] - max(coords['y'])/2
 
     # convert coords from µm to mm
     coords = coords/1000
@@ -2687,7 +2687,7 @@ def assign_phases_numbers(data):
 
 # edx functions
 
-def find_composition(data, el1,el2,el3, range1=[0,100], range2=[0,100], range3=[0,100], display_option=True, stoichiometry= None, tolerance= 3):
+def find_composition(data, el1,el2,el3, range1=[0,100], range2=[0,100], range3=[0,100], display_option=True, stoichiometry= None, tolerance= 3, sample='sample'):
     'find te points in the sample where the composition is in a certain range, given in % ranges or in stoichiometry and tolerance'
 
     if stoichiometry: 
@@ -2724,7 +2724,7 @@ def find_composition(data, el1,el2,el3, range1=[0,100], range2=[0,100], range3=[
     plt.xlabel('x position (mm)')
     plt.ylabel('y position (mm)')
     if stoichiometry: 
-        plt.title(f'{sample} - Positions where composition is around {el1}{stoichiometry[0]}, {el2}{stoichiometry[1]}, {el3}{stoichiometry[2]}')
+        plt.title(f'{sample} - Positions where composition is {el1}{stoichiometry[0]}, {el2}{stoichiometry[1]}, {el3}{stoichiometry[2]} +-{tolerance}%')
     else:
         plt.title(f'{sample} - Positions where {el1}: {range1[0]:.1f}-{range1[1]:.1f}%, {el2}: {range2[0]:.1f}-{range2[1]:.1f}%, {el3}: {range3[0]:.1f}-{range3[1]:.1f}%')
     if display_option==True:
