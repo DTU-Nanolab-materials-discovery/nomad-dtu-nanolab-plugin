@@ -32,8 +32,9 @@ from plotly.subplots import make_subplots
 # Set the execution flags
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
-TEST_SPECIFIC_LOGFILE = False
+TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
+SAVE_STEP_REPORT = True
 
 SAMPLES_TO_REMOVE = [
     'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
@@ -41,9 +42,11 @@ SAMPLES_TO_REMOVE = [
 ]
 
 SAMPLES_TO_TEST = [
-    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
-    'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
+    # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
+    # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
+    'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04'
 ]
+
 
 # -----USEFUL DICTIONARIES AND LISTS-----
 
@@ -752,11 +755,6 @@ class Lf_Event:
         # Write the event step_id as the key of the dictionary
 
         params[self.step_id] = {}
-        params[self.step_id]['sources'] = {}
-        params[self.step_id]['environment'] = {}
-        params[self.step_id]['environment']['gas_flow'] = {}
-        params[self.step_id]['environment']['pressure'] = {}
-        params[self.step_id]['environment']['heater'] = {}
 
         # Get basic step parameters in the dictionary
 
@@ -783,6 +781,12 @@ class Lf_Event:
     # of single steps
     def get_step_environment_params(self, params):
         # Extract the gas flow parameters
+
+        # initialize the dictionaries
+        params[self.step_id]['environment'] = {}
+        params[self.step_id]['environment']['gas_flow'] = {}
+        params[self.step_id]['environment']['pressure'] = {}
+        params[self.step_id]['environment']['heater'] = {}
 
         # Get the strat time of the step
         start_time = self.data['Time Stamp'].iloc[0]
@@ -845,21 +849,112 @@ class Lf_Event:
 
     # method to extract the so called sources parameters of single steps
     def get_step_sources_params(self, source_list, params):
+        # helper method to deduce the plasma type of the source during deposition
+        def get_power_type(self, source_number):
+            dc_current_col = f'Source {source_number} Current'
+            rf_bias_col = f'Source {source_number} DC Bias'
+            pulse_enable_col = f'Source {source_number} Pulse Enabled'
+            fwd_power_col = f'Source {source_number} Fwd Power'
+            rfl_power_col = f'Source {source_number} Rfl Power'
+
+            power_type = None
+
+            # We tolerate a certain percentage of the data to be below the threshold
+            if dc_current_col in self.data and (
+                (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
+                or (
+                    (self.data[fwd_power_col] - self.data[rfl_power_col])
+                    > POWER_FWD_REFL_THRESHOLD
+                ).mean()
+                >= TOLERANCE
+            ):
+                if pulse_enable_col in self.data and (
+                    self.data[pulse_enable_col].all() == 1
+                ):
+                    power_type = 'pulsed_DC'
+                else:
+                    power_type = 'DC'
+            elif rf_bias_col in self.data and (
+                (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= TOLERANCE
+                or (
+                    (self.data[fwd_power_col] - self.data[rfl_power_col])
+                    > POWER_FWD_REFL_THRESHOLD
+                ).mean()
+                >= TOLERANCE
+            ):
+                power_type = 'RF'
+            return power_type
+
+        # initialize the sources dictionary
+        params[self.step_id]['sources'] = {}
+
         for source_number in source_list:
-            source_key = f'{SOURCE_NAME[str(source_number)]}'
-            if source_key not in params[self.step_id]['sources']:
-                params[self.step_id]['sources'][source_key] = {}
+            source_name = f'{SOURCE_NAME[str(source_number)]}'
+            if source_name not in params[self.step_id]['sources']:
+                params[self.step_id]['sources'][source_name] = {}
+
+            if f'Source {source_number} Output Setpoint' in self.data.columns:
+                # Extract the source parameters
+                params[self.step_id]['sources'][source_name]['name'] = source_name
+                params[self.step_id]['sources'][source_name][
+                    'source_shutter_open_value'
+                ] = [
+                    bool(x)
+                    for x in self.data[
+                        f'PC Source {source_number} Shutter Open'
+                    ].tolist()
+                ]
+                params[self.step_id]['sources'][source_name][
+                    'source_shutter_open_time'
+                ] = (
+                    (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+                    .dt.total_seconds()
+                    .tolist()
+                )
+                power_type = get_power_type(self, source_number)
+
+                if power_type is not None:
+                    params[self.step_id]['sources'][source_name]['power_type'] = (
+                        power_type
+                    )
+
+                    if power_type in ['DC', 'pulsed_DC']:
+                        params[self.step_id]['sources'][source_name][
+                            'average_voltage'
+                        ] = self.data[f'Source {source_number} Voltage'].mean()
+                    elif power_type == 'RF':
+                        params[self.step_id]['sources'][source_name][
+                            'average_voltage'
+                        ] = self.data[f'Source {source_number} DC Bias'].mean()
+                    else:
+                        params[self.step_id]['sources'][source_name][
+                            'average_voltage'
+                        ] = 0
+
+                    if power_type == 'pulsed_DC':
+                        params[self.step_id]['sources'][source_name][
+                            'pulse_frequency'
+                        ] = self.data[f'Source {source_number} Pulse Frequency'].mean()
+                        params[self.step_id]['sources'][source_name]['dead_time'] = (
+                            self.data[f'Source {source_number} Reverse Time'].mean()
+                        )
+
+                    # Extract the source power
+                    params[self.step_id]['sources'][source_name]['applied_power'] = (
+                        self.data[f'Source {source_number} Output Setpoint'].mean()
+                    )
+
         return params
 
-    def get_step_sample_params(self, params):
-        # Extract the sample parameters
+    # def get_step_sample_params(self, params):
+    #     # Extract the sample parameters
 
-        return params
+    #     return params
 
-    def get_step_sputter_params(self, params):
-        # Extract the sputter parameters
+    # def get_step_sputter_params(self, params):
+    #     # Extract the sputter parameters
 
-        return params
+    #     return params
 
 
 class Deposition_Event(Lf_Event):
@@ -1949,9 +2044,13 @@ def print_params(quantities, indent=''):
 def build_file_paths(logfiles, i):
     file_dir = os.path.join(logfiles['folder'][i])
 
-    # Specify the report export location and file name
+    # Specify the main report export location and file name
     txt_file_name = f'{logfiles["name"][i]}_derived_quantities.txt'
     txt_file_path = os.path.join(file_dir, txt_file_name)
+
+    # Specify the step report export location and file name
+    step_file_name = f'{logfiles["name"][i]}_derived_quantities_step.txt'
+    step_file_path = os.path.join(file_dir, step_file_name)
 
     # Specify the plotly graph export location and file name for timelines
     timeline_file_name = f'{logfiles["name"][i]}_plotly_timeline.html'
@@ -1972,6 +2071,7 @@ def build_file_paths(logfiles, i):
 
     return (
         txt_file_path,
+        step_file_path,
         timeline_file_path,
         bias_file_path,
         overview_file_path,
@@ -4287,6 +4387,12 @@ def map_gas_flow_params_to_nomad(key, gas_name):
     return gas_flow_param_nomad_map
 
 
+def map_source_params_to_nomad(key):
+    source_param_nomad_map = []
+
+    return source_param_nomad_map
+
+
 # -------CHAMBER VISUALIZATION PLOTTING METHODS-----------
 
 # ----DEFINE GRAPHICAL PARAMETERS, SPUTTER CHAMBER AND PLATEN ----------
@@ -4715,6 +4821,7 @@ def main():
 
         (
             txt_file_path,
+            step_file_path,
             timeline_file_path,
             bias_file_path,
             overview_file_path,
@@ -4777,6 +4884,10 @@ def main():
 
         print('Saving the derived quantities report as a text file')
         save_report_as_text(main_params, txt_file_path, logfiles['name'][i])
+
+        # --SAVE THE STEP REPORT QUANTITIES IN A TEXT FILE
+        if SAVE_STEP_REPORT:
+            save_report_as_text(step_params, step_file_path, logfiles['name'][i])
 
     # ----CONSILIDATE THE DATA INTO A SINGLE CSV FILE-----
 
