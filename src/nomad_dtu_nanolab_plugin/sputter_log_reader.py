@@ -32,7 +32,7 @@ from plotly.subplots import make_subplots
 # Set the execution flags
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
-TEST_SPECIFIC_LOGFILE = True
+TEST_SPECIFIC_LOGFILE = False
 REMOVE_SAMPLES = True
 
 SAMPLES_TO_REMOVE = [
@@ -4163,22 +4163,22 @@ def map_params_to_nomad(params, gun_list):
             [
                 [
                     ['deposition', 'SCracker', 'zone1_temp'],
-                    ['deposition_parameters', 'SCracker', 'Zone1_temperature'],
+                    ['deposition_parameters', 'SCracker', 'zone1_temp'],
                     'degC',
                 ],
                 [
                     ['deposition', 'SCracker', 'zone2_temp'],
-                    ['deposition_parameters', 'SCracker', 'Zone2_temperature'],
+                    ['deposition_parameters', 'SCracker', 'zone2_temp'],
                     'degC',
                 ],
                 [
                     ['deposition', 'SCracker', 'zone3_temp'],
-                    ['deposition_parameters', 'SCracker', 'Zone3_temperature'],
+                    ['deposition_parameters', 'SCracker', 'zone3_temp'],
                     'degC',
                 ],
                 [
                     ['deposition', 'SCracker', 'pulse_width'],
-                    ['deposition_parameters', 'SCracker', 'valve_ON_time'],
+                    ['deposition_parameters', 'SCracker', 'valve_on_time'],
                     'millisecond',
                 ],
                 [
