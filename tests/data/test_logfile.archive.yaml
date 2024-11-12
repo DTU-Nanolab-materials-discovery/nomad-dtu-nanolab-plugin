@@ -3,14 +3,14 @@ data:
   log_file: mittma_0007_Cu_Recording Set 2024.06.03-09.52.29.CSV
   # lab_id: 'mittma_0007_Cu'
   samples:
-    - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUsamples
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSamples
       relative_position: 'BR'
-      Substrate_position_x: 0.025
-      Substrate_position_y: 0.025
-    - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUsamples
+      sub_xpos: 0.025
+      sub_ypos: 0.025
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSamples
       relative_position: 'FR'
-      Substrate_position_x: -0.015
-      Substrate_position_y: 0.025
+      sub_xpos: -0.015
+      sub_ypos: 0.025
   # deposition_parameters:
   #   m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters
   #   Magkeeper3:
@@ -25,5 +25,5 @@ data:
   #   SCracker:
   #     m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
   instruments:
-    - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.AdjustedInstrumentParameters
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.InstrumentParameters
       platen_rotation: 1.39626

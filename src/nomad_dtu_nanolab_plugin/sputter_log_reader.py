@@ -27,6 +27,29 @@ from matplotlib.transforms import Affine2D
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from plotly.subplots import make_subplots
 
+# ---------MAIN FUNCTION PARAMETERS------------
+
+# Set the execution flags
+PRINT_MAIN_PARAMS = False
+PRINT_STEP_PARAMS = False
+TEST_SPECIFIC_LOGFILE = True
+REMOVE_SAMPLES = True
+SAVE_STEP_REPORT = True
+
+SAMPLES_TO_REMOVE = [
+    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
+    'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
+]
+
+SAMPLES_TO_TEST = [
+    # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
+    # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
+    'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04'
+]
+
+
+# -----USEFUL DICTIONARIES AND LISTS-----
+
 # column names dictionary
 COL = {
     'time': 'Time Stamp',
@@ -306,22 +329,6 @@ ELEMENTS = {
     'Oganesson': 'Og',
 }
 
-# ---------MAIN FUNCTION PARAMETERS------------
-
-# Set the execution flags
-PRINT_MAIN_PARAMS = False
-PRINT_STEP_PARAMS = False
-TEST_SPECIFIC_LOGFILE = False
-REMOVE_SAMPLES = True
-
-SAMPLES_TO_REMOVE = [
-    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
-]
-
-SAMPLES_TO_TEST = [
-    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29'
-]
-
 # ----SPUTTER LOG READER METHODS----
 
 # ---------REFERENCE VALUES-------------
@@ -358,7 +365,7 @@ FRAQ_ROWS_AVG_VOLTAGE = 5  # %
 # Number of timesteps to consider for the continuity limit
 CONTINUITY_LIMIT = 10
 # Special continuity limit for deposition events
-DEPOSITION_CONTINUITY_LIMIT = 200
+DEPOSITION_CONTINUITY_LIMIT = 20
 # Minimum size of a domain in terms of numbers of average timestep
 MIN_DOMAIN_SIZE = 10
 # Minimum size of a deposition in terms of numbers of average timestep
@@ -748,11 +755,6 @@ class Lf_Event:
         # Write the event step_id as the key of the dictionary
 
         params[self.step_id] = {}
-        params[self.step_id]['sources'] = {}
-        params[self.step_id]['environment'] = {}
-        params[self.step_id]['environment']['gas_flow'] = {}
-        params[self.step_id]['environment']['pressure'] = {}
-        params[self.step_id]['environment']['heater'] = {}
 
         # Get basic step parameters in the dictionary
 
@@ -779,6 +781,12 @@ class Lf_Event:
     # of single steps
     def get_step_environment_params(self, params):
         # Extract the gas flow parameters
+
+        # initialize the dictionaries
+        params[self.step_id]['environment'] = {}
+        params[self.step_id]['environment']['gas_flow'] = {}
+        params[self.step_id]['environment']['pressure'] = {}
+        params[self.step_id]['environment']['heater'] = {}
 
         # Get the strat time of the step
         start_time = self.data['Time Stamp'].iloc[0]
@@ -841,21 +849,112 @@ class Lf_Event:
 
     # method to extract the so called sources parameters of single steps
     def get_step_sources_params(self, source_list, params):
+        # helper method to deduce the plasma type of the source during deposition
+        def get_power_type(self, source_number):
+            dc_current_col = f'Source {source_number} Current'
+            rf_bias_col = f'Source {source_number} DC Bias'
+            pulse_enable_col = f'Source {source_number} Pulse Enabled'
+            fwd_power_col = f'Source {source_number} Fwd Power'
+            rfl_power_col = f'Source {source_number} Rfl Power'
+
+            power_type = None
+
+            # We tolerate a certain percentage of the data to be below the threshold
+            if dc_current_col in self.data and (
+                (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
+                or (
+                    (self.data[fwd_power_col] - self.data[rfl_power_col])
+                    > POWER_FWD_REFL_THRESHOLD
+                ).mean()
+                >= TOLERANCE
+            ):
+                if pulse_enable_col in self.data and (
+                    self.data[pulse_enable_col].all() == 1
+                ):
+                    power_type = 'pulsed_DC'
+                else:
+                    power_type = 'DC'
+            elif rf_bias_col in self.data and (
+                (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= TOLERANCE
+                or (
+                    (self.data[fwd_power_col] - self.data[rfl_power_col])
+                    > POWER_FWD_REFL_THRESHOLD
+                ).mean()
+                >= TOLERANCE
+            ):
+                power_type = 'RF'
+            return power_type
+
+        # initialize the sources dictionary
+        params[self.step_id]['sources'] = {}
+
         for source_number in source_list:
-            source_key = f'{SOURCE_NAME[str(source_number)]}'
-            if source_key not in params[self.step_id]['sources']:
-                params[self.step_id]['sources'][source_key] = {}
+            source_name = f'{SOURCE_NAME[str(source_number)]}'
+            if source_name not in params[self.step_id]['sources']:
+                params[self.step_id]['sources'][source_name] = {}
+
+            if f'Source {source_number} Output Setpoint' in self.data.columns:
+                # Extract the source parameters
+                params[self.step_id]['sources'][source_name]['name'] = source_name
+                params[self.step_id]['sources'][source_name][
+                    'source_shutter_open_value'
+                ] = [
+                    bool(x)
+                    for x in self.data[
+                        f'PC Source {source_number} Shutter Open'
+                    ].tolist()
+                ]
+                params[self.step_id]['sources'][source_name][
+                    'source_shutter_open_time'
+                ] = (
+                    (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+                    .dt.total_seconds()
+                    .tolist()
+                )
+                power_type = get_power_type(self, source_number)
+
+                if power_type is not None:
+                    params[self.step_id]['sources'][source_name]['power_type'] = (
+                        power_type
+                    )
+
+                    if power_type in ['DC', 'pulsed_DC']:
+                        params[self.step_id]['sources'][source_name][
+                            'average_voltage'
+                        ] = self.data[f'Source {source_number} Voltage'].mean()
+                    elif power_type == 'RF':
+                        params[self.step_id]['sources'][source_name][
+                            'average_voltage'
+                        ] = self.data[f'Source {source_number} DC Bias'].mean()
+                    else:
+                        params[self.step_id]['sources'][source_name][
+                            'average_voltage'
+                        ] = 0
+
+                    if power_type == 'pulsed_DC':
+                        params[self.step_id]['sources'][source_name][
+                            'pulse_frequency'
+                        ] = self.data[f'Source {source_number} Pulse Frequency'].mean()
+                        params[self.step_id]['sources'][source_name]['dead_time'] = (
+                            self.data[f'Source {source_number} Reverse Time'].mean()
+                        )
+
+                    # Extract the source power
+                    params[self.step_id]['sources'][source_name]['applied_power'] = (
+                        self.data[f'Source {source_number} Output Setpoint'].mean()
+                    )
+
         return params
 
-    def get_step_sample_params(self, params):
-        # Extract the sample parameters
+    # def get_step_sample_params(self, params):
+    #     # Extract the sample parameters
 
-        return params
+    #     return params
 
-    def get_step_sputter_params(self, params):
-        # Extract the sputter parameters
+    # def get_step_sputter_params(self, params):
+    #     # Extract the sputter parameters
 
-        return params
+    #     return params
 
 
 class Deposition_Event(Lf_Event):
@@ -1945,9 +2044,13 @@ def print_params(quantities, indent=''):
 def build_file_paths(logfiles, i):
     file_dir = os.path.join(logfiles['folder'][i])
 
-    # Specify the report export location and file name
+    # Specify the main report export location and file name
     txt_file_name = f'{logfiles["name"][i]}_derived_quantities.txt'
     txt_file_path = os.path.join(file_dir, txt_file_name)
+
+    # Specify the step report export location and file name
+    step_file_name = f'{logfiles["name"][i]}_derived_quantities_step.txt'
+    step_file_path = os.path.join(file_dir, step_file_name)
 
     # Specify the plotly graph export location and file name for timelines
     timeline_file_name = f'{logfiles["name"][i]}_plotly_timeline.html'
@@ -1968,6 +2071,7 @@ def build_file_paths(logfiles, i):
 
     return (
         txt_file_path,
+        step_file_path,
         timeline_file_path,
         bias_file_path,
         overview_file_path,
@@ -4007,7 +4111,7 @@ def read_events(data):
     events_to_plot = copy.deepcopy(events)
 
     # We verify the unicity of the deposition event, and try to fix it if needed
-    events,interrupt_deposition = verify_deposition_unicity(events, data)
+    events, interrupt_deposition = verify_deposition_unicity(events, data)
 
     # To make a list sutable for making a report, we remove
     # all the events that do not match the CATEGORIES_MAIN_REPORT
@@ -4032,13 +4136,17 @@ def read_events(data):
     for event in events_main_report:
         if event.category == 'deposition':
             main_params = event.get_params(
-                raw_data=data, source_list=source_list, params=main_params,
-                interrupt_deposition=interrupt_deposition
+                raw_data=data,
+                source_list=source_list,
+                params=main_params,
+                interrupt_deposition=interrupt_deposition,
             )
         else:
             main_params = event.get_params(
-            raw_data=data, source_list=source_list, params=main_params,
-        )
+                raw_data=data,
+                source_list=source_list,
+                params=main_params,
+            )
     main_params = get_end_of_process(data, main_params)
 
     # We only get the events that are in the CATEGORIES_STEPS
@@ -4155,22 +4263,22 @@ def map_params_to_nomad(params, gun_list):
             [
                 [
                     ['deposition', 'SCracker', 'zone1_temp'],
-                    ['deposition_parameters', 'SCracker', 'Zone1_temperature'],
+                    ['deposition_parameters', 'SCracker', 'zone1_temp'],
                     'degC',
                 ],
                 [
                     ['deposition', 'SCracker', 'zone2_temp'],
-                    ['deposition_parameters', 'SCracker', 'Zone2_temperature'],
+                    ['deposition_parameters', 'SCracker', 'zone2_temp'],
                     'degC',
                 ],
                 [
                     ['deposition', 'SCracker', 'zone3_temp'],
-                    ['deposition_parameters', 'SCracker', 'Zone3_temperature'],
+                    ['deposition_parameters', 'SCracker', 'zone3_temp'],
                     'degC',
                 ],
                 [
                     ['deposition', 'SCracker', 'pulse_width'],
-                    ['deposition_parameters', 'SCracker', 'valve_ON_time'],
+                    ['deposition_parameters', 'SCracker', 'valve_on_time'],
                     'millisecond',
                 ],
                 [
@@ -4277,6 +4385,12 @@ def map_gas_flow_params_to_nomad(key, gas_name):
     ]
 
     return gas_flow_param_nomad_map
+
+
+def map_source_params_to_nomad(key):
+    source_param_nomad_map = []
+
+    return source_param_nomad_map
 
 
 # -------CHAMBER VISUALIZATION PLOTTING METHODS-----------
@@ -4635,18 +4749,23 @@ def plot_matplotlib_chamber_config(
     return fig
 
 
-# ---------------MAIN-----------
+def explore_log_files(samples_dir, logfiles_extension):
+    """
+    Explore all the folders in samples_dir and collect log files based on
+    the specified conditions.
 
+    Args:
+        samples_dir (str): The directory containing sample folders.
+        logfiles_extension (str): The extension of the log files to look for.
+        TEST_SPECIFIC_LOGFILE (bool): Flag to test specific log files.
+        SAMPLES_TO_TEST (list): List of sample names to test.
+        REMOVE_SAMPLES (bool): Flag to remove specific samples.
+        SAMPLES_TO_REMOVE (list): List of sample names to remove.
 
-def main():
-    # global events_to_plot, main_params, step_params, all_params
-    samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\Samples'
-    logfiles_extension = 'CSV'
-
+    Returns:
+        dict: A dictionary with log file names and their corresponding folders.
+    """
     logfiles = {'name': [], 'folder': []}
-
-    # Initialize the the general param dictionary
-    all_params = {}
 
     # In samples_dir, explore all the folders (samples names)
     for folder in os.listdir(samples_dir):
@@ -4672,7 +4791,21 @@ def main():
                             logfiles['name'].append(logfile_name)
                             logfiles['folder'].append(sample_path)
 
+    return logfiles
 
+
+# ---------------MAIN-----------
+
+
+def main():
+    # global events_to_plot, main_params, step_params, all_params
+    samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\Samples'
+    logfiles_extension = 'CSV'
+
+    # Initialize the the general param dictionary
+    all_params = {}
+
+    logfiles = explore_log_files(samples_dir, logfiles_extension)
 
     # Loop over all the logfiles in the directory
     for i in range(len(logfiles['name'])):
@@ -4688,6 +4821,7 @@ def main():
 
         (
             txt_file_path,
+            step_file_path,
             timeline_file_path,
             bias_file_path,
             overview_file_path,
@@ -4750,6 +4884,10 @@ def main():
 
         print('Saving the derived quantities report as a text file')
         save_report_as_text(main_params, txt_file_path, logfiles['name'][i])
+
+        # --SAVE THE STEP REPORT QUANTITIES IN A TEXT FILE
+        if SAVE_STEP_REPORT:
+            save_report_as_text(step_params, step_file_path, logfiles['name'][i])
 
     # ----CONSILIDATE THE DATA INTO A SINGLE CSV FILE-----
 

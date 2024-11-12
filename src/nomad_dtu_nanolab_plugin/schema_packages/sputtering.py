@@ -49,6 +49,7 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     map_environment_params_to_nomad,
     map_gas_flow_params_to_nomad,
     map_params_to_nomad,
+    map_source_params_to_nomad,
     map_step_params_to_nomad,
     plot_plotly_extimeline,
     read_events,
@@ -128,6 +129,7 @@ class Chamber(ArchiveSection):
     """
 
     m_def = Section()
+
     shutter_open = Quantity(
         type=bool,
         default=False,
@@ -299,18 +301,28 @@ class DTUSource(PVDSource, ArchiveSection):
     """
 
     m_def = Section()
-    source_shutter_open = Quantity(
+
+    source_shutter_open_value = Quantity(
         type=bool,
         default=False,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+        description="""
+            Position of the substrate shutter.
+        """,
+        shape=['*'],
     )
+    source_shutter_open_time = Quantity(
+        type=float,
+        unit='s',
+        shape=['*'],
+    )
+    # TimeSeries?
 
     power_type = Quantity(
         type=MEnum(['RF', 'DC', 'pulsed_DC']),
         default='RF',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
-    applied_voltage = Quantity(
+    average_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
@@ -319,6 +331,16 @@ class DTUSource(PVDSource, ArchiveSection):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
+    )
+    pulse_frequency = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'Hz'},
+        unit='1/s',
+    )
+    dead_time = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 's'},
+        unit='s',
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -921,7 +943,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         for gun in gun_list:
             if params['deposition'].get(gun, {}).get('enabled', False):
-                setattr(sputtering.deposition_parameters, gun, SourceOverview())
+                # Create a SourceOverview object and set it to the relevant attribute
+                source_overview = SourceOverview()
+                setattr(sputtering.deposition_parameters, gun, source_overview)
+
+                # Set the target_id attribute of the SourceOverview object
+                target_reference = DTUTargetReference()
+                setattr(source_overview, 'target_id', target_reference)
 
         if params.get('s_cracker', {}).get('enabled', False):
             sputtering.deposition_parameters.s_cracker = SCracker()
@@ -979,6 +1007,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 }
                 self.write_data(config)
 
+            # generate sources
+            step.sources = []
+
+            sources = self.generate_sources_log_data(step_params, key, logger)
+
+            step.sources = sources
+
+            # generate environment
             step.environment = DTUChamberEnvironment()
 
             environment = self.generate_environment_log_data(step_params, key, logger)
@@ -988,6 +1024,36 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             steps.append(step)
 
         return steps
+
+    def generate_sources_log_data(
+        self, step_params: dict, key: str, logger: 'BoundLogger'
+    ) -> None:
+        sources = []
+
+        for source_name in ['magkeeper3', 'magkeeper4', 'taurus']:
+            if step_params.get(key, {}).get(source_name, {}).get('enabled', False):
+                # Create a DTUSource object and set it to the relevant attribute
+                source = DTUSource()
+
+                sources.append(source)
+
+                # Mapping the source_param_nomad_map
+                source_param_nomad_map = map_source_params_to_nomad(key, source_name)
+
+                # Looping through the source_param_nomad_map
+                for input_keys, output_keys, unit in source_param_nomad_map:
+                    config = {
+                        'input_dict': step_params,
+                        'input_keys': input_keys,
+                        'output_obj': source,
+                        'output_obj_name': 'source',
+                        'output_keys': output_keys,
+                        'unit': unit,
+                        'logger': logger,
+                    }
+                    self.write_data(config)
+
+        return sources
 
     def generate_environment_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'
