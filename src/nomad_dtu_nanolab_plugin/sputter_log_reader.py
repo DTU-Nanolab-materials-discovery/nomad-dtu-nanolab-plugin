@@ -4509,6 +4509,7 @@ def map_source_params_to_nomad(key, source_name, power_type):
         [
             [key, 'sources', source_name, 'target_id'],
             ['target_id', 'lab_id'],
+            None,
         ]
         [
             [key, 'sources', source_name, 'power_supply', 'power_type'],
