@@ -223,7 +223,6 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
         peaknumb = []
         for i in range(0, len(file), 6):
             peaknumb.append(int(file.iloc[i][0].split()[8].replace(";","")))
-        n = max(peaknumb) + 1
 
         # remove useless rows
         file.drop(file.iloc[0::6].index, inplace=True)
@@ -250,6 +249,7 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
             ycoord_cleaned = ycoord_str.replace("VALUE=", "").replace(";", "")
             ycoord = float(ycoord_cleaned)
             coords = [xcoord, ycoord]
+
             # load data
             data = file.iloc[i+3][0].split()[2::]
             data.append(file.iloc[i+4][0].split()[2::][0])
@@ -261,6 +261,7 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
             peaklist.append(peaktype.split()[0])
             coordlist.append(coords)
             datalist.append(data)
+        unique_coords = list(set(tuple(coord) for coord in coordlist))
 
         # create data dataframe
         dataframe = pd.DataFrame(datalist, columns = ['Intensity (counts)',
@@ -291,14 +292,36 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
         coordframe = coordframe/1000
         coordframe['Y'] = coordframe['Y'].values[::-1]
 
+        unique_coords = list(set(tuple(row) for row in coordframe[['X', 'Y']].values))
+
         # Concatenate the two DataFrames along the columns
         merged_frame = pd.concat([coordframe, dataframe], axis=1)
 
-        return merged_frame, n
+        return merged_frame, unique_coords
 
-    def write_XPS_analysis(self, dataframe: pd.DataFrame) -> None:
+    def write_XPS_analysis(self,
+                            dataframe: pd.DataFrame,
+                            coords_list: list
+                              ) -> None:
         '''"Write data and coordinates to the XPS class
         with respect to the coordinates"'''
+        #filter by coordinates and create small dfs
+        for coord in coords_list:
+            mask = dataframe.apply(lambda row: (row['X'], row['Y']) == coord, axis=1)
+            coord_data = dataframe[mask]
+            self.results.append(XPSMappingResult(
+                position = f'{coord[0]:.3f}, {coord[1]:.3f}',
+            ))
+            for index, row in coord_data.iterrows():
+                self.results[-1].peaks.append(XPSfittedPeak(
+                    peak = row['Peak'],
+                    position = row['Peak BE (eV)'],
+                    intensity = row['Intensity (counts)'],
+                    fwhm = row['FWHM (eV)'],
+                    area = row['Area (counts*eV)'],
+                    atomic_percent = row['Atomic %'],
+                ))
+
 
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -311,8 +334,8 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
             logger (BoundLogger): A structlog logger.
         """
         if self.analysis_file is not None:
-            dataframe = self.read_XPS_analysis(self.analysis_file)
-            self.write_XPS_analysis(dataframe)
+            dataframe, coords_list = self.read_XPS_analysis(self.analysis_file)
+            self.write_XPS_analysis(dataframe, coords_list)
 
 
 
