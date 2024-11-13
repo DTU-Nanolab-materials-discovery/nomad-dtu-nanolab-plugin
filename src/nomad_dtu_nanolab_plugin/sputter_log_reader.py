@@ -4491,6 +4491,7 @@ def map_source_params_to_nomad(key, source_name, power_type):
         [
             [key, 'sources', source_name, 'name'],
             ['name'],
+            None,
         ],
         [
             [key, 'sources', source_name, 'power_supply', 'power_type'],
@@ -4510,6 +4511,7 @@ def map_source_params_to_nomad(key, source_name, power_type):
         [
             [key, 'sources', source_name, 'power_supply', 'avg_rfl_power'],
             ['power_supply', 'avg_rfl_power'],
+            'W',
         ],
         [
             [key, 'sources', source_name, 'source_shutter_open', 'value'],
@@ -4519,7 +4521,7 @@ def map_source_params_to_nomad(key, source_name, power_type):
         [
             [key, 'sources', source_name, 'source_shutter_open', 'time'],
             ['source_shutter_open', 'time'],
-            'second',
+            's',
         ],
     ]
     if power_type == 'RF':
