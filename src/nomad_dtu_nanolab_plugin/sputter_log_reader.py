@@ -32,6 +32,7 @@ from plotly.subplots import make_subplots
 # Set the execution flags
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
+PRINT_FIGURES = True
 TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_REPORT = True
@@ -44,7 +45,7 @@ SAMPLES_TO_REMOVE = [
 SAMPLES_TO_TEST = [
     # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
     # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
-    'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04'
+    'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
 ]
 
 
@@ -850,40 +851,6 @@ class Lf_Event:
     # method to extract the so called sources parameters of single steps
     def get_step_sources_params(self, source_list, params):
         # helper method to deduce the plasma type of the source during deposition
-        def get_power_type(self, source_number):
-            dc_current_col = f'Source {source_number} Current'
-            rf_bias_col = f'Source {source_number} DC Bias'
-            pulse_enable_col = f'Source {source_number} Pulse Enabled'
-            fwd_power_col = f'Source {source_number} Fwd Power'
-            rfl_power_col = f'Source {source_number} Rfl Power'
-
-            power_type = None
-
-            # We tolerate a certain percentage of the data to be below the threshold
-            if dc_current_col in self.data and (
-                (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
-                or (
-                    (self.data[fwd_power_col] - self.data[rfl_power_col])
-                    > POWER_FWD_REFL_THRESHOLD
-                ).mean()
-                >= TOLERANCE
-            ):
-                if pulse_enable_col in self.data and (
-                    self.data[pulse_enable_col].all() == 1
-                ):
-                    power_type = 'pulsed_DC'
-                else:
-                    power_type = 'DC'
-            elif rf_bias_col in self.data and (
-                (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= TOLERANCE
-                or (
-                    (self.data[fwd_power_col] - self.data[rfl_power_col])
-                    > POWER_FWD_REFL_THRESHOLD
-                ).mean()
-                >= TOLERANCE
-            ):
-                power_type = 'RF'
-            return power_type
 
         # initialize the sources dictionary
         params[self.step_id]['sources'] = {}
@@ -911,7 +878,7 @@ class Lf_Event:
                     .dt.total_seconds()
                     .tolist()
                 )
-                power_type = get_power_type(self, source_number)
+                power_type = self.get_power_type(self, source_number)
 
                 if power_type is not None:
                     params[self.step_id]['sources'][source_name]['power_type'] = (
@@ -938,11 +905,27 @@ class Lf_Event:
                         params[self.step_id]['sources'][source_name]['dead_time'] = (
                             self.data[f'Source {source_number} Reverse Time'].mean()
                         )
+                    else:
+                        params[self.step_id]['sources'][source_name][
+                            'pulse_frequency'
+                        ] = 0
+                        params[self.step_id]['sources'][source_name]['dead_time'] = 0
 
                     # Extract the source power
-                    params[self.step_id]['sources'][source_name]['applied_power'] = (
+                    params[self.step_id]['sources'][source_name]['avg_power_sp'] = (
                         self.data[f'Source {source_number} Output Setpoint'].mean()
                     )
+
+                    # extract the source material
+                    source_mat = self.data[f'PC Source {source_number} Material'].iloc[
+                        0
+                    ]
+                    material_list, _ = get_material_list(self, source_mat)
+                    for material in material_list:
+                        params[self.step_id]['sources'][source_name][material] = {}
+                        params[self.step_id]['sources'][source_name][material][
+                            'name'
+                        ] = material
 
         return params
 
@@ -955,6 +938,41 @@ class Lf_Event:
     #     # Extract the sputter parameters
 
     #     return params
+
+    def get_power_type(self, source_number):
+        dc_current_col = f'Source {source_number} Current'
+        rf_bias_col = f'Source {source_number} DC Bias'
+        pulse_enable_col = f'Source {source_number} Pulse Enabled'
+        fwd_power_col = f'Source {source_number} Fwd Power'
+        rfl_power_col = f'Source {source_number} Rfl Power'
+
+        power_type = None
+
+        # We tolerate a certain percentage of the data to be below the threshold
+        if dc_current_col in self.data and (
+            (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
+            or (
+                (self.data[fwd_power_col] - self.data[rfl_power_col])
+                > POWER_FWD_REFL_THRESHOLD
+            ).mean()
+            >= TOLERANCE
+        ):
+            if pulse_enable_col in self.data and (
+                self.data[pulse_enable_col].all() == 1
+            ):
+                power_type = 'pulsed_DC'
+            else:
+                power_type = 'DC'
+        elif rf_bias_col in self.data and (
+            (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= TOLERANCE
+            or (
+                (self.data[fwd_power_col] - self.data[rfl_power_col])
+                > POWER_FWD_REFL_THRESHOLD
+            ).mean()
+            >= TOLERANCE
+        ):
+            power_type = 'RF'
+        return power_type
 
 
 class Deposition_Event(Lf_Event):
@@ -1836,6 +1854,30 @@ class DepRate_Meas_Event(Lf_Event):
 # ---------FUNCTIONS DEFINITION------------
 
 # ---------HELPERS FUNCTIONS FOR REPORT GENERATION------------
+
+
+def get_material_list(source_mat):
+    material_list = []
+    material_stoichiometry = []
+    i = 0
+    while i < len(source_mat):
+        if source_mat[i].isupper():
+            element = source_mat[i]
+            i += 1
+            # Check if the next character is lowercase (for elements like "Si")
+            if i < len(source_mat) and source_mat[i].islower():
+                element += source_mat[i]
+                i += 1
+            material_list.append(element)
+            # Read the stoichiometry number
+            stoichiometry = ''
+            while i < len(source_mat) and source_mat[i].isdigit():
+                stoichiometry += source_mat[i]
+                i += 1
+            material_stoichiometry.append(int(stoichiometry) if stoichiometry else 1)
+        else:
+            i += 1
+    return material_list, material_stoichiometry
 
 
 def get_overview(raw_data, params=None):
@@ -3884,7 +3926,7 @@ def normalize_column(df, column_name):
 # ------------------------CORE METHODS----------------------
 
 
-def formatting_logfile(data):
+def format_logfile(data):
     # print('Formatting the dataframe for conditional filtering')
     # -----FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING-------
     # -------RENAME THE CRACKER COLUMNS OF THE DATAFRAME---------
@@ -3985,7 +4027,7 @@ def extract_category_from_list(events: list, category: str):
 
 
 def read_events(data):
-    data, source_list = formatting_logfile(data)
+    data, source_list = format_logfile(data)
 
     # ---------DEFINE DE CONDITIONS FOR DIFFERENT EVENTS-------------
     # Initialize the list of all events
@@ -4845,7 +4887,9 @@ def main():
         # Create the figure
         print('Generating the plotly plot')
         plotly_timeline = plot_plotly_extimeline(events_to_plot, logfiles['name'][i])
-        # plotly_timeline.show()
+
+        if PRINT_FIGURES:
+            plotly_timeline.show(config=PLOTLY_CONFIG)
 
         # Save the image as an interactive html file
         plotly_timeline.write_html(timeline_file_path)
@@ -4856,11 +4900,17 @@ def main():
 
         bias_plot = generate_bias_plot(deposition, logfiles['name'][i])
 
+        if PRINT_FIGURES:
+            bias_plot.show(config=PLOTLY_CONFIG)
+
         bias_plot.write_html(bias_file_path)
 
         # --------GRAPH THE OVERVIEW PLOT----------------
 
         overview_plot = generate_overview_plot(data, logfiles['name'][i])
+
+        if PRINT_FIGURES:
+            overview_plot.show(config=PLOTLY_CONFIG)
 
         overview_plot.write_html(overview_file_path)
 

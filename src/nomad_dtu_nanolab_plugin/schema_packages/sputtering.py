@@ -55,6 +55,7 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     read_events,
     read_logfile,
     write_params,
+    # format_logfile,
 )
 
 if TYPE_CHECKING:
@@ -327,11 +328,14 @@ class DTUSource(PVDSource, ArchiveSection):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
     )
-    applied_power = Quantity(
+    # TimeSeries?
+
+    avg_power_sp = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
     )
+    # TimeSeries?
     pulse_frequency = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'Hz'},
@@ -1135,6 +1139,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Openning the log file
             with archive.m_context.raw_file(self.log_file, 'r') as log:
                 log_df = read_logfile(log.name)
+                # formated_log_df = format_logfile(log_df)
                 events_plot, params, step_params = read_events(log_df)
             if params is not None:
                 # Writing logfile data to the respective sections
