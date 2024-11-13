@@ -879,12 +879,9 @@ class Lf_Event:
             elements = []
 
             power_type = self.get_power_type(source_number)
-            if (
-                (f'Source {source_number} Output Setpoint' in self.data.columns) and
-                (power_type is not None)
-                ):
-
-
+            if (f'Source {source_number} Output Setpoint' in self.data.columns) and (
+                power_type is not None
+            ):
                 # Initialize the source dictionary if it does not exist
                 if source_name not in params[self.step_id]['sources']:
                     params[self.step_id]['sources'][source_name] = {}
@@ -911,8 +908,6 @@ class Lf_Event:
                     .dt.total_seconds()
                     .tolist()
                 )
-
-
 
                 params[self.step_id]['sources'][source_name]['power_supply'][
                     'power_type'
