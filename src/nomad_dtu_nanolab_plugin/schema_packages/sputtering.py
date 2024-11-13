@@ -983,7 +983,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         except Exception as e:
             logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
 
-    def generate_general_log_data(self, params: dict, logger: 'BoundLogger') -> None:
+    def generate_general_log_data(self, params: dict, logger: 'BoundLogger'):
         """
         Method for writing the log data to the respective sections.
         Args:
@@ -1052,7 +1052,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         return sputtering
 
-    def generate_step_log_data(self, step_params: dict, logger: 'BoundLogger') -> None:
+    def generate_step_log_data(self, step_params: dict, logger: 'BoundLogger'):
         steps = []
 
         for key in step_params:
@@ -1094,7 +1094,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     def generate_sources_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'
-    ) -> None:
+    ):
         sources = []
 
         for source_name in step_params.get(key, {}).get('sources', {}):
@@ -1151,7 +1151,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     def generate_material_log_data(
         self, step_params: dict, key: str, source_name: str, logger: 'BoundLogger'
-    ) -> None:
+    ):
         elements = []
 
         for element in (
@@ -1181,7 +1181,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     def generate_environment_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'
-    ) -> None:
+    ):
         environment = DTUChamberEnvironment()
         environment.gas_flow = []
         environment.pressure = Pressure()
@@ -1209,7 +1209,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     def generate_gas_flow_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'
-    ) -> None:
+    ):
         gas_flow = []
 
         for gas_name in ['ar', 'h2s', 'ph3']:
