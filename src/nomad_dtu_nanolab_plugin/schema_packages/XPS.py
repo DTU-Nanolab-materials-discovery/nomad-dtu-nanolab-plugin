@@ -10,6 +10,8 @@ from nomad.datamodel.metainfo.annotations import (
 )
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
+from nomad.units import ureg
+from nomad_measurements.utils import merge_sections
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -27,7 +29,7 @@ m_package = Package()  # fill out later
 class XPSfittedPeak(Schema):
     m_def = Section()
 
-    peak = Quantity(
+    origin = Quantity(
         type=str,
         description='The peak type',
         a_eln=ELNAnnotation(
@@ -35,36 +37,44 @@ class XPSfittedPeak(Schema):
             label='Peak',
         ),
     )
-    position = Quantity(
+    be_position = Quantity(
         type=float,
-        description='The position of the peak',
+        unit='(kg*m^2)/(s^2)',
+        description='The position of the peak in binding energy',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.StringEditQuantity,
             label='Position',
+            defaultDisplayUnit='eV',
         ),
     )
     intensity = Quantity(
         type=float,
+        unit='1/s',
         description='The intensity of the peak',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.StringEditQuantity,
             label='Intensity',
+            defaultDisplayUnit='cps',
         ),
     )
     fwhm = Quantity(
         type=float,
         description='The full width at half maximum of the peak',
+        unit='(kg*m^2)/(s^2)',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.StringEditQuantity,
             label='FWHM',
+            defaultDisplayUnit='eV',
         ),
     )
     area = Quantity(
         type=float,
         description='The area of the peak',
+        unit='(kg*m^2)/(s^3)',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.StringEditQuantity,
             label='Area',
+            defaultDisplayUnit='cps*eV',
         ),
     )
     atomic_percent = Quantity(
@@ -312,15 +322,22 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
             self.results.append(XPSMappingResult(
                 position = f'{coord[0]:.3f}, {coord[1]:.3f}',
             ))
+
             for index, row in coord_data.iterrows():
-                self.results[-1].peaks.append(XPSfittedPeak(
-                    peak = row['Peak'],
-                    position = row['Peak BE (eV)'],
-                    intensity = row['Intensity (counts)'],
-                    fwhm = row['FWHM (eV)'],
-                    area = row['Area (counts*eV)'],
-                    atomic_percent = row['Atomic %'],
-                ))
+
+                peak_info = XPSfittedPeak(
+                    origin= ureg.Quantity(row['Peak'], 'eV'),
+                    be_position= ureg.Quantity(row['Peak BE (eV)'], 'eV'),
+                    intensity= ureg.Quantity(row['Intensity (counts)'], '1/s'),
+                    fwhm= ureg.Quantity(row['FWHM (eV)'], 'eV'),
+                    area= ureg.Quantity(row['Area (counts*eV)'], 'cps*eV'),
+                    atomic_percent= row['Atomic %'],
+                )
+                merge_sections(self.results[-1].peaks, peak_info)
+
+
+
+
 
 
 
