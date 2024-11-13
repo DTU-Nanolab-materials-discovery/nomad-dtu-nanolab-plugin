@@ -1161,7 +1161,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         for element in (
             step_params.get(key, {})
-            .get({'sources'}, {})
+            .get('sources', {})
             .get(source_name, {})
             .get('material', {})
         ):
