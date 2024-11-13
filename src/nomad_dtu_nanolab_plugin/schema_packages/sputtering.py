@@ -383,10 +383,11 @@ class DTUSourceShutter(TimeSeries):
         description="""Position of the substrate shutter.""",
         shape=['*'],
     )
-    time = Quantity(
-        type=float,
-        unit='s',
-        shape=['*'],
+
+    general_value = Quantity(
+        type=bool,
+        default=False,
+        description="""Position of the general shutter.""",
     )
 
 

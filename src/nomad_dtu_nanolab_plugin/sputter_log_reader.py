@@ -908,6 +908,13 @@ class Lf_Event:
                     .dt.total_seconds()
                     .tolist()
                 )
+                #we check if the shutter is open during more than the TOLERANCE
+                params[self.step_id]['sources'][source_name]['source_shutter_open'][
+                    'general_value'
+                ] = (
+                    self.data[f'PC Source {source_number} Shutter Open']
+                    .mean() > TOLERANCE
+                )
 
                 params[self.step_id]['sources'][source_name]['power_supply'][
                     'power_type'
@@ -4521,7 +4528,12 @@ def map_source_params_to_nomad(key, source_name, power_type):
         [
             [key, 'sources', source_name, 'source_shutter_open', 'time'],
             ['source_shutter_open', 'time'],
-            's',
+            'second',
+        ],
+        [
+            [key, 'sources', source_name, 'source_shutter_open', 'general_value'],
+            ['source_shutter_open', 'general_value'],
+            None,
         ],
     ]
     if power_type == 'RF':
