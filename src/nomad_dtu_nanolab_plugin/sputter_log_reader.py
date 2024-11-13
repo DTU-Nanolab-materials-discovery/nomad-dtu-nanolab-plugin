@@ -880,52 +880,55 @@ class Lf_Event:
                 )
                 power_type = self.get_power_type(self, source_number)
 
-                if power_type is not None:
-                    params[self.step_id]['sources'][source_name]['power_type'] = (
-                        power_type
-                    )
+                if power_type is None:
+                    return
 
-                    if power_type in ['DC', 'pulsed_DC']:
-                        params[self.step_id]['sources'][source_name][
-                            'average_voltage'
-                        ] = self.data[f'Source {source_number} Voltage'].mean()
-                    elif power_type == 'RF':
-                        params[self.step_id]['sources'][source_name][
-                            'average_voltage'
-                        ] = self.data[f'Source {source_number} DC Bias'].mean()
-                    else:
-                        params[self.step_id]['sources'][source_name][
-                            'average_voltage'
-                        ] = 0
+                params[self.step_id]['sources'][source_name]['power_type'] = power_type
 
+                # Extract the source power setpoint, fwd and rfl power
+                params[self.step_id]['sources'][source_name]['power_supply'][
+                    'avg_power_sp'
+                ] = self.data[f'Source {source_number} Output Setpoint'].mean()
+
+                params[self.step_id]['sources'][source_name]['power_supply'][
+                    'avg_fwd_power'
+                ] = self.data[f'Source {source_number} Fwd Power'].mean()
+                params[self.step_id]['sources'][source_name]['power_supply'][
+                    'avg_rfl_power'
+                ] = self.data[f'Source {source_number} Rfl Power'].mean()
+
+                if power_type in ['DC', 'pulsed_DC']:
+                    params[self.step_id]['sources'][source_name]['power_supply'][
+                        'avg_voltage'
+                    ] = self.data[f'Source {source_number} Voltage'].mean()
+                    params[self.step_id]['sources'][source_name]['power_supply'][
+                        'avg_current'
+                    ] = self.data[f'Source {source_number} Current'].mean()
                     if power_type == 'pulsed_DC':
-                        params[self.step_id]['sources'][source_name][
+                        params[self.step_id]['sources'][source_name]['power_supply'][
                             'pulse_frequency'
                         ] = self.data[f'Source {source_number} Pulse Frequency'].mean()
-                        params[self.step_id]['sources'][source_name]['dead_time'] = (
-                            self.data[f'Source {source_number} Reverse Time'].mean()
-                        )
-                    else:
-                        params[self.step_id]['sources'][source_name][
-                            'pulse_frequency'
-                        ] = 0
-                        params[self.step_id]['sources'][source_name]['dead_time'] = 0
+                        params[self.step_id]['sources'][source_name]['power_supply'][
+                            'dead_time'
+                        ] = self.data[f'Source {source_number} Reverse Time'].mean()
+                elif power_type == 'RF':
+                    params[self.step_id]['sources'][source_name]['power_supply'][
+                        'avg_dc_bias'
+                    ] = self.data[f'Source {source_number} DC Bias'].mean()
+                    params[self.step_id]['sources'][source_name]['power_supply'][
+                        'avg_current'
+                    ] = self.data[f'Source {source_number} Current'].mean()
 
-                    # Extract the source power
-                    params[self.step_id]['sources'][source_name]['avg_power_sp'] = (
-                        self.data[f'Source {source_number} Output Setpoint'].mean()
-                    )
-
-                    # extract the source material
-                    source_mat = self.data[f'PC Source {source_number} Material'].iloc[
-                        0
-                    ]
-                    material_list, _ = get_material_list(self, source_mat)
-                    for material in material_list:
-                        params[self.step_id]['sources'][source_name][material] = {}
-                        params[self.step_id]['sources'][source_name][material][
-                            'name'
-                        ] = material
+                # extract the source material
+                source_mat = self.data[f'PC Source {source_number} Material'].iloc[0]
+                material_list, _ = get_material_list(self, source_mat)
+                for material in material_list:
+                    params[self.step_id]['sources'][source_name]['material'][
+                        material
+                    ] = {}
+                    params[self.step_id]['sources'][source_name]['material'][material][
+                        'name'
+                    ] = material
 
         return params
 

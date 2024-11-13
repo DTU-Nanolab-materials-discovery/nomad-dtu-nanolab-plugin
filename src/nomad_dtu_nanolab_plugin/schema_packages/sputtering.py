@@ -306,11 +306,59 @@ class DTUSputterPowerSupply(PVDEvaporationSource):
         default='RF',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
-    average_voltage = Quantity(
+    avg_power_sp = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
+        unit='(kg*m^2)/s^3',
+    )
+    # time_series?
+    avg_fwd_power = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
+        unit='(kg*m^2)/s^3',
+    )
+    # time_series?
+    avg_rfl_power = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
+        unit='(kg*m^2)/s^3',
+    )
+    # time_series?
+
+
+class DTUSputterRFPowerSupply(DTUSputterPowerSupply):
+    power_type = Quantity(
+        type=MEnum(['RF']),
+        default='RF',
+        a_eln={'component': 'RadioEnumEditQuantity'},
+    )
+    avg_dc_bias = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
     )
+    avg_current = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'A'},
+        unit='A',
+    )
+    # time_series?
+
+
+class DTUSputterDCPowerSupply(DTUSputterPowerSupply):
+    avg_voltage = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
+        unit='V',
+    )
+    avg_current = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'A'},
+        unit='A',
+    )
+
+
+class DTUSputterPulsedDCPowerSupply(DTUSputterDCPowerSupply):
     pulse_frequency = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'Hz'},
@@ -344,10 +392,10 @@ class DTUSource(PVDSource, ArchiveSection):
         shape=['*'],
     )
     # TimeSeries?
-    vapor_source = SubSection(
+    power_supply = SubSection(
         section_def=DTUSputterPowerSupply,
         description="""
-        The power supply of the vapor source.
+        The power supply of the sputtering source.
         """,
     )
 
