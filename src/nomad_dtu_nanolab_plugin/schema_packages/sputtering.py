@@ -373,8 +373,8 @@ class DTUSputterPulsedDCPowerSupply(DTUSputterDCPowerSupply):
         unit='s',
     )
 
-
 class DTUSourceShutter(TimeSeries):
+
     m_def = Section()
 
     value = Quantity(
@@ -388,7 +388,6 @@ class DTUSourceShutter(TimeSeries):
         unit='s',
         shape=['*'],
     )
-
 
 class DTUSource(PVDSource, ArchiveSection):
     """
@@ -1079,7 +1078,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             sources = self.generate_sources_log_data(step_params, key, logger)
 
-            step.sources.extend(sources)
+            step.sources = sources
 
             # generate environment
             step.environment = DTUChamberEnvironment()
@@ -1103,17 +1102,15 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             source.material = []
 
             # Generate the power supply object
-            power_type = (
-                step_params.get(key, {})
-                .get(source_name, {})
-                .get('power_supply', False)
-                .get('power_type', False)
-            )
+            power_type = (step_params.get(key, {})
+                          .get(source_name, {})
+                          .get('power_supply', False)
+                          .get('power_type', False))
 
             power_supply_classes = {
                 'RF': DTUSputterRFPowerSupply,
                 'DC': DTUSputterDCPowerSupply,
-                'pulsed_DC': DTUSputterPulsedDCPowerSupply,
+                'pulsed_DC': DTUSputterPulsedDCPowerSupply
             }
 
             if power_type in power_supply_classes:
@@ -1122,8 +1119,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 source.power_supply = DTUSputterPowerSupply()
 
             # Mapping the source_param_nomad_map
-            source_param_nomad_map = map_source_params_to_nomad(
-                key, source_name, power_type
+            source_param_nomad_map = (
+                map_source_params_to_nomad(key,source_name, power_type)
             )
 
             # Looping through the source_param_nomad_map
@@ -1139,9 +1136,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 }
                 self.write_data(config)
 
-            material = self.generate_material_log_data(
-                step_params, key, source_name, logger
-            )
+
+            material = self.generate_material_log_data(step_params, key,
+                source_name, logger)
 
             source.material.extend(material)
 
@@ -1152,22 +1149,23 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     def generate_material_log_data(
         self, step_params: dict, key: str, source_name: str, logger: 'BoundLogger'
     ) -> None:
+
         elements = []
 
-        for element in (
-            step_params.get(key, {}).get(source_name, {}).get('material', {})
-        ):
-            single_element = Component()
+        for element in (step_params.get(key, {})
+                    .get(source_name, {})
+                    .get('material', {})):
+            element = Component()
 
             # Mapping the material_param_nomad_map
-            material_param_nomad_map = map_material_params_to_nomad(
-                key, source_name, element
+            material_param_nomad_map = (
+                map_material_params_to_nomad(key, source_name, element)
             )
             for input_keys, output_keys, unit in material_param_nomad_map:
                 config = {
                     'input_dict': step_params,
                     'input_keys': input_keys,
-                    'output_obj': single_element,
+                    'output_obj': element,
                     'output_obj_name': 'element',
                     'output_keys': output_keys,
                     'unit': unit,
@@ -1175,9 +1173,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 }
                 self.write_data(config)
 
-            elements.append(single_element)
+            elements.append(element)
 
         return elements
+
 
     def generate_environment_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'
