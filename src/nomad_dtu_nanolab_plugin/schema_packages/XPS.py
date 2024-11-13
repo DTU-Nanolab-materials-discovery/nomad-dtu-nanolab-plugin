@@ -2,16 +2,20 @@ from typing import TYPE_CHECKING
 
 from nomad.datamodel.data import Schema
 from nomad.datamodel.datamodel import EntryArchive
-from nomad.datamodel.metainfo.annotations import (BrowserAnnotation,
-                                                  ELNAnnotation,
-                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.annotations import (
+    BrowserAnnotation,
+    ELNAnnotation,
+    ELNComponentEnum,
+)
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    MappingMeasurement, MappingResult)
+    MappingMeasurement,
+    MappingResult,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
