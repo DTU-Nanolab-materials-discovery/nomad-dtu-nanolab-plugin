@@ -794,6 +794,9 @@ class Lf_Event:
         params = self.get_step_environment_params(params)
         # Get the sources parameters
         params = self.get_step_sources_params(source_list, params)
+        # get the sputter_parameters
+
+
         return params
 
     # method to extract the so called environment parameters (gases, sources, etc)
@@ -893,6 +896,9 @@ class Lf_Event:
 
                 # Extract the source parameters
                 params[self.step_id]['sources'][source_name]['name'] = source_name
+                params[self.step_id]['sources'][source_name]['target_id'] = (
+                    self.data[f'PC Source {source_number} Loaded Target'].iloc[0]
+                )
                 params[self.step_id]['sources'][source_name]['source_shutter_open'][
                     'value'
                 ] = [
@@ -4500,6 +4506,10 @@ def map_source_params_to_nomad(key, source_name, power_type):
             ['name'],
             None,
         ],
+        [
+            [key, 'sources', source_name, 'target_id'],
+            ['target_id', 'lab_id'],
+        ]
         [
             [key, 'sources', source_name, 'power_supply', 'power_type'],
             ['power_supply', 'power_type'],
