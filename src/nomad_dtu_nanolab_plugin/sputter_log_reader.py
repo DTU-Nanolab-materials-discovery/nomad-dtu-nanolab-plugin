@@ -878,7 +878,6 @@ class Lf_Event:
         for source_number in source_list:
             source_name = f'{SOURCE_NAME[str(source_number)]}'
             elements = []
-            print(elements)
 
             if f'Source {source_number} Output Setpoint' in self.data.columns:
                 # Initialize the source dictionary if it does not exist
@@ -955,8 +954,6 @@ class Lf_Event:
                 # extract the source material
                 source_mat = self.data[f'PC Source {source_number} Material'].iloc[0]
                 elements, _ = elements_from_string(source_mat, elements=elements)
-                print(source_mat)
-                print(elements)
                 for element in elements:
                     params[self.step_id]['sources'][source_name]['material'][
                         element
