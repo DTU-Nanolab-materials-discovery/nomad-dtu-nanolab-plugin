@@ -1106,7 +1106,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             power_type = (
                 step_params.get(key, {})
                 .get(source_name, {})
-                .get('power_supply', False)
+                .get('power_supply', {})
                 .get('power_type', False)
             )
 
