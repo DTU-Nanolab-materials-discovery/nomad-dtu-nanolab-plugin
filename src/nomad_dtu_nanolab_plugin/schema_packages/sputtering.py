@@ -1120,7 +1120,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             # Mapping the source_param_nomad_map
             source_param_nomad_map = (
-                map_source_params_to_nomad(key,source_name, power_type)
+                map_source_params_to_nomad(key, source_name, power_type)
             )
 
             # Looping through the source_param_nomad_map
@@ -1155,7 +1155,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         for element in (step_params.get(key, {})
                     .get(source_name, {})
                     .get('material', {})):
-            element = Component()
+            single_element = Component()
 
             # Mapping the material_param_nomad_map
             material_param_nomad_map = (
@@ -1165,15 +1165,15 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 config = {
                     'input_dict': step_params,
                     'input_keys': input_keys,
-                    'output_obj': element,
-                    'output_obj_name': 'element',
+                    'output_obj': single_element,
+                    'output_obj_name': 'single_element',
                     'output_keys': output_keys,
                     'unit': unit,
                     'logger': logger,
                 }
                 self.write_data(config)
 
-            elements.append(element)
+            elements.append(single_element)
 
         return elements
 
