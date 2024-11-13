@@ -1043,6 +1043,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         for source_name in step_params.get(key, {}).get('sources', {}):
             # Create a DTUSource object and set it to the relevant attribute
             source = DTUSource()
+            source.target_id=DTUTargetReference
             source.material = []
             source.source_shutter_open = DTUShutter()
 
