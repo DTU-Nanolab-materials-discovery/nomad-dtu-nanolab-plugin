@@ -1075,11 +1075,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 self.write_data(config)
 
             # generate sources
-            step.sources = []
+            # step.sources = []
 
-            sources = self.generate_sources_log_data(step_params, key, logger)
+            # sources = self.generate_sources_log_data(step_params, key, logger)
 
-            step.sources = sources
+            # step.sources.extend(sources)
 
             # generate environment
             step.environment = DTUChamberEnvironment()
