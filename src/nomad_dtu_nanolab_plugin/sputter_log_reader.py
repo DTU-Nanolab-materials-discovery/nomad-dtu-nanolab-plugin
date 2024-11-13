@@ -32,7 +32,7 @@ from plotly.subplots import make_subplots
 # Set the execution flags
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
-PRINT_FIGURES = True
+PRINT_FIGURES = False
 TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_REPORT = True
@@ -46,6 +46,7 @@ SAMPLES_TO_TEST = [
     # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
     # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
     'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
+    'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24'
 ]
 
 
@@ -328,6 +329,24 @@ ELEMENTS = {
     'Livermorium': 'Lv',
     'Tennessine': 'Ts',
     'Oganesson': 'Og',
+    }
+IONS = {
+    '': '',
+    'sulphide': 'S',
+    'sulfide': 'S',
+    'antimonide': 'Sb',
+    'phosphide': 'P',
+    'arsenide': 'As',
+    'telluride': 'Te',
+    'oxide': 'O',
+    'fluoride': 'F',
+    'chloride': 'Cl',
+    'bromide': 'Br',
+    'iodide': 'I',
+    'selenide': 'Se',
+    'nitride': 'N',
+    'carbide': 'C',
+    'hydride': 'H',
 }
 
 # ----SPUTTER LOG READER METHODS----
@@ -360,7 +379,8 @@ STAB_TIME = 30  # seconds
 CAPMAN_PRESSURE_THRESHOLD = 0
 # Threshold above which the flow of the mfc is considered on
 MFC_FLOW_THRESHOLD = 1  # sccm
-# Fraction of the length of the deposition dataframe to consider for the
+# Fr
+# action of the length of the deposition dataframe to consider for the
 # beginning and end of the deposition voltage averaging
 FRAQ_ROWS_AVG_VOLTAGE = 5  # %
 # Number of timesteps to consider for the continuity limit
@@ -855,35 +875,48 @@ class Lf_Event:
         # initialize the sources dictionary
         params[self.step_id]['sources'] = {}
 
+
         for source_number in source_list:
             source_name = f'{SOURCE_NAME[str(source_number)]}'
-            if source_name not in params[self.step_id]['sources']:
-                params[self.step_id]['sources'][source_name] = {}
+            elements = []
+            print(elements)
 
             if f'Source {source_number} Output Setpoint' in self.data.columns:
+                # Initialize the source dictionary if it does not exist
+                if source_name not in params[self.step_id]['sources']:
+                    params[self.step_id]['sources'][source_name] = {}
+                    params[self.step_id]['sources'][source_name]['power_supply'] = {}
+                    params[self.step_id]['sources'][source_name]['material'] = {}
+                    params[self.step_id]['sources'][
+                        source_name
+                        ]['source_shutter_open'] = {}
+                # Initialize the source elements list
+
                 # Extract the source parameters
                 params[self.step_id]['sources'][source_name]['name'] = source_name
-                params[self.step_id]['sources'][source_name][
-                    'source_shutter_open_value'
+                params[self.step_id]['sources'][source_name]['source_shutter_open'][
+                    'value'
                 ] = [
                     bool(x)
                     for x in self.data[
                         f'PC Source {source_number} Shutter Open'
                     ].tolist()
                 ]
-                params[self.step_id]['sources'][source_name][
-                    'source_shutter_open_time'
+                params[self.step_id]['sources'][source_name]['source_shutter_open'][
+                    'time'
                 ] = (
                     (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
                     .dt.total_seconds()
                     .tolist()
                 )
-                power_type = self.get_power_type(self, source_number)
+                power_type = self.get_power_type(source_number)
 
                 if power_type is None:
                     return
 
-                params[self.step_id]['sources'][source_name]['power_type'] = power_type
+                params[self.step_id]['sources'][source_name][
+                    'power_supply'
+                    ]['power_type'] = power_type
 
                 # Extract the source power setpoint, fwd and rfl power
                 params[self.step_id]['sources'][source_name]['power_supply'][
@@ -915,21 +948,23 @@ class Lf_Event:
                     params[self.step_id]['sources'][source_name]['power_supply'][
                         'avg_dc_bias'
                     ] = self.data[f'Source {source_number} DC Bias'].mean()
-                    params[self.step_id]['sources'][source_name]['power_supply'][
-                        'avg_current'
-                    ] = self.data[f'Source {source_number} Current'].mean()
+                    if f'Source {source_number} Current' in self.data.columns:
+                        params[self.step_id]['sources'][source_name]['power_supply'][
+                            'avg_current'
+                        ] = self.data[f'Source {source_number} Current'].mean()
 
                 # extract the source material
                 source_mat = self.data[f'PC Source {source_number} Material'].iloc[0]
-                material_list, _ = get_material_list(self, source_mat)
-                for material in material_list:
+                elements, _ = elements_from_string(source_mat,elements=elements)
+                print(source_mat)
+                print(elements)
+                for element in elements:
                     params[self.step_id]['sources'][source_name]['material'][
-                        material
+                        element
                     ] = {}
-                    params[self.step_id]['sources'][source_name]['material'][material][
+                    params[self.step_id]['sources'][source_name]['material'][element][
                         'name'
-                    ] = material
-
+                    ] = element
         return params
 
     # def get_step_sample_params(self, params):
@@ -1249,13 +1284,18 @@ class Deposition_Event(Lf_Event):
                 # Extract source material and target id and add the element to the
                 # elements list for the material space extraction
         # Extract the material space as the elements used during deposition
-        if params[self.category]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD:
-            elements = elements + ['P']
-        if (params[self.category]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD) or (
+        if (
+            'P' not in elements and
+            params[self.category]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD
+            ):
+            elements += ['P']
+        if 'S' not in elements and (
+            (params[self.category]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD) or (
             params[self.category]['s_cracker']['enabled']
+            )
         ):
-            elements = elements + ['S']
-        # add the element as an hypen separated string
+            elements += ['S']
+                    # add the element as an hypen separated string
         params[self.category]['material_space'] = '-'.join(elements)
         return params
 
@@ -1366,16 +1406,16 @@ class Deposition_Event(Lf_Event):
 
     # method to deduce the source material and target of the source during deposition
     def get_source_material_and_target(self, params, source_number, elements):
-        source_element = str(self.data[f'PC Source {source_number} Material'].iloc[0])
-        source_element = re.split(r'\s+', source_element)[0]
+
+        source_material = self.data[f'PC Source {source_number} Material'].iloc[0]
+        elements, material = elements_from_string(source_material, elements)
+
         params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
             'target_material'
-        ] = ELEMENTS[source_element]
+        ] = material
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_id'] = (
             self.data[f'PC Source {source_number} Loaded Target'].iloc[0]
         )
-        elements.append(ELEMENTS[source_element])
-
         return params, elements
 
     def get_platen_bias_params(self, params=None):
@@ -1858,29 +1898,48 @@ class DepRate_Meas_Event(Lf_Event):
 
 # ---------HELPERS FUNCTIONS FOR REPORT GENERATION------------
 
+def elements_from_string(source_material, elements=[]):
+    source_element_name_list = re.split(r'\s+', source_material)
+    material=''
+    for element_name in source_element_name_list:
+        if element_name in ELEMENTS:
+            element = ELEMENTS[element_name]
+            material += element
+            if element not in elements:
+                elements.append(element)
+        elif element_name in IONS:
+            element = IONS[element_name]
+            material += element
+            if element not in elements:
+                elements.append(element)
+    return elements, material
 
-def get_material_list(source_mat):
-    material_list = []
-    material_stoichiometry = []
-    i = 0
-    while i < len(source_mat):
-        if source_mat[i].isupper():
-            element = source_mat[i]
-            i += 1
-            # Check if the next character is lowercase (for elements like "Si")
-            if i < len(source_mat) and source_mat[i].islower():
-                element += source_mat[i]
-                i += 1
-            material_list.append(element)
-            # Read the stoichiometry number
-            stoichiometry = ''
-            while i < len(source_mat) and source_mat[i].isdigit():
-                stoichiometry += source_mat[i]
-                i += 1
-            material_stoichiometry.append(int(stoichiometry) if stoichiometry else 1)
-        else:
-            i += 1
-    return material_list, material_stoichiometry
+# def get_material_list(source_mat):
+#     material_list = []
+#     material_stoichiometry = []
+#     i = 0
+#     if source_mat in ELEMENTS:
+#         source_mat = ELEMENTS[source_mat]
+#     elif source_mat in IONS:
+#         source_mat = IONS[source_mat]
+#     while i < len(source_mat):
+#         if source_mat[i].isupper():
+#             element = source_mat[i]
+#             i += 1
+#             # Check if the next character is lowercase (for elements like "Si")
+#             if i < len(source_mat) and source_mat[i].islower():
+#                 element += source_mat[i]
+#                 i += 1
+#             material_list.append(element)
+#             # Read the stoichiometry number
+#             stoichiometry = ''
+#             while i < len(source_mat) and source_mat[i].isdigit():
+#                 stoichiometry += source_mat[i]
+#                 i += 1
+#             material_stoichiometry.append(int(stoichiometry) if stoichiometry else 1)
+#         else:
+#             i += 1
+#     return material_list, material_stoichiometry
 
 
 def get_overview(raw_data, params=None):
@@ -2144,7 +2203,9 @@ def write_params(quantities, indent=''):
                 minutes, seconds = divmod(remainder, 60)
                 formatted_value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
             elif isinstance(value, pd.Series):
-                formatted_value = 'Cannot display pd.DataFrame'
+                formatted_value = '[...](pd.DataFrame)'
+            elif isinstance(value, list):
+                formatted_value = '[...](list)'
             output.append(f'{indent}{key}: {formatted_value}')
     return '\n'.join(output)
 
@@ -3675,7 +3736,7 @@ def generate_bias_plot(
         Y_plot,
         mode='default',
         plot_type='line',
-        width=WIDTH,
+        width=1.5*WIDTH,
         plot_title=f'Bias Plot: {logfile_name}',
     )
 

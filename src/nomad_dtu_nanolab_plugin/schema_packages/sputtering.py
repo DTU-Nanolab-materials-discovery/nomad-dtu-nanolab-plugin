@@ -36,6 +36,7 @@ from nomad_material_processing.vapor_deposition.general import (
     Pressure,
     PureSubstanceSection,
     VolumetricFlowRate,
+    TimeSeries,
 )
 from nomad_material_processing.vapor_deposition.pvd.general import (
     PVDEvaporationSource,
@@ -370,6 +371,21 @@ class DTUSputterPulsedDCPowerSupply(DTUSputterDCPowerSupply):
         unit='s',
     )
 
+class DTUSourceShutter(TimeSeries):
+
+    m_def = Section()
+
+    value = Quantity(
+        type=bool,
+        default=False,
+        description="""Position of the substrate shutter.""",
+        shape=['*'],
+    )
+    time = Quantity(
+        type=float,
+        unit='s',
+        shape=['*'],
+    )
 
 class DTUSource(PVDSource, ArchiveSection):
     """
@@ -378,26 +394,31 @@ class DTUSource(PVDSource, ArchiveSection):
 
     m_def = Section()
 
-    source_shutter_open_value = Quantity(
-        type=bool,
-        default=False,
-        description="""
-            Position of the substrate shutter.
-        """,
-        shape=['*'],
+    source_shutter_open = SubSection(
+        section_def=DTUSourceShutter,
     )
-    source_shutter_open_time = Quantity(
-        type=float,
-        unit='s',
-        shape=['*'],
-    )
-    # TimeSeries?
+
     power_supply = SubSection(
         section_def=DTUSputterPowerSupply,
         description="""
         The power supply of the sputtering source.
         """,
     )
+
+    # source_shutter_open_value = Quantity(
+    #     type=bool,
+    #     default=False,
+    #     description="""
+    #         Position of the substrate shutter.
+    #     """,
+    #     shape=['*'],
+    # )
+    # source_shutter_open_time = Quantity(
+    #     type=float,
+    #     unit='s',
+    #     shape=['*'],
+    # )
+
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
