@@ -1,19 +1,22 @@
 from typing import TYPE_CHECKING
 
-import numpy as np
 import pandas as pd
 from nomad.datamodel.data import Schema
 from nomad.datamodel.datamodel import EntryArchive
-from nomad.datamodel.metainfo.annotations import (BrowserAnnotation,
-                                                  ELNAnnotation,
-                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.annotations import (
+    BrowserAnnotation,
+    ELNAnnotation,
+    ELNComponentEnum,
+)
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    MappingMeasurement, MappingResult)
+    MappingMeasurement,
+    MappingResult,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -204,13 +207,18 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
     )
 
     def read_XPS_analysis(self, filename: str) -> None:
-        '''"Read data and coordinates from an XPS datafile. The file should be an csv (.txt) file."'''
+        '''"Read data and coordinates from an XPS datafile.
+          The file should be an csv (.txt) file."'''
         # read the file
-        file = pd.read_csv(filename, encoding = 'ANSI', engine='python', sep='delimiter', header = None, skiprows = 29)
+        file = pd.read_csv(filename,
+                           encoding = 'ANSI',
+                           engine='python',
+                           sep='delimiter',
+                           header = None,
+                           skiprows = 29)
         file.drop(file.iloc[4::7].index, inplace=True)
         file.reset_index(drop = True)
 
-        # the file has a really weird format so we need to do a lot of work to extract data
         # get amount of peaks
         peaknumb = []
         for i in range(0, len(file), 6):
@@ -228,9 +236,19 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
         datalist = []
         for i in range(0, len(file), 5):
             # load peak type and coordinates and fix formatting
-            peaktype = ' '.join(file.iloc[i][0].split()[5:len(file.iloc[i][0].split())]).replace("VALUE='","").replace("';","")
-            xcoord = float(file.iloc[i+1][0].split()[5].replace("VALUE=","").replace(";",""))
-            ycoord = float(file.iloc[i+2][0].split()[5].replace("VALUE=","").replace(";",""))
+            split_string = file.iloc[i][0].split()
+            relevant_part = ' '.join(split_string[5:])
+            cleaned_part = relevant_part.replace("VALUE='", "").replace("';", "")
+            peaktype = cleaned_part
+            # Process x-coordinate
+            xcoord_str = file.iloc[i+1][0].split()[5]
+            xcoord_cleaned = xcoord_str.replace("VALUE=", "").replace(";", "")
+            xcoord = float(xcoord_cleaned)
+
+            # Process y-coordinate
+            ycoord_str = file.iloc[i+2][0].split()[5]
+            ycoord_cleaned = ycoord_str.replace("VALUE=", "").replace(";", "")
+            ycoord = float(ycoord_cleaned)
             coords = [xcoord, ycoord]
             # load data
             data = file.iloc[i+3][0].split()[2::]
@@ -245,13 +263,21 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
             datalist.append(data)
 
         # create data dataframe
-        dataframe = pd.DataFrame(datalist, columns = ['Intensity (counts)','Atomic %','Area (counts*eV)','FWHM (eV)','Peak BE (eV)'])
+        dataframe = pd.DataFrame(datalist, columns = ['Intensity (counts)',
+                                                      'Atomic %',
+                                                      'Area (counts*eV)',
+                                                      'FWHM (eV)',
+                                                      'Peak BE (eV)'])
 
         # modify some values
         # convert KE to BE (KE of machine X-rays is 1486.68 eV)
         dataframe['Peak BE (eV)'] = 1486.68 - dataframe['Peak BE (eV)']
         # reorder columns to be similar to Avantage
-        columnorder = ['Peak BE (eV)','Intensity (counts)','FWHM (eV)','Area (counts*eV)','Atomic %']
+        columnorder = ['Peak BE (eV)',
+                       'Intensity (counts)',
+                       'FWHM (eV)',
+                       'Area (counts*eV)',
+                       'Atomic %']
         dataframe = dataframe.reindex(columnorder, axis=1)
         # create peak dataframe
         peaks = pd.DataFrame(peaklist, columns = ['Peak'])
@@ -268,10 +294,11 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
         # Concatenate the two DataFrames along the columns
         merged_frame = pd.concat([coordframe, dataframe], axis=1)
 
-        return merged_frame
+        return merged_frame, n
 
     def write_XPS_analysis(self, dataframe: pd.DataFrame) -> None:
-        '''"Write data and coordinates to the XPS class with respect to the coordinates"'''
+        '''"Write data and coordinates to the XPS class
+        with respect to the coordinates"'''
 
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
