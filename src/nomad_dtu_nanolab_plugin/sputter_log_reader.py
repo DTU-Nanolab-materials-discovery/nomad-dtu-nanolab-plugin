@@ -790,12 +790,10 @@ class Lf_Event:
         )
         params[self.step_id]['creates_new_thin_film'] = self.category == 'deposition'
 
+        # Get the step environment parameters
         params = self.get_step_environment_params(params)
-
         # Get the sources parameters
-
         params = self.get_step_sources_params(source_list, params)
-
         return params
 
     # method to extract the so called environment parameters (gases, sources, etc)
@@ -877,9 +875,16 @@ class Lf_Event:
 
         for source_number in source_list:
             source_name = f'{SOURCE_NAME[str(source_number)]}'
+
             elements = []
 
-            if f'Source {source_number} Output Setpoint' in self.data.columns:
+            power_type = self.get_power_type(source_number)
+            if (
+                (f'Source {source_number} Output Setpoint' in self.data.columns) and
+                (power_type is not None)
+                ):
+
+
                 # Initialize the source dictionary if it does not exist
                 if source_name not in params[self.step_id]['sources']:
                     params[self.step_id]['sources'][source_name] = {}
@@ -888,7 +893,6 @@ class Lf_Event:
                     params[self.step_id]['sources'][source_name][
                         'source_shutter_open'
                     ] = {}
-                # Initialize the source elements list
 
                 # Extract the source parameters
                 params[self.step_id]['sources'][source_name]['name'] = source_name
@@ -907,10 +911,8 @@ class Lf_Event:
                     .dt.total_seconds()
                     .tolist()
                 )
-                power_type = self.get_power_type(source_number)
 
-                if power_type is None:
-                    return
+
 
                 params[self.step_id]['sources'][source_name]['power_supply'][
                     'power_type'
