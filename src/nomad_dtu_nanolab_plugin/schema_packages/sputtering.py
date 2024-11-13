@@ -59,6 +59,7 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     read_events,
     read_logfile,
     write_params,
+    # format_logfile,
 )
 
 if TYPE_CHECKING:
@@ -1144,6 +1145,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Openning the log file
             with archive.m_context.raw_file(self.log_file, 'r') as log:
                 log_df = read_logfile(log.name)
+                # formated_log_df = format_logfile(log_df)
                 events_plot, params, step_params = read_events(log_df)
             if params is not None:
                 # Writing logfile data to the respective sections
