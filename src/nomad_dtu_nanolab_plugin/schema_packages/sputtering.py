@@ -1101,6 +1101,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Create a DTUSource object and set it to the relevant attribute
             source = DTUSource()
             source.material = []
+            source.source_shutter_open = DTUSourceShutter()
 
             # Generate the power supply object
             power_type = (
