@@ -23,6 +23,7 @@ import pandas as pd
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import (
+    Component,
     CompositeSystem,
     CompositeSystemReference,
     InstrumentReference,
@@ -35,8 +36,8 @@ from nomad_material_processing.vapor_deposition.general import (
     GasFlow,
     Pressure,
     PureSubstanceSection,
-    VolumetricFlowRate,
     TimeSeries,
+    VolumetricFlowRate,
 )
 from nomad_material_processing.vapor_deposition.pvd.general import (
     PVDEvaporationSource,
@@ -53,6 +54,7 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     get_nested_value,
     map_environment_params_to_nomad,
     map_gas_flow_params_to_nomad,
+    map_material_params_to_nomad,
     map_params_to_nomad,
     map_source_params_to_nomad,
     map_step_params_to_nomad,
@@ -371,8 +373,8 @@ class DTUSputterPulsedDCPowerSupply(DTUSputterDCPowerSupply):
         unit='s',
     )
 
-class DTUSourceShutter(TimeSeries):
 
+class DTUSourceShutter(TimeSeries):
     m_def = Section()
 
     value = Quantity(
@@ -386,6 +388,7 @@ class DTUSourceShutter(TimeSeries):
         unit='s',
         shape=['*'],
     )
+
 
 class DTUSource(PVDSource, ArchiveSection):
     """
@@ -404,21 +407,6 @@ class DTUSource(PVDSource, ArchiveSection):
         The power supply of the sputtering source.
         """,
     )
-
-    # source_shutter_open_value = Quantity(
-    #     type=bool,
-    #     default=False,
-    #     description="""
-    #         Position of the substrate shutter.
-    #     """,
-    #     shape=['*'],
-    # )
-    # source_shutter_open_time = Quantity(
-    #     type=float,
-    #     unit='s',
-    #     shape=['*'],
-    # )
-
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -1109,30 +1097,87 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     ) -> None:
         sources = []
 
-        for source_name in ['magkeeper3', 'magkeeper4', 'taurus']:
-            if step_params.get(key, {}).get(source_name, {}).get('enabled', False):
-                # Create a DTUSource object and set it to the relevant attribute
-                source = DTUSource()
+        for source_name in step_params.get(key, {}).get('sources', {}):
+            # Create a DTUSource object and set it to the relevant attribute
+            source = DTUSource()
+            source.material = []
 
-                sources.append(source)
+            # Generate the power supply object
+            power_type = (
+                step_params.get(key, {})
+                .get(source_name, {})
+                .get('power_supply', False)
+                .get('power_type', False)
+            )
 
-                # Mapping the source_param_nomad_map
-                source_param_nomad_map = map_source_params_to_nomad(key, source_name)
+            power_supply_classes = {
+                'RF': DTUSputterRFPowerSupply,
+                'DC': DTUSputterDCPowerSupply,
+                'pulsed_DC': DTUSputterPulsedDCPowerSupply,
+            }
 
-                # Looping through the source_param_nomad_map
-                for input_keys, output_keys, unit in source_param_nomad_map:
-                    config = {
-                        'input_dict': step_params,
-                        'input_keys': input_keys,
-                        'output_obj': source,
-                        'output_obj_name': 'source',
-                        'output_keys': output_keys,
-                        'unit': unit,
-                        'logger': logger,
-                    }
-                    self.write_data(config)
+            if power_type in power_supply_classes:
+                source.power_supply = power_supply_classes[power_type]()
+            else:
+                source.power_supply = DTUSputterPowerSupply()
+
+            # Mapping the source_param_nomad_map
+            source_param_nomad_map = map_source_params_to_nomad(
+                key, source_name, power_type
+            )
+
+            # Looping through the source_param_nomad_map
+            for input_keys, output_keys, unit in source_param_nomad_map:
+                config = {
+                    'input_dict': step_params,
+                    'input_keys': input_keys,
+                    'output_obj': source,
+                    'output_obj_name': 'source',
+                    'output_keys': output_keys,
+                    'unit': unit,
+                    'logger': logger,
+                }
+                self.write_data(config)
+
+            material = self.generate_material_log_data(
+                step_params, key, source_name, logger
+            )
+
+            source.material.extend(material)
+
+            sources.append(source)
 
         return sources
+
+    def generate_material_log_data(
+        self, step_params: dict, key: str, source_name: str, logger: 'BoundLogger'
+    ) -> None:
+        elements = []
+
+        for element in (
+            step_params.get(key, {}).get(source_name, {}).get('material', {})
+        ):
+            single_element = Component()
+
+            # Mapping the material_param_nomad_map
+            material_param_nomad_map = map_material_params_to_nomad(
+                key, source_name, element
+            )
+            for input_keys, output_keys, unit in material_param_nomad_map:
+                config = {
+                    'input_dict': step_params,
+                    'input_keys': input_keys,
+                    'output_obj': single_element,
+                    'output_obj_name': 'element',
+                    'output_keys': output_keys,
+                    'unit': unit,
+                    'logger': logger,
+                }
+                self.write_data(config)
+
+            elements.append(single_element)
+
+        return elements
 
     def generate_environment_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'

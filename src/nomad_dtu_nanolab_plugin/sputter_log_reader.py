@@ -46,7 +46,7 @@ SAMPLES_TO_TEST = [
     # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
     # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
     'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
-    'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24'
+    'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
 ]
 
 
@@ -329,7 +329,7 @@ ELEMENTS = {
     'Livermorium': 'Lv',
     'Tennessine': 'Ts',
     'Oganesson': 'Og',
-    }
+}
 IONS = {
     '': '',
     'sulphide': 'S',
@@ -875,7 +875,6 @@ class Lf_Event:
         # initialize the sources dictionary
         params[self.step_id]['sources'] = {}
 
-
         for source_number in source_list:
             source_name = f'{SOURCE_NAME[str(source_number)]}'
             elements = []
@@ -887,9 +886,9 @@ class Lf_Event:
                     params[self.step_id]['sources'][source_name] = {}
                     params[self.step_id]['sources'][source_name]['power_supply'] = {}
                     params[self.step_id]['sources'][source_name]['material'] = {}
-                    params[self.step_id]['sources'][
-                        source_name
-                        ]['source_shutter_open'] = {}
+                    params[self.step_id]['sources'][source_name][
+                        'source_shutter_open'
+                    ] = {}
                 # Initialize the source elements list
 
                 # Extract the source parameters
@@ -914,9 +913,9 @@ class Lf_Event:
                 if power_type is None:
                     return
 
-                params[self.step_id]['sources'][source_name][
-                    'power_supply'
-                    ]['power_type'] = power_type
+                params[self.step_id]['sources'][source_name]['power_supply'][
+                    'power_type'
+                ] = power_type
 
                 # Extract the source power setpoint, fwd and rfl power
                 params[self.step_id]['sources'][source_name]['power_supply'][
@@ -955,7 +954,7 @@ class Lf_Event:
 
                 # extract the source material
                 source_mat = self.data[f'PC Source {source_number} Material'].iloc[0]
-                elements, _ = elements_from_string(source_mat,elements=elements)
+                elements, _ = elements_from_string(source_mat, elements=elements)
                 print(source_mat)
                 print(elements)
                 for element in elements:
@@ -1285,17 +1284,16 @@ class Deposition_Event(Lf_Event):
                 # elements list for the material space extraction
         # Extract the material space as the elements used during deposition
         if (
-            'P' not in elements and
-            params[self.category]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD
-            ):
+            'P' not in elements
+            and params[self.category]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD
+        ):
             elements += ['P']
         if 'S' not in elements and (
-            (params[self.category]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD) or (
-            params[self.category]['s_cracker']['enabled']
-            )
+            (params[self.category]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD)
+            or (params[self.category]['s_cracker']['enabled'])
         ):
             elements += ['S']
-                    # add the element as an hypen separated string
+            # add the element as an hypen separated string
         params[self.category]['material_space'] = '-'.join(elements)
         return params
 
@@ -1406,7 +1404,6 @@ class Deposition_Event(Lf_Event):
 
     # method to deduce the source material and target of the source during deposition
     def get_source_material_and_target(self, params, source_number, elements):
-
         source_material = self.data[f'PC Source {source_number} Material'].iloc[0]
         elements, material = elements_from_string(source_material, elements)
 
@@ -1898,9 +1895,10 @@ class DepRate_Meas_Event(Lf_Event):
 
 # ---------HELPERS FUNCTIONS FOR REPORT GENERATION------------
 
+
 def elements_from_string(source_material, elements=[]):
     source_element_name_list = re.split(r'\s+', source_material)
-    material=''
+    material = ''
     for element_name in source_element_name_list:
         if element_name in ELEMENTS:
             element = ELEMENTS[element_name]
@@ -1913,6 +1911,7 @@ def elements_from_string(source_material, elements=[]):
             if element not in elements:
                 elements.append(element)
     return elements, material
+
 
 # def get_material_list(source_mat):
 #     material_list = []
@@ -3736,7 +3735,7 @@ def generate_bias_plot(
         Y_plot,
         mode='default',
         plot_type='line',
-        width=1.5*WIDTH,
+        width=1.5 * WIDTH,
         plot_title=f'Bias Plot: {logfile_name}',
     )
 
@@ -4493,10 +4492,94 @@ def map_gas_flow_params_to_nomad(key, gas_name):
     return gas_flow_param_nomad_map
 
 
-def map_source_params_to_nomad(key):
-    source_param_nomad_map = []
+def map_source_params_to_nomad(key, source_name, power_type):
+    source_param_nomad_map = [
+        [
+            [key, 'sources', source_name, 'name'],
+            ['name'],
+        ][
+            [key, 'sources', source_name, 'power_supply', 'power_type'],
+            ['power_supply', 'power_type'],
+            None,
+        ],
+        [
+            [key, 'sources', source_name, 'power_supply', 'avg_power_sp'],
+            ['power_supply', 'avg_power_sp'],
+            'W',
+        ],
+        [
+            [key, 'sources', source_name, 'power_supply', 'avg_fwd_power'],
+            ['power_supply', 'avg_fwd_power'],
+            'W',
+        ],
+        [
+            [key, 'sources', source_name, 'power_supply', 'avg_rfl_power'],
+            ['power_supply', 'avg_rfl_power'],
+        ],
+        [
+            [key, 'sources', source_name, 'source_shutter_open', 'value'],
+            ['source_shutter_open', 'value'],
+            None,
+        ],
+        [
+            [key, 'sources', source_name, 'source_shutter_open', 'time'],
+            ['source_shutter_open', 'time'],
+            'second',
+        ],
+    ]
+    if power_type == 'RF':
+        source_param_nomad_map.extend(
+            [
+                [
+                    [key, 'sources', source_name, 'power_supply', 'avg_dc_bias'],
+                    ['power_supply', 'avg_dc_bias'],
+                    'W',
+                ],
+            ]
+        )
+    if power_type in ['DC', 'pulsed_DC']:
+        source_param_nomad_map.extend(
+            [
+                [
+                    [key, 'sources', source_name, 'power_supply', 'avg_voltage'],
+                    ['power_supply', 'avg_voltage'],
+                    'V',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'avg_current'],
+                    ['power_supply', 'avg_current'],
+                    'A',
+                ],
+            ]
+        )
+    if power_type == 'pulsed_DC':
+        source_param_nomad_map.extend(
+            [
+                [
+                    [key, 'sources', source_name, 'power_supply', 'pulse_frequency'],
+                    ['power_supply', 'pulse_frequency'],
+                    'Hz',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'dead_time'],
+                    ['power_supply', 'dead_time'],
+                    's',
+                ],
+            ]
+        )
 
     return source_param_nomad_map
+
+
+def map_material_params_to_nomad(key, source_name, element):
+    material_param_nomad_map = [
+        [
+            [key, 'sources', source_name, 'material', element, 'name'],
+            ['name'],
+            None,
+        ],
+    ]
+    return material_param_nomad_map
 
 
 # -------CHAMBER VISUALIZATION PLOTTING METHODS-----------
