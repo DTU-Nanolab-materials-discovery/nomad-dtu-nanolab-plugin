@@ -375,18 +375,21 @@ class DTUSputterPulsedDCPowerSupply(DTUSputterDCPowerSupply):
 
 
 class DTUSourceShutter(TimeSeries):
-    m_def = Section()
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
 
     value = Quantity(
         type=bool,
-        default=False,
         description="""Position of the substrate shutter.""",
         shape=['*'],
     )
 
     general_value = Quantity(
         type=bool,
-        default=False,
         description="""Position of the general shutter.""",
     )
 
