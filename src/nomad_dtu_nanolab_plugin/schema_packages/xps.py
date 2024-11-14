@@ -11,7 +11,6 @@ from nomad.datamodel.metainfo.annotations import (
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
-from nomad_measurements.utils import merge_sections
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -225,7 +224,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
         # read the file
         file = pd.read_csv(
             filename,
-            encoding='ANSI',
+            encoding='latin1',
             engine='python',
             sep='delimiter',
             header=None,
@@ -349,7 +348,8 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
 
             mapping_result.peaks = peaks
             results.append(mapping_result)
-        merge_sections(self.results, results)
+        # merge_sections(self.results, results)
+        self.results = results
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
