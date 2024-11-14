@@ -32,6 +32,7 @@ from plotly.subplots import make_subplots
 # Set the execution flags
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
+PRINT_FIGURES = False
 TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_REPORT = True
@@ -44,7 +45,10 @@ SAMPLES_TO_REMOVE = [
 SAMPLES_TO_TEST = [
     # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
     # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
-    'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04'
+    # 'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
+    # 'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
+    'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
+    'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
 ]
 
 
@@ -328,6 +332,24 @@ ELEMENTS = {
     'Tennessine': 'Ts',
     'Oganesson': 'Og',
 }
+IONS = {
+    '': '',
+    'sulphide': 'S',
+    'sulfide': 'S',
+    'antimonide': 'Sb',
+    'phosphide': 'P',
+    'arsenide': 'As',
+    'telluride': 'Te',
+    'oxide': 'O',
+    'fluoride': 'F',
+    'chloride': 'Cl',
+    'bromide': 'Br',
+    'iodide': 'I',
+    'selenide': 'Se',
+    'nitride': 'N',
+    'carbide': 'C',
+    'hydride': 'H',
+}
 
 # ----SPUTTER LOG READER METHODS----
 
@@ -359,13 +381,14 @@ STAB_TIME = 30  # seconds
 CAPMAN_PRESSURE_THRESHOLD = 0
 # Threshold above which the flow of the mfc is considered on
 MFC_FLOW_THRESHOLD = 1  # sccm
-# Fraction of the length of the deposition dataframe to consider for the
+# Fr
+# action of the length of the deposition dataframe to consider for the
 # beginning and end of the deposition voltage averaging
 FRAQ_ROWS_AVG_VOLTAGE = 5  # %
 # Number of timesteps to consider for the continuity limit
 CONTINUITY_LIMIT = 10
 # Special continuity limit for deposition events
-DEPOSITION_CONTINUITY_LIMIT = 20
+DEPOSITION_CONTINUITY_LIMIT = 200
 # Minimum size of a domain in terms of numbers of average timestep
 MIN_DOMAIN_SIZE = 10
 # Minimum size of a deposition in terms of numbers of average timestep
@@ -383,7 +406,7 @@ MAX_BASE_PRESSURE = 1e-6  # Torr
 WITHIN_RANGE_PARAM = 5  # %
 # FWD and RFL Power difference threshold above which the plasma is considered
 # on
-POWER_FWD_REFL_THRESHOLD = 10  # watts
+POWER_FWD_RFL_THRESHOLD = 10  # watts
 # Categories of events to be considered in the main report
 
 
@@ -769,11 +792,11 @@ class Lf_Event:
         )
         params[self.step_id]['creates_new_thin_film'] = self.category == 'deposition'
 
+        # Get the step environment parameters
         params = self.get_step_environment_params(params)
-
         # Get the sources parameters
-
         params = self.get_step_sources_params(source_list, params)
+        # get the sputter_parameters
 
         return params
 
@@ -850,100 +873,108 @@ class Lf_Event:
     # method to extract the so called sources parameters of single steps
     def get_step_sources_params(self, source_list, params):
         # helper method to deduce the plasma type of the source during deposition
-        def get_power_type(self, source_number):
-            dc_current_col = f'Source {source_number} Current'
-            rf_bias_col = f'Source {source_number} DC Bias'
-            pulse_enable_col = f'Source {source_number} Pulse Enabled'
-            fwd_power_col = f'Source {source_number} Fwd Power'
-            rfl_power_col = f'Source {source_number} Rfl Power'
-
-            power_type = None
-
-            # We tolerate a certain percentage of the data to be below the threshold
-            if dc_current_col in self.data and (
-                (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
-                or (
-                    (self.data[fwd_power_col] - self.data[rfl_power_col])
-                    > POWER_FWD_REFL_THRESHOLD
-                ).mean()
-                >= TOLERANCE
-            ):
-                if pulse_enable_col in self.data and (
-                    self.data[pulse_enable_col].all() == 1
-                ):
-                    power_type = 'pulsed_DC'
-                else:
-                    power_type = 'DC'
-            elif rf_bias_col in self.data and (
-                (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= TOLERANCE
-                or (
-                    (self.data[fwd_power_col] - self.data[rfl_power_col])
-                    > POWER_FWD_REFL_THRESHOLD
-                ).mean()
-                >= TOLERANCE
-            ):
-                power_type = 'RF'
-            return power_type
 
         # initialize the sources dictionary
         params[self.step_id]['sources'] = {}
 
         for source_number in source_list:
             source_name = f'{SOURCE_NAME[str(source_number)]}'
-            if source_name not in params[self.step_id]['sources']:
-                params[self.step_id]['sources'][source_name] = {}
 
-            if f'Source {source_number} Output Setpoint' in self.data.columns:
+            elements = []
+
+            power_type = self.get_power_type(source_number)
+            if (f'Source {source_number} Output Setpoint' in self.data.columns) and (
+                power_type is not None
+            ):
+                # Initialize the source dictionary if it does not exist
+                if source_name not in params[self.step_id]['sources']:
+                    params[self.step_id]['sources'][source_name] = {}
+                    params[self.step_id]['sources'][source_name]['power_supply'] = {}
+                    params[self.step_id]['sources'][source_name]['material'] = {}
+                    params[self.step_id]['sources'][source_name][
+                        'source_shutter_open'
+                    ] = {}
+
                 # Extract the source parameters
                 params[self.step_id]['sources'][source_name]['name'] = source_name
-                params[self.step_id]['sources'][source_name][
-                    'source_shutter_open_value'
+                params[self.step_id]['sources'][source_name]['target_id'] = self.data[
+                    f'PC Source {source_number} Loaded Target'
+                ].iloc[0]
+                params[self.step_id]['sources'][source_name]['source_shutter_open'][
+                    'value'
                 ] = [
                     bool(x)
                     for x in self.data[
                         f'PC Source {source_number} Shutter Open'
                     ].tolist()
                 ]
-                params[self.step_id]['sources'][source_name][
-                    'source_shutter_open_time'
+                params[self.step_id]['sources'][source_name]['source_shutter_open'][
+                    'time'
                 ] = (
                     (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
                     .dt.total_seconds()
                     .tolist()
                 )
-                power_type = get_power_type(self, source_number)
+                # we check if the shutter is open during more than the TOLERANCE
+                params[self.step_id]['sources'][source_name]['source_shutter_open'][
+                    'general_value'
+                ] = (
+                    self.data[f'PC Source {source_number} Shutter Open'].mean()
+                    > TOLERANCE
+                )
 
-                if power_type is not None:
-                    params[self.step_id]['sources'][source_name]['power_type'] = (
-                        power_type
-                    )
+                params[self.step_id]['sources'][source_name]['power_supply'][
+                    'power_type'
+                ] = power_type
 
-                    if power_type in ['DC', 'pulsed_DC']:
-                        params[self.step_id]['sources'][source_name][
-                            'average_voltage'
-                        ] = self.data[f'Source {source_number} Voltage'].mean()
-                    elif power_type == 'RF':
-                        params[self.step_id]['sources'][source_name][
-                            'average_voltage'
-                        ] = self.data[f'Source {source_number} DC Bias'].mean()
-                    else:
-                        params[self.step_id]['sources'][source_name][
-                            'average_voltage'
-                        ] = 0
+                # Extract the source power setpoint
+                params[self.step_id]['sources'][source_name]['power_supply'][
+                    'avg_power_sp'
+                ] = self.data[f'Source {source_number} Output Setpoint'].mean()
 
+
+                if power_type in ['DC', 'pulsed_DC']:
+                    params[self.step_id]['sources'][source_name]['power_supply'][
+                        'avg_voltage'
+                    ] = self.data[f'Source {source_number} Voltage'].mean()
+                    params[self.step_id]['sources'][source_name]['power_supply'][
+                        'avg_current'
+                    ] = self.data[f'Source {source_number} Current'].mean()
                     if power_type == 'pulsed_DC':
-                        params[self.step_id]['sources'][source_name][
+                        params[self.step_id]['sources'][source_name]['power_supply'][
                             'pulse_frequency'
                         ] = self.data[f'Source {source_number} Pulse Frequency'].mean()
-                        params[self.step_id]['sources'][source_name]['dead_time'] = (
-                            self.data[f'Source {source_number} Reverse Time'].mean()
-                        )
+                        params[self.step_id]['sources'][source_name]['power_supply'][
+                            'dead_time'
+                        ] = self.data[f'Source {source_number} Reverse Time'].mean()
+                elif power_type == 'RF':
+                    params[self.step_id]['sources'][source_name]['power_supply'][
+                        'avg_dc_bias'
+                    ] = self.data[f'Source {source_number} DC Bias'].mean()
 
-                    # Extract the source power
-                    params[self.step_id]['sources'][source_name]['applied_power'] = (
-                        self.data[f'Source {source_number} Output Setpoint'].mean()
-                    )
+                    # Extract the fwd and rfl power
+                    params[self.step_id]['sources'][source_name]['power_supply'][
+                        'avg_fwd_power'
+                    ] = self.data[f'Source {source_number} Fwd Power'].mean()
+                    params[self.step_id]['sources'][source_name]['power_supply'][
+                        'avg_rfl_power'
+                    ] = self.data[f'Source {source_number} Rfl Power'].mean()
 
+                    if f'Source {source_number} Current' in self.data.columns:
+                        params[self.step_id]['sources'][source_name]['power_supply'][
+                            'avg_current'
+                        ] = self.data[f'Source {source_number} Current'].mean()
+
+                # extract the source material
+                source_mat = self.data[f'PC Source {source_number} Material'].iloc[0]
+                elements, _ = elements_from_string(source_mat, elements=elements)
+                for element in elements:
+                    params[self.step_id]['sources'][source_name]['material'][
+                        element
+                    ] = {}
+                    params[self.step_id]['sources'][source_name]['material'][element][
+                        'name'
+                    ] = element
         return params
 
     # def get_step_sample_params(self, params):
@@ -955,6 +986,36 @@ class Lf_Event:
     #     # Extract the sputter parameters
 
     #     return params
+
+    def get_power_type(self, source_number):
+        dc_current_col = f'Source {source_number} Current'
+        rf_bias_col = f'Source {source_number} DC Bias'
+        pulse_enable_col = f'Source {source_number} Pulse Enable'
+        fwd_power_col = f'Source {source_number} Fwd Power'
+        rfl_power_col = f'Source {source_number} Rfl Power'
+
+        power_type = None
+
+        # We tolerate a certain percentage of the data to be below the threshold
+        if dc_current_col in self.data and (
+            (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
+            ):
+            if pulse_enable_col in self.data and (
+                self.data[pulse_enable_col].mean() >= TOLERANCE
+                ):
+                power_type = 'pulsed_DC'
+            else:
+                power_type = 'DC'
+        elif rf_bias_col in self.data and (
+            (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= TOLERANCE
+            or (
+                (self.data[fwd_power_col] - self.data[rfl_power_col])
+                > POWER_FWD_RFL_THRESHOLD
+            ).mean()
+            >= TOLERANCE
+        ):
+            power_type = 'RF'
+        return power_type
 
 
 class Deposition_Event(Lf_Event):
@@ -1228,13 +1289,17 @@ class Deposition_Event(Lf_Event):
                 # Extract source material and target id and add the element to the
                 # elements list for the material space extraction
         # Extract the material space as the elements used during deposition
-        if params[self.category]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD:
-            elements = elements + ['P']
-        if (params[self.category]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD) or (
-            params[self.category]['s_cracker']['enabled']
+        if (
+            'P' not in elements
+            and params[self.category]['avg_ph3_flow'] > MFC_FLOW_THRESHOLD
         ):
-            elements = elements + ['S']
-        # add the element as an hypen separated string
+            elements += ['P']
+        if 'S' not in elements and (
+            (params[self.category]['avg_h2s_flow'] > MFC_FLOW_THRESHOLD)
+            or (params[self.category]['s_cracker']['enabled'])
+        ):
+            elements += ['S']
+            # add the element as an hypen separated string
         params[self.category]['material_space'] = '-'.join(elements)
         return params
 
@@ -1249,49 +1314,45 @@ class Deposition_Event(Lf_Event):
     def get_plasma_type(self, params, source_number):
         dc_current_col = f'Source {source_number} Current'
         rf_bias_col = f'Source {source_number} DC Bias'
-        pulse_enable_col = f'Source {source_number} Pulse Enabled'
+        pulse_enable_col = f'Source {source_number} Pulse Enable'
         fwd_power_col = f'Source {source_number} Fwd Power'
         rfl_power_col = f'Source {source_number} Rfl Power'
 
         # We tolerate a certain percentage of the data to be below the threshold
         if dc_current_col in self.data and (
             (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
-            or (
-                (self.data[fwd_power_col] - self.data[rfl_power_col])
-                > POWER_FWD_REFL_THRESHOLD
-            ).mean()
-            >= TOLERANCE
         ):
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['DC'] = True
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['RF'] = False
-            if pulse_enable_col in self.data:
+            if pulse_enable_col in self.data and(
+                (self.data[pulse_enable_col] == 1).mean() >= TOLERANCE
+            ):
                 params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                     'pulsed'
-                ] = self.data[pulse_enable_col].all() == 1
-                if params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                ] = True
+
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                    'plasma_type'
+                ] = 'pulsed_DC'
+
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                    'pulse_frequency'
+                ] = self.data[f'Source {source_number} Pulse Frequency'].mean()
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                    'dead_time'
+                ] = self.data[f'Source {source_number} Reverse Time'].mean()
+            else:
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                     'pulsed'
-                ]:
-                    params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                        'plasma_type'
-                    ] = 'pulsed_DC'
-                    params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                        'pulse_frequency'
-                    ] = self.data[f'Source {source_number} Pulse Frequency'].mean()
-                    params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                        'dead_time'
-                    ] = self.data[f'Source {source_number} Reverse Time'].mean()
-                else:
-                    params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                        'pulsed'
-                    ] = False
-                    params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                        'plasma_type'
-                    ] = 'DC'
+                ] = False
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                    'plasma_type'
+                ] = 'DC'
         elif rf_bias_col in self.data and (
             (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= TOLERANCE
             or (
                 (self.data[fwd_power_col] - self.data[rfl_power_col])
-                > POWER_FWD_REFL_THRESHOLD
+                > POWER_FWD_RFL_THRESHOLD
             ).mean()
             >= TOLERANCE
         ):
@@ -1345,16 +1406,15 @@ class Deposition_Event(Lf_Event):
 
     # method to deduce the source material and target of the source during deposition
     def get_source_material_and_target(self, params, source_number, elements):
-        source_element = str(self.data[f'PC Source {source_number} Material'].iloc[0])
-        source_element = re.split(r'\s+', source_element)[0]
+        source_material = self.data[f'PC Source {source_number} Material'].iloc[0]
+        elements, material = elements_from_string(source_material, elements)
+
         params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
             'target_material'
-        ] = ELEMENTS[source_element]
+        ] = material
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_id'] = (
             self.data[f'PC Source {source_number} Loaded Target'].iloc[0]
         )
-        elements.append(ELEMENTS[source_element])
-
         return params, elements
 
     def get_platen_bias_params(self, params=None):
@@ -1500,7 +1560,7 @@ class Source_Ramp_Up_Event(Lf_Event):
             mask = (
                 (current_series > CURRENT_THRESHOLD)
                 | (bias_series > BIAS_THRESHOLD)
-                | ((fwd_power_series - rfl_power_series) > POWER_FWD_REFL_THRESHOLD)
+                | ((fwd_power_series - rfl_power_series) > POWER_FWD_RFL_THRESHOLD)
             )
             # Apply the mask to get the moment where the plasma is on during
             # ramp up
@@ -1838,6 +1898,51 @@ class DepRate_Meas_Event(Lf_Event):
 # ---------HELPERS FUNCTIONS FOR REPORT GENERATION------------
 
 
+def elements_from_string(source_material, elements=[]):
+    source_element_name_list = re.split(r'\s+', source_material)
+    material = ''
+    for element_name in source_element_name_list:
+        if element_name in ELEMENTS:
+            element = ELEMENTS[element_name]
+            material += element
+            if element not in elements:
+                elements.append(element)
+        elif element_name in IONS:
+            element = IONS[element_name]
+            material += element
+            if element not in elements:
+                elements.append(element)
+    return elements, material
+
+
+# def get_material_list(source_mat):
+#     material_list = []
+#     material_stoichiometry = []
+#     i = 0
+#     if source_mat in ELEMENTS:
+#         source_mat = ELEMENTS[source_mat]
+#     elif source_mat in IONS:
+#         source_mat = IONS[source_mat]
+#     while i < len(source_mat):
+#         if source_mat[i].isupper():
+#             element = source_mat[i]
+#             i += 1
+#             # Check if the next character is lowercase (for elements like "Si")
+#             if i < len(source_mat) and source_mat[i].islower():
+#                 element += source_mat[i]
+#                 i += 1
+#             material_list.append(element)
+#             # Read the stoichiometry number
+#             stoichiometry = ''
+#             while i < len(source_mat) and source_mat[i].isdigit():
+#                 stoichiometry += source_mat[i]
+#                 i += 1
+#             material_stoichiometry.append(int(stoichiometry) if stoichiometry else 1)
+#         else:
+#             i += 1
+#     return material_list, material_stoichiometry
+
+
 def get_overview(raw_data, params=None):
     if params is None:
         params = {}
@@ -2099,7 +2204,9 @@ def write_params(quantities, indent=''):
                 minutes, seconds = divmod(remainder, 60)
                 formatted_value = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
             elif isinstance(value, pd.Series):
-                formatted_value = 'Cannot display pd.DataFrame'
+                formatted_value = '[...](pd.DataFrame)'
+            elif isinstance(value, list):
+                formatted_value = '[...](list)'
             output.append(f'{indent}{key}: {formatted_value}')
     return '\n'.join(output)
 
@@ -2384,10 +2491,10 @@ def filter_data_plasma_on_ramp_up(data, source_list):
             data.get(f'Source {source_number} DC Bias', pd.Series([0] * len(data)))
             > BIAS_THRESHOLD
         )
-        power_fwd_refl_cond = (
+        power_fwd_rfl_cond = (
             data.get(f'Source {source_number} Fwd Power', pd.Series([0] * len(data)))
             - data.get(f'Source {source_number} Rfl Power', pd.Series([0] * len(data)))
-        ) > POWER_FWD_REFL_THRESHOLD
+        ) > POWER_FWD_RFL_THRESHOLD
 
         setpoint_diff_cond = (
             data.get(
@@ -2404,7 +2511,7 @@ def filter_data_plasma_on_ramp_up(data, source_list):
         )
         # Define conditions for the plasma being on
         source_on_cond = enabled_cond & (
-            (current_cond | dc_bias_cond) | power_fwd_refl_cond
+            (current_cond | dc_bias_cond) | power_fwd_rfl_cond
         )
         source_on[str(source_number)].set_condition(source_on_cond)
         # Filter the data points where the plasma is on
@@ -3630,7 +3737,7 @@ def generate_bias_plot(
         Y_plot,
         mode='default',
         plot_type='line',
-        width=WIDTH,
+        width=1.5 * WIDTH,
         plot_title=f'Bias Plot: {logfile_name}',
     )
 
@@ -3884,7 +3991,7 @@ def normalize_column(df, column_name):
 # ------------------------CORE METHODS----------------------
 
 
-def formatting_logfile(data):
+def format_logfile(data):
     # print('Formatting the dataframe for conditional filtering')
     # -----FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING-------
     # -------RENAME THE CRACKER COLUMNS OF THE DATAFRAME---------
@@ -3985,7 +4092,7 @@ def extract_category_from_list(events: list, category: str):
 
 
 def read_events(data):
-    data, source_list = formatting_logfile(data)
+    data, source_list = format_logfile(data)
 
     # ---------DEFINE DE CONDITIONS FOR DIFFERENT EVENTS-------------
     # Initialize the list of all events
@@ -4387,10 +4494,107 @@ def map_gas_flow_params_to_nomad(key, gas_name):
     return gas_flow_param_nomad_map
 
 
-def map_source_params_to_nomad(key):
-    source_param_nomad_map = []
+def map_source_params_to_nomad(key, source_name, power_type):
+    source_param_nomad_map = [
+        [
+            [key, 'sources', source_name, 'name'],
+            ['name'],
+            None,
+        ],
+        [
+            [key, 'sources', source_name, 'target_id'],
+            ['target_id', 'lab_id'],
+            None,
+        ],
+        [
+            [key, 'sources', source_name, 'power_supply', 'power_type'],
+            ['power_supply', 'power_type'],
+            None,
+        ],
+        [
+            [key, 'sources', source_name, 'power_supply', 'avg_power_sp'],
+            ['power_supply', 'avg_power_sp'],
+            'W',
+        ],
+        [
+            [key, 'sources', source_name, 'source_shutter_open', 'value'],
+            ['source_shutter_open', 'value'],
+            None,
+        ],
+        [
+            [key, 'sources', source_name, 'source_shutter_open', 'time'],
+            ['source_shutter_open', 'time'],
+            'second',
+        ],
+        [
+            [key, 'sources', source_name, 'source_shutter_open', 'general_value'],
+            ['source_shutter_open', 'general_value'],
+            None,
+        ],
+    ]
+    if power_type == 'RF':
+        source_param_nomad_map.extend(
+            [
+                [
+                    [key, 'sources', source_name, 'power_supply', 'avg_dc_bias'],
+                    ['power_supply', 'avg_dc_bias'],
+                    'V',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'avg_fwd_power'],
+                    ['power_supply', 'avg_fwd_power'],
+                    'W',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'avg_rfl_power'],
+                    ['power_supply', 'avg_rfl_power'],
+                    'W',
+                ],
+            ]
+        )
+    if power_type in ['DC', 'pulsed_DC']:
+        source_param_nomad_map.extend(
+            [
+                [
+                    [key, 'sources', source_name, 'power_supply', 'avg_voltage'],
+                    ['power_supply', 'avg_voltage'],
+                    'V',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'avg_current'],
+                    ['power_supply', 'avg_current'],
+                    'A',  # Check if this is correct
+                ],
+            ]
+        )
+    if power_type == 'pulsed_DC':
+        source_param_nomad_map.extend(
+            [
+                [
+                    [key, 'sources', source_name, 'power_supply', 'pulse_frequency'],
+                    ['power_supply', 'pulse_frequency'],
+                    'kHz',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'dead_time'],
+                    ['power_supply', 'dead_time'],
+                    'microsecond',
+                ],
+            ]
+        )
 
     return source_param_nomad_map
+
+
+def map_material_params_to_nomad(key, source_name, element):
+    material_param_nomad_map = [
+        [
+            [key, 'sources', source_name, 'material', element, 'name'],
+            ['name'],
+            None,
+        ],
+    ]
+    return material_param_nomad_map
 
 
 # -------CHAMBER VISUALIZATION PLOTTING METHODS-----------
@@ -4845,7 +5049,9 @@ def main():
         # Create the figure
         print('Generating the plotly plot')
         plotly_timeline = plot_plotly_extimeline(events_to_plot, logfiles['name'][i])
-        # plotly_timeline.show()
+
+        if PRINT_FIGURES:
+            plotly_timeline.show(config=PLOTLY_CONFIG)
 
         # Save the image as an interactive html file
         plotly_timeline.write_html(timeline_file_path)
@@ -4856,11 +5062,17 @@ def main():
 
         bias_plot = generate_bias_plot(deposition, logfiles['name'][i])
 
+        if PRINT_FIGURES:
+            bias_plot.show(config=PLOTLY_CONFIG)
+
         bias_plot.write_html(bias_file_path)
 
         # --------GRAPH THE OVERVIEW PLOT----------------
 
         overview_plot = generate_overview_plot(data, logfiles['name'][i])
+
+        if PRINT_FIGURES:
+            overview_plot.show(config=PLOTLY_CONFIG)
 
         overview_plot.write_html(overview_file_path)
 
