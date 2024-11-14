@@ -30,7 +30,7 @@ from nomad.datamodel.metainfo.basesections import (
     PureSubstanceComponent,
     ReadableIdentifiers,
 )
-from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
+from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection, MProxy
 from nomad_material_processing.general import (
     CrystallineSubstrate,
     Dopant,
@@ -49,6 +49,30 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU customised Substrate scheme')
 
 
+
+class DTUSubstrate(CrystallineSubstrate, Schema):
+    """
+    Schema for substrates in the DTU Nanolab.
+    """
+
+    m_def = Section(
+        categories=[DTUNanolabCategory],
+        label='Substrate',
+    )
+    substrate_polishing = Quantity(  # TODO: Add to base CrystallineSubstrate
+        type=MEnum(['1 sided', '2 sided', 'none']),
+        default='1 sided',
+        a_eln={'component': 'RadioEnumEditQuantity'},
+    )
+
+
+class DTUSubstrateReference(CompositeSystemReference):
+    reference = Quantity(
+        type=DTUSubstrate,
+        description='The reference to the substrate entity.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
+    )
+
 class DTUSubstrateBatch(Collection, Schema):
     """
     Schema for substrate batches in the DTU Nanolab.
@@ -60,6 +84,11 @@ class DTUSubstrateBatch(Collection, Schema):
         a_template=dict(
             substrate_identifiers=dict(),
         ),
+    )
+    entities = SubSection(
+        section_def=DTUSubstrateReference,
+        description='References to the entities that make up the collection.',
+        repeats=True,
     )
     material = Quantity(
         type=str,
@@ -135,6 +164,41 @@ class DTUSubstrateBatch(Collection, Schema):
         section_def=ReadableIdentifiers,
     )
 
+    def next_used_in(self, entry_type: type[Schema], negate: bool=False) -> DTUSubstrate:
+        from nomad.search import (
+            MetadataPagination,
+            search,
+        )
+        ref: DTUSubstrateReference
+        for ref in self.entities:
+            if isinstance(ref.reference, MProxy):
+                ref.reference.m_proxy_resolve()
+            if not isinstance(ref.reference, DTUSubstrate):
+                continue
+            substrate = ref.reference
+            query = {
+                'section_defs.definition_qualified_name:all': [
+                    entry_type.m_def.qualified_name()
+                ],
+                'entry_references.target_entry_id:all': [
+                    substrate.m_parent.entry_id
+                ],
+            }
+            search_result = search(
+                owner='all',
+                query=query,
+                pagination=MetadataPagination(page_size=1),
+                user_id=self.m_parent.metadata.main_author.user_id,
+            )
+            if search_result.pagination.total > 0 and not negate:
+                return substrate
+            elif search_result.pagination.total == 0 and negate:
+                return substrate
+        return None
+    
+    def next_not_used_in(self, entry_type: type[Schema]) -> DTUSubstrate:
+        return self.next_used_in(entry_type, negate=True)
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUSubstrateBatch` class.
@@ -193,22 +257,6 @@ class DTUSubstrateBatch(Collection, Schema):
                     )
                 )
             self.create_substrates = False
-
-
-class DTUSubstrate(CrystallineSubstrate, Schema):
-    """
-    Schema for substrates in the DTU Nanolab.
-    """
-
-    m_def = Section(
-        categories=[DTUNanolabCategory],
-        label='Substrate',
-    )
-    substrate_polishing = Quantity(  # TODO: Add to base CrystallineSubstrate
-        type=MEnum(['1 sided', '2 sided', 'none']),
-        default='1 sided',
-        a_eln={'component': 'RadioEnumEditQuantity'},
-    )
 
 
 class CleaningStep(ProcessStep):
