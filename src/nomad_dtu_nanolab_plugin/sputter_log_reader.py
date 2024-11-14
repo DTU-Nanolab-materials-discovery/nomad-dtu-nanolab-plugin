@@ -33,7 +33,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = True
+TEST_SPECIFIC_LOGFILE = False
 REMOVE_SAMPLES = True
 SAVE_STEP_REPORT = True
 
@@ -46,9 +46,9 @@ SAMPLES_TO_TEST = [
     # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
     # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
     # 'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
-    # 'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
-    'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
-    'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
+    'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
+    # 'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
+    # 'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
 ]
 
 
@@ -359,6 +359,9 @@ IONS = {
 # Proportion of values needed to be above the threshold to consider the
 # plasma rf or dc
 TOLERANCE = 0.85
+# Propotion of values needed to be above the threshold to consider the
+# plasma to be one particular type or the other
+POWER_TYPE_TOLERANCE = 0.1
 # Eletrical current threshold above which a dc plasma is considered on
 CURRENT_THRESHOLD = 0.01  # miliamps
 # Bias threshold above which a rf plasma is considered on
@@ -881,7 +884,8 @@ class Lf_Event:
             source_name = f'{SOURCE_NAME[str(source_number)]}'
 
             elements = []
-
+            # get the power type of the source (incidentally, it also tells us if the
+            # source was used or not if is not None)
             power_type = self.get_power_type(source_number)
             if (f'Source {source_number} Output Setpoint' in self.data.columns) and (
                 power_type is not None
@@ -1000,18 +1004,18 @@ class Lf_Event:
             (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
         ):
             if pulse_enable_col in self.data and (
-                self.data[pulse_enable_col].mean() >= TOLERANCE
+                self.data[pulse_enable_col].mean() >= POWER_TYPE_TOLERANCE
             ):
                 power_type = 'pulsed_DC'
             else:
                 power_type = 'DC'
         elif rf_bias_col in self.data and (
-            (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= TOLERANCE
+            (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= POWER_TYPE_TOLERANCE
             or (
                 (self.data[fwd_power_col] - self.data[rfl_power_col])
                 > POWER_FWD_RFL_THRESHOLD
             ).mean()
-            >= TOLERANCE
+            >= POWER_TYPE_TOLERANCE
         ):
             power_type = 'RF'
         return power_type
@@ -3571,7 +3575,7 @@ def create_dual_y_plot(df, plot_params):
     return fig
 
 
-def plot_plotly_extimeline(
+def generate_timeline(
     events_to_plot,
     sample_name=None,
     plot_title='Process Timeline',
@@ -3680,13 +3684,18 @@ def plot_plotly_extimeline(
 
 
 def generate_bias_plot(
-    deposition, logfile_name, rolling_num=ROLLING_NUM, rolling_frac_max=ROLLING_FRAC_MAX
+    events_to_plot,
+    logfile_name,
+    rolling_num=ROLLING_NUM,
+    rolling_frac_max=ROLLING_FRAC_MAX,
 ):
     Y_plot = []
     patterns = [
         r'Source \d+ DC Bias',
         r'Source \d+ Voltage',
     ]
+
+    deposition = event_list_to_dict(events_to_plot)['deposition']
 
     for col in deposition.data.columns:
         if any(re.search(pattern, col) for pattern in patterns):
@@ -3758,6 +3767,23 @@ def generate_overview_plot(data, logfile_name):
     )
     return overview_plot
 
+def generate_plots(log_data, events_to_plot, sample_name=''):
+    plots = []
+
+    # Generate the timeline plot
+    plotly_timeline = generate_timeline(events_to_plot, sample_name)
+    plots.append(plotly_timeline)
+
+    # Generate the overview plot
+    overview_plot = generate_overview_plot(log_data, sample_name)
+    plots.append(overview_plot)
+
+    bias_plot = generate_bias_plot(
+        log_data, sample_name, rolling_num=ROLLING_NUM, rolling_frac_max=ROLLING_FRAC_MAX
+    )
+    plots.append(bias_plot)
+
+    return plots
 
 # HELPER FUNCTIONS TO MANIPULATE LISTS OF EVENTS--------
 
@@ -4273,6 +4299,9 @@ def read_events(data):
     for event in sep_events:
         step_params = event.get_nomad_step_params(step_params, source_list)
 
+    # generate a list of plots to return
+    # plots = generate_plots(data, events_to_plot)
+
     return (
         events_to_plot,
         main_params,
@@ -4281,7 +4310,6 @@ def read_events(data):
 
 
 # ----NOMAD HELPER FUNCTION-----
-
 
 # Helper method to get the nested value, if it exists
 def get_nested_value(dictionary, key_path):
@@ -5047,7 +5075,7 @@ def main():
 
         # Create the figure
         print('Generating the plotly plot')
-        plotly_timeline = plot_plotly_extimeline(events_to_plot, logfiles['name'][i])
+        plotly_timeline = generate_timeline(events_to_plot, logfiles['name'][i])
 
         if PRINT_FIGURES:
             plotly_timeline.show(config=PLOTLY_CONFIG)
@@ -5057,9 +5085,7 @@ def main():
 
         # --------GRAPH THE DC BIAS AS A FUNCTION OF TIME------------
 
-        deposition = event_list_to_dict(events_to_plot)['deposition']
-
-        bias_plot = generate_bias_plot(deposition, logfiles['name'][i])
+        bias_plot = generate_bias_plot(events_to_plot, logfiles['name'][i])
 
         if PRINT_FIGURES:
             bias_plot.show(config=PLOTLY_CONFIG)

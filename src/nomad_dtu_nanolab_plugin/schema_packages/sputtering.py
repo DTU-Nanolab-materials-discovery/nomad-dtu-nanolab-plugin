@@ -67,6 +67,7 @@ from nomad_dtu_nanolab_plugin.schema_packages.substrate import (
 )
 from nomad_dtu_nanolab_plugin.schema_packages.target import DTUTarget
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
+    generate_timeline,
     get_nested_value,
     map_environment_params_to_nomad,
     map_gas_flow_params_to_nomad,
@@ -74,7 +75,6 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     map_params_to_nomad,
     map_source_params_to_nomad,
     map_step_params_to_nomad,
-    plot_plotly_extimeline,
     read_events,
     read_logfile,
     write_params,
@@ -959,9 +959,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     )
 
     def plot(self, events_plot, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        # Plotting the events on a timeline from the plot_plotly_extimeline function
-
-        timeline = plot_plotly_extimeline(events_plot, self.lab_id)
+        # Plotting the events on a timeline from the generate_timeline function
+        timeline = generate_timeline(events_plot, self.lab_id)
 
         # Converting the timeline to a plotly json
         timeline_json = json.loads(timeline.to_json())
