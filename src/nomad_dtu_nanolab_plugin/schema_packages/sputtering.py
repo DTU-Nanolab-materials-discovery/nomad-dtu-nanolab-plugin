@@ -29,7 +29,7 @@ from nomad.datamodel.metainfo.basesections import (
     InstrumentReference,
 )
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
-from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection, MProxy
+from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_material_processing.vapor_deposition.general import (
     ChamberEnvironment,
@@ -82,6 +82,7 @@ class DtuSubstrateMounting(ArchiveSection):
     """
     Section containing information about the mounting of the substrate.
     """
+
     m_def = Section()
     substrate_batch = Quantity(
         type=DTUSubstrateBatch,
@@ -159,9 +160,8 @@ class DtuSubstrateMounting(ArchiveSection):
         super().normalize(archive, logger)
         if isinstance(self.substrate_batch, MProxy):
             self.substrate_batch.m_proxy_resolve()
-        if (
-            self.substrate is None 
-            and isinstance(self.substrate_batch, DTUSubstrateBatch)
+        if self.substrate is None and isinstance(
+            self.substrate_batch, DTUSubstrateBatch
         ):
             substrate = self.substrate_batch.next_not_used_in(DTUSputtering)
             self.substrate = substrate
@@ -205,7 +205,6 @@ class DTUSputterPowerSupply(PVDEvaporationSource):
     # time_series?
 
 
-
 class DTUSputterRFPowerSupply(DTUSputterPowerSupply):
     power_type = Quantity(
         type=MEnum(['RF']),
@@ -223,9 +222,9 @@ class DTUSputterRFPowerSupply(DTUSputterPowerSupply):
         unit='A',
     )
     avg_fwd_power = Quantity(
-    type=np.float64,
-    a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
-    unit='(kg*m^2)/s^3',
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
+        unit='(kg*m^2)/s^3',
     )
     # time_series?
     avg_rfl_power = Quantity(
@@ -1088,7 +1087,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         for source_name in step_params.get(key, {}).get('sources', {}):
             # Create a DTUSource object and set it to the relevant attribute
             source = DTUSource()
-            source.target_id=DTUTargetReference
+            source.target_id = DTUTargetReference
             source.material = []
             source.source_shutter_open = DTUShutter()
 

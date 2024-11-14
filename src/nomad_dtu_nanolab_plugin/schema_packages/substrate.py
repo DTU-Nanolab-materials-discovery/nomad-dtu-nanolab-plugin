@@ -30,7 +30,7 @@ from nomad.datamodel.metainfo.basesections import (
     PureSubstanceComponent,
     ReadableIdentifiers,
 )
-from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection, MProxy
+from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
 from nomad_material_processing.general import (
     CrystallineSubstrate,
     Dopant,
@@ -47,7 +47,6 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 m_package = Package(name='DTU customised Substrate scheme')
-
 
 
 class DTUSubstrate(CrystallineSubstrate, Schema):
@@ -72,6 +71,7 @@ class DTUSubstrateReference(CompositeSystemReference):
         description='The reference to the substrate entity.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
     )
+
 
 class DTUSubstrateBatch(Collection, Schema):
     """
@@ -164,11 +164,14 @@ class DTUSubstrateBatch(Collection, Schema):
         section_def=ReadableIdentifiers,
     )
 
-    def next_used_in(self, entry_type: type[Schema], negate: bool=False) -> DTUSubstrate:
+    def next_used_in(
+        self, entry_type: type[Schema], negate: bool = False
+    ) -> DTUSubstrate:
         from nomad.search import (
             MetadataPagination,
             search,
         )
+
         ref: DTUSubstrateReference
         for ref in self.entities:
             if isinstance(ref.reference, MProxy):
@@ -180,9 +183,7 @@ class DTUSubstrateBatch(Collection, Schema):
                 'section_defs.definition_qualified_name:all': [
                     entry_type.m_def.qualified_name()
                 ],
-                'entry_references.target_entry_id:all': [
-                    substrate.m_parent.entry_id
-                ],
+                'entry_references.target_entry_id:all': [substrate.m_parent.entry_id],
             }
             search_result = search(
                 owner='all',
@@ -195,7 +196,7 @@ class DTUSubstrateBatch(Collection, Schema):
             elif search_result.pagination.total == 0 and negate:
                 return substrate
         return None
-    
+
     def next_not_used_in(self, entry_type: type[Schema]) -> DTUSubstrate:
         return self.next_used_in(entry_type, negate=True)
 
