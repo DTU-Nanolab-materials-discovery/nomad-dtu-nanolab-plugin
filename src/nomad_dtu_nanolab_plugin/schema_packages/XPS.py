@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 m_package = Package()  # fill out later
 
-class XPSfittedPeak(Schema):
+class XpsFittedPeak(Schema):
     m_def = Section()
 
     origin = Quantity(
@@ -98,7 +98,7 @@ class XPSfittedPeak(Schema):
 
         super().normalize(archive, logger)
 
-class XPS_derived_composition(Schema):
+class XpsDerivedComposition(Schema):
     m_def = Section()
 
     element = Quantity(
@@ -130,7 +130,7 @@ class XPS_derived_composition(Schema):
 
         super().normalize(archive, logger)
 
-class XPSMappingResult(MappingResult, Schema):
+class XpsMappingResult(MappingResult, Schema):
     m_def = Section()
 
     position = Quantity(
@@ -142,12 +142,12 @@ class XPSMappingResult(MappingResult, Schema):
         ),
     )
     peaks= SubSection(
-        section_def=XPSfittedPeak,
+        section_def=XpsFittedPeak,
         description='The fitted peaks of the XPS spectrum',
         repeats=True,
     )
     composition = SubSection(
-        section_def=XPS_derived_composition,
+        section_def=XpsDerivedComposition,
         description='The composition according to the XPS analysis by element',
         repeats=True,
     )
@@ -165,7 +165,7 @@ class XPSMappingResult(MappingResult, Schema):
         super().normalize(archive, logger)
 
 
-class XPSMetadata(Schema):
+class XpsMetadata(Schema):
     m_def = Section()
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -181,7 +181,7 @@ class XPSMetadata(Schema):
         super().normalize(archive, logger)
 
 
-class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
+class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='XRD Measurement',
@@ -205,12 +205,12 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
         },
     )
     metadata = SubSection(
-        section_def=XPSMetadata,
+        section_def=XpsMetadata,
         description='The metadata of the ellipsometry measurement',
         # need the native file and a way to open it to extract the metadata
     )
     results = SubSection(
-        section_def=XPSMappingResult,
+        section_def=XpsMappingResult,
         description='The PL results.',
         repeats=True,
         # add the spectra here
@@ -316,16 +316,19 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
         '''"Write data and coordinates to the XPS class
         with respect to the coordinates"'''
         #filter by coordinates and create small dfs
+        results=[]
+
         for coord in coords_list:
             mask = dataframe.apply(lambda row: (row['X'], row['Y']) == coord, axis=1)
             coord_data = dataframe[mask]
-            self.results.append(XPSMappingResult(
+            mapping_result = XpsMappingResult(
                 position = f'{coord[0]:.3f}, {coord[1]:.3f}',
-            ))
+            )
+            peaks= []
 
             for index, row in coord_data.iterrows():
 
-                peak_info = XPSfittedPeak(
+                peak_info = XpsFittedPeak(
                     origin= ureg.Quantity(row['Peak'], 'eV'),
                     be_position= ureg.Quantity(row['Peak BE (eV)'], 'eV'),
                     intensity= ureg.Quantity(row['Intensity (counts)'], '1/s'),
@@ -333,12 +336,12 @@ class DTUXPSMeasurement(MappingMeasurement, PlotSection, Schema):
                     area= ureg.Quantity(row['Area (counts*eV)'], 'cps*eV'),
                     atomic_percent= row['Atomic %'],
                 )
-                merge_sections(self.results[-1].peaks, peak_info)
 
+                peaks.append(peak_info)
 
-
-
-
+            mapping_result.peaks = peaks
+            results.append(mapping_result)
+        merge_sections(self.results, results)
 
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
