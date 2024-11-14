@@ -4680,8 +4680,8 @@ def read_samples(sample_list: list):
     samples = []
     for sample_obj in sample_list:
         label = str(sample_obj.relative_position)
-        pos_x = sample_obj.sub_xpos.to('mm').magnitude
-        pos_y = sample_obj.sub_ypos.to('mm').magnitude
+        pos_x = sample_obj.position_x.to('mm').magnitude
+        pos_y = sample_obj.position_y.to('mm').magnitude
         # size = sample_obj.reference.SIZE?
         sample = Sample(label, pos_x, pos_y)
         samples.append(sample)

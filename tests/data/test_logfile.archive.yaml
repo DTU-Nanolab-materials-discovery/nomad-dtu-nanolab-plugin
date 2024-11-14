@@ -2,15 +2,15 @@ data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering
   log_file: mittma_0007_Cu_Recording Set 2024.06.03-09.52.29.CSV
   # lab_id: 'mittma_0007_Cu'
-  samples:
+  substrates:
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DtuSubstrateMounting
       relative_position: 'BR'
-      sub_xpos: 0.025
-      sub_ypos: 0.025
+      position_x: 0.025
+      position_y: 0.025
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DtuSubstrateMounting
       relative_position: 'FR'
-      sub_xpos: -0.015
-      sub_ypos: 0.025
+      position_x: -0.015
+      position_y: 0.025
   # deposition_parameters:
   #   m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters
   #   Magkeeper3:
