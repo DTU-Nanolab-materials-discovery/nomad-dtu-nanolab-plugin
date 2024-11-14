@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 m_package = Package()  # fill out later
 
+
 class XpsFittedPeak(Schema):
     m_def = Section()
 
@@ -42,7 +43,7 @@ class XpsFittedPeak(Schema):
         unit='(kg*m^2)/(s^2)',
         description='The position of the peak in binding energy',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.StringEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             label='Position',
             defaultDisplayUnit='eV',
         ),
@@ -52,7 +53,7 @@ class XpsFittedPeak(Schema):
         unit='1/s',
         description='The intensity of the peak',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.StringEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             label='Intensity',
             defaultDisplayUnit='cps',
         ),
@@ -62,7 +63,7 @@ class XpsFittedPeak(Schema):
         description='The full width at half maximum of the peak',
         unit='(kg*m^2)/(s^2)',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.StringEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             label='FWHM',
             defaultDisplayUnit='eV',
         ),
@@ -72,7 +73,7 @@ class XpsFittedPeak(Schema):
         description='The area of the peak',
         unit='(kg*m^2)/(s^3)',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.StringEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             label='Area',
             defaultDisplayUnit='cps*eV',
         ),
@@ -81,7 +82,7 @@ class XpsFittedPeak(Schema):
         type=float,
         description='The atomic percent of the peak',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.StringEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             label='Atomic %',
         ),
     )
@@ -97,6 +98,7 @@ class XpsFittedPeak(Schema):
         """
 
         super().normalize(archive, logger)
+
 
 class XpsDerivedComposition(Schema):
     m_def = Section()
@@ -113,7 +115,7 @@ class XpsDerivedComposition(Schema):
         type=float,
         description='The atomic percent of the element',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.StringEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             label='Atomic %',
         ),
     )
@@ -130,6 +132,7 @@ class XpsDerivedComposition(Schema):
 
         super().normalize(archive, logger)
 
+
 class XpsMappingResult(MappingResult, Schema):
     m_def = Section()
 
@@ -141,7 +144,7 @@ class XpsMappingResult(MappingResult, Schema):
             label='Position',
         ),
     )
-    peaks= SubSection(
+    peaks = SubSection(
         section_def=XpsFittedPeak,
         description='The fitted peaks of the XPS spectrum',
         repeats=True,
@@ -218,25 +221,27 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
 
     def read_XPS_analysis(self, filename: str) -> None:
         '''"Read data and coordinates from an XPS datafile.
-          The file should be an csv (.txt) file."'''
+        The file should be an csv (.txt) file."'''
         # read the file
-        file = pd.read_csv(filename,
-                           encoding = 'ANSI',
-                           engine='python',
-                           sep='delimiter',
-                           header = None,
-                           skiprows = 29)
+        file = pd.read_csv(
+            filename,
+            encoding='ANSI',
+            engine='python',
+            sep='delimiter',
+            header=None,
+            skiprows=29,
+        )
         file.drop(file.iloc[4::7].index, inplace=True)
-        file.reset_index(drop = True)
+        file.reset_index(drop=True)
 
         # get amount of peaks
         peaknumb = []
         for i in range(0, len(file), 6):
-            peaknumb.append(int(file.iloc[i][0].split()[8].replace(";","")))
+            peaknumb.append(int(file.iloc[i][0].split()[8].replace(';', '')))
 
         # remove useless rows
         file.drop(file.iloc[0::6].index, inplace=True)
-        file.reset_index(drop = True)
+        file.reset_index(drop=True)
 
         # get data from remaining rows
         full_peaklist = []
@@ -247,25 +252,25 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
             # load peak type and coordinates and fix formatting
             split_string = file.iloc[i][0].split()
             relevant_part = ' '.join(split_string[5:])
-            cleaned_part = relevant_part.replace("VALUE='", "").replace("';", "")
+            cleaned_part = relevant_part.replace("VALUE='", '').replace("';", '')
             peaktype = cleaned_part
             # Process x-coordinate
-            xcoord_str = file.iloc[i+1][0].split()[5]
-            xcoord_cleaned = xcoord_str.replace("VALUE=", "").replace(";", "")
+            xcoord_str = file.iloc[i + 1][0].split()[5]
+            xcoord_cleaned = xcoord_str.replace('VALUE=', '').replace(';', '')
             xcoord = float(xcoord_cleaned)
 
             # Process y-coordinate
-            ycoord_str = file.iloc[i+2][0].split()[5]
-            ycoord_cleaned = ycoord_str.replace("VALUE=", "").replace(";", "")
+            ycoord_str = file.iloc[i + 2][0].split()[5]
+            ycoord_cleaned = ycoord_str.replace('VALUE=', '').replace(';', '')
             ycoord = float(ycoord_cleaned)
             coords = [xcoord, ycoord]
 
             # load data
-            data = file.iloc[i+3][0].split()[2::]
-            data.append(file.iloc[i+4][0].split()[2::][0])
+            data = file.iloc[i + 3][0].split()[2::]
+            data.append(file.iloc[i + 4][0].split()[2::][0])
             # fix data formatting
-            data = [j.replace(",","") for j in data]
-            data = [round(float(j),3) for j in data]
+            data = [j.replace(',', '') for j in data]
+            data = [round(float(j), 3) for j in data]
 
             full_peaklist.append(peaktype)
             peaklist.append(peaktype.split()[0])
@@ -274,32 +279,39 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
         unique_coords = list(set(tuple(coord) for coord in coordlist))
 
         # create data dataframe
-        dataframe = pd.DataFrame(datalist, columns = ['Intensity (counts)',
-                                                      'Atomic %',
-                                                      'Area (counts*eV)',
-                                                      'FWHM (eV)',
-                                                      'Peak BE (eV)'])
+        dataframe = pd.DataFrame(
+            datalist,
+            columns=[
+                'Intensity (counts)',
+                'Atomic %',
+                'Area (counts*eV)',
+                'FWHM (eV)',
+                'Peak BE (eV)',
+            ],
+        )
 
         # modify some values
         # convert KE to BE (KE of machine X-rays is 1486.68 eV)
         dataframe['Peak BE (eV)'] = 1486.68 - dataframe['Peak BE (eV)']
         # reorder columns to be similar to Avantage
-        columnorder = ['Peak BE (eV)',
-                       'Intensity (counts)',
-                       'FWHM (eV)',
-                       'Area (counts*eV)',
-                       'Atomic %']
+        columnorder = [
+            'Peak BE (eV)',
+            'Intensity (counts)',
+            'FWHM (eV)',
+            'Area (counts*eV)',
+            'Atomic %',
+        ]
         dataframe = dataframe.reindex(columnorder, axis=1)
         # create peak dataframe
-        peaks = pd.DataFrame(peaklist, columns = ['Peak'])
+        peaks = pd.DataFrame(peaklist, columns=['Peak'])
         # add peak dataframe to front of data dataframe
-        dataframe = pd.concat([peaks, dataframe], axis = 1)
+        dataframe = pd.concat([peaks, dataframe], axis=1)
 
-        #handle coordinates
-        coordframe = pd.DataFrame(coordlist, columns = ['X','Y'])
-        coordframe['X'] = coordframe['X'] - max(coordframe['X'])/2
-        coordframe['Y'] = coordframe['Y'] - max(coordframe['Y'])/2
-        coordframe = coordframe/1000
+        # handle coordinates
+        coordframe = pd.DataFrame(coordlist, columns=['X', 'Y'])
+        coordframe['X'] = coordframe['X'] - max(coordframe['X']) / 2
+        coordframe['Y'] = coordframe['Y'] - max(coordframe['Y']) / 2
+        coordframe = coordframe / 1000
         coordframe['Y'] = coordframe['Y'].values[::-1]
 
         unique_coords = list(set(tuple(row) for row in coordframe[['X', 'Y']].values))
@@ -309,32 +321,28 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
 
         return merged_frame, unique_coords
 
-    def write_XPS_analysis(self,
-                            dataframe: pd.DataFrame,
-                            coords_list: list
-                              ) -> None:
+    def write_XPS_analysis(self, dataframe: pd.DataFrame, coords_list: list) -> None:
         '''"Write data and coordinates to the XPS class
         with respect to the coordinates"'''
-        #filter by coordinates and create small dfs
-        results=[]
+        # filter by coordinates and create small dfs
+        results = []
 
         for coord in coords_list:
             mask = dataframe.apply(lambda row: (row['X'], row['Y']) == coord, axis=1)
             coord_data = dataframe[mask]
             mapping_result = XpsMappingResult(
-                position = f'{coord[0]:.3f}, {coord[1]:.3f}',
+                position=f'{coord[0]:.3f}, {coord[1]:.3f}',
             )
-            peaks= []
+            peaks = []
 
             for index, row in coord_data.iterrows():
-
                 peak_info = XpsFittedPeak(
-                    origin= ureg.Quantity(row['Peak'], 'eV'),
-                    be_position= ureg.Quantity(row['Peak BE (eV)'], 'eV'),
-                    intensity= ureg.Quantity(row['Intensity (counts)'], '1/s'),
-                    fwhm= ureg.Quantity(row['FWHM (eV)'], 'eV'),
-                    area= ureg.Quantity(row['Area (counts*eV)'], 'cps*eV'),
-                    atomic_percent= row['Atomic %'],
+                    origin=ureg.Quantity(row['Peak'], 'eV'),
+                    be_position=ureg.Quantity(row['Peak BE (eV)'], 'eV'),
+                    intensity=ureg.Quantity(row['Intensity (counts)'], '1/s'),
+                    fwhm=ureg.Quantity(row['FWHM (eV)'], 'eV'),
+                    area=ureg.Quantity(row['Area (counts*eV)'], 'cps*eV'),
+                    atomic_percent=row['Atomic %'],
                 )
 
                 peaks.append(peak_info)
@@ -342,7 +350,6 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
             mapping_result.peaks = peaks
             results.append(mapping_result)
         merge_sections(self.results, results)
-
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -357,7 +364,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
             dataframe, coords_list = self.read_XPS_analysis(self.analysis_file)
             self.write_XPS_analysis(dataframe, coords_list)
 
-
-
         super().normalize(archive, logger)
+
+
 m_package.__init_metainfo__()
