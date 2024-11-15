@@ -1,13 +1,12 @@
+import re
 from typing import TYPE_CHECKING
 
 import pandas as pd
 from nomad.datamodel.data import Schema
 from nomad.datamodel.datamodel import EntryArchive
-from nomad.datamodel.metainfo.annotations import (
-    BrowserAnnotation,
-    ELNAnnotation,
-    ELNComponentEnum,
-)
+from nomad.datamodel.metainfo.annotations import (BrowserAnnotation,
+                                                  ELNAnnotation,
+                                                  ELNComponentEnum)
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
@@ -15,9 +14,7 @@ from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    MappingMeasurement,
-    MappingResult,
-)
+    MappingMeasurement, MappingResult)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -253,6 +250,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
             relevant_part = ' '.join(split_string[5:])
             cleaned_part = relevant_part.replace("VALUE='", '').replace("';", '')
             peaktype = cleaned_part
+
             # Process x-coordinate
             xcoord_str = file.iloc[i + 1][0].split()[5]
             xcoord_cleaned = xcoord_str.replace('VALUE=', '').replace(';', '')
@@ -346,7 +344,28 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
 
                 peaks.append(peak_info)
 
+                #figure out whiche element the peak is from
+                current_element = row['Peak']
+                match = re.search(r'\d', current_element)
+                if match:
+                    coord_data['Element'] = current_element[:match.start()]
+                else:
+                    current_element = current_element
+
             mapping_result.peaks = peaks
+
+            #take info from previous loop, reduce df and add to composition
+            composition = []
+            grouped_df = coord_data.groupby('Element', as_index=False)['Atomic %'].sum()
+            for index, row in grouped_df.iterrows():
+                element_info = XpsDerivedComposition(
+                    element=row['Element'],
+                    atomic_percent=row['Atomic %'],
+                )
+                composition.append(element_info)
+
+            mapping_result.composition = composition
+
             results.append(mapping_result)
         # merge_sections(self.results, results)
         self.results = results
