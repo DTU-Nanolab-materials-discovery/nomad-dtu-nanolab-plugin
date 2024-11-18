@@ -1230,6 +1230,40 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         return gas_flow
 
+    def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        samples = []
+        substrate_mounting: DtuSubstrateMounting
+        for idx, substrate_mounting in enumerate(self.substrates):
+            if substrate_mounting.substrate is None:
+                continue
+            library = DTUCombinatorialLibrary()
+            library.substrate = SubstrateReference(
+                reference=substrate_mounting.substrate
+            )
+            sample_id = str(idx)
+            if substrate_mounting.relative_position is not None:
+                sample_id = substrate_mounting.relative_position
+            elif (
+                substrate_mounting.position_x is not None
+                and substrate_mounting.position_y is not None
+            ):
+                sample_id = (
+                    f"x{substrate_mounting.position_x.to('cm'):.1f}-"
+                    f"y{substrate_mounting.position_x.to('cm'):.1f}"
+                ).replace('.', 'p')
+            if self.lab_id is not None:
+                lab_id = self.lab_id
+            else:
+                lab_id = '_'.join(self.name.split())
+            samples.append(
+                CompositeSystemReference(
+                    reference=create_archive(
+                        library, archive, f'{lab_id}-{sample_id}.archive.json'
+                    )
+                )
+            )
+        self.samples = samples
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUSputtering` class.
@@ -1279,41 +1313,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # self.figures = []
             # self.plot(events_plot, archive, logger)
 
-            if not self.steps:
-                return
-            samples = []
-            substrate_mounting: DtuSubstrateMounting
-            for idx, substrate_mounting in enumerate(self.substrates):
-                if substrate_mounting.substrate is None:
-                    continue
-                library = DTUCombinatorialLibrary()
-                library.substrate = SubstrateReference(
-                    reference=substrate_mounting.substrate
-                )
-                sample_id = str(idx)
-                if substrate_mounting.relative_position is not None:
-                    sample_id = substrate_mounting.relative_position
-                elif (
-                    substrate_mounting.position_x is not None 
-                    and substrate_mounting.position_y is not None
-                ):
-                    sample_id = (
-                        f"x{substrate_mounting.position_x.to('cm'):.1f}-"
-                        f"y{substrate_mounting.position_x.to('cm'):.1f}"
-                    ).replace(".", "p")
-                if self.lab_id is not None:
-                    lab_id = self.lab_id
-                else:
-                    lab_id = "_".join(self.name.split())
-                samples.append(
-                    CompositeSystemReference(
-                        reference=create_archive(
-                            library,
-                            archive,
-                            f"{lab_id}-{sample_id}.archive.json")
-                    )
-                )
-            self.samples = samples
+            if self.steps:
+                self.add_libraries(archive, logger)
 
 
 m_package.__init_metainfo__()
