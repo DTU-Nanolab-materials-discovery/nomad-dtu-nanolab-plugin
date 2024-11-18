@@ -24,6 +24,7 @@ from nomad_material_processing.combinatorial import (
     CombinatorialLibrary,
     CombinatorialSample,
 )
+from nomad_material_processing.general import ThinFilmStack
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
@@ -40,7 +41,7 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
     )
 
 
-class DTUCombinatorialLibrary(CombinatorialLibrary, Schema):
+class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Combinatorial Library',
