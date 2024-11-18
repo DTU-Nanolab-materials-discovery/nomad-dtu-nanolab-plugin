@@ -3586,10 +3586,6 @@ def update_scatter_colors(fig, df, color_column, color_map):
         color_column (str): The column containing the column name for coloring.
         color_map (dict): A dictionary mapping values to colors.
     """
-    # Ensure the figure contains only scatter plot traces
-    for trace in fig.data:
-        if trace.type != 'scatter':
-            raise ValueError('The figure contains a trace that is not a scatter plot.')
 
     # Check if there is more than one trace
     if len(fig.data) > 1:
