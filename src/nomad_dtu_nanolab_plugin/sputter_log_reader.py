@@ -149,30 +149,30 @@ COL = {
     'sul_crk_valve_pw_fb': 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'sul_crk_valve_sp': 'Sulfur Cracker Control Valve Setpoint',
     'sul_crk_valve_val': 'Sulfur Cracker Control Valve Value',
-    'src1_load': 'PC Source 1 Loaded Target',
-    'src1_mat': 'PC Source 1 Material',
-    'src1_shutter': 'PC Source 1 Shutter Open',
-    'src1_pdc_ps1': 'PC Source 1 Switch-PDC-PWS1',
-    'src1_rf1_ps2': 'PC Source 1 Switch-RF1-PWS2',
-    'src1_rf2_ps3': 'PC Source 1 Switch-RF2-PWS3',
-    'src1_usage': 'PC Source 1 Usage',
-    'src1_usage_calc': 'PC Source 1 Usage Calculation',
-    'src3_load': 'PC Source 3 Loaded Target',
-    'src3_mat': 'PC Source 3 Material',
-    'src3_shutter': 'PC Source 3 Shutter Open',
-    'src3_pdc_ps1': 'PC Source 3 Switch-PDC-PWS1',
-    'src3_rf1_ps2': 'PC Source 3 Switch-RF1-PWS2',
-    'src3_rf2_ps3': 'PC Source 3 Switch-RF2-PWS3',
-    'src3_usage': 'PC Source 3 Usage',
-    'src3_usage_calc': 'PC Source 3 Usage Calculation',
-    'src4_load': 'PC Source 4 Loaded Target',
-    'src4_mat': 'PC Source 4 Material',
-    'src4_shutter': 'PC Source 4 Shutter Open',
-    'src4_pdc_ps1': 'PC Source 4 Switch-PDC-PWS1',
-    'src4_rf1_ps2': 'PC Source 4 Switch-RF1-PWS2',
-    'src4_rf2_ps3': 'PC Source 4 Switch-RF2-PWS3',
-    'src4_usage': 'PC Source 4 Usage',
-    'src4_usage_calc': 'PC Source 4 Usage Calculation',
+    's1_load': 'PC Source 1 Loaded Target',
+    's1_mat': 'PC Source 1 Material',
+    's1_shutter': 'PC Source 1 Shutter Open',
+    's1_pdc_ps1': 'PC Source 1 Switch-PDC-PWS1',
+    's1_rf1_ps2': 'PC Source 1 Switch-RF1-PWS2',
+    's1_rf2_ps3': 'PC Source 1 Switch-RF2-PWS3',
+    's1_usage': 'PC Source 1 Usage',
+    's1_usage_calc': 'PC Source 1 Usage Calculation',
+    's3_load': 'PC Source 3 Loaded Target',
+    's3_mat': 'PC Source 3 Material',
+    's3_shutter': 'PC Source 3 Shutter Open',
+    's3_pdc_ps1': 'PC Source 3 Switch-PDC-PWS1',
+    's3_rf1_ps2': 'PC Source 3 Switch-RF1-PWS2',
+    's3_rf2_ps3': 'PC Source 3 Switch-RF2-PWS3',
+    's3_usage': 'PC Source 3 Usage',
+    's3_usage_calc': 'PC Source 3 Usage Calculation',
+    's4_load': 'PC Source 4 Loaded Target',
+    's4_mat': 'PC Source 4 Material',
+    's4_shutter': 'PC Source 4 Shutter Open',
+    's4_pdc_ps1': 'PC Source 4 Switch-PDC-PWS1',
+    's4_rf1_ps2': 'PC Source 4 Switch-RF1-PWS2',
+    's4_rf2_ps3': 'PC Source 4 Switch-RF2-PWS3',
+    's4_usage': 'PC Source 4 Usage',
+    's4_usage_calc': 'PC Source 4 Usage Calculation',
     'sub_rot_pos': 'Substrate Rotation_Position',
     'sub_rot_pos_sp': 'Substrate Rotation_PositionSetpoint',
     'xtal1_shutter': 'Xtal 1 Shutter Open',
@@ -3575,6 +3575,79 @@ def create_dual_y_plot(df, plot_params):
     return fig
 
 
+def update_scatter_colors(fig, df, color_column, color_map):
+    """
+    Update the colors of the existing traces in the Plotly figure based
+    on the direction.
+
+    Args:
+        fig (go.Figure): The Plotly figure object to update.
+        df (pd.DataFrame): The original dataframe used for plotting.
+        color_column (str): The column containing the column name for coloring.
+        color_map (dict): A dictionary mapping values to colors.
+    """
+    # Ensure the figure contains only scatter plot traces
+    for trace in fig.data:
+        if trace.type != 'scatter':
+            raise ValueError('The figure contains a trace that is not a scatter plot.')
+
+    # Check if there is more than one trace
+    if len(fig.data) > 1:
+        raise ValueError('The figure contains more than one trace.')
+
+    # If there is exactly one trace, proceed with updating it
+    if len(fig.data) == 1:
+        trace = fig.data[0]  # Get the only trace in the figure
+
+        # Get the x-values of the current trace
+        x_vals = trace.x
+
+        # Ensure the x-values are numeric or timestamp-like
+        if isinstance(x_vals[0], str):
+            x_vals = pd.to_datetime(x_vals)  # Convert to datetime if necessary
+
+        # Filter the DataFrame based on the x-values of the trace
+        filtered_df = df[df['Time Stamp'].isin(x_vals)]
+
+        # Check if the color_column exists and update the trace color
+        if not filtered_df.empty and color_column in filtered_df.columns:
+            # Map the color for each point based on the color_column value
+            colors = filtered_df[color_column].map(color_map).fillna('gray')
+
+            # Update the trace's marker color (apply color for each point)
+            trace.marker.color = colors.tolist()
+            trace.showlegend = False  # Remove default legend for this trace
+
+        # Create legend entries based on the color_map (keys are labels,
+        # values are colors)
+        legend_entries = []
+        # Add a legend entry for the color_column (no marker, just the label)
+        legend_entries.append(
+            go.Scatter(
+                x=[None],  # No data points needed for the legend entry
+                y=[None],  # No data points needed for the legend entry
+                mode='text',  # This makes it just a label without a marker
+                text=[f'{color_column}'],  # Display the color_column as the label
+                showlegend=True,
+                name=f'{color_column}',  # The legend label as the color column name
+            )
+        )
+        for key, color in color_map.items():
+            legend_entries.append(
+                go.Scatter(
+                    x=[None],  # No data points needed for the legend entry
+                    y=[None],  # No data pointsi d needed for the legend entry
+                    mode='markers',
+                    marker=dict(color=color, size=5),  # Customize marker
+                    name=str(key),  # The legend label as the color map key
+                    showlegend=True,
+                )
+            )
+
+        # Add the legend entries to the figure
+        fig.add_traces(legend_entries)
+
+
 def generate_timeline(
     events_to_plot,
     sample_name=None,
@@ -3767,6 +3840,7 @@ def generate_overview_plot(data, logfile_name):
     )
     return overview_plot
 
+
 def generate_plots(log_data, events_to_plot, sample_name=''):
     plots = []
 
@@ -3779,11 +3853,15 @@ def generate_plots(log_data, events_to_plot, sample_name=''):
     plots.append(overview_plot)
 
     bias_plot = generate_bias_plot(
-        log_data, sample_name, rolling_num=ROLLING_NUM, rolling_frac_max=ROLLING_FRAC_MAX
+        log_data,
+        sample_name,
+        rolling_num=ROLLING_NUM,
+        rolling_frac_max=ROLLING_FRAC_MAX,
     )
     plots.append(bias_plot)
 
     return plots
+
 
 # HELPER FUNCTIONS TO MANIPULATE LISTS OF EVENTS--------
 
@@ -4310,6 +4388,7 @@ def read_events(data):
 
 
 # ----NOMAD HELPER FUNCTION-----
+
 
 # Helper method to get the nested value, if it exists
 def get_nested_value(dictionary, key_path):
