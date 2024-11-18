@@ -932,7 +932,6 @@ class Lf_Event:
                     'avg_power_sp'
                 ] = self.data[f'Source {source_number} Output Setpoint'].mean()
 
-
                 if power_type in ['DC', 'pulsed_DC']:
                     params[self.step_id]['sources'][source_name]['power_supply'][
                         'avg_voltage'
@@ -999,10 +998,10 @@ class Lf_Event:
         # We tolerate a certain percentage of the data to be below the threshold
         if dc_current_col in self.data and (
             (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
-            ):
+        ):
             if pulse_enable_col in self.data and (
                 self.data[pulse_enable_col].mean() >= TOLERANCE
-                ):
+            ):
                 power_type = 'pulsed_DC'
             else:
                 power_type = 'DC'
@@ -1324,7 +1323,7 @@ class Deposition_Event(Lf_Event):
         ):
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['DC'] = True
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['RF'] = False
-            if pulse_enable_col in self.data and(
+            if pulse_enable_col in self.data and (
                 (self.data[pulse_enable_col] == 1).mean() >= TOLERANCE
             ):
                 params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
