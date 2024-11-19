@@ -885,9 +885,8 @@ class Lf_Event:
         for source_number in source_list:
             source_name = f'{SOURCE_NAME[str(source_number)]}'
 
-            elements = []
             # get the power type of the source (incidentally, it also tells us if the
-            # source was used or not if is not None)
+            # source was used e.g. if power_type is not None)
             power_type = self.get_power_type(source_number)
             if (f'Source {source_number} Output Setpoint' in self.data.columns) and (
                 power_type is not None
@@ -970,16 +969,6 @@ class Lf_Event:
                             'avg_current'
                         ] = self.data[f'Source {source_number} Current'].mean()
 
-                # extract the source material
-                source_mat = self.data[f'PC Source {source_number} Material'].iloc[0]
-                elements, _ = elements_from_string(source_mat, elements=elements)
-                for element in elements:
-                    params[self.step_id]['sources'][source_name]['material'][
-                        element
-                    ] = {}
-                    params[self.step_id]['sources'][source_name]['material'][element][
-                        'name'
-                    ] = element
         return params
 
     # def get_step_sample_params(self, params):
@@ -3880,8 +3869,8 @@ def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
     )
     plots.append(bias_plot)
 
-    _, chamber_plotly_plot = plot_logfile_chamber(main_params, sample_name)
-    plots.append(chamber_plotly_plot)
+    # _, chamber_plotly_plot = plot_logfile_chamber(main_params, sample_name)
+    # plots.append(chamber_plotly_plot)
 
     return plots
 
@@ -4401,9 +4390,7 @@ def read_events(data):
         step_params = event.get_nomad_step_params(step_params, source_list)
 
     # generate a list of plots to return
-    plots = generate_plots(data, events_to_plot, main_params)
-    for plot in plots:
-        plot.show()
+    # plots = generate_plots(data, events_to_plot, main_params)
 
     return (
         events_to_plot,
@@ -4465,7 +4452,7 @@ def map_params_to_nomad(params, gun_list):
         ],
         [
             ['deposition', 'avg_h2s_flow'],
-            ['deposition_parameters', 'h2s_in_Ar_flow'],
+            ['deposition_parameters', 'h2s_in_ar_flow'],
             'cm^3/minute',
         ],
         [
@@ -4475,7 +4462,7 @@ def map_params_to_nomad(params, gun_list):
         ],
         [
             ['deposition', 'avg_ph3_flow'],
-            ['deposition_parameters', 'ph3_in_Ar_flow'],
+            ['deposition_parameters', 'ph3_in_ar_flow'],
             'cm^3/minute',
         ],
         [
@@ -4628,16 +4615,6 @@ def map_gas_flow_params_to_nomad(key, gas_name):
 def map_source_params_to_nomad(key, source_name, power_type):
     source_param_nomad_map = [
         [
-            [key, 'sources', source_name, 'name'],
-            ['name'],
-            None,
-        ],
-        [
-            [key, 'sources', source_name, 'target_id'],
-            ['material', 'lab_id'],
-            None,
-        ],
-        [
             [key, 'sources', source_name, 'power_supply', 'power_type'],
             ['vapor_source', 'power_type'],
             None,
@@ -4717,11 +4694,16 @@ def map_source_params_to_nomad(key, source_name, power_type):
     return source_param_nomad_map
 
 
-def map_material_params_to_nomad(key, source_name, element):
+def map_material_params_to_nomad(key, source_name):
     material_param_nomad_map = [
         [
-            [key, 'sources', source_name, 'material', element, 'name'],
+            [key, 'sources', source_name, 'name'],
             ['name'],
+            None,
+        ],
+        [
+            [key, 'sources', source_name, 'target_id'],
+            ['lab_id'],
             None,
         ],
     ]

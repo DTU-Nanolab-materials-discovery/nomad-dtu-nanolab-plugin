@@ -1235,35 +1235,27 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     def generate_material_log_data(
         self, step_params: dict, key: str, source_name: str, logger: 'BoundLogger'
     ) -> None:
-        elements = []
+        target_list = []
 
-        for element in (
-            step_params.get(key, {})
-            .get('sources', {})
-            .get(source_name, {})
-            .get('material', {})
-        ):
-            single_element = DTUTargetComponent()
+        target = DTUTargetComponent()
 
-            # Mapping the material_param_nomad_map
-            material_param_nomad_map = map_material_params_to_nomad(
-                key, source_name, element
-            )
-            for input_keys, output_keys, unit in material_param_nomad_map:
-                config = {
-                    'input_dict': step_params,
-                    'input_keys': input_keys,
-                    'output_obj': single_element,
-                    'output_obj_name': 'single_element',
-                    'output_keys': output_keys,
-                    'unit': unit,
-                    'logger': logger,
-                }
-                self.write_data(config)
+        # Mapping the material_param_nomad_map
+        material_param_nomad_map = map_material_params_to_nomad(key, source_name)
+        for input_keys, output_keys, unit in material_param_nomad_map:
+            config = {
+                'input_dict': step_params,
+                'input_keys': input_keys,
+                'output_obj': target,
+                'output_obj_name': 'target',
+                'output_keys': output_keys,
+                'unit': unit,
+                'logger': logger,
+            }
+            self.write_data(config)
 
-            elements.append(single_element)
+        target_list.append(target)
 
-        return elements
+        return target_list
 
     def generate_environment_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'
