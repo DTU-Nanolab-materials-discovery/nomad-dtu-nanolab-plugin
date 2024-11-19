@@ -194,10 +194,7 @@ class DtuSubstrateMounting(ArchiveSection):
                 self.position_x, self.position_y = positions[self.relative_position]
         if self.relative_position is not None:
             self.name = self.relative_position
-        elif (
-            self.position_x is not None
-            and self.position_y is not None
-        ):
+        elif self.position_x is not None and self.position_y is not None:
             self.name = (
                 f"x{self.position_x.to('cm').magnitude:.1f}-"
                 f"y{self.position_y.to('cm').magnitude:.1f}"
@@ -439,7 +436,7 @@ class DTUTargetComponent(Component):
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        pass #TODO add fetching from lab_id
+        pass  # TODO add fetching from lab_id
 
 
 class DTUSource(PVDSource):
@@ -507,16 +504,14 @@ class DtuCrackerMaterial(PureSubstanceComponent):
     m_def = Section(
         a_template={
             'pure_substance': {
-                'molecular_formula': "S",
+                'molecular_formula': 'S',
             },
         },
     )
 
 
 class DtuCrackerSource(DTUSource):
-    material = SubSection(
-        section_def=DtuCrackerMaterial
-    )
+    material = SubSection(section_def=DtuCrackerMaterial)
     vapor_source = SubSection(
         section_def=SCracker,
     )
@@ -1111,6 +1106,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Replace newlines with <br> tags
             log = log.replace('\n', '<br>')
             return log
+
         sputtering.log_file_report = format_log_for_html(write_params(params))
 
         # Looping through the param_nomad_map
@@ -1354,11 +1350,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
             library.layers = [
                 ThinFilmReference(
-                    name="Main layer",
+                    name='Main layer',
                     reference=create_archive(
                         layer, archive, f'{layer.lab_id}.archive.json'
                     ),
-                    lab_id=layer.lab_id
+                    lab_id=layer.lab_id,
                 )
             ]
             samples.append(
@@ -1367,7 +1363,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     reference=create_archive(
                         library, archive, f'{library.lab_id}.archive.json'
                     ),
-                    lab_id=library.lab_id
+                    lab_id=library.lab_id,
                 )
             )
         self.samples = samples
@@ -1420,7 +1416,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             if self.deposition_parameters is not None:
                 self.add_libraries(archive, logger)
-        
+
         archive.workflow2 = None
         super().normalize(archive, logger)
         archive.workflow2.inputs.extend(
