@@ -1,7 +1,10 @@
 import re
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
+import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 from nomad.datamodel.data import Schema
 from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import (
@@ -9,9 +12,10 @@ from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
 )
-from nomad.datamodel.metainfo.plot import PlotSection
+from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
+from scipy.interpolate import griddata
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -136,14 +140,6 @@ class XpsDerivedComposition(Schema):
 class XpsMappingResult(MappingResult, Schema):
     m_def = Section()
 
-    position = Quantity(
-        type=str,
-        description='The position of the XPS spectrum',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.StringEditQuantity,
-            label='Position',
-        ),
-    )
     peaks = SubSection(
         section_def=XpsFittedPeak,
         description='The fitted peaks of the XPS spectrum',
@@ -332,7 +328,8 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
             mask = dataframe.apply(lambda row: (row['X'], row['Y']) == coord, axis=1)
             coord_data = dataframe[mask]
             mapping_result = XpsMappingResult(
-                position=f'{coord[0]:.3f}, {coord[1]:.3f}',
+                x_relative=ureg.Quantity(coord[0], 'mm'),
+                y_relative=ureg.Quantity(coord[1], 'mm'),
             )
             peaks = []
 
@@ -350,9 +347,8 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
 
                 #figure out whiche element the peak is from
                 current_element = row['Peak']
-                match = re.search(r'\d', current_element)
-                if match:
-                    coord_data['Element'] = current_element[:match.start()]
+                match = re.split(r'\d', current_element, maxsplit=1)
+                current_element = match[0]
 
             mapping_result.peaks = peaks
 
@@ -372,6 +368,121 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
         # merge_sections(self.results, results)
         self.results = results
 
+    def plot(self) -> None:
+        x, y = [], []
+        quantifications = defaultdict(list)
+        ratios = defaultdict(list)
+        result: XpsMappingResult
+        for result in self.results:
+
+            if isinstance(result.x_relative, ureg.Quantity) and isinstance(
+                result.y_relative, ureg.Quantity
+            ):
+                x.append(result.x_relative.to('mm').magnitude)
+                y.append(result.y_relative.to('mm').magnitude)
+                x_title = 'X Sample Position (mm)'
+                y_title = 'Y Sample Position (mm)'
+            elif isinstance(result.x_absolute, ureg.Quantity) and isinstance(
+                result.y_absolute, ureg.Quantity
+            ):
+                x.append(result.x_absolute.to('mm').magnitude)
+                y.append(result.y_absolute.to('mm').magnitude)
+                x_title = 'X Stage Position (mm)'
+                y_title = 'Y Stage Position (mm)'
+            else:
+                continue
+
+            quantification: XpsDerivedComposition
+            for quantification in result.composition:
+                quantifications[quantification.element].append(
+                    quantification.atomic_percent
+                )
+
+            # Calculate and append the fractions of all elements with each other
+            # test to see if this works or there is another errror
+            quantification_i: XpsDerivedComposition
+            for quantification_i in result.composition:
+                quantification_j: XpsDerivedComposition
+                for quantification_j in result.composition:
+                    if quantification_i.element == quantification_j.element:
+                        continue
+                    ratio = (
+                        quantification_i.atomic_percent
+                        / quantification_j.atomic_percent
+                    )
+                    ratios[
+                        f'{quantification_i.element}/{quantification_j.element}'
+                    ].append(ratio)
+                    #processed_pairs.add(pair)
+
+        combined_data = {**quantifications, **ratios}
+
+        for q in combined_data:
+            # Create a grid for the heatmap
+            xi = np.linspace(min(x), max(x), 100)
+            yi = np.linspace(min(y), max(y), 100)
+            xi, yi = np.meshgrid(xi, yi)
+            zi = griddata((x, y), combined_data[q], (xi, yi), method='linear')
+
+            # Create a scatter plot
+            scatter = go.Scatter(
+                x=x,
+                y=y,
+                mode='markers',
+                marker=dict(
+                    size=15,
+                    color=combined_data[q],  # Set color to atomic fraction values
+                    colorscale='Viridis',  # Choose a colorscale
+                    # colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
+                    showscale=False,  # Hide the colorbar for the scatter plot
+                    line=dict(
+                        width=2,  # Set the width of the border
+                        color='DarkSlateGrey',  # Set the color of the border
+                    ),
+                ),
+                customdata=combined_data[q],  # Add atomic fraction data to customdata
+                hovertemplate=f'<b>Atomic fraction of {q}:</b> %{{customdata}}',
+            )
+
+            # Create a heatmap
+            heatmap = go.Heatmap(
+                x=xi[0],
+                y=yi[:, 0],
+                z=zi,
+                colorscale='Viridis',
+                colorbar=dict(title=f'{q} Atomic Fraction'),
+            )
+
+            # Combine scatter plot and heatmap
+            fig = go.Figure(data=[heatmap, scatter])
+
+            # Update layout
+            fig.update_layout(
+                title=f'{q} Atomic Fraction Colormap',
+                xaxis_title=x_title,
+                yaxis_title=y_title,
+                template='plotly_white',
+                hovermode='closest',
+                dragmode='zoom',
+                xaxis=dict(
+                    fixedrange=False,
+                ),
+                yaxis=dict(
+                    fixedrange=False,
+                ),
+            )
+
+            plot_json = fig.to_plotly_json()
+            plot_json['config'] = dict(
+                scrollZoom=False,
+            )
+            self.figures.append(
+                PlotlyFigure(
+                    label=f'{q} Atomic Fraction',
+                    figure=plot_json,
+                )
+            )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalize function of the `DTUXRDMeasurement` section.
@@ -386,6 +497,8 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
             self.write_XPS_analysis(dataframe, coords_list)
 
         super().normalize(archive, logger)
+        self.figures = []
+        self.plot()
 
 
 m_package.__init_metainfo__()
