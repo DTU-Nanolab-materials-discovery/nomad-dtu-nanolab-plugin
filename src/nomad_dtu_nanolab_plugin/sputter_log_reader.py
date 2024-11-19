@@ -932,7 +932,6 @@ class Lf_Event:
                     'avg_power_sp'
                 ] = self.data[f'Source {source_number} Output Setpoint'].mean()
 
-
                 if power_type in ['DC', 'pulsed_DC']:
                     params[self.step_id]['sources'][source_name]['power_supply'][
                         'avg_voltage'
@@ -999,10 +998,10 @@ class Lf_Event:
         # We tolerate a certain percentage of the data to be below the threshold
         if dc_current_col in self.data and (
             (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
-            ):
+        ):
             if pulse_enable_col in self.data and (
                 self.data[pulse_enable_col].mean() >= TOLERANCE
-                ):
+            ):
                 power_type = 'pulsed_DC'
             else:
                 power_type = 'DC'
@@ -1324,7 +1323,7 @@ class Deposition_Event(Lf_Event):
         ):
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['DC'] = True
             params[self.category][f'{SOURCE_NAME[str(source_number)]}']['RF'] = False
-            if pulse_enable_col in self.data and(
+            if pulse_enable_col in self.data and (
                 (self.data[pulse_enable_col] == 1).mean() >= TOLERANCE
             ):
                 params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
@@ -4503,17 +4502,17 @@ def map_source_params_to_nomad(key, source_name, power_type):
         ],
         [
             [key, 'sources', source_name, 'target_id'],
-            ['target_id', 'lab_id'],
+            ['material', 'lab_id'],
             None,
         ],
         [
             [key, 'sources', source_name, 'power_supply', 'power_type'],
-            ['power_supply', 'power_type'],
+            ['vapor_source', 'power_type'],
             None,
         ],
         [
             [key, 'sources', source_name, 'power_supply', 'avg_power_sp'],
-            ['power_supply', 'avg_power_sp'],
+            ['vapor_source', 'avg_power_sp'],
             'W',
         ],
         [
@@ -4537,17 +4536,17 @@ def map_source_params_to_nomad(key, source_name, power_type):
             [
                 [
                     [key, 'sources', source_name, 'power_supply', 'avg_dc_bias'],
-                    ['power_supply', 'avg_dc_bias'],
+                    ['vapor_source', 'avg_dc_bias'],
                     'V',
                 ],
                 [
                     [key, 'sources', source_name, 'power_supply', 'avg_fwd_power'],
-                    ['power_supply', 'avg_fwd_power'],
+                    ['vapor_source', 'avg_fwd_power'],
                     'W',
                 ],
                 [
                     [key, 'sources', source_name, 'power_supply', 'avg_rfl_power'],
-                    ['power_supply', 'avg_rfl_power'],
+                    ['vapor_source', 'avg_rfl_power'],
                     'W',
                 ],
             ]
@@ -4557,12 +4556,12 @@ def map_source_params_to_nomad(key, source_name, power_type):
             [
                 [
                     [key, 'sources', source_name, 'power_supply', 'avg_voltage'],
-                    ['power_supply', 'avg_voltage'],
+                    ['vapor_source', 'avg_voltage'],
                     'V',
                 ],
                 [
                     [key, 'sources', source_name, 'power_supply', 'avg_current'],
-                    ['power_supply', 'avg_current'],
+                    ['vapor_source', 'avg_current'],
                     'A',  # Check if this is correct
                 ],
             ]
@@ -4572,12 +4571,12 @@ def map_source_params_to_nomad(key, source_name, power_type):
             [
                 [
                     [key, 'sources', source_name, 'power_supply', 'pulse_frequency'],
-                    ['power_supply', 'pulse_frequency'],
+                    ['vapor_source', 'pulse_frequency'],
                     'kHz',
                 ],
                 [
                     [key, 'sources', source_name, 'power_supply', 'dead_time'],
-                    ['power_supply', 'dead_time'],
+                    ['vapor_source', 'dead_time'],
                     'microsecond',
                 ],
             ]
@@ -4680,8 +4679,8 @@ def read_samples(sample_list: list):
     samples = []
     for sample_obj in sample_list:
         label = str(sample_obj.relative_position)
-        pos_x = sample_obj.sub_xpos.to('mm').magnitude
-        pos_y = sample_obj.sub_ypos.to('mm').magnitude
+        pos_x = sample_obj.position_x.to('mm').magnitude
+        pos_y = sample_obj.position_y.to('mm').magnitude
         # size = sample_obj.reference.SIZE?
         sample = Sample(label, pos_x, pos_y)
         samples.append(sample)
