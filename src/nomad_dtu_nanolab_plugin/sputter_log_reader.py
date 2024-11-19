@@ -4502,17 +4502,17 @@ def map_source_params_to_nomad(key, source_name, power_type):
         ],
         [
             [key, 'sources', source_name, 'target_id'],
-            ['target_id', 'lab_id'],
+            ['material', 'lab_id'],
             None,
         ],
         [
             [key, 'sources', source_name, 'power_supply', 'power_type'],
-            ['power_supply', 'power_type'],
+            ['vapor_source', 'power_type'],
             None,
         ],
         [
             [key, 'sources', source_name, 'power_supply', 'avg_power_sp'],
-            ['power_supply', 'avg_power_sp'],
+            ['vapor_source', 'avg_power_sp'],
             'W',
         ],
         [
@@ -4536,17 +4536,17 @@ def map_source_params_to_nomad(key, source_name, power_type):
             [
                 [
                     [key, 'sources', source_name, 'power_supply', 'avg_dc_bias'],
-                    ['power_supply', 'avg_dc_bias'],
+                    ['vapor_source', 'avg_dc_bias'],
                     'V',
                 ],
                 [
                     [key, 'sources', source_name, 'power_supply', 'avg_fwd_power'],
-                    ['power_supply', 'avg_fwd_power'],
+                    ['vapor_source', 'avg_fwd_power'],
                     'W',
                 ],
                 [
                     [key, 'sources', source_name, 'power_supply', 'avg_rfl_power'],
-                    ['power_supply', 'avg_rfl_power'],
+                    ['vapor_source', 'avg_rfl_power'],
                     'W',
                 ],
             ]
@@ -4556,12 +4556,12 @@ def map_source_params_to_nomad(key, source_name, power_type):
             [
                 [
                     [key, 'sources', source_name, 'power_supply', 'avg_voltage'],
-                    ['power_supply', 'avg_voltage'],
+                    ['vapor_source', 'avg_voltage'],
                     'V',
                 ],
                 [
                     [key, 'sources', source_name, 'power_supply', 'avg_current'],
-                    ['power_supply', 'avg_current'],
+                    ['vapor_source', 'avg_current'],
                     'A',  # Check if this is correct
                 ],
             ]
@@ -4571,12 +4571,12 @@ def map_source_params_to_nomad(key, source_name, power_type):
             [
                 [
                     [key, 'sources', source_name, 'power_supply', 'pulse_frequency'],
-                    ['power_supply', 'pulse_frequency'],
+                    ['vapor_source', 'pulse_frequency'],
                     'kHz',
                 ],
                 [
                     [key, 'sources', source_name, 'power_supply', 'dead_time'],
-                    ['power_supply', 'dead_time'],
+                    ['vapor_source', 'dead_time'],
                     'microsecond',
                 ],
             ]
