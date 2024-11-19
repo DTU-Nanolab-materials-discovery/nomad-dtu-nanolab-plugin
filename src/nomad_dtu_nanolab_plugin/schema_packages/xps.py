@@ -332,6 +332,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
                 y_relative=ureg.Quantity(coord[1], 'mm'),
             )
             peaks = []
+            coord_data = coord_data.assign(Element=coord_data['Peak'])
 
             for index, row in coord_data.iterrows():
                 peak_info = XpsFittedPeak(
@@ -345,14 +346,16 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
 
                 peaks.append(peak_info)
 
-                #figure out whiche element the peak is from
+                # figure out whiche element the peak is from
                 current_element = row['Peak']
                 match = re.split(r'\d', current_element, maxsplit=1)
                 current_element = match[0]
+                coord_data.loc[index, 'Element']= current_element
+
 
             mapping_result.peaks = peaks
 
-            #take info from previous loop, reduce df and add to composition
+            # take info from previous loop, reduce df and add to composition
             composition = []
             grouped_df = coord_data.groupby('Element', as_index=False)['Atomic %'].sum()
             for index, row in grouped_df.iterrows():
@@ -374,7 +377,6 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
         ratios = defaultdict(list)
         result: XpsMappingResult
         for result in self.results:
-
             if isinstance(result.x_relative, ureg.Quantity) and isinstance(
                 result.y_relative, ureg.Quantity
             ):
@@ -413,7 +415,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
                     ratios[
                         f'{quantification_i.element}/{quantification_j.element}'
                     ].append(ratio)
-                    #processed_pairs.add(pair)
+                    # processed_pairs.add(pair)
 
         combined_data = {**quantifications, **ratios}
 
