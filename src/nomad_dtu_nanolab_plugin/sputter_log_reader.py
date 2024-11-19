@@ -8,6 +8,7 @@ Created on Fri Jun  7 10:46:17 2024
 
 # Core
 import copy
+import io
 import operator
 import os
 import re
@@ -17,8 +18,6 @@ from functools import reduce
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
-import io
-from PIL import Image
 
 # Data manipulation
 import pandas as pd
@@ -27,6 +26,7 @@ import plotly.graph_objects as go
 from matplotlib import patches
 from matplotlib.transforms import Affine2D
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+from PIL import Image
 from plotly.subplots import make_subplots
 
 # ---------MAIN FUNCTION PARAMETERS------------
@@ -529,7 +529,7 @@ DICT_RENAME = {
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback': 'Cracker Pulse Width',
     'Sulfur Cracker Control Setpoint Feedback': 'Cracker Frequency',
 }
-DPI=300
+DPI = 300
 PLOTLY_CONFIG = {
     'toImageButtonOptions': {
         'format': 'png',
@@ -795,7 +795,7 @@ class Lf_Event:
         params[self.step_id]['duration'] = (
             params[self.step_id]['end_time'] - params[self.step_id]['start_time']
         )
-        params[self.step_id]['creates_new_thin_film'] = (self.category == 'deposition')
+        params[self.step_id]['creates_new_thin_film'] = self.category == 'deposition'
 
         # Get the step environment parameters
         params = self.get_step_environment_params(params)
@@ -3252,7 +3252,7 @@ def filter_data_platen_bias_on(data):
 # -------PLOTTING DEFINITIONS------------
 
 
-def plot_logfile_chamber(main_params,logfile_name=''):
+def plot_logfile_chamber(main_params, logfile_name=''):
     # Reading guns
     guns = []
     for gun_param in ['taurus', 'magkeeper3', 'magkeeper4', 's_cracker']:
@@ -3282,7 +3282,7 @@ def plot_logfile_chamber(main_params,logfile_name=''):
 
     # Save the Matplotlib figure to a BytesIO object
     png = io.BytesIO()
-    fig.savefig(png, format='png', bbox_inches='tight',dpi=DPI)
+    fig.savefig(png, format='png', bbox_inches='tight', dpi=DPI)
     png.seek(0)
 
     # Convert the PNG to a NumPy array
@@ -3293,11 +3293,11 @@ def plot_logfile_chamber(main_params,logfile_name=''):
 
     # Customize the layout (optional)
     plotly_fig.update_layout(
-        title=f"Chamber Configuration:{logfile_name}",
+        title=f'Chamber Configuration:{logfile_name}',
         xaxis=dict(visible=False),
         yaxis=dict(visible=False),
         margin=dict(l=0, r=0, t=100, b=0),
-        width = WIDTH,
+        width=WIDTH,
     )
 
     # Return both the Matplotlib and Plotly figures
@@ -3880,9 +3880,8 @@ def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
     )
     plots.append(bias_plot)
 
-    _,chamber_plotly_plot = plot_logfile_chamber(main_params,sample_name)
+    _, chamber_plotly_plot = plot_logfile_chamber(main_params, sample_name)
     plots.append(chamber_plotly_plot)
-
 
     return plots
 
@@ -5208,7 +5207,7 @@ def main():
 
         # -----GRAPH THE CHAMBER CONFIG---
         if 'platen_position' in main_params['deposition']:
-            chamber_plot,_ = plot_logfile_chamber(main_params, logfiles['name'][i])
+            chamber_plot, _ = plot_logfile_chamber(main_params, logfiles['name'][i])
             # export matplotlib plot as png
             chamber_plot.savefig(chamber_file_path, dpi=300)
 
