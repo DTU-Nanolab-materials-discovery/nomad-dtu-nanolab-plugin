@@ -17,6 +17,8 @@ from functools import reduce
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
+import io
+from PIL import Image
 
 # Data manipulation
 import pandas as pd
@@ -33,7 +35,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = False
+TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_REPORT = True
 
@@ -527,7 +529,7 @@ DICT_RENAME = {
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback': 'Cracker Pulse Width',
     'Sulfur Cracker Control Setpoint Feedback': 'Cracker Frequency',
 }
-
+DPI=300
 PLOTLY_CONFIG = {
     'toImageButtonOptions': {
         'format': 'png',
@@ -793,7 +795,7 @@ class Lf_Event:
         params[self.step_id]['duration'] = (
             params[self.step_id]['end_time'] - params[self.step_id]['start_time']
         )
-        params[self.step_id]['creates_new_thin_film'] = self.category == 'deposition'
+        params[self.step_id]['creates_new_thin_film'] = (self.category == 'deposition')
 
         # Get the step environment parameters
         params = self.get_step_environment_params(params)
@@ -3250,7 +3252,7 @@ def filter_data_platen_bias_on(data):
 # -------PLOTTING DEFINITIONS------------
 
 
-def plot_logfile_chamber(main_params):
+def plot_logfile_chamber(main_params,logfile_name=''):
     # Reading guns
     guns = []
     for gun_param in ['taurus', 'magkeeper3', 'magkeeper4', 's_cracker']:
@@ -3277,7 +3279,29 @@ def plot_logfile_chamber(main_params):
 
     # Plotting
     fig = plot_matplotlib_chamber_config(samples, guns, platen_rot)
-    return fig
+
+    # Save the Matplotlib figure to a BytesIO object
+    png = io.BytesIO()
+    fig.savefig(png, format='png', bbox_inches='tight',dpi=DPI)
+    png.seek(0)
+
+    # Convert the PNG to a NumPy array
+    image = np.array(Image.open(png))
+
+    # Create a Plotly figure with the image
+    plotly_fig = go.Figure(go.Image(z=image))
+
+    # Customize the layout (optional)
+    plotly_fig.update_layout(
+        title=f"Chamber Configuration:{logfile_name}",
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        margin=dict(l=0, r=0, t=100, b=0),
+        width = WIDTH,
+    )
+
+    # Return both the Matplotlib and Plotly figures
+    return fig, plotly_fig
 
 
 def quick_plot(df, Y, **kwargs):
@@ -3814,7 +3838,7 @@ def generate_bias_plot(
         Y_plot,
         mode='default',
         plot_type='line',
-        width=1.5 * WIDTH,
+        width=WIDTH,
         plot_title=f'Bias Plot: {logfile_name}',
     )
 
@@ -3837,7 +3861,7 @@ def generate_overview_plot(data, logfile_name):
     return overview_plot
 
 
-def generate_plots(log_data, events_to_plot, sample_name=''):
+def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
     plots = []
 
     # Generate the timeline plot
@@ -3849,12 +3873,16 @@ def generate_plots(log_data, events_to_plot, sample_name=''):
     plots.append(overview_plot)
 
     bias_plot = generate_bias_plot(
-        log_data,
+        events_to_plot,
         sample_name,
         rolling_num=ROLLING_NUM,
         rolling_frac_max=ROLLING_FRAC_MAX,
     )
     plots.append(bias_plot)
+
+    _,chamber_plotly_plot = plot_logfile_chamber(main_params,sample_name)
+    plots.append(chamber_plotly_plot)
+
 
     return plots
 
@@ -4374,7 +4402,9 @@ def read_events(data):
         step_params = event.get_nomad_step_params(step_params, source_list)
 
     # generate a list of plots to return
-    # plots = generate_plots(data, events_to_plot)
+    plots = generate_plots(data, events_to_plot, main_params)
+    for plot in plots:
+        plot.show()
 
     return (
         events_to_plot,
@@ -5178,7 +5208,7 @@ def main():
 
         # -----GRAPH THE CHAMBER CONFIG---
         if 'platen_position' in main_params['deposition']:
-            chamber_plot = plot_logfile_chamber(main_params)
+            chamber_plot,_ = plot_logfile_chamber(main_params, logfiles['name'][i])
             # export matplotlib plot as png
             chamber_plot.savefig(chamber_file_path, dpi=300)
 
