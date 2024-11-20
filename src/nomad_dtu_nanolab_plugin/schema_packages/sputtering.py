@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import json
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -56,6 +57,7 @@ from nomad_material_processing.vapor_deposition.pvd.general import (
 )
 from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
 from nomad_measurements.utils import create_archive, merge_sections
+from plotly.utils import PlotlyJSONEncoder
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -959,24 +961,22 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     def plot(self, events_plot, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         # Plotting the events on a timeline from the plot_plotly_extimeline function
-        try:
-            timeline = plot_plotly_extimeline(events_plot, self.lab_id)
 
-            # Converting the timeline to a plotly json
-            timeline_json = timeline.to_plotly_json()
-            timeline_json['config'] = dict(
-                scrollZoom=False,
-            )
+        timeline = plot_plotly_extimeline(events_plot, self.lab_id)
 
-            # Adding the plotly figure to the figures list
-            self.figures.append(
-                PlotlyFigure(
-                    label='Process timeline',
-                    figure=timeline_json,
-                )
+        # Converting the timeline to a plotly json
+        timeline_json = timeline.to_plotly_json()
+        timeline_json['config'] = dict(
+            scrollZoom=False,
+        )
+        
+        # Adding the plotly figure to the figures list
+        self.figures.append(
+            PlotlyFigure(
+                label='Process timeline',
+                figure=json.loads(json.dumps(timeline_json, cls=PlotlyJSONEncoder)),
             )
-        except Exception as e:
-            logger.warning(f'Failed to plot the events: {e}')
+        )
 
         # # Plotting the sample positions on the platen
         # try:
@@ -1411,8 +1411,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     gas_flow.gas.normalize(archive, logger)
 
             # Triggering the plotting of the timeline and the sample position plot
-            # self.figures = []
-            # self.plot(events_plot, archive, logger)
+            self.figures = []
+            self.plot(events_plot, archive, logger)
 
             if self.deposition_parameters is not None:
                 self.add_libraries(archive, logger)
