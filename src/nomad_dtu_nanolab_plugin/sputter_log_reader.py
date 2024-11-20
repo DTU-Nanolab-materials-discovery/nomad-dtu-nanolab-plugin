@@ -819,7 +819,7 @@ class Lf_Event:
         # Get the strat time of the step
         start_time = self.data['Time Stamp'].iloc[0]
 
-        for gas_name in ['ar','ph3', 'h2s']
+        for gas_name in ['ar','ph3', 'h2s']:
             # initialize the gas_flow dictionary
             gas_flow = {}
 
