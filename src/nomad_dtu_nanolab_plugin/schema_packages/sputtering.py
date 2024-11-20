@@ -1515,16 +1515,26 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 .get('power_type', False)
             )
 
-            power_supply_classes = {
-                'RF': DTUSputterRFPowerSupply,
-                'DC': DTUSputterDCPowerSupply,
-                'pulsed_DC': DTUSputterPulsedDCPowerSupply,
-            }
-
-            if power_type in power_supply_classes:
-                source.vapor_source = power_supply_classes[power_type]()
+            if power_type == 'RF':
+                source.vapor_source = DTUSputterRFPowerSupply()
+                source.vapor_source.dc_bias = DtuDCBias()
+                source.vapor_source.fwd_power = DtuForwardPower()
+                source.vapor_source.rfl_power = DtuReflectedPower()
+            elif power_type == 'DC':
+                source.vapor_source = DTUSputterDCPowerSupply()
+                source.vapor_source.voltage = DtuVoltage()
+                source.vapor_source.current = DtuCurrent()
+            elif power_type == 'pulsed_DC': # only for pulsed_DC
+                source.vapor_source = DTUSputterPulsedDCPowerSupply()
+                source.vapor_source.voltage = DtuVoltage()
+                source.vapor_source.current = DtuCurrent()
+                source.vapor_source.pulse_frequency = DtuPulseFrequency()
+                source.vapor_source.dead_time = DtuDeadTime()
             else:
                 source.vapor_source = DTUSputterPowerSupply()
+
+            source.vapor_source.power_sp=DtuPowerSetPoint()
+
 
             # Mapping the source_param_nomad_map
             source_param_nomad_map = map_sputter_source_params_to_nomad(
