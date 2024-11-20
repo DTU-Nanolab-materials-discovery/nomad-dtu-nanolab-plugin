@@ -73,7 +73,8 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     map_gas_flow_params_to_nomad,
     map_material_params_to_nomad,
     map_params_to_nomad,
-    map_source_params_to_nomad,
+    map_s_cracker_params_to_nomad,
+    map_sputter_source_params_to_nomad,
     map_step_params_to_nomad,
     read_events,
     read_logfile,
@@ -202,7 +203,7 @@ class DtuSubstrateMounting(ArchiveSection):
             ).replace('.', 'p')
 
 
-class DTUSubstrateShutter(TimeSeries):
+class DtuPowerSetPoint(TimeSeries):
     m_def = Section(
         a_plot=dict(
             x='time',
@@ -211,8 +212,9 @@ class DTUSubstrateShutter(TimeSeries):
     )
 
     value = Quantity(
-        type=bool,
-        description="""Position of the platen shutter.""",
+        type=np.float64,
+        unit='W',
+        description="""The set point power.""",
         shape=['*'],
     )
 
@@ -228,7 +230,57 @@ class DTUSputterPowerSupply(PVDEvaporationSource):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
     )
-    # time_series?
+    power_sp = SubSection(
+        section_def=DtuPowerSetPoint,
+    )
+
+
+class DtuDCBias(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='V',
+        description="""The DC bias.""",
+        shape=['*'],
+    )
+
+
+class DtuForwardPower(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='W',
+        description="""The forward power.""",
+        shape=['*'],
+    )
+
+
+class DtuReflectedPower(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='W',
+        description="""The reflected power.""",
+        shape=['*'],
+    )
 
 
 class DTUSputterRFPowerSupply(DTUSputterPowerSupply):
@@ -242,23 +294,57 @@ class DTUSputterRFPowerSupply(DTUSputterPowerSupply):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
     )
-    avg_current = Quantity(
-        type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'A'},
-        unit='A',
+    dc_bias = SubSection(
+        section_def=DtuDCBias,
     )
     avg_fwd_power = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
     )
-    # time_series?
+    fwd_power = SubSection(
+        section_def=DtuForwardPower,
+    )
     avg_rfl_power = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
     )
-    # time_series?
+    rfl_power = SubSection(
+        section_def=DtuReflectedPower,
+    )
+
+
+class DtuVoltage(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='V',
+        description="""The voltage.""",
+        shape=['*'],
+    )
+
+
+class DtuCurrent(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='A',
+        description="""The current.""",
+        shape=['*'],
+    )
 
 
 class DTUSputterDCPowerSupply(DTUSputterPowerSupply):
@@ -267,38 +353,67 @@ class DTUSputterDCPowerSupply(DTUSputterPowerSupply):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
     )
+    voltage = SubSection(
+        section_def=DtuVoltage,
+    )
     avg_current = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'A'},
         unit='A',
     )
+    current = SubSection(
+        section_def=DtuCurrent,
+    )
+
+
+class DtuPulseFrequency(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='Hz',
+        description="""The pulse frequency.""",
+        shape=['*'],
+    )
+
+
+class DtuDeadTime(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='s',
+        description="""The dead time.""",
+        shape=['*'],
+    )
 
 
 class DTUSputterPulsedDCPowerSupply(DTUSputterDCPowerSupply):
-    pulse_frequency = Quantity(
+    avg_pulse_frequency = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'Hz'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'kHz'},
         unit='1/s',
     )
-    dead_time = Quantity(
+    pulse_frequency = SubSection(
+        section_def=DtuPulseFrequency,
+    )
+    avg_dead_time = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 's'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'ms'},
         unit='s',
     )
-
-
-class DTUPlatenBias(ArchiveSection):
-    """
-    Class autogenerated from yaml schema.
-    """
-
-    m_def = Section()
-
-    shutter_open = SubSection(
-        section_def=DTUSubstrateShutter,
-    )
-    platen_power = SubSection(
-        section_def=DTUSputterRFPowerSupply,
+    dead_time = SubSection(
+        section_def=DtuDeadTime,
     )
 
 
@@ -338,7 +453,7 @@ class Substrate(ArchiveSection):
             self.corrected_real_temp = r_temp * self.set_point_temp.u
 
 
-class SCracker(ArchiveSection):
+class SCrackerOverview(ArchiveSection):
     """
     Class autogenerated from yaml schema.
     """
@@ -369,10 +484,103 @@ class SCracker(ArchiveSection):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'Hz'},
         unit='1/s',
     )
-    sulfur_partial_pressure = Quantity(
+
+
+class DtuZone1Temp(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
-        unit='kg/(m*s^2)',
+        unit='K',
+        description="""The temperature of zone 1.""",
+        shape=['*'],
+    )
+
+
+class DtuZone2Temp(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='K',
+        description="""The temperature of zone 2.""",
+        shape=['*'],
+    )
+
+
+class DtuZone3Temp(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='K',
+        description="""The temperature of zone 3.""",
+        shape=['*'],
+    )
+
+
+class DtuValveOnTime(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='s',
+        description="""The valve on time.""",
+        shape=['*'],
+    )
+
+
+class DtuValveFrequency(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='Hz',
+        description="""The valve frequency.""",
+        shape=['*'],
+    )
+
+
+class SCracker(SCrackerOverview):
+    zone1_temp = SubSection(
+        section_def=DtuZone1Temp,
+    )
+    zone2_temp = SubSection(
+        section_def=DtuZone2Temp,
+    )
+    zone3_temp = SubSection(
+        section_def=DtuZone3Temp,
+    )
+    valve_on_time = SubSection(
+        section_def=DtuValveOnTime,
+    )
+    valve_frequency = SubSection(
+        section_def=DtuValveFrequency,
     )
 
 
@@ -444,16 +652,11 @@ class DTUSource(PVDSource):
     pass
 
 
-class DTUSputteringSource(DTUSource):
+class DtuPlasma(DTUSource):  # TODO:reavaluate if the class should inherit DTUSource
     """
-    Class autogenerated from yaml schema.
-    """
+    Class similar a DTUSputteringSource with the
+    exception that it does not have a material section"""
 
-    m_def = Section()
-    material = SubSection(
-        section_def=DTUTargetComponent,
-        repeats=True,
-    )
     source_shutter_open = SubSection(
         section_def=DTUShutter,
     )
@@ -462,6 +665,18 @@ class DTUSputteringSource(DTUSource):
         description="""
         The power supply of the sputtering source.
         """,
+    )
+
+
+class DTUSputteringSource(DtuPlasma):
+    """
+    Class autogenerated from yaml schema.
+    """
+
+    m_def = Section()
+    material = SubSection(
+        section_def=DTUTargetComponent,
+        repeats=True,
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -516,6 +731,9 @@ class DtuCrackerSource(DTUSource):
     vapor_source = SubSection(
         section_def=SCracker,
     )
+    valve_open = SubSection(
+        section_def=DTUShutter,
+    )
 
 
 class DTUGasFlow(GasFlow, ArchiveSection):
@@ -560,6 +778,11 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         self.gas.cas_number = self.used_gas_supply.cas_number
 
 
+class DtuSubstrateHeater(PureSubstanceSection):
+    # TODO: Construct the heater section
+    pass
+
+
 class DTUChamberEnvironment(ChamberEnvironment, ArchiveSection):
     """
     Class autogenerated from yaml schema.
@@ -570,7 +793,11 @@ class DTUChamberEnvironment(ChamberEnvironment, ArchiveSection):
         section_def=DTUGasFlow,
         repeats=True,
     )
-    # Add Heater in environment?
+
+    platen_bias = SubSection(
+        section_def=DtuPlasma,
+    )
+    heater = SubSection(section_def=DtuSubstrateHeater)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -594,12 +821,7 @@ class DTUSteps(PVDStep, ArchiveSection):
         section_def=DTUSource,
         repeats=True,
     )
-    s_cracker = SubSection(
-        section_def=SCracker,
-    )
-    platen_bias = SubSection(
-        section_def=DTUPlatenBias,  # + Platen shutter ?
-    )
+
     environment = SubSection(
         section_def=DTUChamberEnvironment,
     )  # Temp should go in there
@@ -873,11 +1095,16 @@ class DepositionParameters(ArchiveSection):
         section_def=SourceOverview,
     )
     s_cracker = SubSection(
-        section_def=SCracker,
+        section_def=SCrackerOverview,
     )
     used_gases = SubSection(
         section_def=UsedGas,
         repeats=True,
+    )
+    sulfur_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
+        unit='kg/(m*s^2)',
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -1093,7 +1320,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 setattr(source_overview, 'target_id', target_reference)
 
         if params.get('s_cracker', {}).get('enabled', False):
-            sputtering.deposition_parameters.s_cracker = SCracker()
+            sputtering.deposition_parameters.s_cracker = SCrackerOverview()
 
         sputtering.end_of_process = EndOfProcess()
 
@@ -1155,12 +1382,21 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 }
                 self.write_data(config)
 
-            # generate sources
+            # generate the sources
+
             step.sources = []
 
-            sources = self.generate_sources_log_data(step_params, key, logger)
+            # generate sputtering sources
+            sputter_sources = self.generate_sputtering_sources_log_data(
+                step_params, key, logger
+            )
 
-            step.sources = sources
+            step.sources = sputter_sources
+
+            # generate the s cracker source
+            s_cracker = self.generate_s_cracker_log_data(step_params, key, logger)
+
+            step.sources.append(s_cracker)
 
             # generate environment
             step.environment = DTUChamberEnvironment()
@@ -1173,12 +1409,34 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         return steps
 
-    def generate_sources_log_data(
+    def generate_s_cracker_log_data(
+        self, step_params: dict, key: str, logger: 'BoundLogger'
+    ) -> None:
+        s_cracker = SCracker()
+
+        s_cracker_param_nomad_map = map_s_cracker_params_to_nomad(key)
+
+        # Looping through the s_cracker_param_nomad_map
+        for input_keys, output_keys, unit in s_cracker_param_nomad_map:
+            config = {
+                'input_dict': step_params,
+                'input_keys': input_keys,
+                'output_obj': s_cracker,
+                'output_obj_name': 's_cracker',
+                'output_keys': output_keys,
+                'unit': unit,
+                'logger': logger,
+            }
+            self.write_data(config)
+
+        return s_cracker
+
+    def generate_sputtering_sources_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'
     ) -> None:
         sources = []
 
-        for source_name in step_params.get(key, {}).get('sources', {}):
+        for source_name in ['magkeeper3', 'magkeeper4', 'taurus']:
             # Create a DTUSource object and set it to the relevant attribute
             source = DTUSputteringSource()
             source.material = []
@@ -1205,7 +1463,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 source.vapor_source = DTUSputterPowerSupply()
 
             # Mapping the source_param_nomad_map
-            source_param_nomad_map = map_source_params_to_nomad(
+            source_param_nomad_map = map_sputter_source_params_to_nomad(
                 key, source_name, power_type
             )
 
@@ -1290,7 +1548,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     ) -> None:
         gas_flow = []
 
-        for gas_name in ['ar', 'h2s', 'ph3']:
+        for gas_name in ['ar']:  # ['h2s', 'ph3']:
             single_gas_flow = DTUGasFlow()
             single_gas_flow.flow_rate = VolumetricFlowRate()
             single_gas_flow.gas = PureSubstanceSection()
