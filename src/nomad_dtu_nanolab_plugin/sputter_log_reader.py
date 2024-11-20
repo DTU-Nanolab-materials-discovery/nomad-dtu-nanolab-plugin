@@ -4836,6 +4836,11 @@ def map_s_cracker_params_to_nomad(key):
             ['valve_open', 'time'],
             'second',
         ],
+        [
+            [key, 'sources', 's_cracker', 'valve_pulsing', 'mode_value'],
+            ['valve_open', 'mode_value'],
+            None
+        ]
     ]
     for zone_number in ['1', '2', '3']:
         s_cracker_param_nomad_map.extend(
@@ -4894,8 +4899,8 @@ def map_sputter_source_params_to_nomad(key, source_name, power_type):
             'second',
         ],
         [
-            [key, 'sources', source_name, 'source_shutter_open', 'general_value'],
-            ['source_shutter_open', 'general_value'],
+            [key, 'sources', source_name, 'source_shutter_open', 'mode_value'],
+            ['source_shutter_open', 'mode_value'],
             None,
         ],
     ]

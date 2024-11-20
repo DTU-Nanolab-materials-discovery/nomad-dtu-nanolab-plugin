@@ -623,7 +623,7 @@ class DTUShutter(TimeSeries):
         shape=['*'],
     )
 
-    general_value = Quantity(
+    mode_value = Quantity(
         type=bool,
         description="""Position of the general shutter.""",
     )
