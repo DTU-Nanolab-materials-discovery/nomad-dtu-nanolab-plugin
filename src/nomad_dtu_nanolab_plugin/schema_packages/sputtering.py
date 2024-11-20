@@ -1553,11 +1553,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 }
                 self.write_data(config)
 
-            target_material = self.generate_material_log_data(
+            target = self.generate_material_log_data(
                 step_params, key, source_name, logger
             )
 
-            source.material.append(target_material)
+            source.material.extend(target)
 
             sources.append(source)
 
