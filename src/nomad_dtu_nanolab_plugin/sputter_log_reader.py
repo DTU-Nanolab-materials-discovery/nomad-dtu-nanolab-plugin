@@ -5026,11 +5026,6 @@ def map_sputter_source_params_to_nomad(key, source_name, power_type):
 def map_material_params_to_nomad(key, source_name):
     material_param_nomad_map = [
         [
-            [key, 'sources', source_name, 'name'],
-            ['name'],
-            None,
-        ],
-        [
             [key, 'sources', source_name, 'target_id'],
             ['lab_id'],
             None,
