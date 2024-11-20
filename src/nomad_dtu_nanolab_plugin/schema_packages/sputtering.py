@@ -1259,7 +1259,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         #     )
 
         # except Exception as e:
-        #     logger.debug(f'Failed to plot the sample positions: {e}')
+        #     logger.warning(f'Failed to plot the sample positions: {e}')
 
     # Helper method to write the data
     def write_data(self, config: dict):
@@ -1286,7 +1286,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             try:
                 value = value.total_seconds()
             except AttributeError:
-                logger.debug(f'{params_str}.total_seconds method is invalid')
+                logger.warning(f'{params_str}.total_seconds method is invalid')
                 return
             value = ureg.Quantity(value, 'second')
         elif unit is not None:
@@ -1295,13 +1295,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     try:
                         value[i] = ureg.Quantity(value[i], unit)
                     except Exception as e:
-                        logger.debug(f'Failed to convert {params_str} to {unit}: {e}')
+                        logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
                         return
             else:
                 try:
                     value = ureg.Quantity(value, unit)
                 except Exception as e:
-                    logger.debug(f'Failed to convert {params_str} to {unit}: {e}')
+                    logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
                     return
         # Traverse the path to set the nested attribute
         try:
@@ -1311,7 +1311,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             setattr(obj, output_keys[-1], value)
             logger.info(f'Set {params_str} to {subsection_str}')
         except Exception as e:
-            logger.debug(f'Failed to set {params_str} to {subsection_str}: {e}')
+            logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
 
     def generate_general_log_data(self, params: dict, logger: 'BoundLogger') -> None:
         """
