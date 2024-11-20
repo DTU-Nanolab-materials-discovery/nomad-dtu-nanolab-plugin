@@ -922,8 +922,7 @@ class Lf_Event:
             params[self.step_id]['sources']['s_cracker']['valve_on_time'] = {}
             params[self.step_id]['sources']['s_cracker']['valve_frequency'] = {}
 
-
-        #check if the cracker is recorded by the log
+        # check if the cracker is recorded by the log
         if 'Sulfur Cracker Zone 1 Current Temperature' not in self.data.columns:
             params[self.step_id]['sources']['s_cracker']['cracker_record'] = False
         else:
@@ -4846,8 +4845,8 @@ def map_s_cracker_params_to_nomad(key):
         [
             [key, 'sources', 's_cracker', 'valve_pulsing', 'mode_value'],
             ['valve_open', 'mode_value'],
-            None
-        ]
+            None,
+        ],
     ]
     for zone_number in ['1', '2', '3']:
         s_cracker_param_nomad_map.extend(

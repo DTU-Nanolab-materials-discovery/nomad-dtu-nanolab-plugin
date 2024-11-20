@@ -1424,15 +1424,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             # generate the s cracker source
             if (
-                step_params
-                .get(key, {})
+                step_params.get(key, {})
                 .get('sources', {})
                 .get('s_cracker', {})
                 .get('cracker_record', False)
-                ):
+            ):
                 s_cracker = self.generate_s_cracker_log_data(step_params, key, logger)
 
-            step.sources.append(s_cracker)
+                step.sources.append(s_cracker)
 
             # #generate the reactive gases source
 
