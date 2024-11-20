@@ -566,7 +566,32 @@ class DtuValveFrequency(TimeSeries):
     )
 
 
-class SCracker(SCrackerOverview):
+class SCracker(ArchiveSection):
+    avg_zone1_temp = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
+        unit='kelvin',
+    )
+    avg_zone2_temp = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
+        unit='kelvin',
+    )
+    avg_zone3_temp = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
+        unit='kelvin',
+    )
+    avg_valve_on_time = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 's'},
+        unit='s',
+    )
+    avg_valve_frequency = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'Hz'},
+        unit='1/s',
+    )
     zone1_temp = SubSection(
         section_def=DtuZone1Temp,
     )
@@ -880,6 +905,10 @@ class InstrumentParameters(InstrumentReference, ArchiveSection):
     stage_used = Quantity(
         type=MEnum(['heating', 'cooling']),
         default='heating',
+        a_eln={'component': 'RadioEnumEditQuantity'},
+    )
+    platen_used = Quantity(
+        type=MEnum(['A', 'B']),
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
 
