@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import json
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -959,24 +960,22 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     def plot(self, events_plot, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         # Plotting the events on a timeline from the plot_plotly_extimeline function
-        try:
-            timeline = plot_plotly_extimeline(events_plot, self.lab_id)
 
-            # Converting the timeline to a plotly json
-            timeline_json = timeline.to_plotly_json()
-            timeline_json['config'] = dict(
-                scrollZoom=False,
-            )
+        timeline = plot_plotly_extimeline(events_plot, self.lab_id)
 
-            # Adding the plotly figure to the figures list
-            self.figures.append(
-                PlotlyFigure(
-                    label='Process timeline',
-                    figure=timeline_json,
-                )
+        # Converting the timeline to a plotly json
+        timeline_json = json.loads(timeline.to_json())
+        timeline_json['config'] = dict(
+            scrollZoom=False,
+        )
+        
+        # Adding the plotly figure to the figures list
+        self.figures.append(
+            PlotlyFigure(
+                label='Process timeline',
+                figure=timeline_json,
             )
-        except Exception as e:
-            logger.warning(f'Failed to plot the events: {e}')
+        )
 
         # # Plotting the sample positions on the platen
         # try:
@@ -1411,8 +1410,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     gas_flow.gas.normalize(archive, logger)
 
             # Triggering the plotting of the timeline and the sample position plot
-            # self.figures = []
-            # self.plot(events_plot, archive, logger)
+            self.figures = []
+            self.plot(events_plot, archive, logger)
 
             if self.deposition_parameters is not None:
                 self.add_libraries(archive, logger)
