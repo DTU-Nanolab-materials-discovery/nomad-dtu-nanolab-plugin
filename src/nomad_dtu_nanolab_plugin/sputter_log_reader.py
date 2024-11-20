@@ -895,11 +895,12 @@ class Lf_Event:
                     source_name, params, power_type, source_number
                 )
             # check is the cracker zone 1 above the threshold
-            if (
-                self.data['Sulfur Cracker Zone 1 Current Temperature'].mean()
-                > CRACKER_ZONE_1_MIN_TEMP
-            ):
-                params = self.get_s_cracker_step_params(params)
+            if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
+                if (
+                    self.data['Sulfur Cracker Zone 1 Current Temperature'].mean()
+                    > CRACKER_ZONE_1_MIN_TEMP
+                ):
+                    params = self.get_s_cracker_step_params(params)
 
             params = self.get_reactive_gas_step_params(params)
 
