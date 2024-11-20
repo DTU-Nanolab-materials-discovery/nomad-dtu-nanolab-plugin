@@ -800,7 +800,7 @@ class Lf_Event:
         # Get the step environment parameters
         params = self.get_step_environment_params(params)
         # Get the sources parameters
-        params = self.get_step_sources_params(source_list, params)
+        params = self.get_step_sources_params(params,source_list)
         # get the sputter_parameters
 
         return params
@@ -819,7 +819,7 @@ class Lf_Event:
         # Get the strat time of the step
         start_time = self.data['Time Stamp'].iloc[0]
 
-        for gas_name in ['ar']:  # ['ph3', 'h2s']
+        for gas_name in ['ar','ph3', 'h2s']
             # initialize the gas_flow dictionary
             gas_flow = {}
 
@@ -876,11 +876,12 @@ class Lf_Event:
         return params
 
     # method to extract the so called sources parameters of single steps
-    def get_step_sources_params(self, source_list, params):
+    def get_step_sources_params(self, params, source_list):
         # helper method to deduce the plasma type of the source during deposition
 
         # initialize the sources dictionary
-        params[self.step_id]['sources'] = {}
+        if 'sources' not in params[self.step_id]:
+            params[self.step_id]['sources'] = {}
 
         for source_number in source_list:
             source_name = f'{SOURCE_NAME[str(source_number)]}'
@@ -902,12 +903,12 @@ class Lf_Event:
                 ):
                     params = self.get_s_cracker_step_params(params)
 
-            params = self.get_reactive_gas_step_params(params)
+            # params = self.get_reactive_gas_step_params(params)
 
         return params
 
-    def get_reactive_gas_step_params(self, params):
-        return params
+    # def get_reactive_gas_step_params(self, params):
+    #     return params
 
     def get_s_cracker_step_params(self, params):
         # Initialize the source dictionary if it does not exist
