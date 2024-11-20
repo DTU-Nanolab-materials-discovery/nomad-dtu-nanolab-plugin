@@ -4763,7 +4763,10 @@ def map_environment_params_to_nomad(key):
 
 def map_gas_flow_params_to_nomad(key, gas_name):
     gas_flow_param_nomad_map = [
-        [[key, 'environment', 'gas_flow', gas_name, 'gas', 'name'], ['gas_name'], None],
+        [
+            [key, 'environment', 'gas_flow', gas_name, 'gas', 'name'],
+            ['gas_name'],
+            None],
         [
             [key, 'environment', 'gas_flow', gas_name, 'gas', 'name'],
             ['gas', 'name'],
@@ -4800,11 +4803,13 @@ def map_s_cracker_params_to_nomad(key):
             [key, 'sources', 's_cracker', 'pulse_width', 'value'],
             ['vapour_source', 'pulse_width', 'value'],
             'millisecond',
-        ][
+        ],
+        [
             [key, 'sources', 's_cracker', 'pulse_width', 'time'],
             ['vapour_source', 'pulse_width', 'time'],
             'second',
-        ][
+        ],
+        [
             [key, 'sources', 's_cracker', 'avg_pulse_freq'],
             ['vapour_source', 'avg_pulse_freq'],
             'mHz',
