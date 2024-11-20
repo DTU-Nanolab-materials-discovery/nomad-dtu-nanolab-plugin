@@ -909,6 +909,74 @@ class Lf_Event:
         return params
 
     def get_s_cracker_step_params(self, params):
+        # Initialize the source dictionary if it does not exist
+        if 's_cracker' not in params[self.step_id]['sources']:
+            params[self.step_id]['sources']['s_cracker'] = {}
+            params[self.step_id]['sources']['s_cracker']['zone1_temp'] = {}
+            params[self.step_id]['sources']['s_cracker']['zone2_temp'] = {}
+            params[self.step_id]['sources']['s_cracker']['zone3_temp'] = {}
+            params[self.step_id]['sources']['s_cracker']['valve_on_time'] = {}
+            params[self.step_id]['sources']['s_cracker']['valve_frequency'] = {}
+
+        # get the time series in seconds from the start of the step
+        time_series = (
+            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+            .dt.total_seconds()
+            .tolist()
+        )
+
+        for zone_number in ['1', '2', '3']:
+            # Extract the cracker zone temperature
+            params[self.step_id]['sources']['s_cracker'][
+                f'avg_zone{zone_number}_temp'
+            ] = self.data[
+                f'Sulfur Cracker Zone {zone_number} Current Temperature'
+            ].mean()
+            params[self.step_id]['sources']['s_cracker'][f'zone{zone_number}_temp'][
+                'value'
+            ] = self.data[
+                f'Sulfur Cracker Zone {zone_number} Current Temperature'
+            ].tolist()
+            params[self.step_id]['sources']['s_cracker'][f'zone{zone_number}_temp'][
+                'time'
+            ] = time_series
+
+        # Extract the cracker valve on time
+        params[self.step_id]['sources']['s_cracker']['avg_valve_on_time'] = self.data[
+            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+        ].mean()
+        params[self.step_id]['sources']['s_cracker']['valve_on_time']['value'] = (
+            self.data[
+                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+            ].tolist()
+        )
+        params[self.step_id]['sources']['s_cracker']['valve_on_time']['time'] = (
+            time_series
+        )
+
+        # Extract the cracker valve frequency
+        params[self.step_id]['sources']['s_cracker']['avg_valve_frequency'] = self.data[
+            'Sulfur Cracker Control Setpoint Feedback'
+        ].mean()
+        params[self.step_id]['sources']['s_cracker']['valve_frequency']['value'] = (
+            self.data['Sulfur Cracker Control Setpoint Feedback'].tolist()
+        )
+        params[self.step_id]['sources']['s_cracker']['valve_frequency']['time'] = (
+            time_series
+        )
+
+        # extract if the cracker valve is pulsing (enabled) as a boolean series
+        params[self.step_id]['sources']['s_cracker']['valve_pulsing']['value'] = (
+            bool(x) for x in self.data['Sulfur Cracker Control Enabled'].tolist()
+        )
+        params[self.step_id]['sources']['s_cracker']['valve_pulsing']['time'] = (
+            time_series
+        )
+        # extract the mode value of the valve pulsing
+        params[self.step_id]['sources']['s_cracker']['valve_pulsing']['mode_value'] = (
+            bool(self.data['Sulfur Cracker Control Enabled'].value_counts().idxmax())
+        )
+
         return params
 
     def get_sputter_sources_step_params(
@@ -4723,12 +4791,66 @@ def map_gas_flow_params_to_nomad(key, gas_name):
 
 def map_s_cracker_params_to_nomad(key):
     s_cracker_param_nomad_map = [
-        [[key, 'sources', 's_cracker', 'zone1_temp'], ['zone1_temp'], 'degC'],
-        [[key, 'sources', 's_cracker', 'zone2_temp'], ['zone2_temp'], 'degC'],
-        [[key, 'sources', 's_cracker', 'zone3_temp'], ['zone3_temp'], 'degC'],
-        [[key, 'sources', 's_cracker', 'pulse_width'], ['pulse_width'], 'millisecond'],
-        [[key, 'sources', 's_cracker', 'pulse_freq'], ['pulse_freq'], 'mHz'],
+        [
+            [key, 'sources', 's_cracker', 'avg_pulse_width'],
+            ['vapour_source', 'avg_pulse_width'],
+            'millisecond',
+        ],
+        [
+            [key, 'sources', 's_cracker', 'pulse_width', 'value'],
+            ['vapour_source', 'pulse_width', 'value'],
+            'millisecond',
+        ][
+            [key, 'sources', 's_cracker', 'pulse_width', 'time'],
+            ['vapour_source', 'pulse_width', 'time'],
+            'second',
+        ][
+            [key, 'sources', 's_cracker', 'avg_pulse_freq'],
+            ['vapour_source', 'avg_pulse_freq'],
+            'mHz',
+        ],
+        [
+            [key, 'sources', 's_cracker', 'pulse_freq', 'value'],
+            ['vapour_source', 'pulse_freq', 'value'],
+            'mHz',
+        ],
+        [
+            [key, 'sources', 's_cracker', 'pulse_freq', 'time'],
+            ['vapour_source', 'pulse_freq', 'time'],
+            'second',
+        ],
+        # add the valve shutter open series
+        [
+            [key, 'sources', 's_cracker', 'valve_pulsing', 'value'],
+            ['valve_open', 'value'],
+            None,
+        ],
+        [
+            [key, 'sources', 's_cracker', 'valve_pulsing', 'time'],
+            ['valve_open', 'time'],
+            'second',
+        ],
     ]
+    for zone_number in ['1', '2', '3']:
+        s_cracker_param_nomad_map.extend(
+            [
+                [
+                    [key, 'sources', 's_cracker', f'avg_zone{zone_number}_temp'],
+                    ['vapour_source', f'avg_zone{zone_number}_temp'],
+                    'degC',
+                ],
+                [
+                    [key, 'sources', 's_cracker', f'zone{zone_number}_temp', 'value'],
+                    ['vapour_source', f'zone{zone_number}_temp', 'value'],
+                    'degC',
+                ],
+                [
+                    [key, 'sources', 's_cracker', f'zone{zone_number}_temp', 'time'],
+                    ['vapour_source', f'zone{zone_number}_temp', 'time'],
+                    'second',
+                ],
+            ]
+        )
 
     return s_cracker_param_nomad_map
 
