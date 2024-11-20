@@ -1531,7 +1531,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 source.vapor_source.pulse_frequency = DtuPulseFrequency()
                 source.vapor_source.dead_time = DtuDeadTime()
             else:
-                source.vapor_source = DTUSputterPowerSupply()
+                # source.vapor_source = DTUSputterPowerSupply()
+                continue
 
             source.vapor_source.power_sp = DtuPowerSetPoint()
 
