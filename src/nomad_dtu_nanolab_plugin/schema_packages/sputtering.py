@@ -1259,7 +1259,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         #     )
 
         # except Exception as e:
-        #     logger.warning(f'Failed to plot the sample positions: {e}')
+        #     logger.debug(f'Failed to plot the sample positions: {e}')
 
     # Helper method to write the data
     def write_data(self, config: dict):
@@ -1279,14 +1279,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # Checking that the value exists
         if value is None:
-            # logger.warning(f'Missing {params_str}: Could not set {subsection_str}')
+            logger.debug(f'Missing {params_str}: Could not set {subsection_str}')
             return
         # We check if the value is a TimeDelta object and convert it to seconds
         if isinstance(value, pd._libs.tslibs.timedeltas.Timedelta):
             try:
                 value = value.total_seconds()
             except AttributeError:
-                logger.warning(f'{params_str}.total_seconds method is invalid')
+                logger.debug(f'{params_str}.total_seconds method is invalid')
                 return
             value = ureg.Quantity(value, 'second')
         elif unit is not None:
@@ -1295,13 +1295,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     try:
                         value[i] = ureg.Quantity(value[i], unit)
                     except Exception as e:
-                        logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
+                        logger.debug(f'Failed to convert {params_str} to {unit}: {e}')
                         return
             else:
                 try:
                     value = ureg.Quantity(value, unit)
                 except Exception as e:
-                    logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
+                    logger.debug(f'Failed to convert {params_str} to {unit}: {e}')
                     return
         # Traverse the path to set the nested attribute
         try:
@@ -1311,7 +1311,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             setattr(obj, output_keys[-1], value)
             logger.info(f'Set {params_str} to {subsection_str}')
         except Exception as e:
-            logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
+            logger.debug(f'Failed to set {params_str} to {subsection_str}: {e}')
 
     def generate_general_log_data(self, params: dict, logger: 'BoundLogger') -> None:
         """
@@ -1524,7 +1524,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 source.vapor_source = DTUSputterDCPowerSupply()
                 source.vapor_source.voltage = DtuVoltage()
                 source.vapor_source.current = DtuCurrent()
-            elif power_type == 'pulsed_DC': # only for pulsed_DC
+            elif power_type == 'pulsed_DC':  # only for pulsed_DC
                 source.vapor_source = DTUSputterPulsedDCPowerSupply()
                 source.vapor_source.voltage = DtuVoltage()
                 source.vapor_source.current = DtuCurrent()
@@ -1533,8 +1533,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             else:
                 source.vapor_source = DTUSputterPowerSupply()
 
-            source.vapor_source.power_sp=DtuPowerSetPoint()
-
+            source.vapor_source.power_sp = DtuPowerSetPoint()
 
             # Mapping the source_param_nomad_map
             source_param_nomad_map = map_sputter_source_params_to_nomad(
@@ -1622,7 +1621,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     ) -> None:
         gas_flow = []
 
-        for gas_name in ['ar','h2s', 'ph3']:
+        for gas_name in ['ar', 'h2s', 'ph3']:
             single_gas_flow = DTUGasFlow()
             single_gas_flow.flow_rate = VolumetricFlowRate()
             single_gas_flow.gas = PureSubstanceSection()

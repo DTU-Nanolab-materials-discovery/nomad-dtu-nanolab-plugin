@@ -801,7 +801,7 @@ class Lf_Event:
         # Get the step environment parameters
         params = self.get_step_environment_params(params)
         # Get the sources parameters
-        params = self.get_step_sources_params(params,source_list)
+        params = self.get_step_sources_params(params, source_list)
         # get the sputter_parameters
 
         return params
@@ -820,7 +820,7 @@ class Lf_Event:
         # Get the strat time of the step
         start_time = self.data['Time Stamp'].iloc[0]
 
-        for gas_name in ['ar','ph3', 'h2s']:
+        for gas_name in ['ar', 'ph3', 'h2s']:
             # initialize the gas_flow dictionary
             gas_flow = {}
 
@@ -4767,10 +4767,7 @@ def map_environment_params_to_nomad(key):
 
 def map_gas_flow_params_to_nomad(key, gas_name):
     gas_flow_param_nomad_map = [
-        [
-            [key, 'environment', 'gas_flow', gas_name, 'gas', 'name'],
-            ['gas_name'],
-            None],
+        [[key, 'environment', 'gas_flow', gas_name, 'gas', 'name'], ['gas_name'], None],
         [
             [key, 'environment', 'gas_flow', gas_name, 'gas', 'name'],
             ['gas', 'name'],
