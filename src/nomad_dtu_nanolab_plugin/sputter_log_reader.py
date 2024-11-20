@@ -48,9 +48,10 @@ SAMPLES_TO_TEST = [
     # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
     # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
     # 'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
-    'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
+    # 'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
     # 'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
     # 'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
+    'mittma_0007_Cu_Recording Set 2024.06.03-09.52.29',
 ]
 
 

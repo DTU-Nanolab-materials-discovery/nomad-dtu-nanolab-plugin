@@ -1279,7 +1279,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # Checking that the value exists
         if value is None:
-            logger.warning(f'Missing {params_str}: Could not set {subsection_str}')
+            # logger.warning(f'Missing {params_str}: Could not set {subsection_str}')
             return
         # We check if the value is a TimeDelta object and convert it to seconds
         if isinstance(value, pd._libs.tslibs.timedeltas.Timedelta):
