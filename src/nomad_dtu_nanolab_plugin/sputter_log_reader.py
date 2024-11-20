@@ -4878,12 +4878,12 @@ def map_sputter_source_params_to_nomad(key, source_name, power_type):
         ],
         [
             [key, 'sources', source_name, 'power_supply', 'power_sp', 'value'],
-            ['vapor_source', 'power', 'value'],
+            ['vapor_source', 'power_sp', 'value'],
             'W',
         ],
         [
             [key, 'sources', source_name, 'power_supply', 'power_sp', 'time'],
-            ['vapor_source', 'power', 'time'],
+            ['vapor_source', 'power_sp', 'time'],
             'second',
         ],
         [
