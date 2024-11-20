@@ -57,7 +57,6 @@ from nomad_material_processing.vapor_deposition.pvd.general import (
 )
 from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
 from nomad_measurements.utils import create_archive, merge_sections
-from plotly.utils import PlotlyJSONEncoder
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
@@ -965,7 +964,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         timeline = plot_plotly_extimeline(events_plot, self.lab_id)
 
         # Converting the timeline to a plotly json
-        timeline_json = timeline.to_plotly_json()
+        timeline_json = json.loads(timeline.to_json())
         timeline_json['config'] = dict(
             scrollZoom=False,
         )
@@ -974,7 +973,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         self.figures.append(
             PlotlyFigure(
                 label='Process timeline',
-                figure=json.loads(json.dumps(timeline_json, cls=PlotlyJSONEncoder)),
+                figure=timeline_json,
             )
         )
 
