@@ -1420,12 +1420,20 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 step_params, key, logger
             )
 
-            step.sources = sputter_sources
+            step.sources.extend(sputter_sources)
 
             # generate the s cracker source
             s_cracker = self.generate_s_cracker_log_data(step_params, key, logger)
 
             step.sources.append(s_cracker)
+
+            # #generate the reactive gases source
+
+            # reactive_gas_sources = self.generate_reactive_gas_sources_log_data(
+            #     step_params, key, logger
+            # )
+
+            # step.sources.extend(reactive_gas_sources)
 
             # generate environment
             step.environment = DTUChamberEnvironment()
@@ -1437,6 +1445,33 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             steps.append(step)
 
         return steps
+
+    # def generate_reactive_gas_sources_log_data(
+    #     self, step_params: dict, key: str, logger: 'BoundLogger'
+    # ) -> None:
+    #     gas_sources = []
+
+    #     for gas_name in ['h2s', 'ph3']:
+    #         single_gas_source = DtuReactiveGasSource()
+
+    #         gas_source_param_nomad_map = map_reactive_gas_source_params_to_nomad(
+    #             key, gas_name
+    #         )
+
+    #         # Looping through the gas_source_param_nomad_map
+    #         for input_keys, output_keys, unit in gas_source_param_nomad_map:
+    #             config = {
+    #                 'input_dict': step_params,
+    #                 'input_keys': input_keys,
+    #                 'output_obj': single_gas_source,
+    #                 'output_obj_name': 'gas_source',
+    #                 'output_keys': output_keys,
+    #                 'unit': unit,
+    #                 'logger': logger,
+    #             }
+    #             self.write_data(config)
+
+    #         gas_sources.append(single_gas_source)
 
     def generate_s_cracker_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'
@@ -1577,7 +1612,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     ) -> None:
         gas_flow = []
 
-        for gas_name in ['ar']:  # ['h2s', 'ph3']:
+        for gas_name in ['ar','h2s', 'ph3']:
             single_gas_flow = DTUGasFlow()
             single_gas_flow.flow_rate = VolumetricFlowRate()
             single_gas_flow.gas = PureSubstanceSection()
