@@ -1423,7 +1423,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             step.sources.extend(sputter_sources)
 
             # generate the s cracker source
-            s_cracker = self.generate_s_cracker_log_data(step_params, key, logger)
+            if (
+                step_params
+                .get(key, {})
+                .get('sources', {})
+                .get('s_cracker', {})
+                .get('cracker_record', False)
+                ):
+                s_cracker = self.generate_s_cracker_log_data(step_params, key, logger)
 
             step.sources.append(s_cracker)
 
@@ -1476,6 +1483,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     def generate_s_cracker_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'
     ) -> None:
+
         s_cracker = SCracker()
 
         s_cracker_param_nomad_map = map_s_cracker_params_to_nomad(key)
