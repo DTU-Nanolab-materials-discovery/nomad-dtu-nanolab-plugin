@@ -35,9 +35,9 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = True
+TEST_SPECIFIC_LOGFILE = False
 REMOVE_SAMPLES = True
-SAVE_STEP_REPORT = True
+SAVE_STEP_PARAMS = False
 
 SAMPLES_TO_REMOVE = [
     'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
@@ -51,7 +51,8 @@ SAMPLES_TO_TEST = [
     # 'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
     # 'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
     # 'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
-    'mittma_0007_Cu_Recording Set 2024.06.03-09.52.29',
+    # 'mittma_0007_Cu_Recording Set 2024.06.03-09.52.29',
+    'anait_0010_Ba_Recording Set 2024.11.12-09.20.00',
 ]
 
 
@@ -921,6 +922,7 @@ class Lf_Event:
             params[self.step_id]['sources']['s_cracker']['zone3_temp'] = {}
             params[self.step_id]['sources']['s_cracker']['valve_on_time'] = {}
             params[self.step_id]['sources']['s_cracker']['valve_frequency'] = {}
+            params[self.step_id]['sources']['s_cracker']['valve_pulsing'] = {}
 
         # check if the cracker is recorded by the log
         if 'Sulfur Cracker Zone 1 Current Temperature' not in self.data.columns:
@@ -5544,7 +5546,7 @@ def main():
         save_report_as_text(main_params, txt_file_path, logfiles['name'][i])
 
         # --SAVE THE STEP REPORT QUANTITIES IN A TEXT FILE
-        if SAVE_STEP_REPORT:
+        if SAVE_STEP_PARAMS:
             save_report_as_text(step_params, step_file_path, logfiles['name'][i])
 
     # ----CONSILIDATE THE DATA INTO A SINGLE CSV FILE-----
@@ -5558,5 +5560,3 @@ def main():
 if __name__ == '__main__':
     main()
 
-
-# ------TESTING GROUND--------
