@@ -1,9 +1,49 @@
 from nomad.config.models.plugins import AppEntryPoint
-
-from nomad_dtu_nanolab_plugin.apps.targets import sputtering_targets_app
+from nomad.config.models.ui import (
+    App,
+    Column,
+    Columns,
+    FilterMenu,
+    FilterMenus,
+    Filters,
+)
 
 sputtering_targets= AppEntryPoint(
     name='Sputtering targets app',
     description='App for searching sputtering targets.',
-    app=sputtering_targets_app,
+    app=App(
+        label='Sputtering Targets',
+        path='sputtering-targets',
+        category='PlasmaNano',
+        description="""
+        Explore the sputtering targets.
+        """,
+        filters=Filters(
+            include=[
+                '*#nomad_dtu_nanolab_plugin.schema_packages.target.DTUTarget',
+            ],
+        ),
+        columns=Columns(
+            selected=[
+                'data.lab_id#nomad_dtu_nanolab_plugin.schema_packages.target.DTUTarget',
+                'data.supplier_id#nomad_dtu_nanolab_plugin.schema_packages.target.DTUTarget',
+            ],
+            options={
+                'data.lab_id#nomad_dtu_nanolab_plugin.schema_packages.target.DTUTarget': Column( # noqa: E501
+                    label='Target ID',
+                ),
+                'data.supplier_id#nomad_dtu_nanolab_plugin.schema_packages.target.DTUTarget': Column( # noqa: E501
+                    label='Supplier',
+                ),
+            },
+        ),
+        filter_menus=FilterMenus(
+            options={
+                'material': FilterMenu(label='Material'),
+            }
+        ),
+        filters_locked={
+            'entry_type': 'DTUTarget',
+        },
+    ),
 )
