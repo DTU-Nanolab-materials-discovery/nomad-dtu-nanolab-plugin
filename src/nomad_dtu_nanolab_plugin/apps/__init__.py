@@ -1,23 +1,9 @@
 from nomad.config.models.plugins import AppEntryPoint
-from nomad.config.models.ui import App, Column, Columns, FilterMenu, FilterMenus
 
-myapp = AppEntryPoint(
-    name='MyApp',
-    description='App defined using the new plugin mechanism.',
-    app=App(
-        label='MyApp',
-        path='myapp',
-        category='simulation',
-        columns=Columns(
-            selected=['entry_id'],
-            options={
-                'entry_id': Column(),
-            },
-        ),
-        filter_menus=FilterMenus(
-            options={
-                'material': FilterMenu(label='Material'),
-            }
-        ),
-    ),
+from nomad_dtu_nanolab_plugin.apps.targets import sputtering_targets_app
+
+sputtering_targets= AppEntryPoint(
+    name='Sputtering targets app',
+    description='App for searching sputtering targets.',
+    app=sputtering_targets_app,
 )
