@@ -168,7 +168,7 @@ class DTUTarget(CompositeSystem, Schema):
             if factor := UNIT_FACTORS.get(row['unit']):
                 component.mass_fraction = float(row['mass_fraction']) * factor
             else:
-                logger.warning(f'The impurity unit "{row['unit']}" is not a valid unit')
+                logger.warning(f'The impurity unit "{row["unit"]}" is not a valid unit')
                 continue
             components.append(component)
 
