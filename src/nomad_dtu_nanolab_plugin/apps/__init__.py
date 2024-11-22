@@ -12,9 +12,9 @@ sputtering_targets= AppEntryPoint(
     name='Sputtering targets app',
     description='App for searching sputtering targets.',
     app=App(
-        label='Sputtering Targets',
+        label='Targets',
         path='sputtering-targets',
-        category='PlasmaNano',
+        category='Sputtering',
         description="""
         Explore the sputtering targets.
         """,
