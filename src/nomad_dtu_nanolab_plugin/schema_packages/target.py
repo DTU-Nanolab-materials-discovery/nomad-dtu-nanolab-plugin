@@ -16,9 +16,11 @@
 # limitations under the License.
 #
 
+import os
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 from nomad.datamodel.data import Schema
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
@@ -26,9 +28,9 @@ from nomad.datamodel.metainfo.annotations import (
     ELNComponentEnum,
 )
 from nomad.datamodel.metainfo.basesections import (
-    Component,
     CompositeSystem,
-    ElementalComposition,
+    PureSubstanceComponent,
+    PureSubstanceSection,
 )
 from nomad.metainfo import Datetime, Package, Quantity, Section
 
@@ -41,7 +43,19 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU customised Target scheme')
 
 
-IMPURITY_NAME_PARTS = 5
+FILE_NAME = {
+    'nomad': 0,
+    'ready': 1,
+    'chemical_formula': 2,
+    'supplier': 3,
+    'number': 4,
+}
+UNIT_FACTORS = {
+    'wt%': 1e-2,
+    'ppm': 1e-6,
+    'ppb': 1e-9,
+    'ppt': 1e-12,
+}
 
 
 class DTUTarget(CompositeSystem, Schema):
@@ -55,40 +69,46 @@ class DTUTarget(CompositeSystem, Schema):
     )
     supplier_id = Quantity(
         type=str,
-        a_eln={'component': 'StringEditQuantity'},
+        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
     )
     purity = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity'},
+        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
     )
     impurity_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
         description="""
         Upload a text file specifying the impurities here.
-        File has to be created with a seperate code.
+        File has to be created with a separate code.
         """,
-        a_eln={'component': 'FileEditQuantity', 'label': 'file with impurities'},
+        a_eln=ELNAnnotation(component=ELNComponentEnum.FileEditQuantity),
     )
     thickness = Quantity(
         type=np.float64,
         default=0.00635,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
         unit='m',
     )
-    magkeeper_Target = Quantity(
+    magkeeper_target = Quantity(
         type=bool,
         default=True,
         a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
     refill_or_mounting_date = Quantity(
         type=Datetime,
-        a_eln={'component': 'DateTimeEditQuantity'},
+        a_eln=ELNAnnotation(component=ELNComponentEnum.DateEditQuantity),
     )
     time_used = Quantity(
         type=np.float64,
         description='The time the target or cracker has been used in the system',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='minute',
+        ),
         unit='s',
     )
 
@@ -101,64 +121,60 @@ class DTUTarget(CompositeSystem, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+        if self.impurity_file is None:
+            return super().normalize(archive, logger)
+
+        file_name: str = os.path.basename(self.impurity_file)
+        file_info_list = os.path.splitext(file_name)[0].split('_')
+        if len(file_info_list) != len(FILE_NAME):
+            logger.warning('The file name does not follow the correct format')
+            return super().normalize(archive, logger)
+        info = {key: value for key, value in zip(FILE_NAME.keys(), file_info_list)}
+        self.lab_id = f'{info["chemical_formula"]}_{info["supplier"]}_{info["number"]}'
+
+        if info['supplier'] == 'T':
+            self.supplier_id = 'Testbourne'
+        elif info['supplier'] == 'L':
+            self.supplier_id = 'Lesker'
+
+        components: list[PureSubstanceComponent] = []
+        chemical_formula = info['chemical_formula']
+        pure_substance = PureSubstanceSection(
+            molecular_formula=chemical_formula,
+        )
+        components.append(
+            PureSubstanceComponent(
+                name='Main component: ' + chemical_formula,
+                pure_substance=pure_substance,
+            )
+        )
+
+        with archive.m_context.raw_file(self.impurity_file, 'r') as impurity:
+            df_data: pd.DataFrame = pd.read_csv(
+                impurity,
+                delimiter=' ',
+                header=None,
+                names=['symbol', 'mass_fraction', 'unit'],
+            )
+
+        df_data = df_data.replace({'<': ''}, regex=True)
+
+        for _, row in df_data.iterrows():
+            component = PureSubstanceComponent()
+            component.name = 'Impurity component: ' + row['symbol']
+            component.pure_substance = PureSubstanceSection(
+                molecular_formula=row['symbol'],
+            )
+            if factor := UNIT_FACTORS.get(row['unit']):
+                component.mass_fraction = float(row['mass_fraction']) * factor
+            else:
+                logger.warning(f'The impurity unit "{row['unit']}" is not a valid unit')
+                continue
+            components.append(component)
+
+        self.components = components
+
         super().normalize(archive, logger)
-
-        if self.impurity_file:
-            import os
-            import re
-
-            import pandas as pd
-
-            file_name: str = os.path.basename(self.impurity_file)
-            file_information = os.path.splitext(file_name)[0].split('_')
-            if len(file_information) != IMPURITY_NAME_PARTS:
-                logger.warning('The file name does not follow the correct format')
-                return
-            self.lab_id = '_'.join(file_information[2:])
-
-            if file_information[3] == 'T':
-                self.supplier_id = 'Testbourne'
-            elif file_information[3] == 'L':
-                self.supplier_id = 'Lesker'
-
-            chemical_formula = file_information[2]
-            # Define the regex pattern to extract elements and their quantities
-            pattern = r'([A-Z][a-z]?)(\d*)'
-            matches = re.findall(pattern, chemical_formula)
-            # Prepare data for DataFrame
-            data = []
-            for match in matches:
-                element = match[0]
-                quantity = int(match[1]) if match[1] else 1
-                data.append([element, quantity])
-            # Create DataFrame
-            df_elements = pd.DataFrame(data, columns=['Element', 'Quantity'])
-            self.elemental_composition = [
-                ElementalComposition() for _ in range(len(df_elements))
-            ]
-            elem_total = df_elements['Quantity'].sum()
-            for i in range(len(df_elements)):
-                self.elemental_composition[i].element = df_elements.iloc[i, 0]
-                self.elemental_composition[i].atomic_fraction = (
-                    df_elements.iloc[i, 1] / elem_total
-                )
-
-            with archive.m_context.raw_file(self.impurity_file, 'r') as impurity:
-                df_data = pd.read_csv(impurity, delimiter=' ', header=None)
-
-            self.components = [Component() for _ in range(len(df_data))]
-            df_data = df_data.replace({'<': ''}, regex=True)
-
-            for i in range(len(self.components)):
-                self.components[i].name = str(df_data.iloc[i, 0]) + ' impurity'
-                if df_data.iloc[i, 2] == 'ppm':
-                    self.components[i].mass_fraction = float(df_data.iloc[i, 1]) * 1e-6
-                elif df_data.iloc[i, 2] == 'wt%':
-                    self.components[i].mass_fraction = float(df_data.iloc[i, 1]) * 1e-2
-                elif df_data.iloc[i, 2] == 'ppb':
-                    self.components[i].mass_fraction = float(df_data.iloc[i, 1]) * 1e-9
-                else:
-                    raise ValueError('The impurity unit is not recognized')
 
 
 m_package.__init_metainfo__()
