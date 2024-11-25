@@ -4804,37 +4804,6 @@ def map_gas_flow_params_to_nomad(key, gas_name):
 def map_s_cracker_params_to_nomad(key):
     s_cracker_param_nomad_map = [
         [
-            [key, 'sources', 's_cracker', 'avg_pulse_width'],
-            ['vapour_source', 'avg_pulse_width'],
-            'millisecond',
-        ],
-        [
-            [key, 'sources', 's_cracker', 'pulse_width', 'value'],
-            ['vapour_source', 'pulse_width', 'value'],
-            'millisecond',
-        ],
-        [
-            [key, 'sources', 's_cracker', 'pulse_width', 'time'],
-            ['vapour_source', 'pulse_width', 'time'],
-            'second',
-        ],
-        [
-            [key, 'sources', 's_cracker', 'avg_pulse_freq'],
-            ['vapour_source', 'avg_pulse_freq'],
-            'mHz',
-        ],
-        [
-            [key, 'sources', 's_cracker', 'pulse_freq', 'value'],
-            ['vapour_source', 'pulse_freq', 'value'],
-            'mHz',
-        ],
-        [
-            [key, 'sources', 's_cracker', 'pulse_freq', 'time'],
-            ['vapour_source', 'pulse_freq', 'time'],
-            'second',
-        ],
-        # add the valve shutter open series
-        [
             [key, 'sources', 's_cracker', 'valve_pulsing', 'value'],
             ['valve_open', 'value'],
             None,
@@ -4855,17 +4824,17 @@ def map_s_cracker_params_to_nomad(key):
             [
                 [
                     [key, 'sources', 's_cracker', f'avg_zone{zone_number}_temp'],
-                    ['vapour_source', f'avg_zone{zone_number}_temp'],
+                    ['vapor_source', f'avg_zone{zone_number}_temp'],
                     'degC',
                 ],
                 [
                     [key, 'sources', 's_cracker', f'zone{zone_number}_temp', 'value'],
-                    ['vapour_source', f'zone{zone_number}_temp', 'value'],
+                    ['vapor_source', f'zone{zone_number}_temp', 'value'],
                     'degC',
                 ],
                 [
                     [key, 'sources', 's_cracker', f'zone{zone_number}_temp', 'time'],
-                    ['vapour_source', f'zone{zone_number}_temp', 'time'],
+                    ['vapor_source', f'zone{zone_number}_temp', 'time'],
                     'second',
                 ],
             ]

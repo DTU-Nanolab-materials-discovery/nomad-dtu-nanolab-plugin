@@ -486,6 +486,22 @@ class SCrackerOverview(ArchiveSection):
     )
 
 
+class DtuZoneTemp(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='K',
+        description="""The temperature of zone 1.""",
+        shape=['*'],
+    )
+
+
 class DtuZone1Temp(TimeSeries):
     m_def = Section(
         a_plot=dict(
@@ -593,13 +609,13 @@ class SCracker(ArchiveSection):
         unit='1/s',
     )
     zone1_temp = SubSection(
-        section_def=DtuZone1Temp,
+        section_def=DtuZoneTemp,
     )
     zone2_temp = SubSection(
-        section_def=DtuZone2Temp,
+        section_def=DtuZoneTemp,
     )
     zone3_temp = SubSection(
-        section_def=DtuZone3Temp,
+        section_def=DtuZoneTemp,
     )
     valve_on_time = SubSection(
         section_def=DtuValveOnTime,
@@ -1482,8 +1498,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     def generate_s_cracker_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'
     ) -> None:
-
-        s_cracker = SCracker()
+        
+        cracker_source = DtuCrackerSource()
+        cracker_source.vapor_source = SCracker()
+        cracker_source.valve_open = DTUShutter()
+        for zone in [1, 2, 3]:
+            cracker_source.vapor_source.__setattr__(f'zone{zone}_temp', DtuZoneTemp())
 
         s_cracker_param_nomad_map = map_s_cracker_params_to_nomad(key)
 
@@ -1492,15 +1512,17 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             config = {
                 'input_dict': step_params,
                 'input_keys': input_keys,
-                'output_obj': s_cracker,
-                'output_obj_name': 's_cracker',
+                'output_obj': cracker_source,
+                'output_obj_name': 'cracker_source',
                 'output_keys': output_keys,
                 'unit': unit,
                 'logger': logger,
             }
             self.write_data(config)
-
-        return s_cracker
+        cracker_source.material = [DtuCrackerMaterial(
+            pure_substance=PureSubstanceSection(molecular_formula='S')
+        )]
+        return cracker_source
 
     def generate_sputtering_sources_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'
