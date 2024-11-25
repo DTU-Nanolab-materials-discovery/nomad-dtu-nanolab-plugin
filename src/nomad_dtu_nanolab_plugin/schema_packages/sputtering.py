@@ -686,7 +686,31 @@ class DTUTargetComponent(Component):
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        pass  # TODO add fetching from lab_id
+        if self.system is None and self.lab_id is not None:
+            from nomad.search import MetadataPagination, search
+
+            query = {'results.eln.lab_ids': self.lab_id}
+            search_result = search(
+                owner='all',
+                query=query,
+                pagination=MetadataPagination(page_size=1),
+                user_id=archive.metadata.main_author.user_id,
+            )
+            if search_result.pagination.total > 0:
+                entry_id = search_result.data[0]['entry_id']
+                upload_id = search_result.data[0]['upload_id']
+                self.system = f'../uploads/{upload_id}/archive/{entry_id}#data'
+                if search_result.pagination.total > 1:
+                    logger.warn(
+                        f'Found {search_result.pagination.total} entries with lab_id: '
+                        f'"{self.lab_id}". Will use the first one found.'
+                    )
+            else:
+                logger.warn(f'Found no entries with lab_id: "{self.lab_id}".')
+        elif self.lab_id is None and self.system is not None:
+            self.lab_id = self.system.lab_id
+        if self.name is None and self.lab_id is not None:
+            self.name = self.lab_id
 
 
 class DTUSource(PVDSource):
