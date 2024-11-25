@@ -1498,7 +1498,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     def generate_s_cracker_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'
     ) -> None:
-        
         cracker_source = DtuCrackerSource()
         cracker_source.vapor_source = SCracker()
         cracker_source.valve_open = DTUShutter()
@@ -1519,9 +1518,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 'logger': logger,
             }
             self.write_data(config)
-        cracker_source.material = [DtuCrackerMaterial(
-            pure_substance=PureSubstanceSection(molecular_formula='S')
-        )]
+        cracker_source.material = [
+            DtuCrackerMaterial(
+                pure_substance=PureSubstanceSection(molecular_formula='S')
+            )
+        ]
         return cracker_source
 
     def generate_sputtering_sources_log_data(
