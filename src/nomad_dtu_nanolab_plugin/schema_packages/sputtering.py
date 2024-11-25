@@ -1239,7 +1239,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         timeline_json['config'] = dict(
             scrollZoom=False,
         )
-        
+
         # Adding the plotly figure to the figures list
         self.figures.append(
             PlotlyFigure(

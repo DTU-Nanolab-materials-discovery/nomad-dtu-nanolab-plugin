@@ -171,15 +171,15 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             # Calculate and append the fractions of all elements with each other
             # test to see if this works or there is another errror
             quantification_i: EDXQuantification
-            #processed_pairs = set()
+            # processed_pairs = set()
             for quantification_i in result.quantifications:
                 quantification_j: EDXQuantification
                 for quantification_j in result.quantifications:
                     if quantification_i.element == quantification_j.element:
                         continue
-                    #pair = (quantification_i.element, quantification_j.element)
-                    #reverse_pair = (quantification_j.element, quantification_i.element)
-                    #if pair in processed_pairs or reverse_pair in processed_pairs:
+                    # pair = (quantification_i.element, quantification_j.element)
+                    # reverse_pair = (quantification_j.element, quantification_i.element)
+                    # if pair in processed_pairs or reverse_pair in processed_pairs:
                     #    continue
                     ratio = (
                         quantification_i.atomic_fraction
@@ -188,7 +188,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                     ratios[
                         f'{quantification_i.element}/{quantification_j.element}'
                     ].append(ratio)
-                    #processed_pairs.add(pair)
+                    # processed_pairs.add(pair)
 
         # Create a grid for the heatmap
         xi = np.linspace(min(x), max(x), 100)

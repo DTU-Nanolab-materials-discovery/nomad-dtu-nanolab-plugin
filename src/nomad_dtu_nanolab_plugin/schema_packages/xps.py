@@ -350,8 +350,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
                 current_element = row['Peak']
                 match = re.split(r'\d', current_element, maxsplit=1)
                 current_element = match[0]
-                coord_data.loc[index, 'Element']= current_element
-
+                coord_data.loc[index, 'Element'] = current_element
 
             mapping_result.peaks = peaks
 
