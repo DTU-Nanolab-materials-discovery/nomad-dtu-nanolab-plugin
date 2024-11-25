@@ -178,7 +178,10 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                     if quantification_i.element == quantification_j.element:
                         continue
                     # pair = (quantification_i.element, quantification_j.element)
-                    # reverse_pair = (quantification_j.element, quantification_i.element)
+                    # reverse_pair = (
+                    #     quantification_j.element,
+                    #     quantification_i.element
+                    # )
                     # if pair in processed_pairs or reverse_pair in processed_pairs:
                     #    continue
                     ratio = (
@@ -257,12 +260,12 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
 
         combined_data = {**quantifications, **ratios}
 
-        for q in combined_data:
+        for q, data in combined_data.items():
             # Create a grid for the heatmap
             xi = np.linspace(min(x), max(x), 100)
             yi = np.linspace(min(y), max(y), 100)
             xi, yi = np.meshgrid(xi, yi)
-            zi = griddata((x, y), combined_data[q], (xi, yi), method='linear')
+            zi = griddata((x, y), data, (xi, yi), method='linear')
 
             # Create a scatter plot
             scatter = go.Scatter(
@@ -271,7 +274,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                 mode='markers',
                 marker=dict(
                     size=15,
-                    color=combined_data[q],  # Set color to atomic fraction values
+                    color=data,  # Set color to atomic fraction values
                     colorscale='Viridis',  # Choose a colorscale
                     # colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
                     showscale=False,  # Hide the colorbar for the scatter plot
@@ -280,7 +283,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                         color='DarkSlateGrey',  # Set the color of the border
                     ),
                 ),
-                customdata=combined_data[q],  # Add atomic fraction data to customdata
+                customdata=data,  # Add atomic fraction data to customdata
                 hovertemplate=f'<b>Atomic fraction of {q}:</b> %{{customdata}}',
             )
 
