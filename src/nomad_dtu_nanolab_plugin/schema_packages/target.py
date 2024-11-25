@@ -21,12 +21,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-from ase.data import (
-    chemical_symbols,
-)
 from nomad.atomutils import Formula
 from nomad.datamodel.data import Schema
-from nomad.datamodel.results import Results, Material
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
     ELNAnnotation,
@@ -39,9 +35,9 @@ from nomad.datamodel.metainfo.basesections import (
     PureSubstanceComponent,
     PureSubstanceSection,
 )
+from nomad.datamodel.results import Material, Results
 from nomad.metainfo import (
     Datetime,
-    MEnum,
     Package,
     Quantity,
     Section,
@@ -105,7 +101,7 @@ class DTUTarget(CompositeSystem, Schema):
                     'composition',
                 ],
             )
-        )
+        ),
     )
     main_material = Quantity(
         type=str,
@@ -177,7 +173,7 @@ class DTUTarget(CompositeSystem, Schema):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.DateEditQuantity,
             label='Delivery date',
-        )
+        ),
     )
     main_phases = SubSection(
         section_def=PureSubstanceComponent,
