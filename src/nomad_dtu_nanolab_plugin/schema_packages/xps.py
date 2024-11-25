@@ -350,8 +350,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
                 current_element = row['Peak']
                 match = re.split(r'\d', current_element, maxsplit=1)
                 current_element = match[0]
-                coord_data.loc[index, 'Element']= current_element
-
+                coord_data.loc[index, 'Element'] = current_element
 
             mapping_result.peaks = peaks
 
@@ -419,12 +418,12 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
 
         combined_data = {**quantifications, **ratios}
 
-        for q in combined_data:
+        for q, data in combined_data.items():
             # Create a grid for the heatmap
             xi = np.linspace(min(x), max(x), 100)
             yi = np.linspace(min(y), max(y), 100)
             xi, yi = np.meshgrid(xi, yi)
-            zi = griddata((x, y), combined_data[q], (xi, yi), method='linear')
+            zi = griddata((x, y), data, (xi, yi), method='linear')
 
             # Create a scatter plot
             scatter = go.Scatter(
@@ -433,7 +432,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
                 mode='markers',
                 marker=dict(
                     size=15,
-                    color=combined_data[q],  # Set color to atomic fraction values
+                    color=data,  # Set color to atomic fraction values
                     colorscale='Viridis',  # Choose a colorscale
                     # colorbar=dict(title=f'{q} Atomic Fraction'),  # Add a colorbar
                     showscale=False,  # Hide the colorbar for the scatter plot
@@ -442,7 +441,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
                         color='DarkSlateGrey',  # Set the color of the border
                     ),
                 ),
-                customdata=combined_data[q],  # Add atomic fraction data to customdata
+                customdata=data,  # Add atomic fraction data to customdata
                 hovertemplate=f'<b>Atomic fraction of {q}:</b> %{{customdata}}',
             )
 

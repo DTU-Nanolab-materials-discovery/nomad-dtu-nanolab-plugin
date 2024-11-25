@@ -8,6 +8,7 @@ Created on Fri Jun  7 10:46:17 2024
 
 # Core
 import copy
+import io
 import operator
 import os
 import re
@@ -25,6 +26,7 @@ import plotly.graph_objects as go
 from matplotlib import patches
 from matplotlib.transforms import Affine2D
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+from PIL import Image
 from plotly.subplots import make_subplots
 
 # ---------MAIN FUNCTION PARAMETERS------------
@@ -33,9 +35,9 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = True
+TEST_SPECIFIC_LOGFILE = False
 REMOVE_SAMPLES = True
-SAVE_STEP_REPORT = True
+SAVE_STEP_PARAMS = False
 
 SAMPLES_TO_REMOVE = [
     'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
@@ -47,8 +49,10 @@ SAMPLES_TO_TEST = [
     # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
     # 'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
     # 'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
-    'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
-    'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
+    # 'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
+    # 'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
+    # 'mittma_0007_Cu_Recording Set 2024.06.03-09.52.29',
+    'anait_0010_Ba_Recording Set 2024.11.12-09.20.00',
 ]
 
 
@@ -149,30 +153,30 @@ COL = {
     'sul_crk_valve_pw_fb': 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'sul_crk_valve_sp': 'Sulfur Cracker Control Valve Setpoint',
     'sul_crk_valve_val': 'Sulfur Cracker Control Valve Value',
-    'src1_load': 'PC Source 1 Loaded Target',
-    'src1_mat': 'PC Source 1 Material',
-    'src1_shutter': 'PC Source 1 Shutter Open',
-    'src1_pdc_ps1': 'PC Source 1 Switch-PDC-PWS1',
-    'src1_rf1_ps2': 'PC Source 1 Switch-RF1-PWS2',
-    'src1_rf2_ps3': 'PC Source 1 Switch-RF2-PWS3',
-    'src1_usage': 'PC Source 1 Usage',
-    'src1_usage_calc': 'PC Source 1 Usage Calculation',
-    'src3_load': 'PC Source 3 Loaded Target',
-    'src3_mat': 'PC Source 3 Material',
-    'src3_shutter': 'PC Source 3 Shutter Open',
-    'src3_pdc_ps1': 'PC Source 3 Switch-PDC-PWS1',
-    'src3_rf1_ps2': 'PC Source 3 Switch-RF1-PWS2',
-    'src3_rf2_ps3': 'PC Source 3 Switch-RF2-PWS3',
-    'src3_usage': 'PC Source 3 Usage',
-    'src3_usage_calc': 'PC Source 3 Usage Calculation',
-    'src4_load': 'PC Source 4 Loaded Target',
-    'src4_mat': 'PC Source 4 Material',
-    'src4_shutter': 'PC Source 4 Shutter Open',
-    'src4_pdc_ps1': 'PC Source 4 Switch-PDC-PWS1',
-    'src4_rf1_ps2': 'PC Source 4 Switch-RF1-PWS2',
-    'src4_rf2_ps3': 'PC Source 4 Switch-RF2-PWS3',
-    'src4_usage': 'PC Source 4 Usage',
-    'src4_usage_calc': 'PC Source 4 Usage Calculation',
+    's1_load': 'PC Source 1 Loaded Target',
+    's1_mat': 'PC Source 1 Material',
+    's1_shutter': 'PC Source 1 Shutter Open',
+    's1_pdc_ps1': 'PC Source 1 Switch-PDC-PWS1',
+    's1_rf1_ps2': 'PC Source 1 Switch-RF1-PWS2',
+    's1_rf2_ps3': 'PC Source 1 Switch-RF2-PWS3',
+    's1_usage': 'PC Source 1 Usage',
+    's1_usage_calc': 'PC Source 1 Usage Calculation',
+    's3_load': 'PC Source 3 Loaded Target',
+    's3_mat': 'PC Source 3 Material',
+    's3_shutter': 'PC Source 3 Shutter Open',
+    's3_pdc_ps1': 'PC Source 3 Switch-PDC-PWS1',
+    's3_rf1_ps2': 'PC Source 3 Switch-RF1-PWS2',
+    's3_rf2_ps3': 'PC Source 3 Switch-RF2-PWS3',
+    's3_usage': 'PC Source 3 Usage',
+    's3_usage_calc': 'PC Source 3 Usage Calculation',
+    's4_load': 'PC Source 4 Loaded Target',
+    's4_mat': 'PC Source 4 Material',
+    's4_shutter': 'PC Source 4 Shutter Open',
+    's4_pdc_ps1': 'PC Source 4 Switch-PDC-PWS1',
+    's4_rf1_ps2': 'PC Source 4 Switch-RF1-PWS2',
+    's4_rf2_ps3': 'PC Source 4 Switch-RF2-PWS3',
+    's4_usage': 'PC Source 4 Usage',
+    's4_usage_calc': 'PC Source 4 Usage Calculation',
     'sub_rot_pos': 'Substrate Rotation_Position',
     'sub_rot_pos_sp': 'Substrate Rotation_PositionSetpoint',
     'xtal1_shutter': 'Xtal 1 Shutter Open',
@@ -359,6 +363,9 @@ IONS = {
 # Proportion of values needed to be above the threshold to consider the
 # plasma rf or dc
 TOLERANCE = 0.85
+# Propotion of values needed to be above the threshold to consider the
+# plasma to be one particular type or the other
+POWER_TYPE_TOLERANCE = 0.1
 # Eletrical current threshold above which a dc plasma is considered on
 CURRENT_THRESHOLD = 0.01  # miliamps
 # Bias threshold above which a rf plasma is considered on
@@ -524,7 +531,7 @@ DICT_RENAME = {
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback': 'Cracker Pulse Width',
     'Sulfur Cracker Control Setpoint Feedback': 'Cracker Frequency',
 }
-
+DPI = 300
 PLOTLY_CONFIG = {
     'toImageButtonOptions': {
         'format': 'png',
@@ -795,7 +802,7 @@ class Lf_Event:
         # Get the step environment parameters
         params = self.get_step_environment_params(params)
         # Get the sources parameters
-        params = self.get_step_sources_params(source_list, params)
+        params = self.get_step_sources_params(params, source_list)
         # get the sputter_parameters
 
         return params
@@ -871,120 +878,297 @@ class Lf_Event:
         return params
 
     # method to extract the so called sources parameters of single steps
-    def get_step_sources_params(self, source_list, params):
+    def get_step_sources_params(self, params, source_list):
         # helper method to deduce the plasma type of the source during deposition
 
         # initialize the sources dictionary
-        params[self.step_id]['sources'] = {}
+        if 'sources' not in params[self.step_id]:
+            params[self.step_id]['sources'] = {}
 
         for source_number in source_list:
             source_name = f'{SOURCE_NAME[str(source_number)]}'
 
-            elements = []
-
+            # get the power type of the source (incidentally, it also tells us if the
+            # source was used e.g. if power_type is not None)
             power_type = self.get_power_type(source_number)
             if (f'Source {source_number} Output Setpoint' in self.data.columns) and (
                 power_type is not None
             ):
-                # Initialize the source dictionary if it does not exist
-                if source_name not in params[self.step_id]['sources']:
-                    params[self.step_id]['sources'][source_name] = {}
-                    params[self.step_id]['sources'][source_name]['power_supply'] = {}
-                    params[self.step_id]['sources'][source_name]['material'] = {}
-                    params[self.step_id]['sources'][source_name][
-                        'source_shutter_open'
-                    ] = {}
-
-                # Extract the source parameters
-                params[self.step_id]['sources'][source_name]['name'] = source_name
-                params[self.step_id]['sources'][source_name]['target_id'] = self.data[
-                    f'PC Source {source_number} Loaded Target'
-                ].iloc[0]
-                params[self.step_id]['sources'][source_name]['source_shutter_open'][
-                    'value'
-                ] = [
-                    bool(x)
-                    for x in self.data[
-                        f'PC Source {source_number} Shutter Open'
-                    ].tolist()
-                ]
-                params[self.step_id]['sources'][source_name]['source_shutter_open'][
-                    'time'
-                ] = (
-                    (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
-                    .dt.total_seconds()
-                    .tolist()
-                )
-                # we check if the shutter is open during more than the TOLERANCE
-                params[self.step_id]['sources'][source_name]['source_shutter_open'][
-                    'general_value'
-                ] = (
-                    self.data[f'PC Source {source_number} Shutter Open'].mean()
-                    > TOLERANCE
+                params = self.get_sputter_sources_step_params(
+                    source_name, params, power_type, source_number
                 )
 
-                params[self.step_id]['sources'][source_name]['power_supply'][
-                    'power_type'
-                ] = power_type
+        # check is the cracker zone 1 above the threshold
+        if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
+            if (
+                self.data['Sulfur Cracker Zone 1 Current Temperature'].mean()
+                > CRACKER_ZONE_1_MIN_TEMP
+            ):
+                params = self.get_s_cracker_step_params(params)
 
-                # Extract the source power setpoint
-                params[self.step_id]['sources'][source_name]['power_supply'][
-                    'avg_power_sp'
-                ] = self.data[f'Source {source_number} Output Setpoint'].mean()
+            # params = self.get_reactive_gas_step_params(params)
 
-                if power_type in ['DC', 'pulsed_DC']:
-                    params[self.step_id]['sources'][source_name]['power_supply'][
-                        'avg_voltage'
-                    ] = self.data[f'Source {source_number} Voltage'].mean()
-                    params[self.step_id]['sources'][source_name]['power_supply'][
-                        'avg_current'
-                    ] = self.data[f'Source {source_number} Current'].mean()
-                    if power_type == 'pulsed_DC':
-                        params[self.step_id]['sources'][source_name]['power_supply'][
-                            'pulse_frequency'
-                        ] = self.data[f'Source {source_number} Pulse Frequency'].mean()
-                        params[self.step_id]['sources'][source_name]['power_supply'][
-                            'dead_time'
-                        ] = self.data[f'Source {source_number} Reverse Time'].mean()
-                elif power_type == 'RF':
-                    params[self.step_id]['sources'][source_name]['power_supply'][
-                        'avg_dc_bias'
-                    ] = self.data[f'Source {source_number} DC Bias'].mean()
-
-                    # Extract the fwd and rfl power
-                    params[self.step_id]['sources'][source_name]['power_supply'][
-                        'avg_fwd_power'
-                    ] = self.data[f'Source {source_number} Fwd Power'].mean()
-                    params[self.step_id]['sources'][source_name]['power_supply'][
-                        'avg_rfl_power'
-                    ] = self.data[f'Source {source_number} Rfl Power'].mean()
-
-                    if f'Source {source_number} Current' in self.data.columns:
-                        params[self.step_id]['sources'][source_name]['power_supply'][
-                            'avg_current'
-                        ] = self.data[f'Source {source_number} Current'].mean()
-
-                # extract the source material
-                source_mat = self.data[f'PC Source {source_number} Material'].iloc[0]
-                elements, _ = elements_from_string(source_mat, elements=elements)
-                for element in elements:
-                    params[self.step_id]['sources'][source_name]['material'][
-                        element
-                    ] = {}
-                    params[self.step_id]['sources'][source_name]['material'][element][
-                        'name'
-                    ] = element
         return params
 
-    # def get_step_sample_params(self, params):
-    #     # Extract the sample parameters
-
+    # def get_reactive_gas_step_params(self, params):
     #     return params
 
-    # def get_step_sputter_params(self, params):
-    #     # Extract the sputter parameters
+    def get_s_cracker_step_params(self, params):
+        # Initialize the source dictionary if it does not exist
+        if 's_cracker' not in params[self.step_id]['sources']:
+            params[self.step_id]['sources']['s_cracker'] = {}
+            params[self.step_id]['sources']['s_cracker']['zone1_temp'] = {}
+            params[self.step_id]['sources']['s_cracker']['zone2_temp'] = {}
+            params[self.step_id]['sources']['s_cracker']['zone3_temp'] = {}
+            params[self.step_id]['sources']['s_cracker']['valve_on_time'] = {}
+            params[self.step_id]['sources']['s_cracker']['valve_frequency'] = {}
+            params[self.step_id]['sources']['s_cracker']['valve_pulsing'] = {}
 
-    #     return params
+        # check if the cracker is recorded by the log
+        if 'Sulfur Cracker Zone 1 Current Temperature' not in self.data.columns:
+            params[self.step_id]['sources']['s_cracker']['cracker_record'] = False
+        else:
+            params[self.step_id]['sources']['s_cracker']['cracker_record'] = True
+
+        # get the time series in seconds from the start of the step
+        time_series = (
+            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+            .dt.total_seconds()
+            .tolist()
+        )
+
+        for zone_number in ['1', '2', '3']:
+            # Extract the cracker zone temperature
+            params[self.step_id]['sources']['s_cracker'][
+                f'avg_zone{zone_number}_temp'
+            ] = self.data[
+                f'Sulfur Cracker Zone {zone_number} Current Temperature'
+            ].mean()
+            params[self.step_id]['sources']['s_cracker'][f'zone{zone_number}_temp'][
+                'value'
+            ] = self.data[
+                f'Sulfur Cracker Zone {zone_number} Current Temperature'
+            ].tolist()
+            params[self.step_id]['sources']['s_cracker'][f'zone{zone_number}_temp'][
+                'time'
+            ] = time_series
+
+        # Extract the cracker valve on time
+        params[self.step_id]['sources']['s_cracker']['avg_valve_on_time'] = self.data[
+            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+        ].mean()
+        params[self.step_id]['sources']['s_cracker']['valve_on_time']['value'] = (
+            self.data[
+                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+            ].tolist()
+        )
+        params[self.step_id]['sources']['s_cracker']['valve_on_time']['time'] = (
+            time_series
+        )
+
+        # Extract the cracker valve frequency
+        params[self.step_id]['sources']['s_cracker']['avg_valve_frequency'] = self.data[
+            'Sulfur Cracker Control Setpoint Feedback'
+        ].mean()
+        params[self.step_id]['sources']['s_cracker']['valve_frequency']['value'] = (
+            self.data['Sulfur Cracker Control Setpoint Feedback'].tolist()
+        )
+        params[self.step_id]['sources']['s_cracker']['valve_frequency']['time'] = (
+            time_series
+        )
+
+        # extract if the cracker valve is pulsing (enabled) as a boolean series
+        params[self.step_id]['sources']['s_cracker']['valve_pulsing']['value'] = (
+            bool(x) for x in self.data['Sulfur Cracker Control Enabled'].tolist()
+        )
+        params[self.step_id]['sources']['s_cracker']['valve_pulsing']['time'] = (
+            time_series
+        )
+        # extract the mode value of the valve pulsing
+        params[self.step_id]['sources']['s_cracker']['valve_pulsing']['mode_value'] = (
+            bool(self.data['Sulfur Cracker Control Enabled'].value_counts().idxmax())
+        )
+
+        return params
+
+    def get_sputter_sources_step_params(
+        self, source_name, params, power_type, source_number
+    ):
+        # Initialize the source dictionary if it does not exist
+        if source_name not in params[self.step_id]['sources']:
+            params[self.step_id]['sources'][source_name] = {}
+            params[self.step_id]['sources'][source_name]['power_supply'] = {}
+            params[self.step_id]['sources'][source_name]['material'] = {}
+            params[self.step_id]['sources'][source_name]['source_shutter_open'] = {}
+
+        # Extract the source source id
+        params[self.step_id]['sources'][source_name]['name'] = source_name
+        params[self.step_id]['sources'][source_name]['target_id'] = self.data[
+            f'PC Source {source_number} Loaded Target'
+        ].iloc[0]
+
+        # extract the state of the source shutter
+        params[self.step_id]['sources'][source_name]['source_shutter_open']['value'] = [
+            bool(x)
+            for x in self.data[f'PC Source {source_number} Shutter Open'].tolist()
+        ]
+        params[self.step_id]['sources'][source_name]['source_shutter_open']['time'] = (
+            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+            .dt.total_seconds()
+            .tolist()
+        )
+        # we check if the shutter is open during more than the TOLERANCE
+        params[self.step_id]['sources'][source_name]['source_shutter_open'][
+            'mode_value'  # most common value
+        ] = bool(
+            self.data[f'PC Source {source_number} Shutter Open'].value_counts().idxmax()
+        )
+
+        # extract the power supply parameters
+        params[self.step_id]['sources'][source_name]['power_supply']['power_type'] = (
+            power_type
+        )
+
+        # get the time series in seconds from the start of the step
+        time_series = (
+            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+            .dt.total_seconds()
+            .tolist()
+        )
+        # Extract the source power setpoint
+        params[self.step_id]['sources'][source_name]['power_supply']['avg_power_sp'] = (
+            self.data[f'Source {source_number} Output Setpoint'].mean()
+        )
+        params[self.step_id]['sources'][source_name]['power_supply']['power_sp'] = {}
+        params[self.step_id]['sources'][source_name]['power_supply']['power_sp'][
+            'value'
+        ] = self.data[f'Source {source_number} Output Setpoint'].tolist()
+        params[self.step_id]['sources'][source_name]['power_supply']['power_sp'][
+            'time'
+        ] = time_series
+
+        if f'Source {source_number} Current' in self.data.columns:
+            params[self.step_id]['sources'][source_name]['power_supply'][
+                'avg_current'
+            ] = self.data[f'Source {source_number} Current'].mean()
+            params[self.step_id]['sources'][source_name]['power_supply']['current'] = {}
+            params[self.step_id]['sources'][source_name]['power_supply']['current'][
+                'value'
+            ] = self.data[f'Source {source_number} Current'].tolist()
+            params[self.step_id]['sources'][source_name]['power_supply']['current'][
+                'time'
+            ] = time_series
+
+        # the quantities common to dc and plused
+        # dc power supplies (avg and as time series)
+        if power_type in ['DC', 'pulsed_DC']:
+            params = self.get_dc_power_supply_params(
+                source_name, source_number, power_type, time_series, params
+            )
+
+        elif power_type == 'RF':
+            params = self.get_rf_power_supply_params(
+                source_name, source_number, time_series, params
+            )
+
+        return params
+
+    def get_rf_power_supply_params(
+        self, source_name, source_number, time_series, params
+    ):
+        # Extract the source dc bias setpoint
+        params[self.step_id]['sources'][source_name]['power_supply']['avg_dc_bias'] = (
+            self.data[f'Source {source_number} DC Bias'].mean()
+        )
+        params[self.step_id]['sources'][source_name]['power_supply']['dc_bias'] = {}
+        params[self.step_id]['sources'][source_name]['power_supply']['dc_bias'][
+            'value'
+        ] = self.data[f'Source {source_number} DC Bias'].tolist()
+        params[self.step_id]['sources'][source_name]['power_supply']['dc_bias'][
+            'time'
+        ] = time_series
+
+        # Extract the fwd power
+        params[self.step_id]['sources'][source_name]['power_supply'][
+            'avg_fwd_power'
+        ] = self.data[f'Source {source_number} Fwd Power'].mean()
+        params[self.step_id]['sources'][source_name]['power_supply']['fwd_power'] = {}
+        params[self.step_id]['sources'][source_name]['power_supply']['fwd_power'][
+            'value'
+        ] = self.data[f'Source {source_number} Fwd Power'].tolist()
+        params[self.step_id]['sources'][source_name]['power_supply']['fwd_power'][
+            'time'
+        ] = time_series
+
+        # Extract the rfl power
+        params[self.step_id]['sources'][source_name]['power_supply'][
+            'avg_rfl_power'
+        ] = self.data[f'Source {source_number} Rfl Power'].mean()
+        params[self.step_id]['sources'][source_name]['power_supply']['rfl_power'] = {}
+        params[self.step_id]['sources'][source_name]['power_supply']['rfl_power'][
+            'value'
+        ] = self.data[f'Source {source_number} Rfl Power'].tolist()
+        params[self.step_id]['sources'][source_name]['power_supply']['rfl_power'][
+            'time'
+        ] = time_series
+
+        return params
+
+    def get_dc_power_supply_params(
+        self, source_name, source_number, power_type, time_series, params
+    ):
+        params[self.step_id]['sources'][source_name]['power_supply']['avg_voltage'] = (
+            self.data[f'Source {source_number} Voltage'].mean()
+        )
+        params[self.step_id]['sources'][source_name]['power_supply']['voltage'] = {}
+        params[self.step_id]['sources'][source_name]['power_supply']['voltage'][
+            'value'
+        ] = self.data[f'Source {source_number} Voltage'].tolist()
+        params[self.step_id]['sources'][source_name]['power_supply']['voltage'][
+            'time'
+        ] = time_series
+
+        params[self.step_id]['sources'][source_name]['power_supply']['avg_current'] = (
+            self.data[f'Source {source_number} Current'].mean()
+        )
+        params[self.step_id]['sources'][source_name]['power_supply']['current'] = {}
+        params[self.step_id]['sources'][source_name]['power_supply']['current'][
+            'value'
+        ] = self.data[f'Source {source_number} Current'].tolist()
+        params[self.step_id]['sources'][source_name]['power_supply']['current'][
+            'time'
+        ] = time_series
+
+        # Extract the pulse frequency and dead time if applicable
+        # (avg and as time series)
+        if power_type == 'pulsed_DC':
+            params[self.step_id]['sources'][source_name]['power_supply'][
+                'avg_pulse_frequency'
+            ] = self.data[f'Source {source_number} Pulse Frequency'].mean()
+            params[self.step_id]['sources'][source_name]['power_supply'][
+                'pulse_frequency'
+            ] = {}
+            params[self.step_id]['sources'][source_name]['power_supply'][
+                'pulse_frequency'
+            ]['value'] = self.data[f'Source {source_number} Pulse Frequency'].tolist()
+            params[self.step_id]['sources'][source_name]['power_supply'][
+                'pulse_frequency'
+            ]['time'] = time_series
+
+            params[self.step_id]['sources'][source_name]['power_supply'][
+                'avg_dead_time'
+            ] = self.data[f'Source {source_number} Reverse Time'].mean()
+            params[self.step_id]['sources'][source_name]['power_supply'][
+                'dead_time'
+            ] = {}
+            params[self.step_id]['sources'][source_name]['power_supply']['dead_time'][
+                'value'
+            ] = self.data[f'Source {source_number} Reverse Time'].tolist()
+            params[self.step_id]['sources'][source_name]['power_supply']['dead_time'][
+                'time'
+            ] = time_series
+
+        return params
 
     def get_power_type(self, source_number):
         dc_current_col = f'Source {source_number} Current'
@@ -1000,18 +1184,18 @@ class Lf_Event:
             (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
         ):
             if pulse_enable_col in self.data and (
-                self.data[pulse_enable_col].mean() >= TOLERANCE
+                self.data[pulse_enable_col].mean() >= POWER_TYPE_TOLERANCE
             ):
                 power_type = 'pulsed_DC'
             else:
                 power_type = 'DC'
         elif rf_bias_col in self.data and (
-            (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= TOLERANCE
+            (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= POWER_TYPE_TOLERANCE
             or (
                 (self.data[fwd_power_col] - self.data[rfl_power_col])
                 > POWER_FWD_RFL_THRESHOLD
             ).mean()
-            >= TOLERANCE
+            >= POWER_TYPE_TOLERANCE
         ):
             power_type = 'RF'
         return power_type
@@ -3246,7 +3430,7 @@ def filter_data_platen_bias_on(data):
 # -------PLOTTING DEFINITIONS------------
 
 
-def plot_logfile_chamber(main_params):
+def plot_logfile_chamber(main_params, logfile_name=''):
     # Reading guns
     guns = []
     for gun_param in ['taurus', 'magkeeper3', 'magkeeper4', 's_cracker']:
@@ -3273,7 +3457,29 @@ def plot_logfile_chamber(main_params):
 
     # Plotting
     fig = plot_matplotlib_chamber_config(samples, guns, platen_rot)
-    return fig
+
+    # Save the Matplotlib figure to a BytesIO object
+    png = io.BytesIO()
+    fig.savefig(png, format='png', bbox_inches='tight', dpi=DPI)
+    png.seek(0)
+
+    # Convert the PNG to a NumPy array
+    image = np.array(Image.open(png))
+
+    # Create a Plotly figure with the image
+    plotly_fig = go.Figure(go.Image(z=image))
+
+    # Customize the layout (optional)
+    plotly_fig.update_layout(
+        title=f'Chamber Configuration:{logfile_name}',
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        margin=dict(l=0, r=0, t=100, b=0),
+        width=WIDTH,
+    )
+
+    # Return both the Matplotlib and Plotly figures
+    return fig, plotly_fig
 
 
 def quick_plot(df, Y, **kwargs):
@@ -3571,7 +3777,76 @@ def create_dual_y_plot(df, plot_params):
     return fig
 
 
-def plot_plotly_extimeline(
+def update_scatter_colors(fig, df, color_column, color_map):
+    """
+    Update the colors of the existing traces in the Plotly figure based
+    on the direction.
+
+    Args:
+        fig (go.Figure): The Plotly figure object to update.
+        df (pd.DataFrame): The original dataframe used for plotting.
+        color_column (str): The column containing the column name for coloring.
+        color_map (dict): A dictionary mapping values to colors.
+    """
+
+    # Check if there is more than one trace
+    if len(fig.data) > 1:
+        raise ValueError('The figure contains more than one trace.')
+
+    # If there is exactly one trace, proceed with updating it
+    if len(fig.data) == 1:
+        trace = fig.data[0]  # Get the only trace in the figure
+
+        # Get the x-values of the current trace
+        x_vals = trace.x
+
+        # Ensure the x-values are numeric or timestamp-like
+        if isinstance(x_vals[0], str):
+            x_vals = pd.to_datetime(x_vals)  # Convert to datetime if necessary
+
+        # Filter the DataFrame based on the x-values of the trace
+        filtered_df = df[df['Time Stamp'].isin(x_vals)]
+
+        # Check if the color_column exists and update the trace color
+        if not filtered_df.empty and color_column in filtered_df.columns:
+            # Map the color for each point based on the color_column value
+            colors = filtered_df[color_column].map(color_map).fillna('gray')
+
+            # Update the trace's marker color (apply color for each point)
+            trace.marker.color = colors.tolist()
+            trace.showlegend = False  # Remove default legend for this trace
+
+        # Create legend entries based on the color_map (keys are labels,
+        # values are colors)
+        legend_entries = []
+        # Add a legend entry for the color_column (no marker, just the label)
+        legend_entries.append(
+            go.Scatter(
+                x=[None],  # No data points needed for the legend entry
+                y=[None],  # No data points needed for the legend entry
+                mode='text',  # This makes it just a label without a marker
+                text=[f'{color_column}'],  # Display the color_column as the label
+                showlegend=True,
+                name=f'{color_column}',  # The legend label as the color column name
+            )
+        )
+        for key, color in color_map.items():
+            legend_entries.append(
+                go.Scatter(
+                    x=[None],  # No data points needed for the legend entry
+                    y=[None],  # No data pointsi d needed for the legend entry
+                    mode='markers',
+                    marker=dict(color=color, size=5),  # Customize marker
+                    name=str(key),  # The legend label as the color map key
+                    showlegend=True,
+                )
+            )
+
+        # Add the legend entries to the figure
+        fig.add_traces(legend_entries)
+
+
+def generate_timeline(
     events_to_plot,
     sample_name=None,
     plot_title='Process Timeline',
@@ -3680,13 +3955,18 @@ def plot_plotly_extimeline(
 
 
 def generate_bias_plot(
-    deposition, logfile_name, rolling_num=ROLLING_NUM, rolling_frac_max=ROLLING_FRAC_MAX
+    events_to_plot,
+    logfile_name,
+    rolling_num=ROLLING_NUM,
+    rolling_frac_max=ROLLING_FRAC_MAX,
 ):
     Y_plot = []
     patterns = [
         r'Source \d+ DC Bias',
         r'Source \d+ Voltage',
     ]
+
+    deposition = event_list_to_dict(events_to_plot)['deposition']
 
     for col in deposition.data.columns:
         if any(re.search(pattern, col) for pattern in patterns):
@@ -3736,7 +4016,7 @@ def generate_bias_plot(
         Y_plot,
         mode='default',
         plot_type='line',
-        width=1.5 * WIDTH,
+        width=WIDTH,
         plot_title=f'Bias Plot: {logfile_name}',
     )
 
@@ -3757,6 +4037,31 @@ def generate_overview_plot(data, logfile_name):
         width=WIDTH,
     )
     return overview_plot
+
+
+def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
+    plots = []
+
+    # Generate the timeline plot
+    plotly_timeline = generate_timeline(events_to_plot, sample_name)
+    plots.append(plotly_timeline)
+
+    # Generate the overview plot
+    overview_plot = generate_overview_plot(log_data, sample_name)
+    plots.append(overview_plot)
+
+    bias_plot = generate_bias_plot(
+        events_to_plot,
+        sample_name,
+        rolling_num=ROLLING_NUM,
+        rolling_frac_max=ROLLING_FRAC_MAX,
+    )
+    plots.append(bias_plot)
+
+    # _, chamber_plotly_plot = plot_logfile_chamber(main_params, sample_name)
+    # plots.append(chamber_plotly_plot)
+
+    return plots
 
 
 # HELPER FUNCTIONS TO MANIPULATE LISTS OF EVENTS--------
@@ -4273,6 +4578,9 @@ def read_events(data):
     for event in sep_events:
         step_params = event.get_nomad_step_params(step_params, source_list)
 
+    # generate a list of plots to return
+    # plots = generate_plots(data, events_to_plot, main_params)
+
     return (
         events_to_plot,
         main_params,
@@ -4333,7 +4641,7 @@ def map_params_to_nomad(params, gun_list):
         ],
         [
             ['deposition', 'avg_h2s_flow'],
-            ['deposition_parameters', 'h2s_in_Ar_flow'],
+            ['deposition_parameters', 'h2s_in_ar_flow'],
             'cm^3/minute',
         ],
         [
@@ -4343,7 +4651,7 @@ def map_params_to_nomad(params, gun_list):
         ],
         [
             ['deposition', 'avg_ph3_flow'],
-            ['deposition_parameters', 'ph3_in_Ar_flow'],
+            ['deposition_parameters', 'ph3_in_ar_flow'],
             'cm^3/minute',
         ],
         [
@@ -4493,18 +4801,50 @@ def map_gas_flow_params_to_nomad(key, gas_name):
     return gas_flow_param_nomad_map
 
 
-def map_source_params_to_nomad(key, source_name, power_type):
+def map_s_cracker_params_to_nomad(key):
+    s_cracker_param_nomad_map = [
+        [
+            [key, 'sources', 's_cracker', 'valve_pulsing', 'value'],
+            ['valve_open', 'value'],
+            None,
+        ],
+        [
+            [key, 'sources', 's_cracker', 'valve_pulsing', 'time'],
+            ['valve_open', 'time'],
+            'second',
+        ],
+        [
+            [key, 'sources', 's_cracker', 'valve_pulsing', 'mode_value'],
+            ['valve_open', 'mode_value'],
+            None,
+        ],
+    ]
+    for zone_number in ['1', '2', '3']:
+        s_cracker_param_nomad_map.extend(
+            [
+                [
+                    [key, 'sources', 's_cracker', f'avg_zone{zone_number}_temp'],
+                    ['vapor_source', f'avg_zone{zone_number}_temp'],
+                    'degC',
+                ],
+                [
+                    [key, 'sources', 's_cracker', f'zone{zone_number}_temp', 'value'],
+                    ['vapor_source', f'zone{zone_number}_temp', 'value'],
+                    'degC',
+                ],
+                [
+                    [key, 'sources', 's_cracker', f'zone{zone_number}_temp', 'time'],
+                    ['vapor_source', f'zone{zone_number}_temp', 'time'],
+                    'second',
+                ],
+            ]
+        )
+
+    return s_cracker_param_nomad_map
+
+
+def map_sputter_source_params_to_nomad(key, source_name, power_type):
     source_param_nomad_map = [
-        [
-            [key, 'sources', source_name, 'name'],
-            ['name'],
-            None,
-        ],
-        [
-            [key, 'sources', source_name, 'target_id'],
-            ['material', 'lab_id'],
-            None,
-        ],
         [
             [key, 'sources', source_name, 'power_supply', 'power_type'],
             ['vapor_source', 'power_type'],
@@ -4514,6 +4854,16 @@ def map_source_params_to_nomad(key, source_name, power_type):
             [key, 'sources', source_name, 'power_supply', 'avg_power_sp'],
             ['vapor_source', 'avg_power_sp'],
             'W',
+        ],
+        [
+            [key, 'sources', source_name, 'power_supply', 'power_sp', 'value'],
+            ['vapor_source', 'power_sp', 'value'],
+            'W',
+        ],
+        [
+            [key, 'sources', source_name, 'power_supply', 'power_sp', 'time'],
+            ['vapor_source', 'power_sp', 'time'],
+            'second',
         ],
         [
             [key, 'sources', source_name, 'source_shutter_open', 'value'],
@@ -4526,8 +4876,8 @@ def map_source_params_to_nomad(key, source_name, power_type):
             'second',
         ],
         [
-            [key, 'sources', source_name, 'source_shutter_open', 'general_value'],
-            ['source_shutter_open', 'general_value'],
+            [key, 'sources', source_name, 'source_shutter_open', 'mode_value'],
+            ['source_shutter_open', 'mode_value'],
             None,
         ],
     ]
@@ -4538,6 +4888,16 @@ def map_source_params_to_nomad(key, source_name, power_type):
                     [key, 'sources', source_name, 'power_supply', 'avg_dc_bias'],
                     ['vapor_source', 'avg_dc_bias'],
                     'V',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'dc_bias', 'value'],
+                    ['vapor_source', 'dc_bias', 'value'],
+                    'V',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'dc_bias', 'time'],
+                    ['vapor_source', 'dc_bias', 'time'],
+                    'second',
                 ],
                 [
                     [key, 'sources', source_name, 'power_supply', 'avg_fwd_power'],
@@ -4560,9 +4920,29 @@ def map_source_params_to_nomad(key, source_name, power_type):
                     'V',
                 ],
                 [
+                    [key, 'sources', source_name, 'power_supply', 'voltage', 'value'],
+                    ['vapor_source', 'voltage', 'value'],
+                    'V',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'voltage', 'time'],
+                    ['vapor_source', 'voltage', 'time'],
+                    'second',
+                ],
+                [
                     [key, 'sources', source_name, 'power_supply', 'avg_current'],
                     ['vapor_source', 'avg_current'],
                     'A',  # Check if this is correct
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'current', 'value'],
+                    ['vapor_source', 'current', 'value'],
+                    'A',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'current', 'time'],
+                    ['vapor_source', 'current', 'time'],
+                    'second',
                 ],
             ]
         )
@@ -4570,14 +4950,54 @@ def map_source_params_to_nomad(key, source_name, power_type):
         source_param_nomad_map.extend(
             [
                 [
-                    [key, 'sources', source_name, 'power_supply', 'pulse_frequency'],
-                    ['vapor_source', 'pulse_frequency'],
+                    [
+                        key,
+                        'sources',
+                        source_name,
+                        'power_supply',
+                        'avg_pulse_frequency',
+                    ],
+                    ['vapor_source', 'avg_pulse_frequency'],
                     'kHz',
                 ],
                 [
-                    [key, 'sources', source_name, 'power_supply', 'dead_time'],
-                    ['vapor_source', 'dead_time'],
+                    [
+                        key,
+                        'sources',
+                        source_name,
+                        'power_supply',
+                        'pulse_frequency',
+                        'value',
+                    ],
+                    ['vapor_source', 'pulse_frequency', 'value'],
+                    'kHz',
+                ],
+                [
+                    [
+                        key,
+                        'sources',
+                        source_name,
+                        'power_supply',
+                        'pulse_frequency',
+                        'time',
+                    ],
+                    ['vapor_source', 'pulse_frequency', 'time'],
+                    'second',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'avg_dead_time'],
+                    ['vapor_source', 'avg_dead_time'],
                     'microsecond',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'dead_time', 'value'],
+                    ['vapor_source', 'dead_time', 'value'],
+                    'microsecond',
+                ],
+                [
+                    [key, 'sources', source_name, 'power_supply', 'dead_time', 'time'],
+                    ['vapor_source', 'dead_time', 'time'],
+                    'second',
                 ],
             ]
         )
@@ -4585,11 +5005,11 @@ def map_source_params_to_nomad(key, source_name, power_type):
     return source_param_nomad_map
 
 
-def map_material_params_to_nomad(key, source_name, element):
+def map_material_params_to_nomad(key, source_name):
     material_param_nomad_map = [
         [
-            [key, 'sources', source_name, 'material', element, 'name'],
-            ['name'],
+            [key, 'sources', source_name, 'target_id'],
+            ['lab_id'],
             None,
         ],
     ]
@@ -5047,7 +5467,7 @@ def main():
 
         # Create the figure
         print('Generating the plotly plot')
-        plotly_timeline = plot_plotly_extimeline(events_to_plot, logfiles['name'][i])
+        plotly_timeline = generate_timeline(events_to_plot, logfiles['name'][i])
 
         if PRINT_FIGURES:
             plotly_timeline.show(config=PLOTLY_CONFIG)
@@ -5057,9 +5477,7 @@ def main():
 
         # --------GRAPH THE DC BIAS AS A FUNCTION OF TIME------------
 
-        deposition = event_list_to_dict(events_to_plot)['deposition']
-
-        bias_plot = generate_bias_plot(deposition, logfiles['name'][i])
+        bias_plot = generate_bias_plot(events_to_plot, logfiles['name'][i])
 
         if PRINT_FIGURES:
             bias_plot.show(config=PLOTLY_CONFIG)
@@ -5077,7 +5495,7 @@ def main():
 
         # -----GRAPH THE CHAMBER CONFIG---
         if 'platen_position' in main_params['deposition']:
-            chamber_plot = plot_logfile_chamber(main_params)
+            chamber_plot, _ = plot_logfile_chamber(main_params, logfiles['name'][i])
             # export matplotlib plot as png
             chamber_plot.savefig(chamber_file_path, dpi=300)
 
@@ -5097,7 +5515,7 @@ def main():
         save_report_as_text(main_params, txt_file_path, logfiles['name'][i])
 
         # --SAVE THE STEP REPORT QUANTITIES IN A TEXT FILE
-        if SAVE_STEP_REPORT:
+        if SAVE_STEP_PARAMS:
             save_report_as_text(step_params, step_file_path, logfiles['name'][i])
 
     # ----CONSILIDATE THE DATA INTO A SINGLE CSV FILE-----
@@ -5110,6 +5528,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-# ------TESTING GROUND--------
