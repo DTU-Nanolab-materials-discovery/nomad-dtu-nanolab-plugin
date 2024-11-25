@@ -21,18 +21,32 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+from ase.data import (
+    chemical_symbols,
+)
+from nomad.atomutils import Formula
 from nomad.datamodel.data import Schema
+from nomad.datamodel.results import Results, Material
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
     ELNAnnotation,
     ELNComponentEnum,
+    Filter,
+    SectionProperties,
 )
 from nomad.datamodel.metainfo.basesections import (
     CompositeSystem,
     PureSubstanceComponent,
     PureSubstanceSection,
 )
-from nomad.metainfo import Datetime, Package, Quantity, Section
+from nomad.metainfo import (
+    Datetime,
+    MEnum,
+    Package,
+    Quantity,
+    Section,
+    SubSection,
+)
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
@@ -66,10 +80,56 @@ class DTUTarget(CompositeSystem, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Target',
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                visible=Filter(
+                    exclude=[
+                        'components',
+                    ],
+                ),
+                order=[
+                    'name',
+                    'lab_id',
+                    'main_material',
+                    'supplier_id',
+                    'purity',
+                    'impurity_file',
+                    'thickness',
+                    'magkeeper_target',
+                    'datetime',
+                    'refill_or_mounting_date',
+                    'time_used',
+                    'description',
+                    'main_phases',
+                    'impurities',
+                    'composition',
+                ],
+            )
+        )
     )
+    main_material = Quantity(
+        type=str,
+        description="""
+        The main material of the target.
+        """,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
+    )
+    # main_elements = Quantity(
+    #     type=MEnum(chemical_symbols[1:]),
+    #     shape=['*'],
+    #     description="""
+    #     The symbol of the element, e.g. 'Pb'.
+    #     """,
+    #     a_eln=dict(component='AutocompleteEditQuantity'),
+    # )
     supplier_id = Quantity(
         type=str,
         a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
+    )
+    target_number = Quantity(
+        type=int,
+        description='The target number.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
     )
     purity = Quantity(
         type=np.float64,
@@ -111,6 +171,22 @@ class DTUTarget(CompositeSystem, Schema):
         ),
         unit='s',
     )
+    datetime = Quantity(
+        type=Datetime,
+        description='The delivery date of the target.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.DateEditQuantity,
+            label='Delivery date',
+        )
+    )
+    main_phases = SubSection(
+        section_def=PureSubstanceComponent,
+        repeats=True,
+    )
+    impurities = SubSection(
+        section_def=PureSubstanceComponent,
+        repeats=True,
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -136,18 +212,18 @@ class DTUTarget(CompositeSystem, Schema):
             self.supplier_id = 'Testbourne'
         elif info['supplier'] == 'L':
             self.supplier_id = 'Lesker'
+        self.main_material = info['chemical_formula']
+        self.target_number = int(info['number'])
 
-        components: list[PureSubstanceComponent] = []
-        chemical_formula = info['chemical_formula']
         pure_substance = PureSubstanceSection(
-            molecular_formula=chemical_formula,
+            molecular_formula=self.main_material,
         )
-        components.append(
+        self.main_phases = [
             PureSubstanceComponent(
-                name='Main component: ' + chemical_formula,
+                name='Main component: ' + self.main_material,
                 pure_substance=pure_substance,
             )
-        )
+        ]
 
         with archive.m_context.raw_file(self.impurity_file, 'r') as impurity:
             df_data: pd.DataFrame = pd.read_csv(
@@ -159,6 +235,7 @@ class DTUTarget(CompositeSystem, Schema):
 
         df_data = df_data.replace({'<': ''}, regex=True)
 
+        impurities: list[PureSubstanceComponent] = []
         for _, row in df_data.iterrows():
             component = PureSubstanceComponent()
             component.name = 'Impurity component: ' + row['symbol']
@@ -170,11 +247,18 @@ class DTUTarget(CompositeSystem, Schema):
             else:
                 logger.warning(f'The impurity unit "{row["unit"]}" is not a valid unit')
                 continue
-            components.append(component)
+            impurities.append(component)
 
-        self.components = components
+        self.impurities = impurities
+        self.components = self.main_phases + self.impurities
 
         super().normalize(archive, logger)
+
+        if archive.results is None:
+            archive.results = Results()
+        if archive.results.material is None:
+            archive.results.material = Material()
+        archive.results.material.elements = Formula(self.main_material).elements()
 
 
 m_package.__init_metainfo__()
