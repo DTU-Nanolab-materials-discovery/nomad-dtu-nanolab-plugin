@@ -183,7 +183,7 @@ class XpsMetadata(Schema):
 class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
-        label='XRD Measurement',
+        label='XPS Measurement',
     )
     native_file = Quantity(
         type=str,
