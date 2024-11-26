@@ -121,6 +121,19 @@ xrd = XRDEntryPoint(
 )
 
 
+class XPSEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.xps import m_package
+
+        return m_package
+
+
+xps = XPSEntryPoint(
+    name='XPS',
+    description='Schema package defined for XPS measurements.',
+)
+
+
 class SampleEntryPoint(SchemaPackageEntryPoint):
     def load(self):
         from nomad_dtu_nanolab_plugin.schema_packages.sample import m_package
