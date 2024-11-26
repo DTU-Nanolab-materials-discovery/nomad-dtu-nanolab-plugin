@@ -374,7 +374,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
     def plot(self) -> None:
         x, y = [], []
         quantifications = defaultdict(list)
-        ratios = defaultdict(list)
+        # ratios = defaultdict(list)
         result: XpsMappingResult
         for result in self.results:
             if isinstance(result.x_relative, ureg.Quantity) and isinstance(
