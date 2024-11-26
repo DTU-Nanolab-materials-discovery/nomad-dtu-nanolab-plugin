@@ -468,7 +468,8 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         super().normalize(archive, logger)
 
         self.figures = []
-        self.plot()
+        if len(self.results) > 0:
+            self.plot()
 
 
 m_package.__init_metainfo__()
