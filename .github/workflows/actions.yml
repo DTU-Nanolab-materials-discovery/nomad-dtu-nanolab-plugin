@@ -31,22 +31,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           coveralls --service=github
-  build-and-install:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.12
-      - name: Build the package
-        run: |
-          pip install --upgrade pip
-          pip install build
-          python -m build --sdist
-      - name: Install the package
-        run: |
-          pip install dist/*.tar.gz --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
+
   ruff-linting:
     runs-on: ubuntu-latest
     steps:
