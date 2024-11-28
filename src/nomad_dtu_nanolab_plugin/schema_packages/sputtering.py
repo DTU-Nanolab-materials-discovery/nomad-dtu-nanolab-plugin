@@ -123,7 +123,7 @@ class DtuSubstrateMounting(ArchiveSection):
         description='The relative position of the substrate on the platen.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
-            props=dict(suggestions=['BL', 'BR', 'FL', 'FR']),
+            props=dict(suggestions=['BL', 'BR', 'FL', 'FR', 'G']),
         ),
     )
     position_x = Quantity(
@@ -191,6 +191,7 @@ class DtuSubstrateMounting(ArchiveSection):
                 'BR': (0.02, 0.035),
                 'FL': (-0.02, -0.005),
                 'FR': (0.02, -0.005),
+                'G': (0, -0.038),
             }
             if self.relative_position in positions:
                 self.position_x, self.position_y = positions[self.relative_position]

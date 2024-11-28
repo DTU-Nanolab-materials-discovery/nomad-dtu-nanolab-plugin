@@ -544,6 +544,7 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
             self.plot_spectra(data_dict)
 
         if self.pl_overview_file:
+            self.add_sample_reference(self.pl_overview_file, archive, logger)
             metadata_lines = []
             data_lines = []
 

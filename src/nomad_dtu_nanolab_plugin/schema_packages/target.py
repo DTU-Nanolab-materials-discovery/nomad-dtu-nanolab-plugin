@@ -250,6 +250,9 @@ class DTUTarget(CompositeSystem, Schema):
 
         super().normalize(archive, logger)
 
+        if self.purity is None and self.impurities:
+            impurities = sum([impurity.mass_fraction for impurity in self.impurities])
+            self.purity = 100 * (1 - impurities)
         if archive.results is None:
             archive.results = Results()
         if archive.results.material is None:

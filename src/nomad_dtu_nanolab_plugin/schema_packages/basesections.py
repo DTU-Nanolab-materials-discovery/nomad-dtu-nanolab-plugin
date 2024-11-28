@@ -16,12 +16,17 @@
 # limitations under the License.
 #
 
+import re
 from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.datamodel import ArchiveSection, EntryArchive
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
-from nomad.datamodel.metainfo.basesections import Measurement, MeasurementResult
+from nomad.datamodel.metainfo.basesections import (
+    CompositeSystemReference,
+    Measurement,
+    MeasurementResult,
+)
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from structlog.stdlib import BoundLogger
@@ -404,7 +409,28 @@ class RectangularSampleAlignment(SampleAlignment):
         super().normalize(archive, logger)
 
 
-class MappingMeasurement(Measurement):
+class DtuNanolabMeasurement(Measurement):
+    def add_sample_reference(
+        self, filename: str, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
+        # Define the regex pattern
+        pattern = r'^(?P<lab_id>([^_]*_){3}[^_.]*)'
+
+        # Match the pattern
+        match = re.match(pattern, filename)
+
+        if match:
+            sample_ref = CompositeSystemReference(lab_id=match.group('lab_id'))
+            from nomad.datamodel.context import ServerContext
+
+            if isinstance(archive.m_context, ServerContext):
+                sample_ref.normalize(archive, logger)
+            self.samples = [sample_ref]
+        else:
+            logger.warning(f'Could not match lab_id in: {filename}')
+
+
+class MappingMeasurement(DtuNanolabMeasurement):
     """A class representing a mapping measurement."""
 
     m_def = Section()
