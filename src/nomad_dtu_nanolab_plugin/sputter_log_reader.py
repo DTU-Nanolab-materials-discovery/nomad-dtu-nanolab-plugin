@@ -3462,188 +3462,6 @@ def filter_data_platen_bias_on(data):
 # -------PLOTTING DEFINITIONS------------
 
 
-# def generate_optix_cascade_plot(spectra,**kwargs):
-#     """
-#     Generate a 3D cascade plot with optional coloring based on experimental data.
-
-#     Parameters:
-#     - spectra (dict): Contains 'data' (DataFrame with x and
-#          intensity columns) and 'timestamp_map' (dict of timestamps).
-#     - kwargs (dict): Additional keyword arguments:
-#       - 'color_df': DataFrame with a 'Timestamp' column and data columns
-#             for custom coloring.
-#       - 'color_column': Name of the column in color_df to use for coloring.
-#       - 'time_col': The column name representing time in color_df.
-#       - 'wv_range': The wavelength range for filtering the data (e.g., (200, 800)).
-#       - 'time_range': Time range for filtering the data (optional).
-#       - 'color_scale': The color scale to use for the plot (e.g., 'Jet').
-
-#     Returns:
-#     - plotly.graph_objects.Figure: The resulting 3D cascade plot.
-#     """
-
-#     # Extract values from kwargs with defaults
-#     color_df = kwargs.get('color_df', None)
-#     color_column = kwargs.get('color_column', None)
-#     time_col = kwargs.get('time_col', 'Time Stamp')
-#     color_scale = kwargs.get('color_scale', 'Jet')
-#     wv_range = kwargs.get('wv_range', (200, 800))
-#     time_range = kwargs.get('time_range', None)
-
-#     #filter the data based on the time range
-#     if time_range is not None:
-#         spectra= filter_spectrum(spectra.copy(), time_range)
-
-#     # Extract the x-axis and intensity columns
-#     data = spectra['data']
-#     timestamp_map = spectra['timestamp_map']
-
-#     x_values = data['x']
-
-#     # Convert timestamps to numeric elapsed time
-#     timestamps = list(timestamp_map.values())
-#     base_time = min(timestamps)
-#     time_offsets = {
-#         col: (timestamp - base_time)
-#         .total_seconds()
-#         for col, timestamp in timestamp_map.items()
-#     }
-
-#     # Initialize color mapping
-#     cols = [col for col in data.columns if col != 'x']
-#     colors = []
-
-#     # Process color_df for custom coloring if provided
-#     if color_df is not None and color_column is not None:
-#         # Ensure the color_df has a 'Timestamp' column
-#         if time_col not in color_df.columns:
-#             raise ValueError(f"color_df must contain a {time_col} column.")
-
-#         # Set 'Time Stamp' as the index if not already
-#         if not np.issubdtype(color_df[time_col].dtype, np.datetime64):
-#             raise ValueError(
-#                 f"The {time_col} column in color_df must be of datetime type."
-#             )
-
-#         if color_df.index.name != time_col:
-#             color_df = color_df.set_index(time_col)
-
-#         # Ensure the selected column exists
-#         if color_column not in color_df.columns:
-#             raise ValueError(f"Column '{color_column}' not found in color_df.")
-
-#         # Match timestamps in timestamp_map to the closest time in color_df
-#         for col in cols:
-#             spectrum_time = timestamp_map[col]
-#             closest_idx = color_df.index.get_loc(spectrum_time, method='nearest')
-#             color_value = color_df.iloc[closest_idx][color_column]
-#             colors.append(color_value)
-
-#         # Normalize the values for the colormap
-#         min_color = min(colors)
-#         max_color = max(colors)
-#         normalized_colors = [
-#             (value - min_color) / (max_color - min_color) for value in colors
-#         ]
-#         colors = sample_colorscale(color_scale, normalized_colors)
-#     else:
-#         # Default to time-based coloring
-#         max_offset = max(time_offsets.values())
-#         min_offset = min(time_offsets.values())
-#         colors = sample_colorscale(
-#             color_scale,
-#             [
-#                 (time_offsets[col] - min_offset)/
-#                 (max_offset - min_offset)
-#                 for col in cols]
-#             )
-
-
-#     # Filter the data based on the provided wavelength range (if applicable)
-#     if wv_range is not None:
-#         data_wv_filtered = data[
-#           (data['x'] >= wv_range[0]) & (data['x'] <= wv_range[1])]
-
-#         # Calculate the min/max intensity based on the filtered wavelength data
-#         cols = [col for col in data_wv_filtered.columns if col != 'x']
-#         min_intensity = data_wv_filtered[cols].min().min()  # Min intensity
-#         max_intensity = data_wv_filtered[cols].max().max()  # Max intensity
-
-#     # Create the 3D plot
-#     fig = go.Figure()
-
-#     for col, color in zip(cols, colors):
-#         x_axis_values = x_values  # Left-right direction
-#         z_axis_values = data[col]  # Intensity towards the top
-#         y_axis_values = [time_offsets[col]] * len(x_axis_values)
-#         timestamp = timestamp_map[col]
-
-#         fig.add_trace(go.Scatter3d(
-#             x=x_axis_values,  # Left-right direction
-#             y=y_axis_values,  # Depth direction (numeric time)
-#             z=z_axis_values,  # Intensity towards the top
-#             mode='lines',
-#             name=f'Trace {col}',
-#             line=dict(color=color),
-#             hovertemplate=(
-#                 f"X: %{{x}}<br>"
-#                 f"Intensity: %{{z}}<br>"
-#                 f"Time: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}<extra></extra>"
-#             )
-#         ))
-
-#     # Add a dummy scatter trace for the color bar
-#     if color_df is not None and color_column is not None:
-#         fig.add_trace(go.Scatter3d(
-#             x=[None], y=[None], z=[None],  # Dummy data
-#             mode='markers',
-#             marker=dict(
-#                 size=0,  # Invisible markers
-#                 color=np.linspace(min_color, max_color, 100),  # Range of values
-#                 colorscale=color_scale,  # Use the same colorscale
-#                 colorbar=dict(
-#                     title=color_column,  # Color bar title
-#                     titleside='right',
-#                     tickvals=np.linspace(min_color, max_color, 5),
-#                     tickformat=".2f",
-#                 ),
-#             ),
-#             hoverinfo='none'
-#         ))
-
-#     fig.update_layout(
-#         # title="Cascade 3D Plot",
-#         scene=dict(
-#             xaxis=dict(
-#                 title="Wavelength (nm)",
-#                 range=[wv_range[0], wv_range[1]],  # You can adjust the range here
-#                 showspikes=True,
-#                 showticklabels=True
-#             ),
-#             yaxis=dict(
-#                 title="Time (s)",
-#                 range=[min(time_offsets.values()), max(time_offsets.values())],
-#                 showspikes=True,
-#                 showticklabels=True
-#             ),
-#             zaxis=dict(
-#                 title="Intensity",
-#                 range=[min_intensity, max_intensity],  # Set the range of intensity
-#                 showspikes=True,
-#                 showticklabels=True
-#             )
-#         ),
-#         showlegend=False,  # Hide legend
-#         margin=dict(l=0, r=0, t=0, b=0),  # Remove margins
-#     )
-
-#     #make it larger in the  wavelegnth direction
-#     fig.update_layout(scene=dict(
-#           aspectmode='manual',
-#           aspectratio=dict(x=2, y=1, z=1)))
-
-#     return fig
-
 
 def generate_optix_cascade_plot(spectra, **kwargs):
     """
@@ -3673,6 +3491,7 @@ def generate_optix_cascade_plot(spectra, **kwargs):
     color_scale = kwargs.get('color_scale', 'Jet')
     wv_range = kwargs.get('wv_range', (200, 800))
     time_range = kwargs.get('time_range', None)
+    plot_title = kwargs.get('plot_title', '3D Cascade Plot')
 
     # filter the data based on the time range
     if time_range is not None:
@@ -3765,6 +3584,7 @@ def generate_optix_cascade_plot(spectra, **kwargs):
         wv_range=wv_range,
         min_intensity=min_intensity,
         max_intensity=max_intensity,
+        plot_title=plot_title,
     )
 
     return fig
@@ -3786,6 +3606,7 @@ def create_3d_plot(**kwargs):
     wv_range = kwargs.get('wv_range', None)
     min_intensity = kwargs.get('min_intensity', None)
     max_intensity = kwargs.get('max_intensity', None)
+    plot_title = kwargs.get('plot_title', None)
 
     # Create the 3D plot
     fig = go.Figure()
@@ -3836,7 +3657,7 @@ def create_3d_plot(**kwargs):
         )
 
     fig.update_layout(
-        # title="Cascade 3D Plot",
+        title=plot_title,
         scene=dict(
             xaxis=dict(
                 title='Wavelength (nm)',
@@ -4518,15 +4339,12 @@ def generate_overview_plot(data, logfile_name):
 
 
 def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
-    plots = []
+    #initialize a dict of plots
+    plots = {}
 
     # Generate the timeline plot
     plotly_timeline = generate_timeline(events_to_plot, sample_name)
-    plots.append(plotly_timeline)
-
-    # Generate the overview plot
-    overview_plot = generate_overview_plot(log_data, sample_name)
-    plots.append(overview_plot)
+    plots['timeline'] = plotly_timeline
 
     bias_plot = generate_bias_plot(
         events_to_plot,
@@ -4534,7 +4352,11 @@ def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
         rolling_num=ROLLING_NUM,
         rolling_frac_max=ROLLING_FRAC_MAX,
     )
-    plots.append(bias_plot)
+    plots['bias_plot'] = bias_plot
+
+    # Generate the overview plot
+    overview_plot = generate_overview_plot(log_data, sample_name)
+    plots['overview_plot'] = overview_plot
 
     # _, chamber_plotly_plot = plot_logfile_chamber(main_params, sample_name)
     # plots.append(chamber_plotly_plot)
