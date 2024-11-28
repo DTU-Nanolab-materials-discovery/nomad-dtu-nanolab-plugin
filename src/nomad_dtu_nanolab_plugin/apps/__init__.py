@@ -1,5 +1,3 @@
-import pkg_resources
-import yaml
 from nomad.config.models.plugins import AppEntryPoint
 from nomad.config.models.ui import (
     App,
@@ -98,11 +96,6 @@ sputtering = AppEntryPoint(
 
 target_schema = 'nomad_dtu_nanolab_plugin.schema_packages.target.DTUTarget'
 
-yaml_file_path = pkg_resources.resource_filename(__name__, 'target_dashboard.yaml')
-
-with open(yaml_file_path) as file:
-    target_dashboard = yaml.safe_load(file)
-
 sputtering_targets = AppEntryPoint(
     name='Sputtering targets app',
     description='App for searching sputtering targets.',
@@ -164,6 +157,5 @@ sputtering_targets = AppEntryPoint(
         filters_locked={
             'entry_type': 'DTUTarget',
         },
-        # dashboard=Dashboard.parse_obj(target_dashboard),
     ),
 )
