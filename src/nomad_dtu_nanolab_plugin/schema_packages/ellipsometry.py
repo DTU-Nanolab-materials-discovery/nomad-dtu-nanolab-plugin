@@ -100,37 +100,37 @@ class DTUEllipsometryMeasurement(MappingMeasurement, PlotSection, Schema):
         # add the spectra from n and k as well as the thickness value here
     )
 
-    """
-    def write_PL_by_position(
-        self,
-        data_dict: dict[str, Any],
-        archive: 'EntryArchive',
-        logger: 'BoundLogger',
-    ) -> None:
 
-            #add the information accoring to the key to the respective subsections
+    # def write_PL_by_position(
+    #     self,
+    #     data_dict: dict[str, Any],
+    #     archive: 'EntryArchive',
+    #     logger: 'BoundLogger',
+    # ) -> None:
 
-
-    def plot_overview(self, data_df: pd.DataFrame ) -> None:
-        # Sort the DataFrame by 'X' and 'Y' columns
-        plot_json = fig.to_plotly_json()
-        plot_json['config'] = dict(
-            scrollZoom=False,
-        )
-        self.figures.append(
-            PlotlyFigure(
-                label=column,
-                figure=plot_json,
-            )
-        )
+    #         #add the information accoring to the key to the respective subsections
 
 
+    # def plot_overview(self, data_df: pd.DataFrame ) -> None:
+    #     # Sort the DataFrame by 'X' and 'Y' columns
+    #     plot_json = fig.to_plotly_json()
+    #     plot_json['config'] = dict(
+    #         scrollZoom=False,
+    #     )
+    #     self.figures.append(
+    #         PlotlyFigure(
+    #             label=column,
+    #             figure=plot_json,
+    #         )
+    #     )
 
-    def plot_spectra(self) -> None:
-        #add the plotting stuff here
-        data_lines = []
-        #problem : how toplot these in their subsections
-    """
+
+
+    # def plot_spectra(self) -> None:
+    #     #add the plotting stuff here
+    #     data_lines = []
+    #     #problem : how toplot these in their subsections
+
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -141,7 +141,12 @@ class DTUEllipsometryMeasurement(MappingMeasurement, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        # if self.pl_data_file:
+        if self.native_file:
+            self.add_sample_reference(self.native_file, archive, logger)
+        elif self.n_and_k_file:
+            self.add_sample_reference(self.n_and_k_file, archive, logger)
+        elif self.thickness_file:
+            self.add_sample_reference(self.thickness_file, archive, logger)
 
         super().normalize(archive, logger)
 
