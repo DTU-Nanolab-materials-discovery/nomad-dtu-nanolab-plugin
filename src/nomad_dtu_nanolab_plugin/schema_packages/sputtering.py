@@ -1689,7 +1689,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 lab_id = self.lab_id
             else:
                 lab_id = '_'.join(self.name.split())
-            library.lab_id = f'{lab_id}-{sample_id}'
+            library.lab_id = f'{lab_id}_{sample_id}'
             elements = self.deposition_parameters.material_space.split('-')
             composition = [ElementalComposition(element=e) for e in elements if e]
             layer = ThinFilm(
