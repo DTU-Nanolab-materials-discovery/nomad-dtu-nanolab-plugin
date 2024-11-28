@@ -116,7 +116,6 @@ where = ["src"]
 
 [project.entry-points.'nomad.plugin']
 myparser = "nomad_dtu_nanolab_plugin.parsers:myparser"
-mypackage = "nomad_dtu_nanolab_plugin.schema_packages:mypackage"
 sputtering_targets_app = "nomad_dtu_nanolab_plugin.apps:sputtering_targets"
 sputtering = "nomad_dtu_nanolab_plugin.schema_packages:sputtering"
 gas = "nomad_dtu_nanolab_plugin.schema_packages:gas"
