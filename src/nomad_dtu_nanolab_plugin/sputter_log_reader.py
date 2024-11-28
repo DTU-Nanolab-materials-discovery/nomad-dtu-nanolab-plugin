@@ -2966,7 +2966,7 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
                     )
                 except IndexError:
                     print(
-                        'The time constraint on the presputtering has been fully relaxed',
+                        'The time constraint on the presputtering was fully relaxed',
                         'presput may be located after the deposition',
                     )
                     source_presput_cond = (
