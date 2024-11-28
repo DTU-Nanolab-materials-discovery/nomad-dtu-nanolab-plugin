@@ -36,6 +36,7 @@ from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.datamodel.metainfo.workflow import (
     Link,
 )
+from nomad.datamodel.results import Material, Results
 from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_material_processing.general import (
@@ -1807,6 +1808,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 for substrate in self.substrates
             ]
         )
+        if self.deposition_parameters is not None:
+            if archive.results is None:
+                archive.results = Results()
+            if archive.results.material is None:
+                archive.results.material = Material()
+            elements = self.deposition_parameters.material_space.split('-')
+            archive.results.material.elements = elements
 
 
 m_package.__init_metainfo__()
