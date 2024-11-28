@@ -27,6 +27,7 @@ from matplotlib import patches
 from matplotlib.transforms import Affine2D
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from PIL import Image
+from plotly.colors import sample_colorscale
 from plotly.subplots import make_subplots
 
 # ---------MAIN FUNCTION PARAMETERS------------
@@ -42,17 +43,20 @@ SAVE_STEP_PARAMS = False
 SAMPLES_TO_REMOVE = [
     'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
     'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
+    'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
 ]
 
 SAMPLES_TO_TEST = [
-    # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
-    # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
+    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
+    'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
     # 'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
     # 'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
     # 'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
     # 'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
     # 'mittma_0007_Cu_Recording Set 2024.06.03-09.52.29',
-    'anait_0010_Ba_Recording Set 2024.11.12-09.20.00',
+    # 'anait_0010_Ba_Recording Set 2024.11.12-09.20.00',
+    'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
+    'mittma_0028_Cu_Recording Set 2024.11.22-07.19.41',
 ]
 
 
@@ -2490,7 +2494,7 @@ def within_range(data_col, ref_col_mean, diff_param, mode='percent'):
     return cond
 
 
-def format_time_stamp(time, df, timestamp_col='Time Stamp'):
+def format_time_stamp(time, ref_object=None, timestamp_col='Time Stamp'):
     len_hh_mm = 2
     len_hh_mm_ss = 3
 
@@ -2505,19 +2509,30 @@ def format_time_stamp(time, df, timestamp_col='Time Stamp'):
                     f"Invalid time format: {time}. Exp. 'HH:MM' or 'HH:MM:SS'."
                 )
 
-            # Handle case where df is empty to avoid IndexError
-            if df.empty:
-                raise ValueError(
-                    'DataFrame is empty, cannot infer date for time conversion.'
-                )
+            if ref_object is not None:
+                if isinstance(ref_object, pd.DataFrame):
+                    # Handle case where df is empty to avoid IndexError
+                    if ref_object.empty:
+                        raise ValueError(
+                            'DataFrame is empty, cannot infer date for time conversion.'
+                        )
 
-                # Assume the date of the first row of df[timestamp_col]
-                # if only time is provided
-            if len(time.split()) == 1:
-                first_date = pd.to_datetime(df[timestamp_col].iloc[0]).strftime(
-                    '%Y-%m-%d'
-                )
-                time = f'{first_date} {time}'
+                        # Assume the date of the first row of df[timestamp_col]
+                        # if only time is provided
+                    if len(time.split()) == 1:
+                        first_date = pd.to_datetime(
+                            ref_object[timestamp_col].iloc[0]
+                        ).strftime('%Y-%m-%d')
+                        time = f'{first_date} {time}'
+                elif isinstance(ref_object, dict):
+                    # Assume the date of the first key of the dictionary
+                    # if only time is provided
+                    if len(time.split()) == 1:
+                        first_key = list(ref_object['timestamp_map'].keys())[0]
+                        first_date = pd.to_datetime(
+                            ref_object['timestamp_map'][first_key]
+                        ).strftime('%Y-%m-%d')
+                        time = f'{first_date} {time}'
         try:
             # Create the Timestamp
             timestamp = pd.to_datetime(time, format='%Y-%m-%d %H:%M:%S')
@@ -2540,8 +2555,8 @@ def within_time_range(df, start_time, end_time, timestamp_col='Time Stamp'):
         df[timestamp_col] = pd.to_datetime(df[timestamp_col])
 
     # Format start_time and end_time
-    start_time = format_time_stamp(start_time, df)
-    end_time = format_time_stamp(end_time, df)
+    start_time = format_time_stamp(start_time, ref_object=df)
+    end_time = format_time_stamp(end_time, ref_object=df)
 
     # Ensure both timestamps and DataFrame column are timezone-naive
     if start_time.tzinfo is not None:
@@ -2937,12 +2952,29 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
                     & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
                 )
             except IndexError:
-                source_presput_cond = (
-                    source_on[str(source_number)].cond
-                    & (data['Time Stamp'] < deposition.bounds[0][0])
-                    & ~source_ramp_up[str(source_number)].cond
-                    & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
+                print(
+                    'The time constraint on the presputtering',
+                    'has been partially relaxed',
+                    'presput may be located after the last source ramp up',
                 )
+                try:
+                    source_presput_cond = (
+                        source_on[str(source_number)].cond
+                        & (data['Time Stamp'] < deposition.bounds[0][0])
+                        & ~source_ramp_up[str(source_number)].cond
+                        & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
+                    )
+                except IndexError:
+                    print(
+                        'The time constraint on the presputtering has been fully relaxed',
+                        'presput may be located after the deposition',
+                    )
+                    source_presput_cond = (
+                        source_on[str(source_number)].cond
+                        & ~source_ramp_up[str(source_number)].cond
+                        & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
+                    )
+
             source_presput[str(source_number)] = Source_Presput_Event(
                 f'Source {source_number} Presput',
                 source=source_number,
@@ -3430,6 +3462,411 @@ def filter_data_platen_bias_on(data):
 # -------PLOTTING DEFINITIONS------------
 
 
+# def generate_optix_cascade_plot(spectra,**kwargs):
+#     """
+#     Generate a 3D cascade plot with optional coloring based on experimental data.
+
+#     Parameters:
+#     - spectra (dict): Contains 'data' (DataFrame with x and
+#          intensity columns) and 'timestamp_map' (dict of timestamps).
+#     - kwargs (dict): Additional keyword arguments:
+#       - 'color_df': DataFrame with a 'Timestamp' column and data columns
+#             for custom coloring.
+#       - 'color_column': Name of the column in color_df to use for coloring.
+#       - 'time_col': The column name representing time in color_df.
+#       - 'wv_range': The wavelength range for filtering the data (e.g., (200, 800)).
+#       - 'time_range': Time range for filtering the data (optional).
+#       - 'color_scale': The color scale to use for the plot (e.g., 'Jet').
+
+#     Returns:
+#     - plotly.graph_objects.Figure: The resulting 3D cascade plot.
+#     """
+
+#     # Extract values from kwargs with defaults
+#     color_df = kwargs.get('color_df', None)
+#     color_column = kwargs.get('color_column', None)
+#     time_col = kwargs.get('time_col', 'Time Stamp')
+#     color_scale = kwargs.get('color_scale', 'Jet')
+#     wv_range = kwargs.get('wv_range', (200, 800))
+#     time_range = kwargs.get('time_range', None)
+
+#     #filter the data based on the time range
+#     if time_range is not None:
+#         spectra= filter_spectrum(spectra.copy(), time_range)
+
+#     # Extract the x-axis and intensity columns
+#     data = spectra['data']
+#     timestamp_map = spectra['timestamp_map']
+
+#     x_values = data['x']
+
+#     # Convert timestamps to numeric elapsed time
+#     timestamps = list(timestamp_map.values())
+#     base_time = min(timestamps)
+#     time_offsets = {
+#         col: (timestamp - base_time)
+#         .total_seconds()
+#         for col, timestamp in timestamp_map.items()
+#     }
+
+#     # Initialize color mapping
+#     cols = [col for col in data.columns if col != 'x']
+#     colors = []
+
+#     # Process color_df for custom coloring if provided
+#     if color_df is not None and color_column is not None:
+#         # Ensure the color_df has a 'Timestamp' column
+#         if time_col not in color_df.columns:
+#             raise ValueError(f"color_df must contain a {time_col} column.")
+
+#         # Set 'Time Stamp' as the index if not already
+#         if not np.issubdtype(color_df[time_col].dtype, np.datetime64):
+#             raise ValueError(
+#                 f"The {time_col} column in color_df must be of datetime type."
+#             )
+
+#         if color_df.index.name != time_col:
+#             color_df = color_df.set_index(time_col)
+
+#         # Ensure the selected column exists
+#         if color_column not in color_df.columns:
+#             raise ValueError(f"Column '{color_column}' not found in color_df.")
+
+#         # Match timestamps in timestamp_map to the closest time in color_df
+#         for col in cols:
+#             spectrum_time = timestamp_map[col]
+#             closest_idx = color_df.index.get_loc(spectrum_time, method='nearest')
+#             color_value = color_df.iloc[closest_idx][color_column]
+#             colors.append(color_value)
+
+#         # Normalize the values for the colormap
+#         min_color = min(colors)
+#         max_color = max(colors)
+#         normalized_colors = [
+#             (value - min_color) / (max_color - min_color) for value in colors
+#         ]
+#         colors = sample_colorscale(color_scale, normalized_colors)
+#     else:
+#         # Default to time-based coloring
+#         max_offset = max(time_offsets.values())
+#         min_offset = min(time_offsets.values())
+#         colors = sample_colorscale(
+#             color_scale,
+#             [
+#                 (time_offsets[col] - min_offset)/
+#                 (max_offset - min_offset)
+#                 for col in cols]
+#             )
+
+
+#     # Filter the data based on the provided wavelength range (if applicable)
+#     if wv_range is not None:
+#         data_wv_filtered = data[
+#           (data['x'] >= wv_range[0]) & (data['x'] <= wv_range[1])]
+
+#         # Calculate the min/max intensity based on the filtered wavelength data
+#         cols = [col for col in data_wv_filtered.columns if col != 'x']
+#         min_intensity = data_wv_filtered[cols].min().min()  # Min intensity
+#         max_intensity = data_wv_filtered[cols].max().max()  # Max intensity
+
+#     # Create the 3D plot
+#     fig = go.Figure()
+
+#     for col, color in zip(cols, colors):
+#         x_axis_values = x_values  # Left-right direction
+#         z_axis_values = data[col]  # Intensity towards the top
+#         y_axis_values = [time_offsets[col]] * len(x_axis_values)
+#         timestamp = timestamp_map[col]
+
+#         fig.add_trace(go.Scatter3d(
+#             x=x_axis_values,  # Left-right direction
+#             y=y_axis_values,  # Depth direction (numeric time)
+#             z=z_axis_values,  # Intensity towards the top
+#             mode='lines',
+#             name=f'Trace {col}',
+#             line=dict(color=color),
+#             hovertemplate=(
+#                 f"X: %{{x}}<br>"
+#                 f"Intensity: %{{z}}<br>"
+#                 f"Time: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}<extra></extra>"
+#             )
+#         ))
+
+#     # Add a dummy scatter trace for the color bar
+#     if color_df is not None and color_column is not None:
+#         fig.add_trace(go.Scatter3d(
+#             x=[None], y=[None], z=[None],  # Dummy data
+#             mode='markers',
+#             marker=dict(
+#                 size=0,  # Invisible markers
+#                 color=np.linspace(min_color, max_color, 100),  # Range of values
+#                 colorscale=color_scale,  # Use the same colorscale
+#                 colorbar=dict(
+#                     title=color_column,  # Color bar title
+#                     titleside='right',
+#                     tickvals=np.linspace(min_color, max_color, 5),
+#                     tickformat=".2f",
+#                 ),
+#             ),
+#             hoverinfo='none'
+#         ))
+
+#     fig.update_layout(
+#         # title="Cascade 3D Plot",
+#         scene=dict(
+#             xaxis=dict(
+#                 title="Wavelength (nm)",
+#                 range=[wv_range[0], wv_range[1]],  # You can adjust the range here
+#                 showspikes=True,
+#                 showticklabels=True
+#             ),
+#             yaxis=dict(
+#                 title="Time (s)",
+#                 range=[min(time_offsets.values()), max(time_offsets.values())],
+#                 showspikes=True,
+#                 showticklabels=True
+#             ),
+#             zaxis=dict(
+#                 title="Intensity",
+#                 range=[min_intensity, max_intensity],  # Set the range of intensity
+#                 showspikes=True,
+#                 showticklabels=True
+#             )
+#         ),
+#         showlegend=False,  # Hide legend
+#         margin=dict(l=0, r=0, t=0, b=0),  # Remove margins
+#     )
+
+#     #make it larger in the  wavelegnth direction
+#     fig.update_layout(scene=dict(
+#           aspectmode='manual',
+#           aspectratio=dict(x=2, y=1, z=1)))
+
+#     return fig
+
+
+def generate_optix_cascade_plot(spectra, **kwargs):
+    """
+    Generate a 3D cascade plot with optional coloring based on
+    experimental data.
+
+    Parameters:
+    - spectra (dict): Contains 'data' (DataFrame with x and
+         intensity columns) and 'timestamp_map' (dict of timestamps).
+    - kwargs (dict): Additional keyword arguments:
+      - 'color_df': DataFrame with a 'Timestamp' column and data columns
+            for custom coloring.
+      - 'color_column': Name of the column in color_df to use for coloring.
+      - 'time_col': The column name representing time in color_df.
+      - 'wv_range': The wavelength range for filtering the data (e.g., (200, 800)).
+      - 'time_range': Time range for filtering the data (optional).
+      - 'color_scale': The color scale to use for the plot (e.g., 'Jet').
+
+    Returns:
+    - plotly.graph_objects.Figure: The resulting 3D cascade plot.
+    """
+
+    # Extract values from kwargs with defaults
+    color_df = kwargs.get('color_df', None)
+    color_column = kwargs.get('color_column', None)
+    time_col = kwargs.get('time_col', 'Time Stamp')
+    color_scale = kwargs.get('color_scale', 'Jet')
+    wv_range = kwargs.get('wv_range', (200, 800))
+    time_range = kwargs.get('time_range', None)
+
+    # filter the data based on the time range
+    if time_range is not None:
+        spectra = filter_spectrum(spectra.copy(), time_range)
+
+    # Extract the x-axis and intensity columns
+    data = spectra['data']
+    timestamp_map = spectra['timestamp_map']
+
+    x_values = data['x']
+
+    # Convert timestamps to numeric elapsed time
+    timestamps = list(timestamp_map.values())
+    base_time = min(timestamps)
+    time_offsets = {
+        col: (timestamp - base_time).total_seconds()
+        for col, timestamp in timestamp_map.items()
+    }
+
+    # Initialize color mapping
+    cols = [col for col in data.columns if col != 'x']
+    colors = []
+
+    # Process color_df for custom coloring if provided
+    if color_df is not None and color_column is not None:
+        # Ensure the color_df has a 'Timestamp' column
+        if time_col not in color_df.columns:
+            raise ValueError(f'color_df must contain a {time_col} column.')
+
+        # Set 'Time Stamp' as the index if not already
+        if not np.issubdtype(color_df[time_col].dtype, np.datetime64):
+            raise ValueError(
+                f'The {time_col} column in color_df must be of datetime type.'
+            )
+
+        if color_df.index.name != time_col:
+            color_df = color_df.set_index(time_col)
+
+        # Ensure the selected column exists
+        if color_column not in color_df.columns:
+            raise ValueError(f"Column '{color_column}' not found in color_df.")
+
+        # Match timestamps in timestamp_map to the closest time in color_df
+        for col in cols:
+            spectrum_time = timestamp_map[col]
+            closest_idx = color_df.index.get_loc(spectrum_time, method='nearest')
+            color_value = color_df.iloc[closest_idx][color_column]
+            colors.append(color_value)
+
+        # Normalize the values for the colormap
+        min_color = min(colors)
+        max_color = max(colors)
+        normalized_colors = [
+            (value - min_color) / (max_color - min_color) for value in colors
+        ]
+        colors = sample_colorscale(color_scale, normalized_colors)
+    else:
+        # Default to time-based coloring
+        max_offset = max(time_offsets.values())
+        min_offset = min(time_offsets.values())
+        colors = sample_colorscale(
+            color_scale,
+            [
+                (time_offsets[col] - min_offset) / (max_offset - min_offset)
+                for col in cols
+            ],
+        )
+
+    # Filter the data based on the provided wavelength range (if applicable)
+    if wv_range is not None:
+        data_wv_filtered = data[(data['x'] >= wv_range[0]) & (data['x'] <= wv_range[1])]
+
+        # Calculate the min/max intensity based on the filtered wavelength data
+        cols = [col for col in data_wv_filtered.columns if col != 'x']
+        min_intensity = data_wv_filtered[cols].min().min()  # Min intensity
+        max_intensity = data_wv_filtered[cols].max().max()  # Max intensity
+
+    fig = create_3d_plot(
+        cols=cols,
+        colors=colors,
+        x_values=x_values,
+        data=data,
+        time_offsets=time_offsets,
+        timestamp_map=timestamp_map,
+        color_df=color_df,
+        color_column=color_column,
+        min_color=min_color,
+        max_color=max_color,
+        color_scale=color_scale,
+        wv_range=wv_range,
+        min_intensity=min_intensity,
+        max_intensity=max_intensity,
+    )
+
+    return fig
+
+
+def create_3d_plot(**kwargs):
+    # Extract values from kwargs with defaults
+    cols = kwargs.get('cols', None)
+    colors = kwargs.get('colors', None)
+    x_values = kwargs.get('x_values', None)
+    data = kwargs.get('data', None)
+    time_offsets = kwargs.get('time_offsets', None)
+    timestamp_map = kwargs.get('timestamp_map', None)
+    color_df = kwargs.get('color_df', None)
+    color_column = kwargs.get('color_column', None)
+    min_color = kwargs.get('min_color', None)
+    max_color = kwargs.get('max_color', None)
+    color_scale = kwargs.get('color_scale', None)
+    wv_range = kwargs.get('wv_range', None)
+    min_intensity = kwargs.get('min_intensity', None)
+    max_intensity = kwargs.get('max_intensity', None)
+
+    # Create the 3D plot
+    fig = go.Figure()
+
+    for col, color in zip(cols, colors):
+        x_axis_values = x_values  # Left-right direction
+        z_axis_values = data[col]  # Intensity towards the top
+        y_axis_values = [time_offsets[col]] * len(x_axis_values)
+        timestamp = timestamp_map[col]
+
+        fig.add_trace(
+            go.Scatter3d(
+                x=x_axis_values,  # Left-right direction
+                y=y_axis_values,  # Depth direction (numeric time)
+                z=z_axis_values,  # Intensity towards the top
+                mode='lines',
+                name=f'Trace {col}',
+                line=dict(color=color),
+                hovertemplate=(
+                    f"X: %{{x}}<br>"
+                    f"Intensity: %{{z}}<br>"
+                    f"Time: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}<extra></extra>"
+                ),
+            )
+        )
+
+    # Add a dummy scatter trace for the color bar
+    if color_df is not None and color_column is not None:
+        fig.add_trace(
+            go.Scatter3d(
+                x=[None],
+                y=[None],
+                z=[None],  # Dummy data
+                mode='markers',
+                marker=dict(
+                    size=0,  # Invisible markers
+                    color=np.linspace(min_color, max_color, 100),  # Range of values
+                    colorscale=color_scale,  # Use the same colorscale
+                    colorbar=dict(
+                        title=color_column,  # Color bar title
+                        titleside='right',
+                        tickvals=np.linspace(min_color, max_color, 5),
+                        tickformat='.2f',
+                    ),
+                ),
+                hoverinfo='none',
+            )
+        )
+
+    fig.update_layout(
+        # title="Cascade 3D Plot",
+        scene=dict(
+            xaxis=dict(
+                title='Wavelength (nm)',
+                range=[wv_range[0], wv_range[1]],  # You can adjust the range here
+                showspikes=True,
+                showticklabels=True,
+            ),
+            yaxis=dict(
+                title='Time (s)',
+                range=[min(time_offsets.values()), max(time_offsets.values())],
+                showspikes=True,
+                showticklabels=True,
+            ),
+            zaxis=dict(
+                title='Intensity',
+                range=[min_intensity, max_intensity],  # Set the range of intensity
+                showspikes=True,
+                showticklabels=True,
+            ),
+        ),
+        showlegend=False,  # Hide legend
+        # margin=dict(l=0, r=0, t=0, b=0),  # Remove margins
+    )
+
+    # make it larger in the  wavelegnth direction
+    fig.update_layout(scene=dict(aspectmode='manual', aspectratio=dict(x=2, y=1, z=1)))
+
+    return fig
+
+
 def plot_logfile_chamber(main_params, logfile_name=''):
     # Reading guns
     guns = []
@@ -3511,11 +3948,11 @@ def quick_plot(df, Y, **kwargs):
     mode = plot_params['mode']
 
     if mode == 'default':
-        fig = create_default_plot(df, plot_params)
+        fig = create_default_plot(plot_params)
     elif mode == 'stack':
-        fig, num_plot = create_stack_plot(df, plot_params)
+        fig, num_plot = create_stack_plot(plot_params)
     elif mode == 'dual_y':
-        fig = create_dual_y_plot(df, plot_params)
+        fig = create_dual_y_plot(plot_params)
 
     # Update layout for better visualization
     fig.update_layout(template='plotly_white')
@@ -3592,6 +4029,7 @@ def setup_plot_params(df, Y, **kwargs):
     width = kwargs.get('width', WIDTH)
     height = kwargs.get('height', HEIGHT)
     plot_title = kwargs.get('plot_title', 'Quick Plot')
+    df_names = kwargs.get('df_names', None)
 
     # Ensure Y and Y2 are lists
     if isinstance(Y, str):
@@ -3599,13 +4037,50 @@ def setup_plot_params(df, Y, **kwargs):
     if isinstance(Y2, str):
         Y2 = [Y2]
 
+    if isinstance(df, list):
+        if df_names is None:
+            raise ValueError(
+                'df_names must be provided when df is a list of dataframes'
+            )
+
+        # checkk if the first column of each dataframe is the same
+        if not all(df[0].columns[0] == df_i.columns[0] for df_i in df):
+            raise ValueError('The first column of each dataframe must be the same')
+
+        # If the data is a list of dataframes,
+        # we first rename the columns to avoid conflicts
+        renamed_dfs = []
+        for i, df_i in enumerate(df):
+            # Create a copy to avoid modifying the original
+            df_copy = df_i.copy()
+            df_copy.columns = [
+                f'{df_names[i]}_{col}' if col != X else col for col in df_copy.columns
+            ]
+            renamed_dfs.append(df_copy)
+
+        # Concatenate them into a single dataframe
+        df_cont = pd.concat(
+            [df_i.set_index(df_i.columns[0]) for df_i in renamed_dfs], axis=1
+        ).reset_index()
+
+        # Create new lists of X, Y, and Y2 columns with the new column names
+        Y_return = [f'{df_names[i]}_{col}' for i in range(len(df)) for col in Y]
+        Y2_return = [f'{df_names[i]}_{col}' for i in range(len(df)) for col in Y2]
+
+        df_return = df_cont
+    else:
+        df_return = df
+        Y_return = Y
+        Y2_return = Y2
+
     y_axis_title = get_axis_title(Y[0]) if len(Y) == 1 else 'Values'
     y2_axis_title = get_axis_title(Y2[0]) if len(Y2) == 1 else 'Values'
 
     return {
+        'df': df_return,
         'X': X,
-        'Y': Y,
-        'Y2': Y2,
+        'Y': Y_return,
+        'Y2': Y2_return,
         'plot_type': plot_type,
         'plot_title': plot_title,
         'y_axis_title': y_axis_title,
@@ -3643,7 +4118,7 @@ def add_vertical_lines(fig, num_plot):
     fig.update_layout(shapes=shapes)
 
 
-def create_default_plot(df, plot_params):
+def create_default_plot(plot_params):
     """
     Create a default plot.
 
@@ -3654,6 +4129,7 @@ def create_default_plot(df, plot_params):
     Returns:
         plotly.graph_objects.Figure: The Plotly figure object.
     """
+    df = plot_params['df']
     X = plot_params['X']
     Y = plot_params['Y']
     plot_type = plot_params['plot_type']
@@ -3673,7 +4149,7 @@ def create_default_plot(df, plot_params):
     return fig
 
 
-def create_stack_plot(df, plot_params):
+def create_stack_plot(plot_params):
     """
     Create a stacked plot.
 
@@ -3685,6 +4161,7 @@ def create_stack_plot(df, plot_params):
         tuple: A tuple containing the Plotly figure objec
         and the number of plots.
     """
+    df = plot_params['df']
     X = plot_params['X']
     Y = plot_params['Y']
     plot_type = plot_params['plot_type']
@@ -3724,7 +4201,7 @@ def create_stack_plot(df, plot_params):
     return fig, num_plot
 
 
-def create_dual_y_plot(df, plot_params):
+def create_dual_y_plot(plot_params):
     """
     Create a default plot.
 
@@ -3735,6 +4212,7 @@ def create_dual_y_plot(df, plot_params):
     Returns:
         plotly.graph_objects.Figure: The Plotly figure object.
     """
+    df = plot_params['df']
     X = plot_params['X']
     Y = plot_params['Y']
     Y2 = plot_params['Y2']
@@ -4268,8 +4746,16 @@ def filter_spectrum(spectra, bounds):
 
     spectra['timestamp_map'] = make_timestamps_tz_naive(spectra['timestamp_map'])
 
+    if not isinstance(bounds[0], tuple):
+        bounds = [bounds]
+
     for bound in bounds:
         start_time, end_time = bound
+        # Format start_time and end_time in case they are input strings instead
+        # of event.bounds
+        start_time = format_time_stamp(start_time, ref_object=spectra)
+        end_time = format_time_stamp(end_time, ref_object=spectra)
+
         for timestamp_key, timestamp in spectra['timestamp_map'].items():
             if start_time <= timestamp <= end_time:
                 filtered_spectra['data'].append(spectra['data'][['x', timestamp_key]])
@@ -4290,6 +4776,12 @@ def normalize_column(df, column_name):
     min_val = df[column_name].min()
     max_val = df[column_name].max()
     return (df[column_name] - min_val) / (max_val - min_val)
+
+
+def calc_mean_norm_spectrum(spectra):
+    spectra['data']['mean'] = spectra['data'].iloc[:, 1:].mean(axis=1)
+    spectra['data']['mean_norm'] = normalize_column(spectra['data'], 'mean')
+    return spectra
 
 
 # ------------------------CORE METHODS----------------------
@@ -4314,6 +4806,7 @@ def format_logfile(data):
 
 
 def verify_deposition_unicity(events, raw_data):
+    interrupt_deposition = False
     for event in events:
         if event.category == 'deposition':
             # if a deposition event time between the bounds is lower
@@ -4510,73 +5003,84 @@ def read_events(data):
 
     add_event_to_events(platen_bias_on, events)
 
+    # -----FURTHER PROCESSING OF THE EVENTS-----
     # Remove the empty events from the events
     events = [event for event in events if event.bounds]
 
-    # Place the ramp_up_temp, deposition, ramp_down_high_temp, ramp_down_low_temp
-    # event first in the list of all events, in this particular order
-    events = place_deposition_ramp_up_down_events_first(events)
+    # here we make sure that if the rest of the code fails, we still have the events
+    # to return
+    try:
+        # Place the ramp_up_temp, deposition, ramp_down_high_temp, ramp_down_low_temp
+        # event first in the list of all events, in this particular order
+        events = place_deposition_ramp_up_down_events_first(events)
 
-    # Getting the list of all events to pass it to the plotting function
-    # in the future
-    events_to_plot = copy.deepcopy(events)
+        # Getting the list of all events to pass it to the plotting function
+        # in the future
+        events_to_plot = copy.deepcopy(events)
 
-    # We verify the unicity of the deposition event, and try to fix it if needed
-    events, interrupt_deposition = verify_deposition_unicity(events, data)
+        # We verify the unicity of the deposition event, and try to fix it if needed
+        events, interrupt_deposition = verify_deposition_unicity(events, data)
 
-    # To make a list sutable for making a report, we remove
-    # all the events that do not match the CATEGORIES_MAIN_REPORT
+        # To make a list sutable for making a report, we remove
+        # all the events that do not match the CATEGORIES_MAIN_REPORT
 
-    events_main_report = [
-        copy.deepcopy(event)
-        for event in events
-        if event.category in CATEGORIES_MAIN_REPORT
-    ]
+        events_main_report = [
+            copy.deepcopy(event)
+            for event in events
+            if event.category in CATEGORIES_MAIN_REPORT
+        ]
 
-    # For all the events of the main report list, we also get the last_event before
-    # the deposition, using the select_event function, -1 (last) event together with the
-    # deposition first bounds
-    events = select_last_event(events, data, deposition, CATEGORIES_LAST_EVENT)
+        # For all the events of the main report list, we also get the last_event before
+        # the deposition, using the select_event function, -1 (last) event
+        # together with the deposition first bounds
+        events = select_last_event(events, data, deposition, CATEGORIES_LAST_EVENT)
 
-    # Initialize the params dictionary for the main report
-    main_params = {}
+        # Initialize the params dictionary for the main report
+        main_params = {}
 
-    # for event in events_for_main_report, we apply the get_ methods for
-    # the class Lf_Event to get the params dict
-    main_params = get_overview(data)
-    for event in events_main_report:
-        if event.category == 'deposition':
-            main_params = event.get_params(
-                raw_data=data,
-                source_list=source_list,
-                params=main_params,
-                interrupt_deposition=interrupt_deposition,
-            )
-        else:
-            main_params = event.get_params(
-                raw_data=data,
-                source_list=source_list,
-                params=main_params,
-            )
-    main_params = get_end_of_process(data, main_params)
+        # for event in events_for_main_report, we apply the get_ methods for
+        # the class Lf_Event to get the params dict
+        main_params = get_overview(data)
+        for event in events_main_report:
+            if event.category == 'deposition':
+                main_params = event.get_params(
+                    raw_data=data,
+                    source_list=source_list,
+                    params=main_params,
+                    interrupt_deposition=interrupt_deposition,
+                )
+            else:
+                main_params = event.get_params(
+                    raw_data=data,
+                    source_list=source_list,
+                    params=main_params,
+                )
+        main_params = get_end_of_process(data, main_params)
 
-    # We only get the events that are in the CATEGORIES_STEPS
-    events_steps = [
-        copy.deepcopy(event) for event in events if event.category in CATEGORIES_STEPS
-    ]
+        # We only get the events that are in the CATEGORIES_STEPS
+        events_steps = [
+            copy.deepcopy(event)
+            for event in events
+            if event.category in CATEGORIES_STEPS
+        ]
 
-    # unfold all the events_main_report events to get sep_events
-    sep_events = unfold_events(copy.deepcopy(events_steps), data)
+        # unfold all the events_main_report events to get sep_events
+        sep_events = unfold_events(copy.deepcopy(events_steps), data)
 
-    # Sort the subevents by the start time
-    sep_events = sort_events_by_start_time(sep_events)
+        # Sort the subevents by the start time
+        sep_events = sort_events_by_start_time(sep_events)
 
-    # Initialize the params dictionary for the sub report
-    step_params = {}
+        # Initialize the params dictionary for the sub report
+        step_params = {}
 
-    # get the individual step params
-    for event in sep_events:
-        step_params = event.get_nomad_step_params(step_params, source_list)
+        # get the individual step params
+        for event in sep_events:
+            step_params = event.get_nomad_step_params(step_params, source_list)
+
+    except Exception as e:
+        print('Error: ', e)
+        print('The events are returned without further processing')
+        return events, {}, {}
 
     # generate a list of plots to return
     # plots = generate_plots(data, events_to_plot, main_params)
