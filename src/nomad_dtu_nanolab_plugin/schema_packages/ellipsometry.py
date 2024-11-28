@@ -100,7 +100,6 @@ class DTUEllipsometryMeasurement(MappingMeasurement, PlotSection, Schema):
         # add the spectra from n and k as well as the thickness value here
     )
 
-
     # def write_PL_by_position(
     #     self,
     #     data_dict: dict[str, Any],
@@ -109,7 +108,6 @@ class DTUEllipsometryMeasurement(MappingMeasurement, PlotSection, Schema):
     # ) -> None:
 
     #         #add the information accoring to the key to the respective subsections
-
 
     # def plot_overview(self, data_df: pd.DataFrame ) -> None:
     #     # Sort the DataFrame by 'X' and 'Y' columns
@@ -124,13 +122,10 @@ class DTUEllipsometryMeasurement(MappingMeasurement, PlotSection, Schema):
     #         )
     #     )
 
-
-
     # def plot_spectra(self) -> None:
     #     #add the plotting stuff here
     #     data_lines = []
     #     #problem : how toplot these in their subsections
-
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """

@@ -410,10 +410,9 @@ class RectangularSampleAlignment(SampleAlignment):
 
 
 class DtuNanolabMeasurement(Measurement):
-        
     def add_sample_reference(
-            self, filename: str, archive: 'EntryArchive', logger: 'BoundLogger'
-        ) -> None:
+        self, filename: str, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
         # Define the regex pattern
         pattern = r'^(?P<lab_id>([^_]*_){3}[^_.]*)'
 
@@ -421,13 +420,14 @@ class DtuNanolabMeasurement(Measurement):
         match = re.match(pattern, filename)
 
         if match:
-            sample_ref = CompositeSystemReference(lab_id = match.group('lab_id'))
+            sample_ref = CompositeSystemReference(lab_id=match.group('lab_id'))
             from nomad.datamodel.context import ServerContext
+
             if isinstance(archive.m_context, ServerContext):
                 sample_ref.normalize(archive, logger)
             self.samples = [sample_ref]
         else:
-            logger.warning(f"Could not match lab_id in: {filename}")
+            logger.warning(f'Could not match lab_id in: {filename}')
 
 
 class MappingMeasurement(DtuNanolabMeasurement):
