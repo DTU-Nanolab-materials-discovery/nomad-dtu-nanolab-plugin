@@ -30,6 +30,7 @@ dependencies = [
     "nomad-material-processing>=1.0.4",
     "nomad-measurements>=1.0.4",
     "fairmat-readers-xrd>=0.0.6",
+    "httpx<0.28",
 ]
 
 [project.urls]
