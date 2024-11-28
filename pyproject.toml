@@ -30,6 +30,7 @@ dependencies = [
     "nomad-material-processing>=1.0.4",
     "nomad-measurements>=1.0.4",
     "fairmat-readers-xrd>=0.0.6",
+    "httpx<0.28",
 ]
 
 [project.urls]
@@ -105,6 +106,9 @@ skip-magic-trailing-comma = false
 
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
+
+[tool.uv]
+extra-index-url = ["https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
