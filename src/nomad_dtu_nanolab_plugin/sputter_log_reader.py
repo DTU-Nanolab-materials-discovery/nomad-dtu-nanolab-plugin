@@ -3462,7 +3462,6 @@ def filter_data_platen_bias_on(data):
 # -------PLOTTING DEFINITIONS------------
 
 
-
 def generate_optix_cascade_plot(spectra, **kwargs):
     """
     Generate a 3D cascade plot with optional coloring based on
@@ -4339,7 +4338,7 @@ def generate_overview_plot(data, logfile_name):
 
 
 def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
-    #initialize a dict of plots
+    # initialize a dict of plots
     plots = {}
 
     # Generate the timeline plot
