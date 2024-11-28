@@ -244,11 +244,9 @@ class DTUSubstrateBatch(Collection, Schema):
 
             for i in range(self.number_of_substrates):
                 substrate.name = f'{self.name} Substrate {i}'
+                substrate.datetime = self.datetime
                 substrate.lab_id = f'{self.lab_id}-{i}'
                 file_name = f'{substrate.lab_id}.archive.json'
-                import json
-
-                print(json.dumps(substrate.m_to_dict(), indent=2))
                 substrate_archive = create_archive(substrate, archive, file_name)
                 self.entities.append(
                     CompositeSystemReference(

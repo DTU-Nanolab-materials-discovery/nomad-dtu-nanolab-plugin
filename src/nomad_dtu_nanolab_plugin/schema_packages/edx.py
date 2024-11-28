@@ -460,6 +460,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             logger (BoundLogger): A structlog logger.
         """
         if self.edx_data_file is not None:
+            self.add_sample_reference(self.edx_data_file, archive, logger)
             with archive.m_context.raw_file(self.edx_data_file, 'rb') as edx:
                 df_data = pd.read_excel(edx, sheet_name='Sheet1', header=0)
                 df_alignment = pd.read_excel(edx, sheet_name='Sheet2', header=0)
@@ -468,7 +469,8 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         super().normalize(archive, logger)
 
         self.figures = []
-        self.plot()
+        if len(self.results) > 0:
+            self.plot()
 
 
 m_package.__init_metainfo__()

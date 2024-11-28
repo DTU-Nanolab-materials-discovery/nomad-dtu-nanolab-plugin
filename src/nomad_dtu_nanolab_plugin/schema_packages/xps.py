@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from nomad.datamodel.data import Schema
+from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 m_package = Package()  # fill out later
 
 
-class XpsFittedPeak(Schema):
+class XpsFittedPeak(ArchiveSection):
     m_def = Section()
 
     origin = Quantity(
@@ -104,7 +104,7 @@ class XpsFittedPeak(Schema):
         super().normalize(archive, logger)
 
 
-class XpsDerivedComposition(Schema):
+class XpsDerivedComposition(ArchiveSection):
     m_def = Section()
 
     element = Quantity(
@@ -137,7 +137,7 @@ class XpsDerivedComposition(Schema):
         super().normalize(archive, logger)
 
 
-class XpsMappingResult(MappingResult, Schema):
+class XpsMappingResult(MappingResult):
     m_def = Section()
 
     peaks = SubSection(
@@ -164,7 +164,7 @@ class XpsMappingResult(MappingResult, Schema):
         super().normalize(archive, logger)
 
 
-class XpsMetadata(Schema):
+class XpsMetadata(ArchiveSection):
     m_def = Section()
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -183,7 +183,7 @@ class XpsMetadata(Schema):
 class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
-        label='XRD Measurement',
+        label='XPS Measurement',
     )
     native_file = Quantity(
         type=str,
@@ -215,18 +215,20 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
         # add the spectra here
     )
 
-    def read_XPS_analysis(self, filename: str) -> None:
+    def read_XPS_analysis(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         '''"Read data and coordinates from an XPS datafile.
         The file should be an csv (.txt) file."'''
+        self.add_sample_reference(self.analysis_file, archive, logger)
         # read the file
-        file = pd.read_csv(
-            filename,
-            encoding='latin1',
-            engine='python',
-            sep='delimiter',
-            header=None,
-            skiprows=29,
-        )
+        with archive.m_context.raw_file(self.analysis_file, 'rb') as xps:
+            file = pd.read_csv(
+                xps,
+                encoding='latin1',
+                engine='python',
+                sep='delimiter',
+                header=None,
+                skiprows=29,
+            )
         file.drop(file.iloc[4::7].index, inplace=True)
         file.reset_index(drop=True)
 
@@ -373,7 +375,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
     def plot(self) -> None:
         x, y = [], []
         quantifications = defaultdict(list)
-        ratios = defaultdict(list)
+        # ratios = defaultdict(list)
         result: XpsMappingResult
         for result in self.results:
             if isinstance(result.x_relative, ureg.Quantity) and isinstance(
@@ -401,22 +403,23 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
 
             # Calculate and append the fractions of all elements with each other
             # test to see if this works or there is another errror
-            quantification_i: XpsDerivedComposition
-            for quantification_i in result.composition:
-                quantification_j: XpsDerivedComposition
-                for quantification_j in result.composition:
-                    if quantification_i.element == quantification_j.element:
-                        continue
-                    ratio = (
-                        quantification_i.atomic_percent
-                        / quantification_j.atomic_percent
-                    )
-                    ratios[
-                        f'{quantification_i.element}/{quantification_j.element}'
-                    ].append(ratio)
-                    # processed_pairs.add(pair)
+        #     quantification_i: XpsDerivedComposition
+        #     for quantification_i in result.composition:
+        #         quantification_j: XpsDerivedComposition
+        #         for quantification_j in result.composition:
+        #             if quantification_i.element == quantification_j.element:
+        #                 continue
+        #             ratio = (
+        #                 quantification_i.atomic_percent
+        #                 / quantification_j.atomic_percent
+        #             )
+        #             ratios[
+        #                 f'{quantification_i.element}/{quantification_j.element}'
+        #             ].append(ratio)
+        #             # processed_pairs.add(pair)
 
-        combined_data = {**quantifications, **ratios}
+        # combined_data = {**quantifications, **ratios}
+        combined_data = quantifications
 
         for q, data in combined_data.items():
             # Create a grid for the heatmap
@@ -494,7 +497,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
             logger (BoundLogger): A structlog logger.
         """
         if self.analysis_file is not None:
-            dataframe, coords_list = self.read_XPS_analysis(self.analysis_file)
+            dataframe, coords_list = self.read_XPS_analysis(archive, logger)
             self.write_XPS_analysis(dataframe, coords_list)
 
         super().normalize(archive, logger)

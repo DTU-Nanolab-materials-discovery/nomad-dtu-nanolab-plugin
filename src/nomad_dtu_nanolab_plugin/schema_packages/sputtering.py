@@ -123,7 +123,7 @@ class DtuSubstrateMounting(ArchiveSection):
         description='The relative position of the substrate on the platen.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
-            props=dict(suggestions=['BL', 'BR', 'FL', 'FR']),
+            props=dict(suggestions=['BL', 'BR', 'FL', 'FR', 'G']),
         ),
     )
     position_x = Quantity(
@@ -191,6 +191,7 @@ class DtuSubstrateMounting(ArchiveSection):
                 'BR': (0.02, 0.035),
                 'FL': (-0.02, -0.005),
                 'FR': (0.02, -0.005),
+                'G': (0, -0.038),
             }
             if self.relative_position in positions:
                 self.position_x, self.position_y = positions[self.relative_position]
@@ -502,54 +503,6 @@ class DtuZoneTemp(TimeSeries):
     )
 
 
-class DtuZone1Temp(TimeSeries):
-    m_def = Section(
-        a_plot=dict(
-            x='time',
-            y='value',
-        ),
-    )
-
-    value = Quantity(
-        type=np.float64,
-        unit='K',
-        description="""The temperature of zone 1.""",
-        shape=['*'],
-    )
-
-
-class DtuZone2Temp(TimeSeries):
-    m_def = Section(
-        a_plot=dict(
-            x='time',
-            y='value',
-        ),
-    )
-
-    value = Quantity(
-        type=np.float64,
-        unit='K',
-        description="""The temperature of zone 2.""",
-        shape=['*'],
-    )
-
-
-class DtuZone3Temp(TimeSeries):
-    m_def = Section(
-        a_plot=dict(
-            x='time',
-            y='value',
-        ),
-    )
-
-    value = Quantity(
-        type=np.float64,
-        unit='K',
-        description="""The temperature of zone 3.""",
-        shape=['*'],
-    )
-
-
 class DtuValveOnTime(TimeSeries):
     m_def = Section(
         a_plot=dict(
@@ -686,7 +639,37 @@ class DTUTargetComponent(Component):
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        pass  # TODO add fetching from lab_id
+        from nomad.datamodel.context import ServerContext
+
+        if (
+            self.system is None
+            and self.lab_id is not None
+            and isinstance(archive.m_context, ServerContext)
+        ):
+            from nomad.search import MetadataPagination, search
+
+            query = {'results.eln.lab_ids': self.lab_id}
+            search_result = search(
+                owner='all',
+                query=query,
+                pagination=MetadataPagination(page_size=1),
+                user_id=archive.metadata.main_author.user_id,
+            )
+            if search_result.pagination.total > 0:
+                entry_id = search_result.data[0]['entry_id']
+                upload_id = search_result.data[0]['upload_id']
+                self.system = f'../uploads/{upload_id}/archive/{entry_id}#data'
+                if search_result.pagination.total > 1:
+                    logger.warn(
+                        f'Found {search_result.pagination.total} entries with lab_id: '
+                        f'"{self.lab_id}". Will use the first one found.'
+                    )
+            else:
+                logger.warn(f'Found no entries with lab_id: "{self.lab_id}".')
+        elif self.lab_id is None and self.system is not None:
+            self.lab_id = self.system.lab_id
+        if self.name is None and self.lab_id is not None:
+            self.name = self.lab_id
 
 
 class DTUSource(PVDSource):
@@ -1405,7 +1388,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         return sputtering
 
-    def generate_step_log_data(self, step_params: dict, logger: 'BoundLogger') -> None:
+    def generate_step_log_data(
+        self, step_params: dict, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
         steps = []
 
         for key in step_params:
@@ -1433,7 +1418,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             # generate sputtering sources
             sputter_sources = self.generate_sputtering_sources_log_data(
-                step_params, key, logger
+                step_params, key, archive, logger
             )
 
             step.sources.extend(sputter_sources)
@@ -1464,6 +1449,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             step.environment = environment
 
+            if 'Deposition' in step.name:
+                step.creates_new_thin_film = True
             steps.append(step)
 
         return steps
@@ -1526,7 +1513,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         return cracker_source
 
     def generate_sputtering_sources_log_data(
-        self, step_params: dict, key: str, logger: 'BoundLogger'
+        self,
+        step_params: dict,
+        key: str,
+        archive: 'EntryArchive',
+        logger: 'BoundLogger',
     ) -> None:
         sources = []
 
@@ -1585,7 +1576,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 self.write_data(config)
 
             target = self.generate_material_log_data(
-                step_params, key, source_name, logger
+                step_params, key, source_name, archive, logger
             )
 
             source.material.extend(target)
@@ -1595,7 +1586,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         return sources
 
     def generate_material_log_data(
-        self, step_params: dict, key: str, source_name: str, logger: 'BoundLogger'
+        self,
+        step_params: dict,
+        key: str,
+        source_name: str,
+        archive: 'EntryArchive',
+        logger: 'BoundLogger',
     ) -> None:
         target_list = []
 
@@ -1614,7 +1610,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 'logger': logger,
             }
             self.write_data(config)
-
+        # Run the normalizer of the target subsection to find reference from lab_id
+        target.normalize(archive, logger)
         target_list.append(target)
 
         return target_list
@@ -1693,32 +1690,64 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 lab_id = self.lab_id
             else:
                 lab_id = '_'.join(self.name.split())
-            library.lab_id = f'{lab_id}-{sample_id}'
+            library.lab_id = f'{lab_id}_{sample_id}'
             elements = self.deposition_parameters.material_space.split('-')
             composition = [ElementalComposition(element=e) for e in elements if e]
             layer = ThinFilm(
                 elemental_composition=composition,
                 lab_id=f'{library.lab_id}-Layer',
             )
+            layer_ref = create_archive(layer, archive, f'{layer.lab_id}.archive.json')
             library.layers = [
                 ThinFilmReference(
                     name='Main layer',
-                    reference=create_archive(
-                        layer, archive, f'{layer.lab_id}.archive.json'
-                    ),
+                    reference=layer_ref,
                     lab_id=layer.lab_id,
                 )
             ]
+            library_ref = create_archive(
+                library, archive, f'{library.lab_id}.archive.json'
+            )
             samples.append(
                 CompositeSystemReference(
                     name=f'Sample {sample_id}',
-                    reference=create_archive(
-                        library, archive, f'{library.lab_id}.archive.json'
-                    ),
+                    reference=library_ref,
                     lab_id=library.lab_id,
                 )
             )
+            # step: DTUSteps
+            # for step in self.steps:
+            #     if not step.creates_new_thin_film:
+            #         continue
+            #     print(f'{step.sample_parameters = }')
+            #     if step.sample_parameters is None:
+            #         step.sample_parameters = SampleParameters()
+            #     print(f'{step.sample_parameters = }')
+            #     step.sample_parameters.layer = ThinFilmReference(
+            #         reference=layer_ref,
+            #         lab_id=layer.lab_id,
+            #     )
+            #     step.sample_parameters.substrate = ThinFilmStackReference(
+            #         reference=library_ref,
+            #         lab_id=library.lab_id,
+            #     )
+
         self.samples = samples
+
+    def add_target_to_workflow(self, archive: 'EntryArchive') -> None:
+        """
+        Temporary method to add the target to the workflow2.inputs list.
+        """
+        for step in self.steps:
+            step: DTUSteps
+            for source in step.sources:
+                source: DTUSource
+                for m in source.material:
+                    if isinstance(m, DTUTargetComponent):
+                        archive.workflow2.inputs.append(
+                            Link(name=f'Target: {m.name}', section=m.system)
+                        )
+                        return
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -1747,7 +1776,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 sputtering = self.generate_general_log_data(params, logger)
 
             if step_params is not None and sputtering is not None:
-                steps = self.generate_step_log_data(step_params, logger)
+                steps = self.generate_step_log_data(step_params, archive, logger)
                 sputtering.steps.extend(steps)
 
             # Merging the sputtering object with self
@@ -1771,6 +1800,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         archive.workflow2 = None
         super().normalize(archive, logger)
+        self.add_target_to_workflow(archive)
         archive.workflow2.inputs.extend(
             [
                 Link(name=f'Substrate: {substrate.name}', section=substrate.substrate)

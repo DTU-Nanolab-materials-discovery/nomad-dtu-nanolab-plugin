@@ -1,0 +1,81 @@
+widgets:
+  - type: periodictable
+    scale: linear
+    quantity: results.material.elements
+    layout:
+      xxl:
+        minH: 3
+        minW: 3
+        h: 9
+        w: 12
+        y: 0
+        x: 0
+      xl:
+        minH: 3
+        minW: 3
+        h: 9
+        w: 12
+        y: 0
+        x: 0
+      lg:
+        minH: 3
+        minW: 3
+        h: 9
+        w: 12
+        y: 0
+        x: 0
+      md:
+        minH: 3
+        minW: 3
+        h: 7
+        w: 13
+        y: 0
+        x: 0
+      sm:
+        minH: 3
+        minW: 3
+        h: 9
+        w: 12
+        y: 0
+        x: 0
+  - type: terms
+    showinput: true
+    scale: linear
+    quantity: data.supplier_id#nomad_dtu_nanolab_plugin.schema_packages.target.DTUTarget
+    title: Supplier
+    layout:
+      xxl:
+        minH: 3
+        minW: 3
+        h: 9
+        w: 6
+        y: 0
+        x: 0
+      xl:
+        minH: 3
+        minW: 3
+        h: 9
+        w: 6
+        y: 0
+        x: 0
+      lg:
+        minH: 3
+        minW: 3
+        h: 9
+        w: 6
+        y: 0
+        x: 12
+      md:
+        minH: 3
+        minW: 3
+        h: 7
+        w: 5
+        y: 0
+        x: 13
+      sm:
+        minH: 3
+        minW: 3
+        h: 9
+        w: 6
+        y: 0
+        x: 0
