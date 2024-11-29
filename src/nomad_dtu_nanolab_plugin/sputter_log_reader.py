@@ -2398,24 +2398,6 @@ def write_params(quantities, indent=''):
     return '\n'.join(output)
 
 
-# ----------FUNCTION FOR READING THE LOGFILE------------
-
-
-# Function to read the IDOL combinatorial chamber CSV logfile
-def read_logfile(file_path):
-    """
-    This function reads a logfile and returns a DataFrame with the
-    'Time Stamp' column converted to datetime format.
-    All the logged values are stored in the DataFrame
-    as they are in the logfile.
-    """
-    df = pd.read_csv(file_path, header=[1], skiprows=[0])
-    df['Time Stamp'] = pd.to_datetime(
-        df['Time Stamp'], format='%b-%d-%Y %I:%M:%S.%f %p'
-    )
-    # Ensure all timestamps in the log file and spectrum are tz-naive
-    df['Time Stamp'] = df['Time Stamp'].dt.tz_localize(None)
-    return df
 
 
 # ----------FUNCTIONS FOR HANDLING TIMESTAMPS------------
@@ -3271,8 +3253,11 @@ def define_film_meas_conditions(data, source_list, **kwargs):
             # We define the condition for the all sources film
             # deposition rate measurement
             # as the combination of al the film dep rate conditions above
+    if deprate2_film_meas_cond_list:
+        deprate2_ternary_meas_cond = reduce(operator.and_, deprate2_film_meas_cond_list)
+    else:
+        deprate2_ternary_meas_cond = pd.Series(False, index=data.index)
 
-    deprate2_ternary_meas_cond = reduce(operator.and_, deprate2_film_meas_cond_list)
     deprate2_ternary_meas = DepRate_Meas_Event(
         'All Source Film Dep Rate Meas',
         source=None,
@@ -3492,6 +3477,10 @@ def generate_optix_cascade_plot(spectra, **kwargs):
     time_range = kwargs.get('time_range', None)
     plot_title = kwargs.get('plot_title', '3D Cascade Plot')
 
+    #initialize variables
+    min_color = None
+    max_color = None
+
     # filter the data based on the time range
     if time_range is not None:
         spectra = filter_spectrum(spectra.copy(), time_range)
@@ -3547,6 +3536,9 @@ def generate_optix_cascade_plot(spectra, **kwargs):
             (value - min_color) / (max_color - min_color) for value in colors
         ]
         colors = sample_colorscale(color_scale, normalized_colors)
+    elif color_scale is None or color_scale == 'None':
+        # Default to a single blue color for all lines if no color scale is provided
+        colors = ['#1f77b4'] * len(cols)  # All lines default to blue
     else:
         # Default to time-based coloring
         max_offset = max(time_offsets.values())
@@ -3648,7 +3640,7 @@ def create_3d_plot(**kwargs):
                         title=color_column,  # Color bar title
                         titleside='right',
                         tickvals=np.linspace(min_color, max_color, 5),
-                        tickformat='.2f',
+                        tickformat='.2e',
                     ),
                 ),
                 hoverinfo='none',
@@ -4485,6 +4477,103 @@ def place_deposition_ramp_up_down_events_first(all_events):
 # -------ADDITIONAL FUNCTIONS FOR THE OPTIX SPECTRA------------
 
 
+
+#master function to read any file
+def read_file(file_path):
+    #open the file and read the first line
+    with open(file_path, 'r') as file:
+        first_line = file.readline()
+        #check if the line has 'Triggered' in it
+        if 'Triggered' in first_line:
+            #if it does, read the file as a spectrum
+            print('Reading as spectrum')
+            return read_spectrum(file_path)
+        elif 'Time' in first_line or 'Regulation' in first_line:
+            #if it does not, read the file as an RGA file
+            print('Reading as RGA')
+            return read_rga(file_path)
+        elif 'Recording Name' in first_line:
+            #if it does not, read the file as a log file
+            print('Reading as log file')
+            return read_logfile(file_path)
+
+
+# Function to read the IDOL combinatorial chamber CSV logfile
+def read_logfile(file_path):
+    """
+    This function reads a logfile and returns a DataFrame with the
+    'Time Stamp' column converted to datetime format.
+    All the logged values are stored in the DataFrame
+    as they are in the logfile.
+    """
+    df = pd.read_csv(file_path, header=[1], skiprows=[0])
+    df['Time Stamp'] = pd.to_datetime(
+        df['Time Stamp'], format='%b-%d-%Y %I:%M:%S.%f %p'
+    )
+    # Ensure all timestamps in the log file and spectrum are tz-naive
+    df['Time Stamp'] = df['Time Stamp'].dt.tz_localize(None)
+    return df
+
+
+
+def read_rga(file_path):
+    rga_file = pd.read_csv(
+        file_path,
+        sep=',',
+        header=0,
+        parse_dates=["Time"]
+    )
+    #Rename the 'Time' column to 'Time Stamp'
+    rga_file.rename(columns={'Time': 'Time Stamp'}, inplace=True)
+
+    #for all columns except 'Time Stamp' and 'Time', if the column name
+    #starts with a space, remove the space
+    rga_file.columns = rga_file.columns.str.strip()
+
+    #make time column tz naive
+    rga_file['Time Stamp'] = rga_file['Time Stamp'].dt.tz_localize(None)
+
+    return rga_file
+
+def merge_logfile_rga(df1, df2,
+                      tolerance=None,
+                      direction='nearest',
+                      ):
+    """
+    Merge two DataFrames on Time Stamp columns, aligning their timestamps.
+
+    Parameters:
+        df1 (pd.DataFrame): First DataFrame with 'Time Stamp' column.
+        df2 (pd.DataFrame): Second DataFrame with 'Time Stamp' column.
+        tolerance (str or pd.Timedelta, optional): Maximum allowed time difference for alignment (e.g., '1s').
+        direction (str): Direction for alignment - 'backward', 'forward', or 'nearest' (default: 'nearest').
+
+    Returns:
+        pd.DataFrame: Merged DataFrame with aligned timestamps and NaN for missing values.
+    """
+    # Ensure the Time Stamp columns are sorted
+    df1 = df1.sort_values('Time Stamp')
+    df2 = df2.sort_values('Time Stamp')
+
+    #calculate the average time between the timestamps in each dataframe
+    avg_time_diff_df1 = df1['Time Stamp'].diff().mean()
+    avg_time_diff_df2 = df2['Time Stamp'].diff().mean()
+
+    #calculate the tolerance based on the df with the largest
+    # average time difference
+    tolerance = min(avg_time_diff_df1, avg_time_diff_df2)/1.5
+
+
+    # Perform asof merge
+    merged_df = pd.merge_asof(
+        df1, df2,
+        on='Time Stamp',
+        direction=direction,
+        tolerance=pd.Timedelta(tolerance) if tolerance else None
+    )
+
+    return merged_df
+
 # Function to read the OPTIX spectrum CSV file
 def read_spectrum(file_path):
     """
@@ -4558,7 +4647,7 @@ def read_spectrum(file_path):
     return spectra
 
 
-def filter_spectrum(spectra, bounds):
+def filter_spectrum(spectra, bounds,calc_mean=False):
     """
     This function filters in the Optix spectrums based on the conditions that they
     have been recorded during the time bounds passed in the 'bounds' list.
@@ -4566,6 +4655,9 @@ def filter_spectrum(spectra, bounds):
     filtered_spectra = {'data': [], 'timestamp_map': {}}
 
     spectra['timestamp_map'] = make_timestamps_tz_naive(spectra['timestamp_map'])
+
+    if isinstance(bounds, Lf_Event):
+        bounds = bounds.bounds
 
     if not isinstance(bounds[0], tuple):
         bounds = [bounds]
@@ -4589,6 +4681,9 @@ def filter_spectrum(spectra, bounds):
     else:
         filtered_spectra['data'] = pd.DataFrame()
 
+    if calc_mean:
+        filtered_spectra=calc_mean_norm_spectrum(filtered_spectra)
+
     return filtered_spectra
 
 
@@ -4600,6 +4695,8 @@ def normalize_column(df, column_name):
 
 
 def calc_mean_norm_spectrum(spectra):
+    if 'mean' in spectra['data'].columns:
+        return spectra
     spectra['data']['mean'] = spectra['data'].iloc[:, 1:].mean(axis=1)
     spectra['data']['mean_norm'] = normalize_column(spectra['data'], 'mean')
     return spectra
