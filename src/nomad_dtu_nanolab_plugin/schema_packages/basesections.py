@@ -29,7 +29,6 @@ from nomad.datamodel.metainfo.basesections import (
 )
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
-from structlog.stdlib import BoundLogger
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
