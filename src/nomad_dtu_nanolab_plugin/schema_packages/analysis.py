@@ -193,10 +193,10 @@ analysis.steps.append(
     DtuAnalysisStep(
         name='Step name',
         description='Description of the step',
-        plot=PlotlyFigure(
+        figures=[PlotlyFigure(
             label='My plot',
             figure=plot_json,
-        ),
+        )],
     )
 )
 
