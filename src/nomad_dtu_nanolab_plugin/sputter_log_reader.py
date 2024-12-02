@@ -3754,17 +3754,12 @@ def quick_plot(df, Y, **kwargs):
     if isinstance(Y, str):
         Y = [Y]
 
-
-
-
-
     plot_params = setup_plot_params(df, Y, **kwargs)
     mode = plot_params['mode']
 
     Y2 = kwargs.get('Y2', None)
     if Y2 is not None:
         mode = 'dual_y'
-
 
     if mode == 'default':
         fig = create_default_plot(plot_params)
@@ -4503,6 +4498,65 @@ def read_file(file_path):
             print('Reading as log file')
             return read_logfile(file_path)
 
+def follow_peak(
+        spectra,
+        peak_pos=[656.1, 341.76, 311.9]
+        ):
+    """
+    Track the intensity of specified peaks in the spectra data over time.
+
+    Parameters:
+    -----------
+    spectra: dict
+        A dictionary containing spectral data, with keys:
+        - 'data': A dictionary of spectra
+            (keys are timestamps, values are intensity arrays)
+        - 'x': A list or array of wavelength values
+            corresponding to the intensity arrays
+        - 'timestamp_map': A dictionary mapping spectral keys to timestamps
+    peak_pos: list of float
+        Wavelengths of the peaks to track.
+
+    Returns:
+    --------
+    pd.DataFrame:
+        A DataFrame where each timestamp has intensity values for:
+        - Peak position columns
+        - Corresponding peak name columns (if position is in `PEAK_NAME`)
+    """
+    PEAK_NAME = {
+        656.1: 'H',
+        341.76: 'PH',
+        311.9: 'S2'
+    }
+
+    # Ensure peak_pos is iterable
+    peak_pos = [peak_pos] if isinstance(peak_pos, (int, float)) else peak_pos
+    peak_names = {pos: PEAK_NAME.get(pos, None) for pos in peak_pos}
+
+    # Prepare results
+    results = []
+
+    for key, time in spectra['timestamp_map'].items():
+        row = {'Time Stamp': time}
+        for pos, name in peak_names.items():
+            # Find the closest wavelength index
+            idx = (spectra['data']['x'] - pos).abs().idxmin()
+            intensity = spectra['data'][key][idx]
+            # Add intensity for position column
+            row[f"{pos}"] = intensity
+            # Add intensity for peak name column if exists
+            if name:
+                row[name] = intensity
+        results.append(row)
+
+    # Convert results to DataFrame
+    peak_intensity = pd.DataFrame(results)
+
+    # Combine rows with the same timestamp
+    peak_intensity = peak_intensity.groupby('Time Stamp').first().reset_index()
+
+    return peak_intensity
 
 # Function to read the IDOL combinatorial chamber CSV logfile
 def read_logfile(file_path):
