@@ -411,11 +411,8 @@ class RectangularSampleAlignment(SampleAlignment):
 
 class DtuNanolabMeasurement(Measurement):
     def set_lab_id(
-            self,
-            lab_id: str,
-            archive: 'EntryArchive',
-            logger: 'BoundLogger'
-        ) -> None:
+        self, lab_id: str, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
         from nomad.search import MetadataPagination, search
 
         measurement_number = 1
@@ -427,13 +424,9 @@ class DtuNanolabMeasurement(Measurement):
                 pagination=MetadataPagination(page_size=1),
                 user_id=archive.metadata.main_author.user_id,
             )
-            if (
-                search_result.pagination.total == 0 
-                or (
-                    search_result.pagination.total == 1 
-                    and search_result.data[0]['entry_id']
-                    == archive.metadata.entry_id
-                )
+            if search_result.pagination.total == 0 or (
+                search_result.pagination.total == 1
+                and search_result.data[0]['entry_id'] == archive.metadata.entry_id
             ):
                 self.lab_id = test
                 return
@@ -445,7 +438,7 @@ class DtuNanolabMeasurement(Measurement):
         filename: str,
         measurement_type: str,
         archive: 'EntryArchive',
-        logger: 'BoundLogger'
+        logger: 'BoundLogger',
     ) -> None:
         from nomad.datamodel.context import ServerContext
 
