@@ -38,6 +38,9 @@ from nomad_analysis.utils import create_entry_with_api
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.sample import (
+    DTUCombinatorialLibrary,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -51,11 +54,8 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
         type=str,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
-
         ),
-        a_browser=BrowserAnnotation(
-            adaptor=BrowserAdaptors.RawFileAdaptor
-        ),
+        a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
     )
     from_analysis = Quantity(
         type=Reference(SectionProxy('DtuJupyterAnalysis')),
@@ -89,15 +89,21 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
         ),
-        a_browser=BrowserAnnotation(
-            adaptor=BrowserAdaptors.RawFileAdaptor
-        ),
+        a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
     )
     generate_notebook = Quantity(
         type=bool,
         description='Generate a Jupyter notebook',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.BoolEditQuantity,
+        ),
+    )
+    libraries = Quantity(
+        type=DTUCombinatorialLibrary,
+        shape=['*'],
+        description='Libraries used in the analysis.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.ReferenceEditQuantity,
         ),
     )
     steps = SubSection(
@@ -111,13 +117,13 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
         user = 'Unknown user'
         if archive.metadata.main_author:
             user = archive.metadata.main_author.name
-        
+
         nb = nbformat.v4.new_notebook()
 
-        nb.cells.extend([
-            nbformat.v4.new_markdown_cell(
-                source=
-f'''<div style="
+        nb.cells.extend(
+            [
+                nbformat.v4.new_markdown_cell(
+                    source=f"""<div style="
     background-color: #f7f7f7;
     background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjxzdmcKICAgd2lkdGg9IjcyIgogICBoZWlnaHQ9IjczIgogICB2aWV3Qm94PSIwIDAgNzIgNzMiCiAgIGZpbGw9Im5vbmUiCiAgIHZlcnNpb249IjEuMSIKICAgaWQ9InN2ZzEzMTkiCiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnMKICAgICBpZD0iZGVmczEzMjMiIC8+CiAgPHBhdGgKICAgICBkPSJNIC0wLjQ5OTk4NSwxNDUgQyAzOS41MzMsMTQ1IDcyLDExMi41MzIgNzIsNzIuNSA3MiwzMi40Njc4IDM5LjUzMywwIC0wLjQ5OTk4NSwwIC00MC41MzI5LDAgLTczLDMyLjQ2NzggLTczLDcyLjUgYyAwLDQwLjAzMiAzMi40NjcxLDcyLjUgNzIuNTAwMDE1LDcyLjUgeiIKICAgICBmaWxsPSIjMDA4YTY3IgogICAgIGZpbGwtb3BhY2l0eT0iMC4yNSIKICAgICBpZD0icGF0aDEzMTciIC8+Cjwvc3ZnPgo='), url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjxzdmcKICAgd2lkdGg9IjIxNyIKICAgaGVpZ2h0PSIyMjMiCiAgIHZpZXdCb3g9IjAgMCAyMTcgMjIzIgogICBmaWxsPSJub25lIgogICB2ZXJzaW9uPSIxLjEiCiAgIGlkPSJzdmcxMTA3IgogICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgIHhtbG5zOnN2Zz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxkZWZzCiAgICAgaWQ9ImRlZnMxMTExIiAvPgogIDxwYXRoCiAgICAgZD0ibSAyMi4wNDIsNDUuMDEwOSBjIDIxLjM2MjUsMjEuMjc1NyA1NS45NzYsMjEuMjc1NyA3Ny41MTkyLDAgQyAxMTkuNTU4LDI1LjA4IDE1MS41MDIsMjMuNzM1MiAxNzIuODY0LDQxLjM3OCBjIDEuMzQ1LDEuNTI1NCAyLjY5LDMuMjUxNiA0LjIzNiw0Ljc5NzEgMjEuMzYzLDIxLjI3NTYgMjEuMzYzLDU1Ljc5ODkgMCw3Ny4yNTQ5IC0yMS4zNjIsMjEuMjc2IC0yMS4zNjIsNTUuNzk4IDAsNzcuMjU1IDIxLjM2MywyMS40NTYgNTUuOTc2LDIxLjI3NSA3Ny41MiwwIDIxLjU0MywtMjEuMjc2IDIxLjM2MiwtNTUuNzk5IDAsLTc3LjI1NSAtMjEuMzYzLC0yMS4yNzYgLTIxLjM2MywtNTUuNzk4NiAwLC03Ny4yNTQ5IDEyLjY4OSwtMTIuNjQ1IDE3Ljg4OSwtMzAuMTA3MSAxNS4zOTksLTQ2LjU4NTc2IC0xLjU0NiwtMTEuNTAwOTQgLTYuNzI2LC0yMi44MjExNCAtMTUuNTgsLTMxLjYzMjU0IC0yMS4zNjMsLTIxLjI3NTYgLTU1Ljk3NiwtMjEuMjc1NiAtNzcuNTE5LDAgLTIxLjM2MywyMS4yNzU3IC01NS45NzYsMjEuMjc1NyAtNzcuNTE5NCwwIC0yMS4zNjI1LC0yMS4yNzU2IC01NS45NzYxLC0yMS4yNzU2IC03Ny41MTkyLDAgQyAwLjY3OTU2NSwtMTAuNzg3NiAwLjY3OTU5NiwyMy43MzUyIDIyLjA0Miw0NS4wMTA5IFoiCiAgICAgZmlsbD0iIzJhNGNkZiIKICAgICBzdHJva2U9IiMyYTRjZGYiCiAgICAgc3Ryb2tlLXdpZHRoPSIxMiIKICAgICBzdHJva2UtbWl0ZXJsaW1pdD0iMTAiCiAgICAgaWQ9InBhdGgxMTA1IiAvPgogIDxwYXRoCiAgICAgZD0ibSA1MS45OTUyMTIsMjIyLjczMDEzIGMgMjguMzU5MSwwIDUxLjM1ODM5OCwtMjIuOTk5OSA1MS4zNTgzOTgsLTUxLjM1ODQgMCwtMjguMzU4NiAtMjIuOTk5Mjk4LC01MS4zNTg1OSAtNTEuMzU4Mzk4LC01MS4zNTg1OSAtMjguMzU5MSwwIC01MS4zNTg2MDIsMjIuOTk5OTkgLTUxLjM1ODYwMiw1MS4zNTg1OSAwLDI4LjM1ODUgMjIuOTk5NTAyLDUxLjM1ODQgNTEuMzU4NjAyLDUxLjM1ODQgeiIKICAgICBmaWxsPSIjMTkyZTg2IgogICAgIGZpbGwtb3BhY2l0eT0iMC4zNSIKICAgICBpZD0icGF0aDE5MzciIC8+Cjwvc3ZnPgo=') ;
     background-position: left bottom, right top;
@@ -136,17 +142,14 @@ f'''<div style="
         {self.name}</h1>
 <p style="font-size: 1.25em; font-style: italic; padding: 5px 200px 30px 30px;">
     {user}</p>
-</div>'''  # noqa: E501
-            ),
-            nbformat.v4.new_markdown_cell(
-                source='### Import data from NOMAD'
-            ),
-            nbformat.v4.new_markdown_cell(
-                source='Query for the analysis entry associated with this notebook:'
-            ),
-            nbformat.v4.new_code_cell(
-                source=
-f'''from nomad.client import ArchiveQuery
+</div>"""  # noqa: E501
+                ),
+                nbformat.v4.new_markdown_cell(source='### Import data from NOMAD'),
+                nbformat.v4.new_markdown_cell(
+                    source='Query for the analysis entry associated with this notebook:'
+                ),
+                nbformat.v4.new_code_cell(
+                    source=f"""from nomad.client import ArchiveQuery
 
 analysis_id = "{archive.metadata.entry_id}"
 api_url = "http://nomad.nanolab.dtu.dk/nomad-oasis/api"
@@ -156,34 +159,28 @@ a_query = ArchiveQuery(
     url=api_url,
 )
 entry_list = a_query.download()
-analysis = entry_list[0].data'''
-            ),
-            nbformat.v4.new_markdown_cell(
-                source='### Analysis'
-            ),
-            nbformat.v4.new_markdown_cell(
-                source=
-'''Add your analysis code here.
+analysis = entry_list[0].data"""
+                ),
+                nbformat.v4.new_markdown_cell(source='### Analysis'),
+                nbformat.v4.new_markdown_cell(
+                    source="""Add your analysis code here.
 You can use the `analysis` variable to access the data.
 You can add figures and steps to the `analysis` variable and save them by calling 
 `analysis.save()`.
 
 The steps and figures from any previous runs will already be in the `analysis` variable.
 If you want to start over, you can clear the steps and figures by calling:
-'''
-            ),
-            nbformat.v4.new_code_cell(
-                source=
-'''analysis.steps = []
-analysis.figures = []'''
-            ),
-            nbformat.v4.new_markdown_cell(
-                source=
-'''For example, you can add a step with a plot like this:'''
-            ),
-            nbformat.v4.new_code_cell(
-                source=
-'''import plotly.graph_objects as go
+"""
+                ),
+                nbformat.v4.new_code_cell(
+                    source="""analysis.steps = []
+analysis.figures = []"""
+                ),
+                nbformat.v4.new_markdown_cell(
+                    source="""For example, you can add a step with a plot like this:"""
+                ),
+                nbformat.v4.new_code_cell(
+                    source="""import plotly.graph_objects as go
 from nomad.datamodel.metainfo.plot import PlotlyFigure
 from nomad_dtu_nanolab_plugin.schema_packages.analysis import DtuAnalysisStep
 
@@ -206,9 +203,10 @@ analysis.steps.append(
     )
 )
 
-analysis.save()'''
-            ),
-        ])
+analysis.save()"""
+                ),
+            ]
+        )
 
         nb['metadata']['trusted'] = True
 

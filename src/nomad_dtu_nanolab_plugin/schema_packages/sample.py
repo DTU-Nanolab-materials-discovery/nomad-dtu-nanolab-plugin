@@ -19,7 +19,10 @@
 from typing import TYPE_CHECKING
 
 from nomad.datamodel.data import Schema
+from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.metainfo import Package, Section
+from nomad.metainfo.metainfo import Quantity
 from nomad_material_processing.combinatorial import (
     CombinatorialLibrary,
     CombinatorialSample,
@@ -27,6 +30,8 @@ from nomad_material_processing.combinatorial import (
 from nomad_material_processing.general import ThinFilmStack
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.basesections import DtuNanolabMeasurement
+from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
 
 if TYPE_CHECKING:
     pass
@@ -45,6 +50,43 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Combinatorial Library',
+    )
+
+    def get_references(self, entry_type: type[Schema] = None) -> list:
+        from nomad.client import ArchiveQuery
+
+        query = {
+            'entry_references.target_entry_id:all': [self.m_parent.entry_id],
+        }
+        if entry_type:
+            query['section_defs.definition_qualified_name:all'] = [
+                entry_type.m_def.qualified_name()
+            ]
+        a_query = ArchiveQuery(
+            query=query,
+            required='*',
+            url=self.m_context.installation_url,
+        )
+        entry_list = a_query.download()
+        return [entry.data for entry in entry_list]
+
+    def get_measurements(self) -> list:
+        return self.get_references(DtuNanolabMeasurement)
+
+    def get_sputtering(self) -> DTUSputtering:
+        results = self.get_references(DTUSputtering)
+        if len(results) > 1:
+            print('Warning: More than one sputtering reference found.')
+        return results[0] if results else None
+
+
+class DtuLibraryReference(CompositeSystemReference):
+    reference = Quantity(
+        type=DTUCombinatorialLibrary,
+        description='A reference to a NOMAD `CompositeSystem` entry.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.ReferenceEditQuantity,
+        ),
     )
 
 

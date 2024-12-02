@@ -130,12 +130,14 @@ sample = SampleEntryPoint(
     description='Schema package defined for samples.',
 )
 
+
 class AnalysisEntryPoint(SchemaPackageEntryPoint):
     def load(self):
         from nomad_dtu_nanolab_plugin.schema_packages.analysis import m_package
 
         return m_package
-    
+
+
 analysis = AnalysisEntryPoint(
     name='Analysis',
     description='Schema package defined for analysis.',
