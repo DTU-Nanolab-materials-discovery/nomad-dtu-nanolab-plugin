@@ -96,6 +96,9 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
     generate_notebook = Quantity(
         type=bool,
         description='Generate a Jupyter notebook',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+        ),
     )
     steps = SubSection(
         section_def=DtuAnalysisStep,
@@ -105,6 +108,9 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
     def create_notebook(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         filename = archive.metadata.mainfile.split('.')[0] + '.ipynb'
         self.notebook = filename
+        user = 'Unknown user'
+        if archive.metadata.main_author:
+            user = archive.metadata.main_author.name
         
         nb = nbformat.v4.new_notebook()
 
@@ -129,7 +135,7 @@ f'''<div style="
     padding: 30px 200px 0px 30px;"> 
         {self.name}</h1>
 <p style="font-size: 1.25em; font-style: italic; padding: 5px 200px 30px 30px;">
-    {archive.metadata.main_author}</p>
+    {user}</p>
 </div>'''  # noqa: E501
             ),
             nbformat.v4.new_markdown_cell(
@@ -142,7 +148,7 @@ f'''<div style="
                 source=
 f'''from nomad import ArchiveQuery
 
-analysis_id = {archive.metadata.entry_id}
+analysis_id = "{archive.metadata.entry_id}"
 api_url = "http://nomad.nanolab.dtu.dk/nomad-oasis/api"
 a_query = ArchiveQuery(
     query={{'entry_id:any': [analysis_id]}},
