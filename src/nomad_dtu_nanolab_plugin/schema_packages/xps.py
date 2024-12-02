@@ -218,7 +218,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
     def read_XPS_analysis(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         '''"Read data and coordinates from an XPS datafile.
         The file should be an csv (.txt) file."'''
-        self.add_sample_reference(self.analysis_file, archive, logger)
+        self.add_sample_reference(self.analysis_file, 'XPS', archive, logger)
         # read the file
         with archive.m_context.raw_file(self.analysis_file, 'rb') as xps:
             file = pd.read_csv(

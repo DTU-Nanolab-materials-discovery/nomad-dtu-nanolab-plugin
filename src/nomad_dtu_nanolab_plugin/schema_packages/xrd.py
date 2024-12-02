@@ -196,7 +196,7 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             logger (BoundLogger): A structlog logger.
         """
         if self.data_files:
-            self.add_sample_reference(self.data_files[0], archive, logger)
+            self.add_sample_reference(self.data_files[0], 'XRD', archive, logger)
             file_data = []
             for file_path in self.data_files:
                 with archive.m_context.raw_file(file_path) as file:

@@ -136,12 +136,15 @@ class DTUEllipsometryMeasurement(MappingMeasurement, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+        filename = None
         if self.native_file:
-            self.add_sample_reference(self.native_file, archive, logger)
+            filename = self.native_file
         elif self.n_and_k_file:
-            self.add_sample_reference(self.n_and_k_file, archive, logger)
+            filename = self.n_and_k_file
         elif self.thickness_file:
-            self.add_sample_reference(self.thickness_file, archive, logger)
+            filename = self.thickness_file
+        if filename:
+            self.add_sample_reference(filename, 'Ellipsometry', archive, logger)
 
         super().normalize(archive, logger)
 

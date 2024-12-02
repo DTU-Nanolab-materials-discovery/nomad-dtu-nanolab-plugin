@@ -2398,8 +2398,6 @@ def write_params(quantities, indent=''):
     return '\n'.join(output)
 
 
-
-
 # ----------FUNCTIONS FOR HANDLING TIMESTAMPS------------
 
 
@@ -3477,7 +3475,7 @@ def generate_optix_cascade_plot(spectra, **kwargs):
     time_range = kwargs.get('time_range', None)
     plot_title = kwargs.get('plot_title', '3D Cascade Plot')
 
-    #initialize variables
+    # initialize variables
     min_color = None
     max_color = None
 
@@ -4477,23 +4475,22 @@ def place_deposition_ramp_up_down_events_first(all_events):
 # -------ADDITIONAL FUNCTIONS FOR THE OPTIX SPECTRA------------
 
 
-
-#master function to read any file
+# master function to read any file
 def read_file(file_path):
-    #open the file and read the first line
-    with open(file_path, 'r') as file:
+    # open the file and read the first line
+    with open(file_path) as file:
         first_line = file.readline()
-        #check if the line has 'Triggered' in it
+        # check if the line has 'Triggered' in it
         if 'Triggered' in first_line:
-            #if it does, read the file as a spectrum
+            # if it does, read the file as a spectrum
             print('Reading as spectrum')
             return read_spectrum(file_path)
         elif 'Time' in first_line or 'Regulation' in first_line:
-            #if it does not, read the file as an RGA file
+            # if it does not, read the file as an RGA file
             print('Reading as RGA')
             return read_rga(file_path)
         elif 'Recording Name' in first_line:
-            #if it does not, read the file as a log file
+            # if it does not, read the file as a log file
             print('Reading as log file')
             return read_logfile(file_path)
 
@@ -4515,64 +4512,65 @@ def read_logfile(file_path):
     return df
 
 
-
 def read_rga(file_path):
-    rga_file = pd.read_csv(
-        file_path,
-        sep=',',
-        header=0,
-        parse_dates=["Time"]
-    )
-    #Rename the 'Time' column to 'Time Stamp'
+    rga_file = pd.read_csv(file_path, sep=',', header=0, parse_dates=['Time'])
+    # Rename the 'Time' column to 'Time Stamp'
     rga_file.rename(columns={'Time': 'Time Stamp'}, inplace=True)
 
-    #for all columns except 'Time Stamp' and 'Time', if the column name
-    #starts with a space, remove the space
+    # for all columns except 'Time Stamp' and 'Time', if the column name
+    # starts with a space, remove the space
     rga_file.columns = rga_file.columns.str.strip()
 
-    #make time column tz naive
+    # make time column tz naive
     rga_file['Time Stamp'] = rga_file['Time Stamp'].dt.tz_localize(None)
 
     return rga_file
 
-def merge_logfile_rga(df1, df2,
-                      tolerance=None,
-                      direction='nearest',
-                      ):
+
+def merge_logfile_rga(
+    df1,
+    df2,
+    tolerance=None,
+    direction='nearest',
+):
     """
     Merge two DataFrames on Time Stamp columns, aligning their timestamps.
 
     Parameters:
         df1 (pd.DataFrame): First DataFrame with 'Time Stamp' column.
         df2 (pd.DataFrame): Second DataFrame with 'Time Stamp' column.
-        tolerance (str or pd.Timedelta, optional): Maximum allowed time difference for alignment (e.g., '1s').
-        direction (str): Direction for alignment - 'backward', 'forward', or 'nearest' (default: 'nearest').
+        tolerance (str or pd.Timedelta, optional): Maximum allowed time difference for
+        alignment (e.g., '1s').
+        direction (str): Direction for alignment - 'backward', 'forward', or 'nearest'
+        (default: 'nearest').
 
     Returns:
-        pd.DataFrame: Merged DataFrame with aligned timestamps and NaN for missing values.
+        pd.DataFrame: Merged DataFrame with aligned timestamps and NaN for missing
+        values.
     """
     # Ensure the Time Stamp columns are sorted
     df1 = df1.sort_values('Time Stamp')
     df2 = df2.sort_values('Time Stamp')
 
-    #calculate the average time between the timestamps in each dataframe
+    # calculate the average time between the timestamps in each dataframe
     avg_time_diff_df1 = df1['Time Stamp'].diff().mean()
     avg_time_diff_df2 = df2['Time Stamp'].diff().mean()
 
-    #calculate the tolerance based on the df with the largest
+    # calculate the tolerance based on the df with the largest
     # average time difference
-    tolerance = min(avg_time_diff_df1, avg_time_diff_df2)/1.5
-
+    tolerance = min(avg_time_diff_df1, avg_time_diff_df2) / 1.5
 
     # Perform asof merge
     merged_df = pd.merge_asof(
-        df1, df2,
+        df1,
+        df2,
         on='Time Stamp',
         direction=direction,
-        tolerance=pd.Timedelta(tolerance) if tolerance else None
+        tolerance=pd.Timedelta(tolerance) if tolerance else None,
     )
 
     return merged_df
+
 
 # Function to read the OPTIX spectrum CSV file
 def read_spectrum(file_path):
@@ -4647,7 +4645,7 @@ def read_spectrum(file_path):
     return spectra
 
 
-def filter_spectrum(spectra, bounds,calc_mean=False):
+def filter_spectrum(spectra, bounds, calc_mean=False):
     """
     This function filters in the Optix spectrums based on the conditions that they
     have been recorded during the time bounds passed in the 'bounds' list.
@@ -4682,7 +4680,7 @@ def filter_spectrum(spectra, bounds,calc_mean=False):
         filtered_spectra['data'] = pd.DataFrame()
 
     if calc_mean:
-        filtered_spectra=calc_mean_norm_spectrum(filtered_spectra)
+        filtered_spectra = calc_mean_norm_spectrum(filtered_spectra)
 
     return filtered_spectra
 
