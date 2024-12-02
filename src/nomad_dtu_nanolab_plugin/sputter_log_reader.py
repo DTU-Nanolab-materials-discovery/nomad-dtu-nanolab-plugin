@@ -3754,8 +3754,17 @@ def quick_plot(df, Y, **kwargs):
     if isinstance(Y, str):
         Y = [Y]
 
+
+
+
+
     plot_params = setup_plot_params(df, Y, **kwargs)
     mode = plot_params['mode']
+
+    Y2 = kwargs.get('Y2', None)
+    if Y2 is not None:
+        mode = 'dual_y'
+
 
     if mode == 'default':
         fig = create_default_plot(plot_params)
@@ -4548,6 +4557,10 @@ def merge_logfile_rga(
         pd.DataFrame: Merged DataFrame with aligned timestamps and NaN for missing
         values.
     """
+    #if df2 columns are found in df1, return df1 already
+    if all(col in df1.columns for col in df2.columns):
+        return df1
+
     # Ensure the Time Stamp columns are sorted
     df1 = df1.sort_values('Time Stamp')
     df2 = df2.sort_values('Time Stamp')
