@@ -420,10 +420,7 @@ class DtuNanolabMeasurement(Measurement):
 
         measurement_number = 1
         while measurement_number < 1000:  # noqa: PLR2004
-            if measurement_number == 1:
-                test = lab_id
-            else:
-                test = f'{lab_id}-{measurement_number}'
+            test = f'{lab_id}_{measurement_number:03d}'
             search_result = search(
                 owner='all',
                 query={'results.eln.lab_ids': test},
