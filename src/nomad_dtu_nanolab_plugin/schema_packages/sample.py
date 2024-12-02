@@ -30,11 +30,12 @@ from nomad_material_processing.combinatorial import (
 from nomad_material_processing.general import ThinFilmStack
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
-from nomad_dtu_nanolab_plugin.schema_packages.basesections import DtuNanolabMeasurement
-from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
 
 if TYPE_CHECKING:
-    pass
+    from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+        DtuNanolabMeasurement,
+    )
+    from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
 
 m_package = Package(name='DTU customised Substrate scheme')
 
@@ -70,10 +71,16 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         entry_list = a_query.download()
         return [entry.data for entry in entry_list]
 
-    def get_measurements(self) -> list:
+    def get_measurements(self) -> list['DtuNanolabMeasurement']:
+        from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+            DtuNanolabMeasurement,
+        )
+
         return self.get_references(DtuNanolabMeasurement)
 
-    def get_sputtering(self) -> DTUSputtering:
+    def get_sputtering(self) -> 'DTUSputtering':
+        from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
+
         results = self.get_references(DTUSputtering)
         if len(results) > 1:
             print('Warning: More than one sputtering reference found.')
