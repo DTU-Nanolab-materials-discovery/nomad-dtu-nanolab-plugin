@@ -399,7 +399,7 @@ FRAQ_ROWS_AVG_VOLTAGE = 5  # %
 # Number of timesteps to consider for the continuity limit
 CONTINUITY_LIMIT = 10
 # Special continuity limit for deposition events
-DEPOSITION_CONTINUITY_LIMIT = 200
+DEPOSITION_CONTINUITY_LIMIT = 600
 # Minimum size of a domain in terms of numbers of average timestep
 MIN_DOMAIN_SIZE = 10
 # Minimum size of a deposition in terms of numbers of average timestep
