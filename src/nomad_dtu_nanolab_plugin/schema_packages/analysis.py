@@ -146,7 +146,7 @@ f'''<div style="
             ),
             nbformat.v4.new_code_cell(
                 source=
-f'''from nomad import ArchiveQuery
+f'''from nomad.client import ArchiveQuery
 
 analysis_id = "{archive.metadata.entry_id}"
 api_url = "http://nomad.nanolab.dtu.dk/nomad-oasis/api"
@@ -198,7 +198,7 @@ plot_json['config'] = dict(
 analysis.steps.append(
     DtuAnalysisStep(
         name='Step name',
-        description='Description of the step',
+        comment='Description of the step',
         figures=[PlotlyFigure(
             label='My plot',
             figure=plot_json,
@@ -214,7 +214,7 @@ analysis.save()'''
 
         with archive.m_context.raw_file(self.notebook, 'w') as nb_file:
             nbformat.write(nb, nb_file)
-        # archive.m_context.process_updated_raw_file(self.notebook, allow_modify=True)
+        archive.m_context.process_updated_raw_file(self.notebook, allow_modify=True)
 
     def save(self):
         archive = self.m_parent
