@@ -180,7 +180,8 @@ analysis.figures = []"""
                     source="""For example, you can add a step with a plot like this:"""
                 ),
                 nbformat.v4.new_code_cell(
-                    source="""import plotly.graph_objects as go
+                    source="""import datetime
+import plotly.graph_objects as go
 from nomad.datamodel.metainfo.plot import PlotlyFigure
 from nomad_dtu_nanolab_plugin.schema_packages.analysis import DtuAnalysisStep
 
@@ -195,6 +196,7 @@ plot_json['config'] = dict(
 analysis.steps.append(
     DtuAnalysisStep(
         name='Step name',
+        start_time=datetime.datetime.now(),
         comment='Description of the step',
         figures=[PlotlyFigure(
             label='My plot',
