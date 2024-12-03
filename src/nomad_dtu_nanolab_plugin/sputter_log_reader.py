@@ -36,7 +36,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = False
+TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 
@@ -399,7 +399,7 @@ FRAQ_ROWS_AVG_VOLTAGE = 5  # %
 # Number of timesteps to consider for the continuity limit
 CONTINUITY_LIMIT = 10
 # Special continuity limit for deposition events
-DEPOSITION_CONTINUITY_LIMIT = 200
+DEPOSITION_CONTINUITY_LIMIT = 1000
 # Minimum size of a domain in terms of numbers of average timestep
 MIN_DOMAIN_SIZE = 10
 # Minimum size of a deposition in terms of numbers of average timestep
@@ -3757,6 +3757,10 @@ def quick_plot(df, Y, **kwargs):
     plot_params = setup_plot_params(df, Y, **kwargs)
     mode = plot_params['mode']
 
+    Y2 = kwargs.get('Y2', None)
+    if Y2 is not None:
+        mode = 'dual_y'
+
     if mode == 'default':
         fig = create_default_plot(plot_params)
     elif mode == 'stack':
@@ -4494,6 +4498,65 @@ def read_file(file_path):
             print('Reading as log file')
             return read_logfile(file_path)
 
+def follow_peak(
+        spectra,
+        peak_pos=[656.1, 341.76, 311.9]
+        ):
+    """
+    Track the intensity of specified peaks in the spectra data over time.
+
+    Parameters:
+    -----------
+    spectra: dict
+        A dictionary containing spectral data, with keys:
+        - 'data': A dictionary of spectra
+            (keys are timestamps, values are intensity arrays)
+        - 'x': A list or array of wavelength values
+            corresponding to the intensity arrays
+        - 'timestamp_map': A dictionary mapping spectral keys to timestamps
+    peak_pos: list of float
+        Wavelengths of the peaks to track.
+
+    Returns:
+    --------
+    pd.DataFrame:
+        A DataFrame where each timestamp has intensity values for:
+        - Peak position columns
+        - Corresponding peak name columns (if position is in `PEAK_NAME`)
+    """
+    PEAK_NAME = {
+        656.1: 'H',
+        341.76: 'PH',
+        311.9: 'S2'
+    }
+
+    # Ensure peak_pos is iterable
+    peak_pos = [peak_pos] if isinstance(peak_pos, (int, float)) else peak_pos
+    peak_names = {pos: PEAK_NAME.get(pos, None) for pos in peak_pos}
+
+    # Prepare results
+    results = []
+
+    for key, time in spectra['timestamp_map'].items():
+        row = {'Time Stamp': time}
+        for pos, name in peak_names.items():
+            # Find the closest wavelength index
+            idx = (spectra['data']['x'] - pos).abs().idxmin()
+            intensity = spectra['data'][key][idx]
+            # Add intensity for position column
+            row[f"{pos}"] = intensity
+            # Add intensity for peak name column if exists
+            if name:
+                row[name] = intensity
+        results.append(row)
+
+    # Convert results to DataFrame
+    peak_intensity = pd.DataFrame(results)
+
+    # Combine rows with the same timestamp
+    peak_intensity = peak_intensity.groupby('Time Stamp').first().reset_index()
+
+    return peak_intensity
 
 # Function to read the IDOL combinatorial chamber CSV logfile
 def read_logfile(file_path):
@@ -4548,6 +4611,10 @@ def merge_logfile_rga(
         pd.DataFrame: Merged DataFrame with aligned timestamps and NaN for missing
         values.
     """
+    #if df2 columns are found in df1, return df1 already
+    if all(col in df1.columns for col in df2.columns):
+        return df1
+
     # Ensure the Time Stamp columns are sorted
     df1 = df1.sort_values('Time Stamp')
     df2 = df2.sort_values('Time Stamp')
