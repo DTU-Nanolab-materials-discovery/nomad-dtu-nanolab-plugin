@@ -23,8 +23,10 @@ from scipy.signal import find_peaks, savgol_filter
 
 
 def read_XRD(filename, grid, n=0, separator='\t'):
-    """ "Read data from an XRD datafile into a dataframe. The data is constrained to a custom grid which must be provided via the "measurement_grid" function."
-    Usage: data, coords = read_XRD(filename) Optional: "n" - amount of measurements to include. "separator" - csv file separator."""
+    """ "Read data from an XRD datafile into a dataframe. The data is constrained to a
+    custom grid which must be provided via the "measurement_grid" function."
+    Usage: data, coords = read_XRD(filename) Optional: "n" - amount of measurements to
+    include. "separator" - csv file separator."""
     # read data and limit length based on amount of wanted points
     data = pd.read_csv(filename, sep=separator, header=1)
     if n > 0:
@@ -72,8 +74,11 @@ def read_XRD(filename, grid, n=0, separator='\t'):
 
 
 def read_ellipsometry_thickness(filename, grid, n=0, separator='\t'):
-    """ "Read thickness data and coordinates from an ellipsometry datafile. The data is constrained to a custom grid which must be provided via the "measurement_grid" function."
-    Usage: data, coords = read_ellipsometry_thickness(filename) Optional: "n" - amount of measurements to include. "separator" - csv file separator."""
+    """ "Read thickness data and coordinates from an ellipsometry datafile. The data is
+    constrained to a custom grid which must be provided via the "measurement_grid"
+    function."
+    Usage: data, coords = read_ellipsometry_thickness(filename) Optional: "n" - amount
+    of measurements to include. "separator" - csv file separator."""
     # read data and limit length based on amount of wanted points
     data = pd.read_csv(filename, sep=separator, header=1)
     if n > 0:
@@ -106,8 +111,11 @@ def read_ellipsometry_thickness(filename, grid, n=0, separator='\t'):
 
 
 def read_ellipsometry_MSE(filename, grid, n=0, separator='\t'):
-    """ "Read Mean Squared Error data and coordinates from an ellipsometry datafile. The data is constrained to a custom grid which must be provided via the "measurement_grid" function."
-    Usage: data, coords = read_ellipsometry_MSE(filename) Optional: "n" - amount of measurements to include. "separator" - csv file separator."""
+    """ "Read Mean Squared Error data and coordinates from an ellipsometry datafile.
+    The data is constrained to a custom grid which must be provided via the
+    "measurement_grid" function."
+    Usage: data, coords = read_ellipsometry_MSE(filename) Optional: "n" - amount of
+    measurements to include. "separator" - csv file separator."""
     # read data and limit length based on amount of wanted points
     data = pd.read_csv(filename, sep=separator, header=1)
     if n > 0:
@@ -140,8 +148,11 @@ def read_ellipsometry_MSE(filename, grid, n=0, separator='\t'):
 
 
 def read_ellipsometry_nk(filename, grid, n=0, separator='\t'):
-    """ "Read refractive index n and absorption coefficient k data and coordinates from an ellipsometry datafile. The data is constrained to a custom grid which must be provided via the "measurement_grid" function."
-    Usage: data, coords = read_ellipsometry_nk(filename) Optional: "n" - amount of measurements to include. "separator" - csv file separator."""
+    """ "Read refractive index n and absorption coefficient k data and coordinates from
+    an ellipsometry datafile. The data is constrained to a custom grid which must be
+    provided via the "measurement_grid" function."
+    Usage: data, coords = read_ellipsometry_nk(filename) Optional: "n" - amount of
+    measurements to include. "separator" - csv file separator."""
     # read data and split into energy and n/k data, limited by number of wanted points
     data = pd.read_csv(filename, sep=separator, header=1, index_col=False)
     data_energy = data.iloc[:, 0]
@@ -195,7 +206,7 @@ def read_ellipsometry_nk(filename, grid, n=0, separator='\t'):
 
 
 def convert_to_eV(data):
-    '''"Convert ellipsometry data in wavelength to eV."'''
+    """Convert ellipsometry data in wavelength to eV."""
     # Planck's constant (eV/Hz)
     h = 4.135 * 10**-15
     # Speed of light (m/s)
@@ -210,7 +221,8 @@ def convert_to_eV(data):
 
 
 def read_layerprobe_coords(filename, n=0, separator='\t'):
-    '''"Read only the coordinates of a set of LayerProbe measurements. Necessary for interpolation until I decide to fix it :)"'''
+    """Read only the coordinates of a set of LayerProbe measurements. Necessary for
+    interpolation until I decide to fix it :)"""
     # read data and limit length based on amount of wanted points
     data = pd.read_csv(filename, sep=separator, header=0)
     if n > 0:
@@ -225,8 +237,11 @@ def read_layerprobe_coords(filename, n=0, separator='\t'):
 
 
 def read_layerprobe(filename, grid, sheetname=-1, n=0):
-    """ "Read data and coordinates from a LayerProbe datafile. The file should be an Excel sheet. The data is constrained to a custom grid which must be provided via the "measurement_grid" function."
-    Usage: data, coords = read_layerprobe(filename) Optional: "sheetname" name of sheet, defaults to last sheet in file. "n" - amount of measurements to include."""
+    """ "Read data and coordinates from a LayerProbe datafile. The file should be an
+    Excel sheet. The data is constrained to a custom grid which must be provided via
+    the "measurement_grid" function."
+    Usage: data, coords = read_layerprobe(filename) Optional: "sheetname" name of sheet,
+      defaults to last sheet in file. "n" - amount of measurements to include."""
     # read data and limit length based on amount of wanted points
     data = pd.read_excel(filename, sheet_name=sheetname, header=0)
     if n > 0:
@@ -259,8 +274,10 @@ def read_layerprobe(filename, grid, sheetname=-1, n=0):
 
 
 def read_XPS(filename, grid):
-    '''"Read data and coordinates from an XPS datafile. The file should be an csv (.txt) file. The data is constrained to a custom grid which must be provided via the "measurement_grid" function."
-    Usage: data, coords = read_XPS(filename, grid)"'''
+    """Read data and coordinates from an XPS datafile. The file should be an csv (.txt)
+      file. The data is constrained to a custom grid which must be provided via the
+      "measurement_grid" function."
+    Usage: data, coords = read_XPS(filename, grid)"""
     # read the file
     file = pd.read_csv(
         filename,
@@ -361,13 +378,13 @@ def read_XPS(filename, grid):
     # add column with summed atomic %
     element_list = dataframe['Peak'].unique()
     atomic_percent_list = []
-    for l in range(0, int(len(peaklist)), n):
+    for idx in range(0, int(len(peaklist)), n):
         for k in range(len(element_list)):
             atomic_percent = round(
                 sum(
-                    dataframe.iloc[l : l + n].loc[dataframe['Peak'] == element_list[k]][
-                        'Atomic %'
-                    ]
+                    dataframe.iloc[idx : idx + n].loc[
+                        dataframe['Peak'] == element_list[k]
+                    ]['Atomic %']
                 ),
                 3,
             )
@@ -400,8 +417,10 @@ def read_XPS(filename, grid):
 
 
 def read_UPS(filename, grid):
-    '''"Read data and coordinates from an UPS datafile. The file should be an Excel (.xlsx) file. The data is constrained to a custom grid which must be provided via the "measurement_grid" function."
-    Usage: data, coords = read_UPS(filename, grid)"'''
+    """Read data and coordinates from an UPS datafile. The file should be an Excel
+    (.xlsx) file. The data is constrained to a custom grid which must be provided via
+    the "measurement_grid" function."
+    Usage: data, coords = read_UPS(filename, grid)"""
     # load data, energy, and coordinates from all sheets
     dataload_counts = pd.read_excel(filename, sheet_name=None, skiprows=18)
     dataload_eV = pd.read_excel(filename, sheet_name=None, skiprows=18, usecols=[0])
@@ -453,9 +472,9 @@ def read_UPS(filename, grid):
         xcoord = coordselect.iloc[0, 1]
         ycoord = coordselect.iloc[2, 2:]
         # create coords list
-        for l in range(len(ycoord)):
+        for idx in range(len(ycoord)):
             x = xcoord
-            y = ycoord[l]
+            y = ycoord[idx]
             xy_coords = np.array([x, y])
             xy_coords_list.append(xy_coords)
 
@@ -485,16 +504,20 @@ def read_UPS(filename, grid):
 
 
 def read_REELS(filename, grid):
-    '''"Read data and coordinates from an REELS datafile. The file should be an Excel (.xlsx) file. The data is constrained to a custom grid which must be provided via the "measurement_grid" function."
-    Usage: data, coords = read_REELS(filename, grid)"'''
+    """Read data and coordinates from an REELS datafile. The file should be an Excel
+    (.xlsx) file. The data is constrained to a custom grid which must be provided via
+    the "measurement_grid" function."
+    Usage: data, coords = read_REELS(filename, grid)"""
     # This data loading method is identical to UPS.
     data, coords = read_UPS(filename, grid)
     return data, coords
 
 
 def read_raman(filename, grid):
-    '''"Read data and coordinates from a Raman spectroscopy datafile. The file should be an Excel (.xlsx) file. The data is constrained to a custom grid which must be provided via the "measurement_grid" function."
-    Usage: data, coords = read_raman(filename)"'''
+    """Read data and coordinates from a Raman spectroscopy datafile. The file should
+    be an Excel (.xlsx) file. The data is constrained to a custom grid which must be
+    provided via the "measurement_grid" function."
+    Usage: data, coords = read_raman(filename)"""
     # load data, energy, and coordinates from all sheets
     dataload_counts = pd.read_excel(filename, sheet_name=None, skiprows=18)
     dataload_eV = pd.read_excel(filename, sheet_name=None, skiprows=18, usecols=[0])
@@ -544,9 +567,9 @@ def read_raman(filename, grid):
         xcoord = coordload[dictlist[i]].iloc[0, 1]
         ycoord = coordload[dictlist[i]].iloc[2, 2:]
         # create coords list
-        for l in range(len(ycoord)):
+        for idx in range(len(ycoord)):
             x = xcoord
-            y = ycoord[l]
+            y = ycoord[idx]
             xy_coords = np.array([x, y])
             xy_coords_list.append(xy_coords)
 
@@ -583,7 +606,8 @@ def read_raman(filename, grid):
 def measurement_grid(
     ncolumns, nrows, gridlength, gridheight, startcolumn=0, startrow=0
 ):
-    '''"Define a grid based on number of columns and rows, length and height of grid in mm, and the first coordinate (lower left corner) in the column and row."'''
+    """Define a grid based on number of columns and rows, length and height of grid in
+    mm, and the first coordinate (lower left corner) in the column and row."""
     xgrid = np.round(np.linspace(startcolumn, gridlength + startcolumn, ncolumns), 3)
     ygrid = np.round(np.linspace(startrow, gridheight + startrow, nrows), 3)
     grid = np.array([xgrid[0], ygrid[0]])
@@ -596,7 +620,8 @@ def measurement_grid(
 
 
 def coords_to_grid(coords, grid):
-    '''"Constrain a set of measured datapoints to a custom defined grid made with the "measurement_grid" function."'''
+    """Constrain a set of measured datapoints to a custom defined grid made with the
+    "measurement_grid" function."""
     griddata = coords.copy()
     for i in range(len(coords)):
         # find closest x and y coordinate
@@ -609,7 +634,7 @@ def coords_to_grid(coords, grid):
 
 
 def grid_to_MIheader(grid):
-    '''"Convert a grid (array of x,y) into a multi index header"'''
+    """Convert a grid (array of x,y) into a multi index header"""
     MIgrid = []
     for i in range(len(grid)):
         MIgrid = np.append(MIgrid, (f'{grid.iloc[i,0]},{grid.iloc[i,1]}'))
@@ -617,7 +642,7 @@ def grid_to_MIheader(grid):
 
 
 def MI_to_grid(MIgrid):
-    '''"Convert multi index into a grid (array of x,y)"'''
+    """Convert multi index into a grid (array of x,y)"""
     MIgrid = MIgrid.columns.get_level_values(0)
     splitvals = re.split(',', MIgrid[0])
     grid = np.array([splitvals[0], splitvals[1]])
@@ -630,7 +655,8 @@ def MI_to_grid(MIgrid):
 
 
 def interpolate_grid(data, grid):
-    '''"Interpolate data over a custom grid made with the "measurement_grid" function."'''
+    """Interpolate data over a custom grid made with the "measurement_grid"
+    function."""
     # !!!
     # specifically remove the "Peak" column, which will be present if loaded data is XPS
     # !!!
@@ -729,9 +755,12 @@ def initial_peaks(
     withplots=True,
     plotscale='log',
 ):
-    """finds peaks using scipy find_peaks on filtered data to construct a model for fitting, filter strength is based on filtervalue and
-    peak find sensitivity based on peakprominence, withplots and plotscale allows toggling plots on/off and picking scale.
-    Output: dataframe with peak locations and intensity, to be used for raman_fit or xrd_fit, and data limited by the dataRangemin/max, in index"""
+    """finds peaks using scipy find_peaks on filtered data to construct a model for
+    fitting, filter strength is based on filtervalue and
+    peak find sensitivity based on peakprominence, withplots and plotscale allows
+    toggling plots on/off and picking scale.
+    Output: dataframe with peak locations and intensity, to be used for raman_fit or
+    xrd_fit, and data limited by the dataRangemin/max, in index"""
     # setup data
     column_headers = data.columns.values
     col_theta = column_headers[::2]
@@ -751,7 +780,6 @@ def initial_peaks(
 
         # Filter to avoid fake peaks
         if filterstrength > 0:
-            l = filterstrength
             # dataSelect = lfilter(b, a, dataSelect)
             dataSelect = savgol_filter(dataSelect, filterstrength, 1)
 
@@ -797,9 +825,12 @@ def xrd_fit(
     plotscale='log',
     remove_background_fit=False,
 ):
-    """Fit data using models from lmfit. Pseudo-voigt for peaks, based on thePeaks output from initial_peaks, and
-    spline background model adjustable with knots. withplots and plotscale allows toggling plots on/off and picking scale.
-    Outputs: dataframe with theta, measured intensity, the entire fit, peak locations, intensity, FWHM, and Lorentzian/Gaussian fraction"""
+    """Fit data using models from lmfit. Pseudo-voigt for peaks, based on thePeaks
+    output from initial_peaks, and
+    spline background model adjustable with knots. withplots and plotscale allows
+    toggling plots on/off and picking scale.
+    Outputs: dataframe with theta, measured intensity, the entire fit, peak locations,
+    intensity, FWHM, and Lorentzian/Gaussian fraction"""
     # setup data
     column_headers = data.columns.values
     col_theta = column_headers[::2]
@@ -823,8 +854,9 @@ def xrd_fit(
         mod = None
         peakNames = []
         params = Parameters()
-        for l in range(len(thesePeaks)):
-            this_mod = make_model_xrd(l, i, thesePeaks, col_counts, col_theta, params)
+        for idx in range(len(thesePeaks)):
+            this_mod = make_model_xrd(
+                idx, i, thesePeaks, col_counts, col_theta, params)
             if mod is None:
                 mod = this_mod
             else:
@@ -868,7 +900,6 @@ def xrd_fit(
             ],
             names=['Coordinate', 'Data type'],
         )
-        columns = ['Peak 2θ', 'Peak intensity', 'FWHM', 'Lorentzian/Gaussian fraction']
         peakOutput = pd.DataFrame(data=peakData, columns=XRD_peaks_header)
 
         # extract fit and theta
@@ -879,7 +910,7 @@ def xrd_fit(
             ],
             names=['Coordinate', 'Data type'],
         )
-        if remove_background_fit != False:
+        if remove_background_fit is not False:
             fitData = np.vstack((x, y, out.best_fit - comps['bkg_'], comps['bkg_'])).T
         else:
             fitData = np.vstack((x, y, out.best_fit, comps['bkg_'])).T
@@ -930,7 +961,7 @@ def XRD_background(
                     np.nan
                 )  # cut data intensity around peaks in data_out
 
-        if Si_cut == True:
+        if Si_cut is True:
             idx_Si = np.where((two_theta >= 60) & (two_theta <= 70))[0]
             data_out[col_counts[i]][idx_Si] = np.nan
 
@@ -970,7 +1001,7 @@ def XRD_background(
         data_out.rename(columns={'': 'Corrected Intensity'}, inplace=True)
         k = k + 2
 
-        if withplots == True:
+        if withplots is True:
             plt.figure()
             coord = data_out.columns.get_level_values(0).unique()[i]
             plt.plot(two_theta, intensity, label='Original Data')
@@ -985,7 +1016,7 @@ def XRD_background(
             plt.title(f'XRD data at {coord}')
             plt.legend()
             plt.show()
-    display(data_out)
+    # display(data_out)
 
     return data_out
 
@@ -1000,9 +1031,12 @@ def raman_fit(
     plotscale='log',
     remove_background_fit=False,
 ):
-    """Fit data using models from lmfit. Gaussian for peaks, based on thePeaks output from initial_peaks, and
-    spline background model adjustable with knots. withplots and plotscale allows toggling plots on/off and picking scale.
-    Outputs: dataframe with Raman shift, measured intensity, fit intensity, peak locations, intensity, and FWHM"""
+    """Fit data using models from lmfit. Gaussian for peaks, based on thePeaks output
+    from initial_peaks, and
+    spline background model adjustable with knots. withplots and plotscale allows
+    toggling plots on/off and picking scale.
+    Outputs: dataframe with Raman shift, measured intensity, fit intensity, peak
+    locations, intensity, and FWHM"""
     # setup data
     column_headers = data.columns.values
     col_theta = column_headers[::2]
@@ -1026,8 +1060,9 @@ def raman_fit(
         mod = None
         peakNames = []
         params = Parameters()
-        for l in range(len(thesePeaks)):
-            this_mod = make_model_raman(l, i, thesePeaks, col_counts, col_theta, params)
+        for idx in range(len(thesePeaks)):
+            this_mod = make_model_raman(
+                idx, i, thesePeaks, col_counts, col_theta, params)
             if mod is None:
                 mod = this_mod
             else:
@@ -1050,7 +1085,6 @@ def raman_fit(
         peakHeights = np.array([])
         peakCenters = np.array([])
         peakFWHMs = np.array([])
-        peakFractions = np.array([])
         for j in range(len(peakNames)):
             peakCenter = round(out.params[peakNames[j] + 'center'].value, 2)
             peakHeight = round(out.params[peakNames[j] + 'height'].value, 3)
@@ -1072,11 +1106,12 @@ def raman_fit(
             [[col_theta[i][0]], ['Raman shift', 'Measured intensity', 'Fit intensity']],
             names=['Coordinate', 'Data type'],
         )
-        if remove_background_fit != False:
+        if remove_background_fit is not False:
             fitData = np.vstack((x, y, out.best_fit - comps['bkg_'])).T
         else:
             fitData = np.vstack((x, y, out.best_fit)).T
-        # fitOutput = pd.DataFrame(data=fitData, columns=['2θ','Measured intensity','Fit intensity'])
+        # fitOutput = pd.DataFrame(data=fitData, columns=['2θ','Measured intensity',
+        # 'Fit intensity'])
         fitOutput = pd.DataFrame(data=fitData, columns=XRD_data_header)
         RamanoutFrame = pd.concat([RamanoutFrame, fitOutput, peakOutput], axis=1)
 
@@ -1100,8 +1135,10 @@ def raman_fit(
 # Functions related to UPS analysis
 ##########################
 def UPS_fit(data, startvalue, fit_background=True, withplots=True, plotscale='linear'):
-    """Fit UPS data using dataframe input from read_UPS, the data is fitted by finding background and valence bands based on slope, they are both fitted
-    Output: dataframe with the background and fit intersection point, as well as the backgrounds intersect with x"""
+    """Fit UPS data using dataframe input from read_UPS, the data is fitted by finding
+    background and valence bands based on slope, they are both fitted
+    Output: dataframe with the background and fit intersection point, as well as the
+    backgrounds intersect with x"""
     column_headers = data.columns.values
     col_BE = column_headers[::2]
     col_counts = column_headers[1::2]
@@ -1155,7 +1192,7 @@ def UPS_fit(data, startvalue, fit_background=True, withplots=True, plotscale='li
             -out_bkg.params['reg_intercept'].value / out_bkg.params['reg_slope'].value
         )
 
-        if fit_background == True:
+        if fit_background is True:
             # finding the valence onset
 
             xselect_valence = x_reversed[
@@ -1273,13 +1310,15 @@ def UPS_fit(data, startvalue, fit_background=True, withplots=True, plotscale='li
 # Functions related to REELS analysis
 ##########################
 def REELS_fit(data, withplots=True, plotscale='linear'):
-    """Fit REELS data using dataframe input from read_REELS, the data is fitted by finding the the 0 energy loss peak position, and the onset of the energy loss curve
-    Output: dataframe with the onset and peak positions, as well as the band gap and the raw data."""
+    """Fit REELS data using dataframe input from read_REELS, the data is fitted by
+    finding the the 0 energy loss peak position, and the onset of the energy loss curve
+    Output: dataframe with the onset and peak positions, as well as the band gap and the
+      raw data."""
     column_headers = data.columns.values
     column_headers = data.columns.values
     col_BE = column_headers[::2]
     col_counts = column_headers[1::2]
-    mod = LinearModel(prefix='reg_')
+    LinearModel(prefix='reg_')
 
     BGS = np.array([])
     REELS_outframe = pd.DataFrame()
@@ -1303,7 +1342,7 @@ def REELS_fit(data, withplots=True, plotscale='linear'):
         # locates the onset of the energy loss.
         j = False
         k = 0
-        while j != True:
+        while j is not True:
             slope = yselect1[k + 1] - yselect1[k]
             if slope < 1400:
                 k = k + 1
@@ -1361,7 +1400,8 @@ def REELS_fit(data, withplots=True, plotscale='linear'):
 
 
 def plot_grid(coords, grid):
-    '''"Plot a set of real measurement points on a custom grid defined with the "measurement_grid" function. The corrected grid locations are shown."'''
+    """Plot a set of real measurement points on a custom grid defined with the 
+    "measurement_grid" function. The corrected grid locations are shown."""
     corrected_grid = coords_to_grid(coords, grid)
     plt.scatter(grid.iloc[:, 0], grid.iloc[:, 1], color='black', s=80)
     plt.scatter(coords.iloc[:, 0], coords.iloc[:, 1], color='green', s=20)
@@ -1385,9 +1425,9 @@ def plot_data(
     """Creates a XY plot/scatter plot based on datatype from a dataframe"""
 
     # x and y to list if only 1 value specified
-    if type(x) != list:
+    if not isinstance(x, list):
         x = [x]
-    if type(y) != list:
+    if not isinstance(y, list):
         y = [y]
     x_data = []
     y_data = []
@@ -1417,8 +1457,9 @@ def plot_data(
         x_data = np.transpose(x_data)
         y_data = np.transpose(y_data)
 
-    # if datatype with multiple values per point is plotted only selects one value, based on the datatype_select, datatype_select_value.
-    if datatype_select != None:
+    # if datatype with multiple values per point is plotted only selects one value,
+    # based on the datatype_select, datatype_select_value.
+    if datatype_select is not None:
         y_data = y_data.iloc[
             data.index[
                 data[
@@ -1453,7 +1494,7 @@ def plot_data(
     plt.xlabel(datatype_x)
     plt.ylabel(datatype_y)
     plt.yscale(plotscale)
-    if legend == True:
+    if legend is True:
         plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     if title == 'auto':
         plt.title(f'{datatype_y} over {datatype_x}')
@@ -1476,13 +1517,15 @@ def heatmap(
     xy = MI_to_grid(data).drop_duplicates(ignore_index=True)
 
     #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    # I have commented this line out as it broke when nans from divide by zeros from math_on_columns were in dataframe
-    # Hopefully nothing else breaks because of it? (Tested and found no problems at least...)
+    # I have commented this line out as it broke when nans from divide by zeros from
+    # math_on_columns were in dataframe
+    # Hopefully nothing else breaks because of it? (Tested and found no problems at
+    # least...)
     #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     # remove columns containing only nan values
     # data = data.dropna(axis = 1, how = 'all')
 
-    if datatype_select_value == None or datatype_select == None:
+    if datatype_select_value is None or datatype_select is None:
         values = data.iloc[:, data.columns.get_level_values(1) == datatype]
         values = values.dropna(axis=0, how='all').values
     else:
@@ -1520,16 +1563,16 @@ def heatmap(
     # fill in excluded data with a color instead of leaving it transparent
     # limit to min and max range
     tablelist = []
-    if min_limit != None:
+    if min_limit is not None:
         tablelist.append([dfPlot['Data'] < min_limit][0])
-    if max_limit != None:
+    if max_limit is not None:
         tablelist.append([dfPlot['Data'] > max_limit][0])
     # also use manually chosen coordinates to exclude
-    if excluded_x != None:
+    if excluded_x is not None:
         # convert coordinate to list (if only a single point is provided)
-        if type(excluded_x) != list:
+        if not isinstance(excluded_x, list):
             excluded_x = [excluded_x]
-        if type(excluded_y) != list:
+        if not isinstance(excluded_y, list):
             excluded_y = [excluded_y]
         # find the grid the data is using
         grid = pd.concat([dfPlot['X (mm)'], dfPlot['Y (mm)']], axis=1)
@@ -1543,20 +1586,20 @@ def heatmap(
             tablelist.append(xytrue)
 
     plotnans = 0
-    if min_limit or max_limit or excluded_x != None:
+    if min_limit or max_limit or excluded_x is not None:
         # sum up all excluded values in a final exclusion table
         table = np.array([sum(i) for i in zip(*tablelist)]).astype(bool)
 
         dfPlot_nans = dfPlot.copy()
         dfPlot_nans['Data'].loc[~table] = float('NaN')
-        dfPlot_nans['Data'].loc[dfPlot_nans['Data'].isna() == False] = 100
+        dfPlot_nans['Data'].loc[dfPlot_nans['Data'].isna() is False] = 100
 
         dfPlot_nans = dfPlot_nans.pivot(index='Y (mm)', columns='X (mm)', values='Data')
         dfPlot_nans = dfPlot_nans.iloc[::-1]
         plotnans = 1
 
     dfPlot_vals = dfPlot.copy()
-    if min_limit or max_limit or excluded_x != None:
+    if min_limit or max_limit or excluded_x is not None:
         dfPlot_vals['Data'].loc[table] = float('NaN')
     dfPlot_vals = dfPlot_vals.pivot(index='Y (mm)', columns='X (mm)', values='Data')
     dfPlot_vals = dfPlot_vals.iloc[::-1]
@@ -1578,7 +1621,10 @@ def new_heatmap(
     savepath=None,
     title=None,
 ):
-    "plot heatmaps with interpolated background, like in Nomad, if savepath ends with .png, it will save as png, if it ends with .html, it will save as html (interactive)"
+    """
+    plot heatmaps with interpolated background, like in Nomad, if savepath ends with
+    .png, it will save as png, if it ends with .html, it will save as html (interactive)
+    """
 
     if filepath is not None:
         raw_data = pd.read_excel(filepath, header=0)
@@ -1587,7 +1633,7 @@ def new_heatmap(
         z = raw_data[datatype].values
 
     if data is not None:
-        if exclude != None:
+        if exclude is not None:
             for point in exclude:
                 data = data.drop(
                     data.iloc[:, data.columns.get_level_values(0) == point], axis=1
@@ -1595,7 +1641,7 @@ def new_heatmap(
         xy = MI_to_grid(data).drop_duplicates(ignore_index=True)
         x = xy['x'].values
         y = xy['y'].values
-        if index == None:
+        if index is None:
             z = (
                 data.iloc[:, data.columns.get_level_values(1) == datatype]
                 .dropna()
@@ -1642,7 +1688,7 @@ def new_heatmap(
         cbar_title = 'Ba Atomic %'
     else:
         cbar_title = datatype
-    if cbar != None:
+    if cbar is not None:
         cbar_title = cbar
 
     heatmap = go.Heatmap(
@@ -1656,7 +1702,7 @@ def new_heatmap(
 
     fig = go.Figure(data=[heatmap, scatter])
 
-    if title == None:
+    if title is None:
         title = datatype
 
     fig.update_layout(
@@ -1696,9 +1742,9 @@ def plot_scatter_colormap(
 ):
     """Creates a XY plot/scatter plot based on datatype"""
     # x and y to list if only 1 value specified
-    if type(x) != list:
+    if not isinstance(x, list):
         x = [x]
-    if type(y) != list:
+    if not isinstance(y, list):
         y = [y]
     x_data = []
     y_data = []
@@ -1729,8 +1775,9 @@ def plot_scatter_colormap(
         y_data = np.transpose(y_data)
         z_data = np.transpose(z_data)
 
-    # if datatype with multiple values per point is plotted only selects one value, based on the datatype_select, datatype_select_value.
-    if datatype_select != None:
+    # if datatype with multiple values per point is plotted only selects one value,
+    # based on the datatype_select, datatype_select_value.
+    if datatype_select is not None:
         z_data = z_data.iloc[
             data.index[
                 data[
@@ -1751,13 +1798,13 @@ def plot_scatter_colormap(
         z_data = z_data.values[0]
 
     # removes data points above the max limit of the z data
-    if max_limit != None:
+    if max_limit is not None:
         x_data = x_data[z_data < max_limit]
         y_data = y_data[z_data < max_limit]
         z_data = z_data[z_data < max_limit]
 
     # removes data points below the min limit of the z data
-    if min_limit != None:
+    if min_limit is not None:
         x_data = x_data[z_data > min_limit]
         y_data = y_data[z_data > min_limit]
         z_data = z_data[z_data > min_limit]
@@ -1781,7 +1828,7 @@ def plot_scatter_colormap(
 
 
 def closest_coord(grid, x, y):
-    '''"Find closest x and y coordinate for a grid."'''
+    """Find closest x and y coordinate for a grid."""
     xminindex = np.abs(grid - x).idxmin().iloc[0]
     xcoord = grid.iloc[xminindex, 0]
     yminindex = np.abs(grid[grid['x'] == xcoord] - y).idxmin().iloc[1]
@@ -1790,13 +1837,13 @@ def closest_coord(grid, x, y):
 
 
 def combine_data(datalist):
-    '''"Combine multiple measurements into a single dataframe."'''
+    """Combine multiple measurements into a single dataframe."""
     dataframe = pd.concat(datalist, axis=1)
     return dataframe
 
 
 def compare_atomic_XPS(data, type1, type2):
-    '''"Outdated, use math_on_columns instead."'''
+    """Outdated, use math_on_columns instead."""
     row = []
     datalength = len(data.columns.get_level_values(1).unique())
     for i in range(0, len(data.values[0]), datalength):
@@ -1830,7 +1877,9 @@ def compare_atomic_XPS(data, type1, type2):
 
 
 def math_on_columns(data, type1, type2, operation='/'):
-    '''"Perform an operation on two columns in a provided dataframe. Usage: math_on_columns(data, datatype1, datatype2, operation), where "operation" can be +, -, *, or /."'''
+    """Perform an operation on two columns in a provided dataframe. Usage:
+    math_on_columns(data, datatype1, datatype2, operation), where "operation" can be
+    +, -, *, or /."""
     coordinatelength = len(data.columns.get_level_values(0).unique())
     headerlength = len(data.columns.get_level_values(1).unique())
     k = 0
@@ -1876,18 +1925,20 @@ def math_on_columns(data, type1, type2, operation='/'):
 
 
 def get_data(data, type='all', x='all', y='all', printinfo=True, drop_nan=True):
-    '''"Print a data type from a multi index dataframe at a specific coordinate. The coordinate does not have to be exact. Leave type as blank or 'all' to select all types. Leave coordinates blank or 'all' to select all coordinates."'''
+    """Print a data type from a multi index dataframe at a specific coordinate. The
+    coordinate does not have to be exact. Leave type as blank or 'all' to select all
+    types. Leave coordinates blank or 'all' to select all coordinates."""
     if x == 'all' and y == 'all':
         if type == 'all':
-            if printinfo == True:
+            if printinfo is True:
                 print('All data at all coordinates.')
-            if drop_nan == True:
+            if drop_nan is True:
                 data = data.dropna(axis=0, how='all').fillna('-')
             return data
         else:
-            if printinfo == True:
+            if printinfo is True:
                 print(f'{type} data at all coordinates.')
-            if drop_nan == True:
+            if drop_nan is True:
                 data = data.dropna(axis=0, how='all').fillna('-')
             return data.iloc[:, data.columns.get_level_values(1) == type]
     else:
@@ -1896,21 +1947,22 @@ def get_data(data, type='all', x='all', y='all', printinfo=True, drop_nan=True):
         xcoord, ycoord = closest_coord(datagrid, x, y)
         coords = f'{xcoord},{ycoord}'
         if type == 'all':
-            if printinfo == True:
+            if printinfo is True:
                 print(f'All data at {x},{y}.')
-            if drop_nan == True:
+            if drop_nan is True:
                 data = data.dropna(axis=0, how='all').fillna('-')
             return data.xs(coords, axis=1)
         else:
-            if printinfo == True:
+            if printinfo is True:
                 print(f'{type} data at {x},{y}.')
-            if drop_nan == True:
+            if drop_nan is True:
                 data = data.dropna(axis=0, how='all').fillna('-')
             return data.xs(coords, axis=1)[type]
 
 
 def translate_data(data, x, y):
-    '''"Move a set of datapoints by a given x and y offset. Useful when combining multiple samples into one dataframe."'''
+    """Move a set of datapoints by a given x and y offset. Useful when combining
+    multiple samples into one dataframe."""
     coords = MI_to_grid(data)
     coords['x'] = coords['x'] + x
     coords['y'] = coords['y'] + y
@@ -1924,7 +1976,8 @@ def translate_data(data, x, y):
 
 
 def get_data_index(data, x, y):
-    '''"Recommended to use get_data instead. Does not work for XRD data. Prints data from a multi index dataframe at a specific index."'''
+    """Recommended to use get_data instead. Does not work for XRD data. Prints data
+    from a multi index dataframe at a specific index."""
     datagrid = MI_to_grid(data)
     xlist = datagrid['x'].unique()
     ylist = datagrid['y'].unique()
@@ -1934,12 +1987,12 @@ def get_data_index(data, x, y):
 
 
 def save_data(dataframe, filename, separator='\t'):
-    '''"Save dataframe to tab seperated txt file."'''
+    """Save dataframe to tab seperated txt file."""
     dataframe.to_csv(filename, separator, index=False, encoding='utf-8')
 
 
 def load_data(filepath, separator='\t'):
-    '''"Load txt to dataframe."'''
+    """Load txt to dataframe."""
     dataframe = pd.read_csv(filepath, sep=separator, header=[0, 1])
     dataframe.columns.rename(['Coordinate', 'Data type'], level=[0, 1], inplace=True)
     return dataframe
@@ -1980,13 +2033,15 @@ def old_EDS_coordinates(
         areax = 2.8 * 100 / mag
         areay = 4.1 * 100 / mag
 
-    if rotate == False:
-        # Calculate the effective area size in the x-direction, considering magnification,
+    if rotate is False:
+        # Calculate the effective area size in the x-direction, considering
+        # magnification,
         # assuming the x/y ratio is constant 4.1 : 2.8
         areax = 4.1 * 100 / mag
         areay = 2.8 * 100 / mag
 
-    # Calculate the spacing , gridlength and starting x-coordinate for the grid in x-direction (assuming the grid is centered)
+    # Calculate the spacing , gridlength and starting x-coordinate for the grid in
+    # x-direction (assuming the grid is centered)
     space_x = areax * spacing / 100
     gridlength = (ncolumns - 1) * (space_x + areax) + areax
     startx = -gridlength / 2 + (areax / 2)
@@ -1999,15 +2054,15 @@ def old_EDS_coordinates(
 
     # Check if the grid dimensions exceed the maximum allowed size (31x31 mm)
     # if so, reduce the spacing by 10% and try again
-    if gridlength >= 39 - edge or gridheight >= 39 - edge:
-        print('Spacing is too large for the map')
+    # if gridlength >= 39 - edge or gridheight >= 39 - edge:
+    #     print('Spacing is too large for the map')
 
-        new_spacing = np.round(spacing - spacing * 0.1, 0)
-        print('New spacing is', new_spacing)
+    #     new_spacing = np.round(spacing - spacing * 0.1, 0)
+    #     print('New spacing is', new_spacing)
 
-        return EDS_coordinates(
-            ncolumns, nrows, mag, new_spacing, filepath, new_path, rotate
-        )
+    #     return EDS_coordinates(
+    #         ncolumns, nrows, mag, new_spacing, filepath, new_path, rotate
+    #     )
 
     # Create a list to hold grid parameters (input of the grid function)
     grid_input = [
@@ -2053,7 +2108,7 @@ def read_CRAIC(file_path, header_lines=10, print_header=True):
 
     data = pd.DataFrame({'Wavelength': wavelengths, 'Intensity': intensities})
 
-    if print_header == True:
+    if print_header is True:
         print('Header Lines:')
 
         for line in header:
@@ -2116,7 +2171,7 @@ def CRAIC_map(
         # calculate absorption coefficient
         data_A = -(np.log(data_T['Intensity'] / (100 - data_R['Intensity']))) * 10**5
 
-        if with_plots == True:
+        if with_plots is True:
             ax[0].plot(x_axis, data_R['Intensity'], label=f' {i}')
             ax[1].plot(x_axis, data_T['Intensity'], label=f' {i}')
             ax[2].plot(x_axis, data_A, label=f' {i}')
@@ -2278,7 +2333,7 @@ def fit_two_related_peaks(x, y):
 
     # Set constraints for the second peak based on the provided relations
     # xpeak2 = 2 * np.arcsin((0.154439 / 0.1540562) * np.sin(center1 / 2))
-    xpeak2 = (360 / np.pi) * np.arcsin(
+    (360 / np.pi) * np.arcsin(
         (0.154439 / 0.1540562) * np.sin(center1 * np.pi / 360)
     )
 
@@ -2363,16 +2418,18 @@ def fit_this_peak(data, peak_position, fit_range, withplots=True, printinfo=Fals
             fraction2,
         ) = fit_two_related_peaks(x_range, y_range)
 
-        if printinfo == True:
+        if printinfo is True:
             print(dat_theta.columns[i][0])
             print(
-                f'Peak 1 - Amplitude: {amplitude1:.2f}, FWHM: {fwhm1:.2f}, Center: {center1:.2f}, Fraction: {fraction1:.2f}'
+                f'Peak 1 - Amplitude: {amplitude1:.2f}, FWHM: {fwhm1:.2f}, '
+                f'Center: {center1:.2f}, Fraction: {fraction1:.2f}'
             )
             print(
-                f'Peak 2 - Amplitude: {amplitude2:.2f}, FWHM: {fwhm2:.2f}, Center: {center2:.2f}, Fraction: {fraction2:.2f}'
+                f'Peak 2 - Amplitude: {amplitude2:.2f}, FWHM: {fwhm2:.2f}, '
+                f'Center: {center2:.2f}, Fraction: {fraction2:.2f}'
             )
 
-        if withplots == True:
+        if withplots is True:
             plt.plot(
                 x_range,
                 y_range,
@@ -2402,7 +2459,7 @@ def fit_this_peak(data, peak_position, fit_range, withplots=True, printinfo=Fals
         df_fitted_peak = pd.concat([df_fitted_peak, df_fit_info, df_peak_info], axis=1)
 
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    display(df_fitted_peak)
+    # display(df_fitted_peak)
     return df_fitted_peak
 
 
@@ -2424,7 +2481,10 @@ def interactive_XRD_shift(
     colors='rows',
     savepath=None,
 ):
-    "interactive shifted plot for assigning phases to XRD data, specify if you want different colors per each row or a rainbow colormap"
+    """
+    interactive shifted plot for assigning phases to XRD data, specify if you want
+    different colors per each row or a rainbow colormap
+    """
     fig = make_subplots(
         rows=2,
         cols=1,
@@ -2556,7 +2616,8 @@ def interactive_XRD_shift(
 
     # Update buttons to control the visibility of one reference at a time
     for i, button in enumerate(buttons):
-        # Make the selected reference spectrum visible in the bottom plot and its peaks visible in the top plot
+        # Make the selected reference spectrum visible in the bottom plot and its peaks
+        # visible in the top plot
         button['args'][0]['visible'][len(x) :] = [False] * len(
             ref_traces
         )  # Hide all refs initially
@@ -2608,7 +2669,8 @@ def extract_coordinates(data):
 
 
 def EDX_stage_coords(folder, filename):
-    "Calculate EDX coordinates for a given file. Requires .xlsx file with columns as in template."
+    """Calculate EDX coordinates for a given file. Requires .xlsx file with columns as
+    in template."""
 
     # Define file paths
     filepath = os.path.join(folder, filename + '.xlsx')
@@ -2658,7 +2720,8 @@ def EDX_stage_coords(folder, filename):
 
 
 def EDX_sample_coords(folder, filename):
-    "Calculate and translate EDX coordinates for a given file. Requires .xlsx file with columns as in template."
+    """Calculate and translate EDX coordinates for a given file. Requires .xlsx file
+    with columns as in template."""
 
     # Define file paths
     filepath = os.path.join(folder, filename + '.xlsx')
@@ -2720,7 +2783,8 @@ def EDX_sample_coords(folder, filename):
 
 
 def EDX_coordinates(folder, filename, edge=3, rotate=False, spacing='auto'):
-    "Calculate and translate EDX coordinates for a given file. Requires .xlsx file with columns as in template."
+    """Calculate and translate EDX coordinates for a given file. Requires .xlsx file
+    with columns as in template."""
 
     # Define file paths
     filepath = os.path.join(folder, filename + '.xlsx')
@@ -2745,13 +2809,15 @@ def EDX_coordinates(folder, filename, edge=3, rotate=False, spacing='auto'):
         areax = 2.8 * 100 / mag
         areay = 4.1 * 100 / mag
 
-    if rotate == False:
-        # Calculate the effective area size in the x-direction, considering magnification,
+    if rotate is False:
+        # Calculate the effective area size in the x-direction, considering
+        # magnification,
         # assuming the x/y ratio is constant 4.1 : 2.8
         areax = 4.1 * 100 / mag
         areay = 2.8 * 100 / mag
 
-    # Calculate the spacing , gridlength and starting x-coordinate for the grid in x-direction (assuming the grid is centered)
+    # Calculate the spacing , gridlength and starting x-coordinate for the grid in
+    # x-direction (assuming the grid is centered)
     space_x = areax * spacing / 100
     gridlength = (ncolumns - 1) * (space_x + areax)  # + areax
     startx = -gridlength / 2  # + (areax / 2)
@@ -2836,7 +2902,8 @@ def lp_translate_excel(folder, filename):
 
 
 def select_points(data, x_min=-40, x_max=40, y_min=-40, y_max=40):
-    "get coordinates of the points within the defined range, you can call them with get_data, or plot_data, or interactive_XRD_shift"
+    """get coordinates of the points within the defined range, you can call them with
+    get_data, or plot_data, or interactive_XRD_shift"""
     grid0 = MI_to_grid(data)
     grid = grid0.drop_duplicates().reset_index(drop=True)
 
@@ -2850,7 +2917,8 @@ def select_points(data, x_min=-40, x_max=40, y_min=-40, y_max=40):
 
 
 def ternary_plot(df, el1, el2, el3, datatype, title, savepath=None):
-    "make a ternary plot of the data in df, with el1, el2, el3 as the corners, and colorscale based on datatype"
+    """make a ternary plot of the data in df, with el1, el2, el3 as the corners, and
+    colorscale based on datatype"""
 
     A = f'Layer 1 {el1} Atomic %'
     B = f'Layer 1 {el2} Atomic %'
@@ -2882,9 +2950,11 @@ def ternary_plot(df, el1, el2, el3, datatype, title, savepath=None):
                 },
                 # 'text': coordinates,
                 'customdata': custom_data,
-                'hovertemplate': f'{el1}: %{{a:.1f}}%<br>{el2}: %{{b:.1f}}%<br>{el3}: %{{c:.1f}}%'
-                f'<br>{datatype}: %{{marker.color:.1f}}'
-                f'<br>Coordinates: (%{{customdata[0]:.1f}}, %{{customdata[1]:.1f}})',
+                'hovertemplate': (
+                    f'{el1}: %{{a:.1f}}%<br>{el2}: %{{b:.1f}}%<br>{el3}: %{{c:.1f}}%'
+                    f'<br>{datatype}: %{{marker.color:.1f}}'
+                    f'<br>Coordinates: (%{{customdata[0]:.1f}}, %{{customdata[1]:.1f}})'
+                ),
                 'showlegend': False,
             }
         )
@@ -2969,7 +3039,8 @@ def ternary_discrete_attempt(
     savepath=None,
 ):
     """
-    Create a ternary plot with discrete colors for string intensities and different marker shapes for phases.
+    Create a ternary plot with discrete colors for string intensities and different
+    marker shapes for phases.
 
     Parameters:
     df (pd.DataFrame): DataFrame containing the data.
@@ -2991,9 +3062,9 @@ def ternary_discrete_attempt(
     C_percent = get_data(df, C).loc[0].values.flatten()
     intensity = get_data(df, intensity_label).loc[0]
     phase = get_data(df, shape_label).loc[0]
-    if include_id == True:
+    if include_id is True:
         sample_id = get_data(df, 'Sample ID').loc[0]
-    elif include_id == False:
+    elif include_id is False:
         sample_id = ['unknown sample'] * len(intensity)
     # coords = MI_to_grid(df).values
     X, Y = extract_coordinates(df)  # problems if more than one point with same coords
@@ -3026,7 +3097,8 @@ def ternary_discrete_attempt(
     # custom_data = list(zip(X,Y, intensity, phase))
     custom_data = list(zip(X, Y, intensity, phase, sample_id))
 
-    # Create the ternary plot with custom hover text, colored markers, and different shapes
+    # Create the ternary plot with custom hover text, colored markers, and different
+    # shapes
     fig = go.Figure(
         go.Scatterternary(
             {
@@ -3044,18 +3116,24 @@ def ternary_discrete_attempt(
                         'tickvals': list(
                             color_map.values()
                         ),  # Set tick values to the mapped color indices
-                        'ticktext': unique_intensities,  # Set tick text to the unique intensity values
+                        'ticktext': unique_intensities,  # Set tick text to the unique
+                        # intensity values
                     },
                     'line': {'width': 1},
                 },
                 'customdata': custom_data,  # Store the x-coordinates in custom data
-                # 'text': coords,#df.columns.get_level_values(0).unique(),  # Labels for the points
-                # 'hovertemplate': f'{el1}: %{{a:.1f}}%<br>{el2}: %{{b:.1f}}%<br>{el3}: %{{c:.1f}}%<br>Coordinates: %{{text}}<br>{intensity_label}: %{{marker.color}}%',  # Custom hover text format
-                'hovertemplate': f'{el1}: %{{a:.1f}}%<br>{el2}: %{{b:.1f}}%<br>{el3}: %{{c:.1f}}%'
-                f'<br>Coordinates: (%{{customdata[0]:.1f}}, %{{customdata[1]:.1f}})'
-                f'<br>{intensity_label}: %{{customdata[2]}}'
-                f'<br>{shape_label}: %{{customdata[3]}}'
-                f'<br>Sample: %{{customdata[4]:.0f}}',  # Custom hover text format
+                # 'text': coords,#df.columns.get_level_values(0).unique(),  # Labels
+                # for the points
+                # 'hovertemplate': f'{el1}: %{{a:.1f}}%<br>{el2}: %{{b:.1f}}%<br>{el3}:
+                # %{{c:.1f}}%<br>Coordinates: %{{text}}<br>{intensity_label}:
+                # %{{marker.color}}%',  # Custom hover text format
+                'hovertemplate': (
+                    f'{el1}: %{{a:.1f}}%<br>{el2}: %{{b:.1f}}%<br>{el3}: %{{c:.1f}}%'
+                    f'<br>Coordinates: (%{{customdata[0]:.1f}}, %{{customdata[1]:.1f}})'
+                    f'<br>{intensity_label}: %{{customdata[2]}}'
+                    f'<br>{shape_label}: %{{customdata[3]}}'
+                    f'<br>Sample: %{{customdata[4]:.0f}}'
+                ),
                 'name': 'Data Points',
                 'showlegend': False,
             }
@@ -3120,7 +3198,8 @@ def ternary_discrete_attempt(
 
 
 def rotate_coordinates(data_df, how='clockwise'):
-    "Rotate the coordinates of the data by 90 degrees clockwise, counterclockwise or 180 degrees"
+    """Rotate the coordinates of the data by 90 degrees clockwise, counterclockwise or
+    180 degrees"""
     MI_rotated = []
     initial_coordinates = MI_to_grid(data_df)
 
@@ -3152,8 +3231,9 @@ def rotate_coordinates(data_df, how='clockwise'):
 def assign_phases_labels(data):
     """Function to assign phases to specific points in a dataset.
     Returns:
-        phase_info (dict): Dictionary where the key is the phase and the value is a list of 'unknown', 'amorphous', or the phase name
-                           corresponding to the presence of that phase at each coordinate.
+        phase_info (dict): Dictionary where the key is the phase and the value is a
+            list of 'unknown', 'amorphous', or the phase name corresponding to the
+            presence of that phase at each coordinate.
     """
     coords = data.columns.get_level_values(0).unique()
 
@@ -3196,7 +3276,8 @@ def assign_phases_labels(data):
 
         # Ask which points should be set to the other phase
         selected_points = input(
-            f"\nWhich points should be set to '{other_phase}'? (Enter numbers separated by commas): "
+            f"\nWhich points should be set to '{other_phase}'? "
+            '(Enter numbers separated by commas): '
         ).strip()
         selected_indices = [
             int(idx.strip()) - 1
@@ -3217,10 +3298,12 @@ def assign_phases_labels(data):
 
 def assign_phases_numbers(data):
     # obsolete, use phase labels instead
-    """Function to assign phases to specific points in a dataset.  coords (list of tuples): List of coordinates available for selection.
+    """Function to assign phases to specific points in a dataset.  coords
+    (list of tuples): List of coordinates available for selection.
     Returns:
-        phase_info (dict): Dictionary where the key is the phase and the value is a list of 'yes'/'no'
-                           corresponding to the presence of that phase at each coordinate.
+        phase_info (dict): Dictionary where the key is the phase and the value is a
+            list of 'yes'/'no' corresponding to the presence of that phase at each
+            coordinate.
     """
     coords = data.columns.get_level_values(0).unique()
 
@@ -3235,7 +3318,8 @@ def assign_phases_numbers(data):
     # Determine if phase is present in most or few points
     presence_type = (
         input(
-            "Is the phase present in most points or few points? (type 'most' or 'few'): "
+            'Is the phase present in most points or few points? '
+            "(type 'most' or 'few'): "
         )
         .strip()
         .lower()
@@ -3257,7 +3341,8 @@ def assign_phases_numbers(data):
     # Ask which points should be changed
     if presence_type == 'most':
         selected_points = input(
-            "\nWhich points should be set to 'no'? (Enter numbers separated by commas): "
+            "\nWhich points should be set to 'no'? "
+            '(Enter numbers separated by commas): '
         ).strip()
         selected_indices = [
             int(idx.strip()) - 1
@@ -3269,7 +3354,8 @@ def assign_phases_numbers(data):
                 phase_present[idx] = 0
     else:  # presence_type == 'few'
         selected_points = input(
-            "\nWhich points should be set to 'yes'? (Enter numbers separated by commas): "
+            "\nWhich points should be set to 'yes'? "
+            '(Enter numbers separated by commas): '
         ).strip()
         selected_indices = [
             int(idx.strip()) - 1
@@ -3304,7 +3390,8 @@ def find_composition(
     tolerance=3,
     sample='sample',
 ):
-    "find te points in the sample where the composition is in a certain range, given in % ranges or in stoichiometry and tolerance"
+    """find te points in the sample where the composition is in a certain range, given
+    in % ranges or in stoichiometry and tolerance"""
 
     if stoichiometry:
         tot = sum(stoichiometry)
@@ -3356,15 +3443,18 @@ def find_composition(
     plt.ylabel('y position (mm)')
     if stoichiometry:
         plt.title(
-            f'{sample} - Positions where composition is {el1}{stoichiometry[0]}, {el2}{stoichiometry[1]}, {el3}{stoichiometry[2]} +-{tolerance}%'
+            f'{sample} - Positions where composition is {el1}{stoichiometry[0]}, '
+            f'{el2}{stoichiometry[1]}, {el3}{stoichiometry[2]} +-{tolerance}%'
         )
     else:
         plt.title(
-            f'{sample} - Positions where {el1}: {range1[0]:.1f}-{range1[1]:.1f}%, {el2}: {range2[0]:.1f}-{range2[1]:.1f}%, {el3}: {range3[0]:.1f}-{range3[1]:.1f}%'
+            f'{sample} - Positions where {el1}: {range1[0]:.1f}-{range1[1]:.1f}%, '
+            f'{el2}: {range2[0]:.1f}-{range2[1]:.1f}%, {el3}: {range3[0]:.1f}-'
+            f'{range3[1]:.1f}%'
         )
-    if display_option == True:
-        for i in range(0, len(good_comp)):
-            display(get_data(data, x=good_comp['X'][i], y=good_comp['Y'][i]))
+    # if display_option == True:
+    #     for i in range(0, len(good_comp)):
+    #         display(get_data(data, x=good_comp['X'][i], y=good_comp['Y'][i]))
     return good_comp
 
 
@@ -3398,6 +3488,3 @@ def calculate_el_thickness(df, el):
         columns=f'Layer 1 {el} Atomic % * Layer 1 Thickness (nm)', level=1, inplace=True
     )
     return df
-
-
-# %%
