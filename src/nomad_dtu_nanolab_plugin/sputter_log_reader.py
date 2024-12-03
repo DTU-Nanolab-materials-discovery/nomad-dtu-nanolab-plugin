@@ -4498,10 +4498,8 @@ def read_file(file_path):
             print('Reading as log file')
             return read_logfile(file_path)
 
-def follow_peak(
-        spectra,
-        peak_pos=[656.1, 341.76, 311.9]
-        ):
+
+def follow_peak(spectra, peak_pos=[656.1, 341.76, 311.9]):
     """
     Track the intensity of specified peaks in the spectra data over time.
 
@@ -4524,11 +4522,7 @@ def follow_peak(
         - Peak position columns
         - Corresponding peak name columns (if position is in `PEAK_NAME`)
     """
-    PEAK_NAME = {
-        656.1: 'H',
-        341.76: 'PH',
-        311.9: 'S2'
-    }
+    PEAK_NAME = {656.1: 'H', 341.76: 'PH', 311.9: 'S2'}
 
     # Ensure peak_pos is iterable
     peak_pos = [peak_pos] if isinstance(peak_pos, (int, float)) else peak_pos
@@ -4544,7 +4538,7 @@ def follow_peak(
             idx = (spectra['data']['x'] - pos).abs().idxmin()
             intensity = spectra['data'][key][idx]
             # Add intensity for position column
-            row[f"{pos}"] = intensity
+            row[f'{pos}'] = intensity
             # Add intensity for peak name column if exists
             if name:
                 row[name] = intensity
@@ -4557,6 +4551,7 @@ def follow_peak(
     peak_intensity = peak_intensity.groupby('Time Stamp').first().reset_index()
 
     return peak_intensity
+
 
 # Function to read the IDOL combinatorial chamber CSV logfile
 def read_logfile(file_path):
@@ -4611,7 +4606,7 @@ def merge_logfile_rga(
         pd.DataFrame: Merged DataFrame with aligned timestamps and NaN for missing
         values.
     """
-    #if df2 columns are found in df1, return df1 already
+    # if df2 columns are found in df1, return df1 already
     if all(col in df1.columns for col in df2.columns):
         return df1
 
