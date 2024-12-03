@@ -47,16 +47,16 @@ SAMPLES_TO_REMOVE = [
 ]
 
 SAMPLES_TO_TEST = [
-    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
-    'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
+    # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
+    # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
     # 'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
-    # 'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
+    'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
     # 'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
     # 'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
     # 'mittma_0007_Cu_Recording Set 2024.06.03-09.52.29',
     # 'anait_0010_Ba_Recording Set 2024.11.12-09.20.00',
-    'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
-    'mittma_0028_Cu_Recording Set 2024.11.22-07.19.41',
+    # 'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
+    # 'mittma_0028_Cu_Recording Set 2024.11.22-07.19.41',
 ]
 
 
@@ -513,10 +513,9 @@ STEP_COLORS = {
 }
 # Choosing what to plot in the overview plot
 OVERVIEW_PLOT = [
-    'PC Substrate Shutter Open',
     'PC Capman Pressure',
     'Substrate Heater Temperature',
-    'Sulfur Cracker Control Enabled',
+    # 'Sulfur Cracker Control Enabled',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'Sulfur Cracker Control Setpoint Feedback',
     'Sulfur Cracker Control Sensor Value',
@@ -4069,74 +4068,89 @@ def create_dual_y_plot(plot_params):
     return fig
 
 
-def update_scatter_colors(fig, df, color_column, color_map):
+def update_scatter_colors(
+    fig, df, column, color_map=None, marker_map=None, trace_index=None
+):
     """
-    Update the colors of the existing traces in the Plotly figure based
-    on the direction.
+    Update the colors and markers of specific or all traces in the Plotly figure
+    based on the specified column, and add color/marker legend information.
 
     Args:
         fig (go.Figure): The Plotly figure object to update.
         df (pd.DataFrame): The original dataframe used for plotting.
-        color_column (str): The column containing the column name for coloring.
-        color_map (dict): A dictionary mapping values to colors.
+        column (str): The column used for determining marker properties.
+        color_map (dict, optional): A dictionary mapping values to colors.
+        marker_map (dict, optional): A dictionary mapping values to marker types.
+        trace_index (int, optional): The index of the specific trace to update. Default is None, meaning all traces.
     """
+    # Determine which traces to update
+    traces_to_update = [trace_index] if trace_index is not None else range(len(fig.data))
 
-    # Check if there is more than one trace
-    if len(fig.data) > 1:
-        raise ValueError('The figure contains more than one trace.')
-
-    # If there is exactly one trace, proceed with updating it
-    if len(fig.data) == 1:
-        trace = fig.data[0]  # Get the only trace in the figure
+    for i in traces_to_update:
+        trace = fig.data[i]
 
         # Get the x-values of the current trace
         x_vals = trace.x
 
-        # Ensure the x-values are numeric or timestamp-like
+        # Ensure x-values are numeric or timestamp-like
         if isinstance(x_vals[0], str):
-            x_vals = pd.to_datetime(x_vals)  # Convert to datetime if necessary
+            x_vals = pd.to_datetime(x_vals)
 
         # Filter the DataFrame based on the x-values of the trace
         filtered_df = df[df['Time Stamp'].isin(x_vals)]
 
-        # Check if the color_column exists and update the trace color
-        if not filtered_df.empty and color_column in filtered_df.columns:
-            # Map the color for each point based on the color_column value
-            colors = filtered_df[color_column].map(color_map).fillna('gray')
+        # Apply color and marker updates
+        if not filtered_df.empty and column in filtered_df.columns:
+            if color_map:
+                # Map colors based on the color column
+                colors = filtered_df[column].map(color_map).fillna('gray')
+                trace.marker.color = colors.tolist()
+            if marker_map:
+                # Map marker symbols based on the column
+                markers = filtered_df[column].map(marker_map).fillna('circle')
+                trace.marker.symbol = markers.tolist()
 
-            # Update the trace's marker color (apply color for each point)
-            trace.marker.color = colors.tolist()
-            trace.showlegend = False  # Remove default legend for this trace
+    # Add custom legend entries
+    legend_entries = []
 
-        # Create legend entries based on the color_map (keys are labels,
-        # values are colors)
-        legend_entries = []
-        # Add a legend entry for the color_column (no marker, just the label)
-        legend_entries.append(
-            go.Scatter(
-                x=[None],  # No data points needed for the legend entry
-                y=[None],  # No data points needed for the legend entry
-                mode='text',  # This makes it just a label without a marker
-                text=[f'{color_column}'],  # Display the color_column as the label
-                showlegend=True,
-                name=f'{color_column}',  # The legend label as the color column name
-            )
+    # Add a legend entry for the column label (in text mode, no marker)
+    legend_entries.append(
+        go.Scatter(
+            x=[None],  # No data points for legend entry
+            y=[None],
+            mode="text",
+            text=[f"{column}"],  # Column name
+            showlegend=True,
+            name=f"{column}",  # Legend label
         )
+    )
+
+    # Add legend entries for the color map
+    if color_map:
         for key, color in color_map.items():
             legend_entries.append(
                 go.Scatter(
-                    x=[None],  # No data points needed for the legend entry
-                    y=[None],  # No data pointsi d needed for the legend entry
-                    mode='markers',
-                    marker=dict(color=color, size=5),  # Customize marker
-                    name=str(key),  # The legend label as the color map key
-                    showlegend=True,
+                    x=[None], y=[None], mode="markers",
+                    marker=dict(color=color, size=10),
+                    name=f"{key} (Color)"
                 )
             )
 
-        # Add the legend entries to the figure
-        fig.add_traces(legend_entries)
+    # Add legend entries for the marker map
+    if marker_map:
+        for key, marker in marker_map.items():
+            legend_entries.append(
+                go.Scatter(
+                    x=[None], y=[None], mode="markers",
+                    marker=dict(symbol=marker, size=10),
+                    name=f"{key} (Marker)"
+                )
+            )
 
+    fig.add_traces(legend_entries)
+
+    # Ensure the legend is visible for the entire figure
+    fig.update_layout(showlegend=True)
 
 def generate_timeline(
     events_to_plot,
@@ -4315,21 +4329,123 @@ def generate_bias_plot(
     return bias_plot
 
 
-def generate_overview_plot(data, logfile_name):
+def generate_overview_plot(data, logfile_name, events):
     Y_plot = OVERVIEW_PLOT
     # Check if the columns are in the data
     Y_plot = [col for col in Y_plot if col in data.columns]
+
+    # Get the deposition event
+    deposition = event_list_to_dict(events)['deposition']
+    #set the deposition condition col as the second column of deposition.cond
+    data['deposition_cond'] = deposition.cond
+
+    if 'cracker_on_open' in event_list_to_dict(events):
+        cracker_on_open = event_list_to_dict(events)['cracker_on_open']
+        data['cracker_open_cond'] = cracker_on_open.cond
+
+
     overview_plot = quick_plot(
         data,
         Y_plot,
-        plot_type='line',
+        plot_type='scatter',
         plot_title=f'Overview Plot: {logfile_name}',
         mode='stack',
         heigth=0.5 * HEIGHT,
         width=WIDTH,
     )
+
+    color_map = {True: 'green', False: 'red'}
+    marker_map = {True: 'x', False: 'circle'}
+
+    update_scatter_colors(
+        overview_plot,
+        data,
+        'deposition_cond',
+        color_map=color_map,
+    )
+
+    if 'cracker_on_open' in event_list_to_dict(events):
+        update_scatter_colors(
+            overview_plot,
+            data,
+            'cracker_open_cond',
+            marker_map=marker_map,
+        )
+
     return overview_plot
 
+# def generate_better_overview_plot(data, logfile_name, events):
+
+#     Y_cracker = [
+#         'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
+#         'Sulfur Cracker Control Setpoint Feedback',
+#     ]
+#     # Check if the columns are in the data
+#     Y_cracker = [col for col in Y_cracker if col in data.columns]
+
+#     cracker_fig = quick_plot(
+#         data,
+#         Y_cracker,
+#         plot_type='line',
+#         plot_title=f'Cracker Plot: {logfile_name}',
+#         mode='dual_y',
+#         heigth=0.5 * HEIGHT,
+#         width=WIDTH,
+#     )
+
+#     Y_flows = []
+#     for gas in ['ar', 'ph3', 'h2s']:
+#         Y_flows.append(f'PC MFC {GAS_NUMBER[gas]} Flow')
+#     # Check if the columns are in the data
+#     Y_flows = [col for col in Y_flows if col in data.columns]
+
+#     flow_fig = quick_plot(
+#         data,
+#         Y_flows,
+#         plot_type='line',
+#         plot_title=f'Flow Plot: {logfile_name}',
+#         mode='default',
+#         heigth=0.5 * HEIGHT,
+#         width=WIDTH,
+#     )
+
+#     Y_sources = []
+#     for source_number in ['1', '3', '4']:
+#         Y_sources.append(f'Source {source_number} DC Bias')
+#         Y_sources.append(f'Source {source_number} Voltage')
+#         Y_sources.append(f'Source {source_number} Output Setpoint')
+#     # Check if the columns are in the data
+#     Y_sources = [col for col in Y_sources if col in data.columns]
+
+#     source_fig = quick_plot(
+#         data,
+#         Y_sources,
+#         plot_type='line',
+#         plot_title=f'Source Plot: {logfile_name}',
+#         mode='default',
+#         heigth=0.5 * HEIGHT,
+#         width=WIDTH,
+#     )
+
+#     Y_temp = [
+#         'Substrate Heater Temperature',
+#         'Substrate Heater Temperature 2',
+#         'Substrate Heater Temperature Setpoint',
+#     ]
+#     # Check if the columns are in the data
+
+#     temp_fig = quick_plot(
+#         data,
+#         Y_temp,
+#         plot_type='line',
+#         plot_title=f'Temperature Plot: {logfile_name}',
+#         mode='default',
+#         heigth=0.5 * HEIGHT,
+#         width=WIDTH,
+#     )
+#     # combine the figures into a single figure with a common x axis
+
+#     return fig
 
 def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
     # initialize a dict of plots
@@ -4348,7 +4464,7 @@ def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
     plots['bias_plot'] = bias_plot
 
     # Generate the overview plot
-    overview_plot = generate_overview_plot(log_data, sample_name)
+    overview_plot = generate_overview_plot(log_data, sample_name, events_to_plot)
     plots['overview_plot'] = overview_plot
 
     # _, chamber_plotly_plot = plot_logfile_chamber(main_params, sample_name)
@@ -4500,7 +4616,7 @@ def read_file(file_path):
 
 def follow_peak(
         spectra,
-        peak_pos=[656.1, 341.76, 311.9]
+        peak_pos=[656.1, 341.76, 311.9, 750.4]
         ):
     """
     Track the intensity of specified peaks in the spectra data over time.
@@ -4527,7 +4643,8 @@ def follow_peak(
     PEAK_NAME = {
         656.1: 'H',
         341.76: 'PH',
-        311.9: 'S2'
+        311.9: 'S2',
+        750.4: 'Ar',
     }
 
     # Ensure peak_pos is iterable
@@ -5973,7 +6090,7 @@ def main():
 
         # --------GRAPH THE OVERVIEW PLOT----------------
 
-        overview_plot = generate_overview_plot(data, logfiles['name'][i])
+        overview_plot = generate_overview_plot(data, logfiles['name'][i],events_to_plot)
 
         if PRINT_FIGURES:
             overview_plot.show(config=PLOTLY_CONFIG)
