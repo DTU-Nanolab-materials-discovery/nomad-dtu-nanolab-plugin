@@ -36,7 +36,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = False
+TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 
@@ -50,13 +50,14 @@ SAMPLES_TO_TEST = [
     # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
     # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
     # 'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
-    'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
+    # 'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
     # 'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
     # 'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
     # 'mittma_0007_Cu_Recording Set 2024.06.03-09.52.29',
     # 'anait_0010_Ba_Recording Set 2024.11.12-09.20.00',
     # 'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
     # 'mittma_0028_Cu_Recording Set 2024.11.22-07.19.41',
+    'anait_0012_Ba_Zr_Recording Set 2024.11.21-09.41.33',
 ]
 
 
@@ -477,7 +478,7 @@ GAS_NUMBER = {
 BASE_HEIGHT = 250
 WIDTH = 700
 HEIGHT = 450
-VERTICAL_SPACING = 0.02
+VERTICAL_SPACING = 0
 ROLLING_NUM = 50
 ROLLING_FRAC_MAX = 0.2
 
@@ -511,6 +512,11 @@ STEP_COLORS = {
     'S Dep Rate Meas': '#B22222',  # Firebrick
     'Cracker Pressure Meas': 'brown',
 }
+
+OVERVIEW_PLOT_RESAMPLING_TIME = 10  # seconds
+OVERVIEW_PLOT_COLOR_MAP = {True: 'green', False: 'red'}
+OVERVIEW_PLOT_MARKER_MAP = {True: 'x', False: 'circle'}
+
 # Choosing what to plot in the overview plot
 OVERVIEW_PLOT = [
     'PC Capman Pressure',
@@ -530,6 +536,7 @@ for source_number in ['1', '3', '4']:
 
 # Set y-axis titles
 DICT_RENAME = {
+    'Sulfur Cracker Control Sensor Value': 'Cracker Sensor Value',
     'Sulfur Cracker Control Enabled': 'Cracker Open',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback': 'Cracker Pulse Width',
     'Sulfur Cracker Control Setpoint Feedback': 'Cracker Frequency',
@@ -3998,7 +4005,7 @@ def create_stack_plot(plot_params):
         plot_params (dict): A dictionary containing the plot parameters.
 
     Returns:
-        tuple: A tuple containing the Plotly figure objec
+        tuple: A tuple containing the Plotly figure object
         and the number of plots.
     """
     df = plot_params['df']
@@ -4014,12 +4021,10 @@ def create_stack_plot(plot_params):
     )
 
     for i, y_col in enumerate(Y):
-        # Setup y-axis titles
-
-        if y_col in DICT_RENAME:
-            y_axis_title = DICT_RENAME[y_col]
-        else:
-            y_axis_title = y_col
+        # Setup y-axis titles with line breaks
+        y_axis_title = DICT_RENAME.get(y_col, y_col)
+        if len(y_axis_title) > 15:  # Add line break for long titles
+            y_axis_title = "<br>".join(y_axis_title.split(" "))
 
         trace = go.Scatter(
             x=df[X],
@@ -4028,13 +4033,18 @@ def create_stack_plot(plot_params):
             name=y_axis_title,
         )
         fig.add_trace(trace, row=i + 1, col=1)
-        fig.update_yaxes(title_text=y_axis_title, row=i + 1, col=1)
+        fig.update_yaxes(
+            title_text=y_axis_title,
+            title_standoff=40,  # Adjust spacing for wrapped titles
+            row=i + 1,
+            col=1,
+        )
 
     num_plot = len(Y)
     fig.update_xaxes(title_text='Time', row=num_plot, col=1)
     fig.update_layout(
         title_text=plot_title,
-        height=height * 0.5 * num_plot,
+        height=height * 0.3 * num_plot,
         width=width,
         showlegend=False,  # Hide the legend
     )
@@ -4098,7 +4108,7 @@ def create_dual_y_plot(plot_params):
 def update_scatter_colors(fig, df, column, **kwargs):
     """
     Update the colors and markers of specific or all traces in the Plotly figure
-    based on the specified column, and add color/marker legend information.
+    based on the specified column, and optionally remove legends for updated traces.
 
     Args:
         fig (go.Figure): The Plotly figure object to update.
@@ -4109,12 +4119,13 @@ def update_scatter_colors(fig, df, column, **kwargs):
         marker_map (dict, optional): A dictionary mapping values to marker types.
         trace_index (int, optional): The index of the specific
             trace to update. Default is None, meaning all traces.
+        hide_legend (bool, optional): Whether to hide legends for the updated traces.
     """
-
     # Extract values from kwargs with defaults
     color_map = kwargs.get('color_map', None)
     marker_map = kwargs.get('marker_map', None)
     trace_index = kwargs.get('trace_index', None)
+    hide_legend = kwargs.get('hide_legend', True)  # Default to hiding legend
 
     if color_map is None and marker_map is None:
         raise ValueError('At least one of color_map or marker_map must be provided.')
@@ -4148,7 +4159,11 @@ def update_scatter_colors(fig, df, column, **kwargs):
                 markers = filtered_df[column].map(marker_map).fillna('circle')
                 trace.marker.symbol = markers.tolist()
 
-    # Add custom legend entries
+            # Optionally hide the legend for this trace
+            if hide_legend:
+                trace.showlegend = False
+
+    # Add custom legend entries if needed
     legend_entries = []
 
     # Add a legend entry for the column label (in text mode, no marker)
@@ -4377,6 +4392,8 @@ def generate_overview_plot(data, logfile_name, events):
     # Check if the columns are in the data
     Y_plot = [col for col in Y_plot if col in data.columns]
 
+
+
     # Get the deposition event
     deposition = event_list_to_dict(events)['deposition']
     # set the deposition condition col as the second column of deposition.cond
@@ -4385,6 +4402,26 @@ def generate_overview_plot(data, logfile_name, events):
     if 'cracker_on_open' in event_list_to_dict(events):
         cracker_on_open = event_list_to_dict(events)['cracker_on_open']
         data['cracker_open_cond'] = cracker_on_open.cond
+
+    print('before',data['deposition_cond'].unique())
+
+    data_resampled = (
+        data.set_index('Time Stamp')  # Temporarily set 'Time Stamp' as index
+        .resample(f'{OVERVIEW_PLOT_RESAMPLING_TIME}S')  # Resample with the defined interval
+        .mean()  # Apply aggregation (mean in this case)
+        .reset_index()  # Reset index to turn 'Time Stamp' back into a column
+    )
+    data = data.copy()
+    data = data_resampled
+
+    # Convert 'deposition_cond' based on mean values
+    data['deposition_cond'] = (
+            data['deposition_cond'] > 0.5).astype(bool)
+    if 'cracker_on_open' in event_list_to_dict(events):
+        data['cracker_open_cond'] = (
+            data['cracker_open_cond'] > 0.5).astype(bool)
+
+    print('after',data['deposition_cond'].unique())
 
     overview_plot = quick_plot(
         data,
@@ -4396,14 +4433,11 @@ def generate_overview_plot(data, logfile_name, events):
         width=WIDTH,
     )
 
-    color_map = {True: 'green', False: 'red'}
-    marker_map = {True: 'x', False: 'circle'}
-
     update_scatter_colors(
         overview_plot,
         data,
         'deposition_cond',
-        color_map=color_map,
+        color_map=OVERVIEW_PLOT_COLOR_MAP,
     )
 
     if 'cracker_on_open' in event_list_to_dict(events):
@@ -4411,7 +4445,7 @@ def generate_overview_plot(data, logfile_name, events):
             overview_plot,
             data,
             'cracker_open_cond',
-            marker_map=marker_map,
+            marker_map=OVERVIEW_PLOT_MARKER_MAP,
         )
 
     return overview_plot
