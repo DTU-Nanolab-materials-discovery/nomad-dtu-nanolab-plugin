@@ -482,6 +482,9 @@ VERTICAL_SPACING = 0
 ROLLING_NUM = 50
 ROLLING_FRAC_MAX = 0.2
 
+BOOL_THRESHOLD = 0.5
+LINE_BREAK_LIMIT = 15
+
 EXPORT_SCALE = 20
 # Define a dictionary for step colors in the timeline plot
 STEP_COLORS = {
@@ -4023,8 +4026,8 @@ def create_stack_plot(plot_params):
     for i, y_col in enumerate(Y):
         # Setup y-axis titles with line breaks
         y_axis_title = DICT_RENAME.get(y_col, y_col)
-        if len(y_axis_title) > 15:  # Add line break for long titles
-            y_axis_title = "<br>".join(y_axis_title.split(" "))
+        if len(y_axis_title) > LINE_BREAK_LIMIT:  # Add line break for long titles
+            y_axis_title = '<br>'.join(y_axis_title.split(' '))
 
         trace = go.Scatter(
             x=df[X],
@@ -4392,8 +4395,6 @@ def generate_overview_plot(data, logfile_name, events):
     # Check if the columns are in the data
     Y_plot = [col for col in Y_plot if col in data.columns]
 
-
-
     # Get the deposition event
     deposition = event_list_to_dict(events)['deposition']
     # set the deposition condition col as the second column of deposition.cond
@@ -4403,11 +4404,11 @@ def generate_overview_plot(data, logfile_name, events):
         cracker_on_open = event_list_to_dict(events)['cracker_on_open']
         data['cracker_open_cond'] = cracker_on_open.cond
 
-    print('before',data['deposition_cond'].unique())
+    print('before', data['deposition_cond'].unique())
 
     data_resampled = (
         data.set_index('Time Stamp')  # Temporarily set 'Time Stamp' as index
-        .resample(f'{OVERVIEW_PLOT_RESAMPLING_TIME}S')  # Resample with the defined interval
+        .resample(f'{OVERVIEW_PLOT_RESAMPLING_TIME}S')  # Resample data
         .mean()  # Apply aggregation (mean in this case)
         .reset_index()  # Reset index to turn 'Time Stamp' back into a column
     )
@@ -4415,13 +4416,13 @@ def generate_overview_plot(data, logfile_name, events):
     data = data_resampled
 
     # Convert 'deposition_cond' based on mean values
-    data['deposition_cond'] = (
-            data['deposition_cond'] > 0.5).astype(bool)
+    data['deposition_cond'] = (data['deposition_cond'] > BOOL_THRESHOLD).astype(bool)
     if 'cracker_on_open' in event_list_to_dict(events):
-        data['cracker_open_cond'] = (
-            data['cracker_open_cond'] > 0.5).astype(bool)
+        data['cracker_open_cond'] = (data['cracker_open_cond'] > BOOL_THRESHOLD).astype(
+            bool
+        )
 
-    print('after',data['deposition_cond'].unique())
+    print('after', data['deposition_cond'].unique())
 
     overview_plot = quick_plot(
         data,
@@ -5516,14 +5517,13 @@ def map_params_to_nomad(params, gun_list):
                     [
                         ['source_deprate2_film_meas', gun, 'dep_rate'],
                         ['deposition_parameters', gun, 'source_deprate'],
-                        'Å/s',#check if it is in A/s
+                        'Å/s',  # check if it is in A/s
                     ],
-                                        [
+                    [
                         ['source_deprate2_film_meas', gun, 'dep_rate_ref_mat'],
                         ['deposition_parameters', gun, 'source_deprate_ref_mat'],
                         None,
                     ],
-
                 ]
             )
             if not params['deposition']['rt']:
