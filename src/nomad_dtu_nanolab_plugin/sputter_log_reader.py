@@ -5410,6 +5410,31 @@ def map_params_to_nomad(params, gun_list):
                         'W',
                     ],
                     [
+                        ['source_ramp_up', gun, 'ignition_pressure'],
+                        ['deposition_parameters', gun, 'plasma_ignition_pressure'],
+                        'mtorr',
+                    ],
+                    [
+                        ['source_presput', gun, 'duration'],
+                        ['deposition_parameters', gun, 'presput_time'],
+                        None,
+                    ],
+                    [
+                        ['source_presput', gun, 'avg_output_power'],
+                        ['deposition_parameters', gun, 'presput_power'],
+                        'W',
+                    ],
+                    [
+                        ['source_presput', gun, ' avg_capman_pressure'],
+                        ['deposition_parameters', gun, 'presput_pressure'],
+                        'torr',
+                    ],
+                    [
+                        ['source_presput', gun, 'avg_ar_flow'],
+                        ['deposition_parameters', gun, 'presput_ar_flow'],
+                        'cm^3/minute',
+                    ],
+                    [
                         ['deposition', gun, 'plasma_type'],
                         ['deposition_parameters', gun, 'power_type'],
                         None,
@@ -5453,6 +5478,16 @@ def map_params_to_nomad(params, gun_list):
                         ['deposition', gun, 'std_voltage'],
                         ['deposition_parameters', gun, 'std_voltage'],
                         'V',
+                    ],
+                    [
+                        ['source_deprate2_film_meas', gun, 'dep_rate'],
+                        ['deposition_parameters', gun, 'source_deprate'],
+                        'Å/s',  # check if it is in A/s
+                    ],
+                    [
+                        ['source_deprate2_film_meas', gun, 'dep_rate_ref_mat'],
+                        ['deposition_parameters', gun, 'source_deprate_ref_mat'],
+                        None,
                     ],
                 ]
             )
@@ -5554,7 +5589,7 @@ def map_params_to_nomad(params, gun_list):
                         [
                             ['ramp_down_temp', 'anion_input_cutoff_temp'],
                             ['temp_ramp_down', 'anion_input_cutoff_temp'],
-                            None,
+                            'degC',
                         ],
                     ]
                 )
