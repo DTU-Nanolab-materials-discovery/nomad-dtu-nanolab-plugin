@@ -5427,7 +5427,7 @@ def map_params_to_nomad(params, gun_list):
                     [
                         ['source_presput', gun, ' avg_capman_pressure'],
                         ['deposition_parameters', gun, 'presput_pressure'],
-                        'torr',
+                        'mtorr',
                     ],
                     [
                         ['source_presput', gun, 'avg_ar_flow'],
@@ -5482,13 +5482,14 @@ def map_params_to_nomad(params, gun_list):
                     [
                         ['source_deprate2_film_meas', gun, 'dep_rate'],
                         ['deposition_parameters', gun, 'source_deprate'],
-                        'Å/s',  # check if it is in A/s
+                        'Å/s',#check if it is in A/s
                     ],
-                    [
+                                        [
                         ['source_deprate2_film_meas', gun, 'dep_rate_ref_mat'],
                         ['deposition_parameters', gun, 'source_deprate_ref_mat'],
                         None,
                     ],
+
                 ]
             )
             if not params['deposition']['rt']:
