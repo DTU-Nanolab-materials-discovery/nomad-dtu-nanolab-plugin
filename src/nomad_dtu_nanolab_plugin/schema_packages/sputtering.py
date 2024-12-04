@@ -68,7 +68,8 @@ from nomad_dtu_nanolab_plugin.schema_packages.substrate import (
 )
 from nomad_dtu_nanolab_plugin.schema_packages.target import DTUTarget
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
-    generate_timeline,
+    format_logfile,
+    generate_plots,
     get_nested_value,
     map_environment_params_to_nomad,
     map_gas_flow_params_to_nomad,
@@ -80,7 +81,6 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     read_events,
     read_logfile,
     write_params,
-    # format_logfile,
 )
 
 if TYPE_CHECKING:
@@ -1214,23 +1214,37 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         section_def=DepositionParameters,
     )
 
-    def plot(self, events_plot, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        # Plotting the events on a timeline from the generate_timeline function
-        timeline = generate_timeline(events_plot, self.lab_id)
+    def plot(self, plots, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
 
-        # Converting the timeline to a plotly json
-        timeline_json = json.loads(timeline.to_json())
-        timeline_json['config'] = dict(
-            scrollZoom=False,
-        )
-
-        # Adding the plotly figure to the figures list
-        self.figures.append(
-            PlotlyFigure(
-                label='Process timeline',
-                figure=timeline_json,
+        for plot_name, plot in plots.items():
+            plot_json = json.loads(plot.to_json())
+            plot_json['config'] = dict(
+                scrollZoom=False,
             )
-        )
+            self.figures.append(
+                PlotlyFigure(
+                    label=plot_name,
+                    figure=plot_json,
+                )
+            )
+
+
+        # Plotting the events on a timeline from the generate_timeline function
+        # timeline = generate_timeline(events_plot, self.lab_id)
+
+        # # Converting the timeline to a plotly json
+        # timeline_json = json.loads(timeline.to_json())
+        # timeline_json['config'] = dict(
+        #     scrollZoom=False,
+        # )
+
+        # # Adding the plotly figure to the figures list
+        # self.figures.append(
+        #     PlotlyFigure(
+        #         label='Process timeline',
+        #         figure=timeline_json,
+        #     )
+        # )
 
         # # Plotting the sample positions on the platen
         # try:
@@ -1770,7 +1784,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Openning the log file
             with archive.m_context.raw_file(self.log_file, 'r') as log:
                 log_df = read_logfile(log.name)
-                # formated_log_df = format_logfile(log_df)
+                formated_log_df = format_logfile(log_df)
                 events_plot, params, step_params = read_events(log_df)
             if params is not None:
                 # Writing logfile data to the respective sections
@@ -1792,9 +1806,17 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     gas_flow.normalize(archive, logger)
                     gas_flow.gas.normalize(archive, logger)
 
-            # Triggering the plotting of the timeline and the sample position plot
+            # Triggering the plotting of multiple plots
             self.figures = []
-            self.plot(events_plot, archive, logger)
+
+            plots = generate_plots(
+                formated_log_df,
+                events_plot,
+                params,
+                self.lab_id,
+            )
+
+            self.plot(plots, archive, logger)
 
             if self.deposition_parameters is not None:
                 self.add_libraries(archive, logger)

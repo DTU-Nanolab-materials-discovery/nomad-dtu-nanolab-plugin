@@ -4069,8 +4069,8 @@ def create_dual_y_plot(plot_params):
 
 
 def update_scatter_colors(
-    fig, df, column, color_map=None, marker_map=None, trace_index=None
-):
+    fig, df, column, **kwargs
+    ):
     """
     Update the colors and markers of specific or all traces in the Plotly figure
     based on the specified column, and add color/marker legend information.
@@ -4079,12 +4079,25 @@ def update_scatter_colors(
         fig (go.Figure): The Plotly figure object to update.
         df (pd.DataFrame): The original dataframe used for plotting.
         column (str): The column used for determining marker properties.
+    **kwargs: Additional keyword arguments for customization:
         color_map (dict, optional): A dictionary mapping values to colors.
         marker_map (dict, optional): A dictionary mapping values to marker types.
-        trace_index (int, optional): The index of the specific trace to update. Default is None, meaning all traces.
+        trace_index (int, optional): The index of the specific
+            trace to update. Default is None, meaning all traces.
     """
+
+    # Extract values from kwargs with defaults
+    color_map = kwargs.get('color_map', None)
+    marker_map = kwargs.get('marker_map', None)
+    trace_index = kwargs.get('trace_index', None)
+
+    if color_map is None and marker_map is None:
+        raise ValueError('At least one of color_map or marker_map must be provided.')
+
     # Determine which traces to update
-    traces_to_update = [trace_index] if trace_index is not None else range(len(fig.data))
+    traces_to_update = (
+        [trace_index] if trace_index is not None else range(len(fig.data))
+    )
 
     for i in traces_to_update:
         trace = fig.data[i]
