@@ -36,7 +36,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = True
+TEST_SPECIFIC_LOGFILE = False
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 
@@ -832,11 +832,6 @@ class Lf_Event:
             gas_flow['flow_rate'] = {}
 
             gas_flow['gas_name'] = gas_name
-            # In the following entry, we add the time series of the
-            # corresponding gas flow rate
-            # params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'][
-            #     'set_value'
-            # ] = self.data[f'PC MFC {GAS_NUMBER[gas_name]} Setpoint'].iloc[-1]
             # In the following entry, we set the value of the gas flow rate
             gas_flow['flow_rate']['value'] = self.data[
                 f'PC MFC {GAS_NUMBER[gas_name]} Flow'
@@ -1377,6 +1372,9 @@ class Deposition_Event(Lf_Event):
         else:
             params['overview']['true_base_pressure_meas'] = False
 
+        if params['overview']['true_base_pressure_meas']:
+            params['overview']['base_pressure'] = min_pressure_before_depostion
+
         return params
 
     # method to extract simple deposition parameters, that are not source specific
@@ -1435,9 +1433,11 @@ class Deposition_Event(Lf_Event):
         ].mean()
 
         for gas in ['ar', 'ph3', 'h2s']:
-            params[self.category][f'avg_{gas}_flow'] = self.data[
-                f'PC MFC {GAS_NUMBER[gas]} Flow'
-            ].mean()
+            mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+            if mean_flow > MFC_FLOW_THRESHOLD:
+                params[self.category][f'avg_{gas}_flow'] = mean_flow
+            else:
+                params[self.category][f'avg_{gas}_flow'] = 0
 
         # calculate the partial pressure of the gases
         for gas in ['ph3', 'h2s']:
@@ -1700,9 +1700,14 @@ class Source_Presput_Event(Lf_Event):
                 'avg_capman_pressure'
             ] = self.data['PC Capman Pressure'].mean()
             # Extract the gas flows during presputtering
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                'avg_ar_flow'
-            ] = self.data['PC MFC 1 Flow'].mean()
+            if self.data['PC MFC 1 Flow'].mean() > MFC_FLOW_THRESHOLD:
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                    'avg_ar_flow'
+                ] = self.data['PC MFC 1 Flow'].mean()
+            else:
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                    'avg_ar_flow'
+                ] = 0
         return params
 
 
@@ -1798,6 +1803,12 @@ class Sub_Ramp_Up_Event(Lf_Event):
             # considered making easier to extract the slope
             params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
             params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
+            params[self.category]['start_temp'] = self.data[
+                'Substrate Heater Temperature Setpoint'
+            ].iloc[0]
+            params[self.category]['end_temp'] = self.data[
+                'Substrate Heater Temperature Setpoint'
+            ].iloc[-1]
             params[self.category]['duration'] = (
                 params[self.category]['end_time'] - params[self.category]['start_time']
             )
@@ -1816,9 +1827,11 @@ class Sub_Ramp_Up_Event(Lf_Event):
             # Extract the gas flows during the substrate ramp up
 
             for gas in ['ar', 'ph3', 'h2s']:
-                params[self.category][f'avg_{gas}_flow'] = self.data[
-                    f'PC MFC {GAS_NUMBER[gas]} Flow'
-                ].mean()
+                mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+                if mean_flow > MFC_FLOW_THRESHOLD:
+                    params[self.category][f'avg_{gas}_flow'] = mean_flow
+                else:
+                    params[self.category][f'avg_{gas}_flow'] = 0
 
             # Extract if the cracker has been used during ramp up
             # The column 'Sulfur Cracker Control Enabled' correspond to the
@@ -1927,21 +1940,35 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
         if not params['deposition']['rt']:
             params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
             params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
-
+            # get the avg capman pressure during the high temperature ramp down
+            params[self.category]['avg_capman_pressure'] = self.data[
+                'PC Capman Pressure'
+            ].mean()
+            params[self.category]['duration'] = (
+                params[self.category]['end_time'] - params[self.category]['start_time']
+            )
             # Extract the start and end temperature of the
             # high temperature ramp down
             params[self.category]['start_setpoint_temp'] = self.data[
-                'Substrate Heater Temperature Setpoint'
+                'Substrate Heater Temperature'
             ].iloc[0]
             params[self.category]['end_setpoint_temp'] = self.data[
-                'Substrate Heater Temperature Setpoint'
+                'Substrate Heater Temperature'
             ].iloc[-1]
+            # slope assuming linear ramp down
+            temp_slope = (
+                params[self.category]['end_setpoint_temp']
+                - params[self.category]['start_setpoint_temp']
+            ) / params[self.category]['duration'].total_seconds()
+            params[self.category]['temp_slope'] = temp_slope
 
             # Extract the gases used during the high substrate ramp down
             for gas in ['ar', 'ph3', 'h2s']:
-                params[self.category][f'avg_{gas}_flow'] = self.data[
-                    f'PC MFC {GAS_NUMBER[gas]} Flow'
-                ].mean()
+                mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+                if mean_flow > MFC_FLOW_THRESHOLD:
+                    params[self.category][f'avg_{gas}_flow'] = mean_flow
+                else:
+                    params[self.category][f'avg_{gas}_flow'] = 0
 
             # Extract if the cracker has been used during ramp down
             if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
@@ -4068,9 +4095,7 @@ def create_dual_y_plot(plot_params):
     return fig
 
 
-def update_scatter_colors(
-    fig, df, column, **kwargs
-    ):
+def update_scatter_colors(fig, df, column, **kwargs):
     """
     Update the colors and markers of specific or all traces in the Plotly figure
     based on the specified column, and add color/marker legend information.
@@ -4131,10 +4156,10 @@ def update_scatter_colors(
         go.Scatter(
             x=[None],  # No data points for legend entry
             y=[None],
-            mode="text",
-            text=[f"{column}"],  # Column name
+            mode='text',
+            text=[f'{column}'],  # Column name
             showlegend=True,
-            name=f"{column}",  # Legend label
+            name=f'{column}',  # Legend label
         )
     )
 
@@ -4143,9 +4168,11 @@ def update_scatter_colors(
         for key, color in color_map.items():
             legend_entries.append(
                 go.Scatter(
-                    x=[None], y=[None], mode="markers",
+                    x=[None],
+                    y=[None],
+                    mode='markers',
                     marker=dict(color=color, size=10),
-                    name=f"{key} (Color)"
+                    name=f'{key} (Color)',
                 )
             )
 
@@ -4154,9 +4181,11 @@ def update_scatter_colors(
         for key, marker in marker_map.items():
             legend_entries.append(
                 go.Scatter(
-                    x=[None], y=[None], mode="markers",
+                    x=[None],
+                    y=[None],
+                    mode='markers',
                     marker=dict(symbol=marker, size=10),
-                    name=f"{key} (Marker)"
+                    name=f'{key} (Marker)',
                 )
             )
 
@@ -4164,6 +4193,7 @@ def update_scatter_colors(
 
     # Ensure the legend is visible for the entire figure
     fig.update_layout(showlegend=True)
+
 
 def generate_timeline(
     events_to_plot,
@@ -4349,13 +4379,12 @@ def generate_overview_plot(data, logfile_name, events):
 
     # Get the deposition event
     deposition = event_list_to_dict(events)['deposition']
-    #set the deposition condition col as the second column of deposition.cond
+    # set the deposition condition col as the second column of deposition.cond
     data['deposition_cond'] = deposition.cond
 
     if 'cracker_on_open' in event_list_to_dict(events):
         cracker_on_open = event_list_to_dict(events)['cracker_on_open']
         data['cracker_open_cond'] = cracker_on_open.cond
-
 
     overview_plot = quick_plot(
         data,
@@ -4386,6 +4415,7 @@ def generate_overview_plot(data, logfile_name, events):
         )
 
     return overview_plot
+
 
 # def generate_better_overview_plot(data, logfile_name, events):
 
@@ -4459,6 +4489,7 @@ def generate_overview_plot(data, logfile_name, events):
 #     # combine the figures into a single figure with a common x axis
 
 #     return fig
+
 
 def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
     # initialize a dict of plots
@@ -4627,10 +4658,8 @@ def read_file(file_path):
             print('Reading as log file')
             return read_logfile(file_path)
 
-def follow_peak(
-        spectra,
-        peak_pos=[656.1, 341.76, 311.9, 750.4]
-        ):
+
+def follow_peak(spectra, peak_pos=[656.1, 341.76, 311.9, 750.4]):
     """
     Track the intensity of specified peaks in the spectra data over time.
 
@@ -4674,7 +4703,7 @@ def follow_peak(
             idx = (spectra['data']['x'] - pos).abs().idxmin()
             intensity = spectra['data'][key][idx]
             # Add intensity for position column
-            row[f"{pos}"] = intensity
+            row[f'{pos}'] = intensity
             # Add intensity for peak name column if exists
             if name:
                 row[name] = intensity
@@ -4687,6 +4716,7 @@ def follow_peak(
     peak_intensity = peak_intensity.groupby('Time Stamp').first().reset_index()
 
     return peak_intensity
+
 
 # Function to read the IDOL combinatorial chamber CSV logfile
 def read_logfile(file_path):
@@ -4741,7 +4771,7 @@ def merge_logfile_rga(
         pd.DataFrame: Merged DataFrame with aligned timestamps and NaN for missing
         values.
     """
-    #if df2 columns are found in df1, return df1 already
+    # if df2 columns are found in df1, return df1 already
     if all(col in df1.columns for col in df2.columns):
         return df1
 
@@ -5229,17 +5259,36 @@ def get_nested_value(dictionary, key_path):
 def map_params_to_nomad(params, gun_list):
     # Definiting the input, ouput and unit
     param_nomad_map = [
+        [
+            ['deposition', 'interrupted'],
+            ['deposition_parameters', 'interrupted_deposition'],
+            None,
+        ],
         # Deposition parameters
         [
             ['deposition', 'avg_temp_1'],
             ['deposition_parameters', 'deposition_temp'],
             'degC',
         ],
-        # duration has no unit since it is a TimeDelta object
+        [
+            ['deposition', 'avg_temp_2'],
+            ['deposition_parameters', 'deposition_temp_2'],
+            'degC',
+        ],
+        [
+            ['deposition', 'avg_temp_setpoint'],
+            ['deposition_parameters', 'deposition_temp_sp'],
+            'degC',
+        ],
+        [
+            ['deposition', 'avg_true_temp'],
+            ['deposition_parameters', 'deposition_true_temp'],
+            'degC',
+        ],
         [
             ['deposition', 'duration'],
             ['deposition_parameters', 'deposition_time'],
-            None,
+            None,  # duration has no unit since it is a TimeDelta object
         ],
         [
             ['deposition', 'avg_capman_pressure'],
@@ -5288,6 +5337,22 @@ def map_params_to_nomad(params, gun_list):
             'second',
         ],
     ]
+    if 'ph3_h2s_ratio' in params['deposition']:
+        param_nomad_map.append(
+            [
+                ['deposition', 'ph3_h2s_ratio'],
+                ['deposition_parameters', 'ph3_h2s_ratio'],
+                None,
+            ]
+        )
+    if params['overview']['true_base_pressure_meas']:
+        param_nomad_map.append(
+            [
+                ['overview', 'base_pressure'],
+                ['base_pressure'],
+                'torr',
+            ]
+        )
     if params['deposition'].get('SCracker', {}).get('enabled', False):
         # SCracker parameters
         param_nomad_map.extend(
@@ -5354,8 +5419,145 @@ def map_params_to_nomad(params, gun_list):
                         ['deposition_parameters', gun, 'average_voltage'],
                         'V',
                     ],
+                    [
+                        ['deposition', gun, 'start_voltage'],
+                        ['deposition_parameters', gun, 'start_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'end_voltage'],
+                        ['deposition_parameters', gun, 'end_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'start_minus_end_voltage'],
+                        ['deposition_parameters', gun, 'start_end_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'max_voltage'],
+                        ['deposition_parameters', gun, 'max_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'min_voltage'],
+                        ['deposition_parameters', gun, 'min_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'range_voltage'],
+                        ['deposition_parameters', gun, 'range_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'std_voltage'],
+                        ['deposition_parameters', gun, 'std_voltage'],
+                        'V',
+                    ],
                 ]
             )
+            if not params['deposition']['rt']:
+                # ramp up temperature
+                param_nomad_map.extend(
+                    [
+                        [
+                            ['ramp_up_temp', 'start_temp'],
+                            ['temp_ramp_up', 'start_temp_sp'],
+                            'degC',
+                        ],
+                        [
+                            ['ramp_up_temp', 'end_temp'],
+                            ['temp_ramp_up', 'end_temp_sp'],
+                            'degC',
+                        ],
+                        [
+                            ['ramp_up_temp', 'duration'],
+                            ['temp_ramp_up', 'duration'],
+                            None,
+                        ],
+                        [
+                            ['ramp_up_temp', 'temp_slope'],
+                            ['temp_ramp_up', 'temp_slope'],
+                            'degC/minute',
+                        ],
+                        [
+                            ['ramp_up_temp', 'avg_capman_pressure'],
+                            ['temp_ramp_up', 'avg_capman_pressure'],
+                            'mtorr',
+                        ],
+                        [
+                            ['ramp_up_temp', 'avg_ar_flow'],
+                            ['temp_ramp_up', 'avg_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_up_temp', 'avg_ph3_in_ar_flow'],
+                            ['temp_ramp_up', 'ph3_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_up_temp', 'avg_h2s_flow'],
+                            ['temp_ramp_up', 'avg_h2s_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_up_temp', 's_cracker', 'enabled'],
+                            ['temp_ramp_up', 'cracker_enabled'],
+                            None,
+                        ],
+                        # ramp down temperature
+                        [
+                            ['ramp_down_temp', 'start_temp'],
+                            ['temp_ramp_down', 'start_temp'],
+                            'degC',
+                        ],
+                        [
+                            ['ramp_down_temp', 'end_temp'],
+                            ['temp_ramp_down', 'end_temp'],
+                            'degC',
+                        ],
+                        [
+                            ['ramp_down_temp', 'duration'],
+                            ['temp_ramp_down', 'duration'],
+                            None,
+                        ],
+                        [
+                            ['ramp_down_temp', 'temp_slope'],
+                            ['temp_ramp_down', 'temp_slope'],
+                            'degC/minute',
+                        ],
+                        [
+                            ['ramp_down_temp', 'avg_capman_pressure'],
+                            ['temp_ramp_down', 'avg_capman_pressure'],
+                            'mtorr',
+                        ],
+                        [
+                            ['ramp_down_temp', 'avg_ar_flow'],
+                            ['temp_ramp_down', 'avg_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_down_temp', 'avg_ph3_in_ar_flow'],
+                            ['temp_ramp_down', 'ph3_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_down_temp', 'avg_h2s_flow'],
+                            ['temp_ramp_down', 'avg_h2s_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_down_temp', 's_cracker', 'enabled'],
+                            ['temp_ramp_down', 'cracker_enabled'],
+                            None,
+                        ],
+                        [
+                            ['ramp_down_temp', 'anion_input_cutoff_temp'],
+                            ['temp_ramp_down', 'anion_input_cutoff_temp'],
+                            None,
+                        ],
+                    ]
+                )
 
     return param_nomad_map
 
@@ -6103,7 +6305,9 @@ def main():
 
         # --------GRAPH THE OVERVIEW PLOT----------------
 
-        overview_plot = generate_overview_plot(data, logfiles['name'][i],events_to_plot)
+        overview_plot = generate_overview_plot(
+            data, logfiles['name'][i], events_to_plot
+        )
 
         if PRINT_FIGURES:
             overview_plot.show(config=PLOTLY_CONFIG)
