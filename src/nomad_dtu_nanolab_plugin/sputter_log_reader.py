@@ -40,6 +40,9 @@ TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 
+LOGFILES_EXTENSION = 'CSV'
+SPECTRA_EXTENSION = 'csv'
+
 SAMPLES_TO_REMOVE = [
     'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
     'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
@@ -58,6 +61,7 @@ SAMPLES_TO_TEST = [
     # 'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
     # 'mittma_0028_Cu_Recording Set 2024.11.22-07.19.41',
     'anait_0012_Ba_Zr_Recording Set 2024.11.21-09.41.33',
+    'eugbe_0003_Sb_Recording Set 2024.09.04-14.54.11',
 ]
 
 
@@ -191,7 +195,7 @@ COL = {
     'ps7_out_sp': 'Power Supply 7 Output Setpoint',
     'ps7_fwd_pwr': 'Power Supply 7 Fwd Power',
     'ps7_rfl_pwr': 'Power Supply 7 Rfl Power',
-    'ps7_dc_bias': 'Power Supply 7 DC Bias',
+    'ps7_dc_bias': 'Power Supply 7  Bias',
     'ps7_load_cap_pos': 'Power Supply 7 Load Cap Position',
     'ps7_tune_cap_pos': 'Power Supply 7 Tune Cap Position',
 }
@@ -2393,6 +2397,10 @@ def build_file_paths(logfiles, i):
     overview_file_name = f'{logfiles["name"][i]}_plotly_overview.html'
     overview_file_path = os.path.join(file_dir, overview_file_name)
 
+    # specify the optix cascade plot export location and file name
+    optix_cascade_file_name = f'{logfiles["name"][i]}_optix_cascade.html'
+    optix_file_path = os.path.join(file_dir, optix_cascade_file_name)
+
     # Specify the chamber config plot export location and file name
     chamber_config_file_name = f'{logfiles["name"][i]}_chamber_config.png'
     chamber_config_file_path = os.path.join(file_dir, chamber_config_file_name)
@@ -2403,6 +2411,7 @@ def build_file_paths(logfiles, i):
         timeline_file_path,
         bias_file_path,
         overview_file_path,
+        optix_file_path,
         chamber_config_file_path,
     )
 
@@ -4404,8 +4413,6 @@ def generate_overview_plot(data, logfile_name, events):
         cracker_on_open = event_list_to_dict(events)['cracker_on_open']
         data['cracker_open_cond'] = cracker_on_open.cond
 
-    print('before', data['deposition_cond'].unique())
-
     data_resampled = (
         data.set_index('Time Stamp')  # Temporarily set 'Time Stamp' as index
         .resample(f'{OVERVIEW_PLOT_RESAMPLING_TIME}S')  # Resample data
@@ -4421,8 +4428,6 @@ def generate_overview_plot(data, logfile_name, events):
         data['cracker_open_cond'] = (data['cracker_open_cond'] > BOOL_THRESHOLD).astype(
             bool
         )
-
-    print('after', data['deposition_cond'].unique())
 
     overview_plot = quick_plot(
         data,
@@ -4450,6 +4455,24 @@ def generate_overview_plot(data, logfile_name, events):
         )
 
     return overview_plot
+
+
+def generate_optix_plot(
+    spectra,
+    events_to_plot,
+    logfile_name,
+):
+    deposition = event_list_to_dict(events_to_plot)['deposition']
+    dep_spectra = filter_spectrum(spectra, deposition.bounds)
+
+    # make the cascade plot of the spectra during the deposition
+    optix_plot = generate_optix_cascade_plot(
+        dep_spectra,
+        plot_title=f'Optix Plot: {logfile_name}',
+        color_scale='None',
+    )
+
+    return optix_plot
 
 
 # def generate_better_overview_plot(data, logfile_name, events):
@@ -6261,49 +6284,62 @@ def plot_matplotlib_chamber_config(
     return fig
 
 
-def explore_log_files(samples_dir, logfiles_extension):
-    """
-    Explore all the folders in samples_dir and collect log files based on
-    the specified conditions.
-
-    Args:
-        samples_dir (str): The directory containing sample folders.
-        logfiles_extension (str): The extension of the log files to look for.
-        TEST_SPECIFIC_LOGFILE (bool): Flag to test specific log files.
-        SAMPLES_TO_TEST (list): List of sample names to test.
-        REMOVE_SAMPLES (bool): Flag to remove specific samples.
-        SAMPLES_TO_REMOVE (list): List of sample names to remove.
-
-    Returns:
-        dict: A dictionary with log file names and their corresponding folders.
-    """
-    logfiles = {'name': [], 'folder': []}
+def explore_log_files(
+    samples_dir,
+    logfiles_extension=LOGFILES_EXTENSION,
+    spectra_extension=SPECTRA_EXTENSION,
+):
+    logfiles = {'name': [], 'folder': [], 'spectra': []}
 
     # In samples_dir, explore all the folders (samples names)
     for folder in os.listdir(samples_dir):
-        sample_path = os.path.join(samples_dir, folder, 'log_files')
+        logfile_path = os.path.join(samples_dir, folder, 'log_files')
+        spectra_path = os.path.join(samples_dir, folder, 'optix_spectra')
 
-        # Check if the sample_path exists and is a directory
-        if os.path.isdir(sample_path):
-            # Iterate over files in the sample_path directory
-            for file in os.listdir(sample_path):
+        # Check if the logfile_path exists and is a directory
+        if os.path.isdir(logfile_path):
+            # Iterate over files in the logfile_path directory
+            for file in os.listdir(logfile_path):
                 if re.match(r'^\w+\d{4}\w+', file) and file.endswith(
                     f'.{logfiles_extension}'
                 ):
                     logfile_name = re.sub(rf'\.{logfiles_extension}$', '', file)
+                    spectra_file_path = check_for_spectra(
+                        spectra_path, spectra_extension
+                    )
                     if TEST_SPECIFIC_LOGFILE:
                         if logfile_name in SAMPLES_TO_TEST:
                             logfiles['name'].append(logfile_name)
-                            logfiles['folder'].append(sample_path)
+                            logfiles['folder'].append(logfile_path)
+                            logfiles['spectra'].append(spectra_file_path)
                     elif not TEST_SPECIFIC_LOGFILE:
                         if REMOVE_SAMPLES and (logfile_name not in SAMPLES_TO_REMOVE):
                             logfiles['name'].append(logfile_name)
-                            logfiles['folder'].append(sample_path)
+                            logfiles['folder'].append(logfile_path)
+                            logfiles['spectra'].append(spectra_file_path)
                         elif not REMOVE_SAMPLES:
                             logfiles['name'].append(logfile_name)
-                            logfiles['folder'].append(sample_path)
-
+                            logfiles['folder'].append(logfile_path)
+                            logfiles['spectra'].append(spectra_file_path)
+    for name, folder, spectra in zip(
+        logfiles['name'], logfiles['folder'], logfiles['spectra']
+    ):
+        print(f'Logfile name: {name}')
+        print(f'Logfile folder: {folder}')
+        print(f'Spectra file: {spectra}')
     return logfiles
+
+
+def check_for_spectra(spectra_path, spectra_extension):
+    # Check if the spectra_path exists and is a directory
+    if os.path.isdir(spectra_path):
+        # Iterate over files in the spectra_path directory
+        for file in os.listdir(spectra_path):
+            if re.match(r'^\w+\d{4}\w+', file) and file.endswith(
+                f'.{spectra_extension}'
+            ):
+                return os.path.join(spectra_path, file)
+    return None
 
 
 # ---------------MAIN-----------
@@ -6312,12 +6348,11 @@ def explore_log_files(samples_dir, logfiles_extension):
 def main():
     # global events_to_plot, main_params, step_params, all_params
     samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\Samples'
-    logfiles_extension = 'CSV'
 
     # Initialize the the general param dictionary
     all_params = {}
 
-    logfiles = explore_log_files(samples_dir, logfiles_extension)
+    logfiles = explore_log_files(samples_dir)
 
     # Loop over all the logfiles in the directory
     for i in range(len(logfiles['name'])):
@@ -6325,7 +6360,7 @@ def main():
         print('\n')
         print(f'Processing logfile {logfiles["name"][i]}.CSV')
         logfile_path = (
-            f'{logfiles["folder"][i]}/{logfiles["name"][i]}.{logfiles_extension}'
+            f'{logfiles["folder"][i]}/{logfiles["name"][i]}.{LOGFILES_EXTENSION}'
         )
 
         # ---------DEFAULT EXPORT LOCATIONS-------------
@@ -6337,6 +6372,7 @@ def main():
             timeline_file_path,
             bias_file_path,
             overview_file_path,
+            optix_file_path,
             chamber_file_path,
         ) = build_file_paths(logfiles, i)
         # ---------READ THE DATA-------------
@@ -6384,7 +6420,23 @@ def main():
 
         overview_plot.write_html(overview_file_path)
 
+        # ------GRAPH THE OPTIX SPECTRA PLOT------------
+
+        if logfiles['spectra'][i] is not None:
+            spectra = read_spectrum(logfiles['spectra'][i])
+            optix_plot = generate_optix_plot(
+                spectra,
+                events_to_plot,
+                logfiles['name'][i],
+            )
+
+            if PRINT_FIGURES:
+                optix_plot.show(config=PLOTLY_CONFIG)
+
+            optix_plot.write_html(optix_file_path)
+
         # -----GRAPH THE CHAMBER CONFIG---
+
         if 'platen_position' in main_params['deposition']:
             chamber_plot, _ = plot_logfile_chamber(main_params, logfiles['name'][i])
             # export matplotlib plot as png

@@ -1460,6 +1460,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             'label': 'Image of plasma during deposition',
         },
     )
+    optix_spectra = Quantity(
+        type=str,
+        a_eln={'component': 'FileEditQuantity', 'label': 'Optix spectra'},
+    )
+    rga_file = Quantity(
+        type=str,
+        a_eln={'component': 'FileEditQuantity', 'label': 'RGA file'},
+    )
     substrates = SubSection(
         section_def=DtuSubstrateMounting,
         repeats=True,
