@@ -6464,8 +6464,10 @@ def check_for_spectra(spectra_path, spectra_extension):
     if os.path.isdir(spectra_path):
         # Iterate over files in the spectra_path directory
         for file in os.listdir(spectra_path):
-            if re.match(r'^\w+\d{4}\w+', file) and file.endswith(
-                f'.{spectra_extension}'
+            if (
+                re.match(r'^\w+\d{4}\w+', file)
+                and file.endswith(f'.{spectra_extension}')
+                and 'RGA' not in file
             ):
                 return os.path.join(spectra_path, file)
     return None
