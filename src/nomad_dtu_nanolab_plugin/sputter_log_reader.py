@@ -36,9 +36,10 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = True
+TEST_SPECIFIC_LOGFILE = False
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
+RENAME_CRACKER_COL = False
 
 LOGFILES_EXTENSION = 'CSV'
 SPECTRA_EXTENSION = 'csv'
@@ -60,7 +61,7 @@ SAMPLES_TO_TEST = [
     # 'anait_0010_Ba_Recording Set 2024.11.12-09.20.00',
     # 'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
     # 'mittma_0028_Cu_Recording Set 2024.11.22-07.19.41',
-    'anait_0012_Ba_Zr_Recording Set 2024.11.21-09.41.33',
+    # 'anait_0012_Ba_Zr_Recording Set 2024.11.21-09.41.33',
     'eugbe_0003_Sb_Recording Set 2024.09.04-14.54.11',
 ]
 
@@ -423,11 +424,9 @@ WITHIN_RANGE_PARAM = 5  # %
 # FWD and RFL Power difference threshold above which the plasma is considered
 # on
 POWER_FWD_RFL_THRESHOLD = 10  # watts
-# Categories of events to be considered in the main report
-
-
 # ---REPORT VALUES---
 
+# Categories of events to be considered in the main report
 CATEGORIES_MAIN_REPORT = [
     'deposition',
     'ramp_up_temp',
@@ -437,6 +436,7 @@ CATEGORIES_MAIN_REPORT = [
     'cracker_base_pressure',
     'source_deprate2_film_meas',
 ]
+# Categories of events to be considered in the step report
 CATEGORIES_STEPS = [
     'deposition',
     'ramp_up_temp',
@@ -965,29 +965,45 @@ class Lf_Event:
                 'time'
             ] = time_series
 
-        # Extract the cracker valve on time
-        params[self.step_id]['sources']['s_cracker']['avg_valve_on_time'] = self.data[
+        # Extract the cracker valve on time if possible
+        cond_column_feedback = (
+            'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
+        ) & (
             'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-        ].mean()
-        params[self.step_id]['sources']['s_cracker']['valve_on_time']['value'] = (
-            self.data[
-                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-            ].tolist()
+            in self.data.columns
         )
-        params[self.step_id]['sources']['s_cracker']['valve_on_time']['time'] = (
-            time_series
-        )
+        if cond_column_feedback:
+            params[self.step_id]['sources']['s_cracker']['avg_valve_on_time'] = (
+                self.data[
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ].mean()
+            )
+            params[self.step_id]['sources']['s_cracker']['valve_on_time']['value'] = (
+                self.data[
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ].tolist()
+            )
+            params[self.step_id]['sources']['s_cracker']['valve_on_time']['time'] = (
+                time_series
+            )
 
         # Extract the cracker valve frequency
-        params[self.step_id]['sources']['s_cracker']['avg_valve_frequency'] = self.data[
-            'Sulfur Cracker Control Setpoint Feedback'
-        ].mean()
-        params[self.step_id]['sources']['s_cracker']['valve_frequency']['value'] = (
-            self.data['Sulfur Cracker Control Setpoint Feedback'].tolist()
+        cond_column_feedback = (
+            'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
+        ) & (
+            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+            in self.data.columns
         )
-        params[self.step_id]['sources']['s_cracker']['valve_frequency']['time'] = (
-            time_series
-        )
+        if cond_column_feedback:
+            params[self.step_id]['sources']['s_cracker']['avg_valve_frequency'] = (
+                self.data['Sulfur Cracker Control Setpoint Feedback'].mean()
+            )
+            params[self.step_id]['sources']['s_cracker']['valve_frequency']['value'] = (
+                self.data['Sulfur Cracker Control Setpoint Feedback'].tolist()
+            )
+            params[self.step_id]['sources']['s_cracker']['valve_frequency']['time'] = (
+                time_series
+            )
 
         # extract if the cracker valve is pulsing (enabled) as a boolean series
         params[self.step_id]['sources']['s_cracker']['valve_pulsing']['value'] = (
@@ -1231,10 +1247,7 @@ class Deposition_Event(Lf_Event):
 
         # Extract if the deposition has beem interrupted based the interrupt_deposition
         # flag
-        if interrupt_deposition:
-            params[self.category]['interrupted'] = True
-        else:
-            params[self.category]['interrupted'] = False
+        params[self.category]['interrupted'] = interrupt_deposition
 
         params = self.get_rt_bool(params=params)
         params = self.get_source_used_deposition(source_list, params=params)
@@ -1313,43 +1326,57 @@ class Deposition_Event(Lf_Event):
         if 's_cracker' not in params[self.category]:
             params[self.category]['s_cracker'] = {}
 
-        if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
-            if (
-                (self.data['Sulfur Cracker Control Enabled'] == 1).mean() >= TOLERANCE
-                and (
-                    self.data['Sulfur Cracker Zone 1 Current Temperature']
-                    > CRACKER_ZONE_1_MIN_TEMP
-                ).all()
-                and (
-                    self.data['Sulfur Cracker Zone 2 Current Temperature']
-                    > CRACKER_ZONE_2_MIN_TEMP
-                ).all()
-                and (
-                    self.data['Sulfur Cracker Zone 3 Current Temperature']
-                    > CRACKER_ZONE_3_MIN_TEMP
-                ).all()
-            ):
-                params[self.category]['s_cracker']['enabled'] = True
-                params[self.category]['s_cracker']['zone1_temp'] = self.data[
-                    'Sulfur Cracker Zone 1 Current Temperature'
-                ].mean()
-                params[self.category]['s_cracker']['zone2_temp'] = self.data[
-                    'Sulfur Cracker Zone 2 Current Temperature'
-                ].mean()
-                params[self.category]['s_cracker']['zone3_temp'] = self.data[
-                    'Sulfur Cracker Zone 3 Current Temperature'
-                ].mean()
-                params[self.category]['s_cracker']['pulse_width'] = self.data[
-                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                ].mean()
-                params[self.category]['s_cracker']['pulse_freq'] = self.data[
-                    'Sulfur Cracker Control Setpoint Feedback'
-                ].mean()
-            else:
-                params[self.category]['s_cracker']['enabled'] = False
-        else:
+        if 'Sulfur Cracker Zone 1 Current Temperature' not in self.data.columns:
             params[self.category]['s_cracker']['enabled'] = False
+            return params
+
+        if not self.is_cracker_enabled():
+            params[self.category]['s_cracker']['enabled'] = False
+            return params
+
+        params[self.category]['s_cracker']['enabled'] = True
+        params[self.category]['s_cracker']['zone1_temp'] = self.data[
+            'Sulfur Cracker Zone 1 Current Temperature'
+        ].mean()
+        params[self.category]['s_cracker']['zone2_temp'] = self.data[
+            'Sulfur Cracker Zone 2 Current Temperature'
+        ].mean()
+        params[self.category]['s_cracker']['zone3_temp'] = self.data[
+            'Sulfur Cracker Zone 3 Current Temperature'
+        ].mean()
+
+        cond_column_feedback = (
+            'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
+        ) & (
+            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+            in self.data.columns
+        )
+        if cond_column_feedback:
+            params[self.category]['s_cracker']['pulse_width'] = self.data[
+                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+            ].mean()
+            params[self.category]['s_cracker']['pulse_freq'] = self.data[
+                'Sulfur Cracker Control Setpoint Feedback'
+            ].mean()
+
         return params
+
+    def is_cracker_enabled(self):
+        return (
+            (self.data['Sulfur Cracker Control Enabled'] == 1).mean() >= TOLERANCE
+            and (
+                self.data['Sulfur Cracker Zone 1 Current Temperature']
+                > CRACKER_ZONE_1_MIN_TEMP
+            ).all()
+            and (
+                self.data['Sulfur Cracker Zone 2 Current Temperature']
+                > CRACKER_ZONE_2_MIN_TEMP
+            ).all()
+            and (
+                self.data['Sulfur Cracker Zone 3 Current Temperature']
+                > CRACKER_ZONE_3_MIN_TEMP
+            ).all()
+        )
 
     # method to extract important pressure parameters
     def get_pressure_params(self, raw_data, params=None):
@@ -1878,12 +1905,19 @@ class Sub_Ramp_Up_Event(Lf_Event):
                     params[self.category]['s_cracker']['zone3_temp'] = self.data[
                         'Sulfur Cracker Zone 3 Current Temperature'
                     ].mean()
-                    params[self.category]['s_cracker']['pulse_width'] = self.data[
+                    cond_column_feedback = (
+                        'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
+                    ) & (
                         'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                    ].mean()
-                    params[self.category]['s_cracker']['pulse_freq'] = self.data[
-                        'Sulfur Cracker Control Setpoint Feedback'
-                    ].mean()
+                        in self.data.columns
+                    )
+                    if cond_column_feedback:
+                        params[self.category]['s_cracker']['pulse_width'] = self.data[
+                            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                        ].mean()
+                        params[self.category]['s_cracker']['pulse_freq'] = self.data[
+                            'Sulfur Cracker Control Setpoint Feedback'
+                        ].mean()
                 else:
                     params[self.category]['s_cracker']['enabled'] = False
             else:
@@ -1951,86 +1985,147 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
         if 'deposition' not in params:
             raise ValueError('Missing deposition info, run get_rt_bool first')
 
-        if not params['deposition']['rt']:
-            params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
-            params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
-            # get the avg capman pressure during the high temperature ramp down
-            params[self.category]['avg_capman_pressure'] = self.data[
-                'PC Capman Pressure'
-            ].mean()
-            params[self.category]['duration'] = (
-                params[self.category]['end_time'] - params[self.category]['start_time']
-            )
-            # Extract the start and end temperature of the
-            # high temperature ramp down
-            params[self.category]['start_setpoint_temp'] = self.data[
-                'Substrate Heater Temperature'
-            ].iloc[0]
-            params[self.category]['end_setpoint_temp'] = self.data[
-                'Substrate Heater Temperature'
-            ].iloc[-1]
-            # slope assuming linear ramp down
-            temp_slope = (
-                params[self.category]['end_setpoint_temp']
-                - params[self.category]['start_setpoint_temp']
-            ) / params[self.category]['duration'].total_seconds()
-            params[self.category]['temp_slope'] = temp_slope
+        if params['deposition']['rt']:
+            return params
 
-            # Extract the gases used during the high substrate ramp down
-            for gas in ['ar', 'ph3', 'h2s']:
-                mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
-                if mean_flow > MFC_FLOW_THRESHOLD:
-                    params[self.category][f'avg_{gas}_flow'] = mean_flow
-                else:
-                    params[self.category][f'avg_{gas}_flow'] = 0
+        params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
+        params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
+        # get the avg capman pressure during the high temperature ramp down
+        params[self.category]['avg_capman_pressure'] = self.data[
+            'PC Capman Pressure'
+        ].mean()
+        params[self.category]['duration'] = (
+            params[self.category]['end_time'] - params[self.category]['start_time']
+        )
+        # Extract the start and end temperature of the
+        # high temperature ramp down
+        params[self.category]['start_setpoint_temp'] = self.data[
+            'Substrate Heater Temperature'
+        ].iloc[0]
+        params[self.category]['end_setpoint_temp'] = self.data[
+            'Substrate Heater Temperature'
+        ].iloc[-1]
+        # slope assuming linear ramp down
+        temp_slope = (
+            params[self.category]['end_setpoint_temp']
+            - params[self.category]['start_setpoint_temp']
+        ) / params[self.category]['duration'].total_seconds()
+        params[self.category]['temp_slope'] = temp_slope
 
-            # Extract if the cracker has been used during ramp down
-            if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
-                if (
-                    (self.data['Sulfur Cracker Control Enabled'] == 1).all()
-                    and (
-                        self.data['Sulfur Cracker Zone 1 Current Temperature']
-                        > CRACKER_ZONE_1_MIN_TEMP
-                    ).all()
-                    and (
-                        self.data['Sulfur Cracker Zone 2 Current Temperature']
-                        > CRACKER_ZONE_2_MIN_TEMP
-                    ).all()
-                    and (
-                        self.data['Sulfur Cracker Zone 3 Current Temperature']
-                        > CRACKER_ZONE_3_MIN_TEMP
-                    ).all()
-                ):
-                    params[self.category]['s_cracker']['enabled'] = True
-                    # if the crack has been used, extract the cracker parameters
-                    params[self.category]['s_cracker']['zone1_temp'] = self.data[
-                        'Sulfur Cracker Zone 1 Current Temperature'
-                    ].mean()
-                    params[self.category]['s_cracker']['zone2_temp'] = self.data[
-                        'Sulfur Cracker Zone 2 Current Temperature'
-                    ].mean()
-                    params[self.category]['s_cracker']['zone3_temp'] = self.data[
-                        'Sulfur Cracker Zone 3 Current Temperature'
-                    ].mean()
-                    params[self.category]['s_cracker']['pulse_width'] = self.data[
-                        'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                    ].mean()
-                    params[self.category]['s_cracker']['pulse_freq'] = self.data[
-                        'Sulfur Cracker Control Setpoint Feedback'
-                    ].mean()
-                else:
-                    params[self.category]['s_cracker']['enabled'] = False
+        # Extract the gases used during the high substrate ramp down
+        for gas in ['ar', 'ph3', 'h2s']:
+            mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+            if mean_flow > MFC_FLOW_THRESHOLD:
+                params[self.category][f'avg_{gas}_flow'] = mean_flow
             else:
-                params[self.category]['s_cracker']['enabled'] = False
-            # Extract the anion input cutoff temperature as the last temperature of
-            # the high temperature ramp down
-            params[self.category]['anion_input_cutoff_temp'] = self.data[
-                'Substrate Heater Temperature Setpoint'
-            ].iloc[-1]
-            params[self.category]['anion_input_cutoff_time'] = self.data[
-                'Time Stamp'
-            ].iloc[-1]
+                params[self.category][f'avg_{gas}_flow'] = 0
+
+        params[self.category]['anion_input_cutoff_temp'] = self.data[
+            'Substrate Heater Temperature Setpoint'
+        ].iloc[-1]
+        params[self.category]['anion_input_cutoff_time'] = self.data['Time Stamp'].iloc[
+            -1
+        ]
+
+        # Extract if the cracker has been used during ramp down
+        params[self.category]['s_cracker'] = self._get_cracker_params()
+
+        # if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
+        #     if (
+        #         (self.data['Sulfur Cracker Control Enabled'] == 1).all()
+        #         and (
+        #             self.data['Sulfur Cracker Zone 1 Current Temperature']
+        #             > CRACKER_ZONE_1_MIN_TEMP
+        #         ).all()
+        #         and (
+        #             self.data['Sulfur Cracker Zone 2 Current Temperature']
+        #             > CRACKER_ZONE_2_MIN_TEMP
+        #         ).all()
+        #         and (
+        #             self.data['Sulfur Cracker Zone 3 Current Temperature']
+        #             > CRACKER_ZONE_3_MIN_TEMP
+        #         ).all()
+        #     ):
+        #         params[self.category]['s_cracker']['enabled'] = True
+        #         # if the crack has been used, extract the cracker parameters
+        #         params[self.category]['s_cracker']['zone1_temp'] = self.data[
+        #             'Sulfur Cracker Zone 1 Current Temperature'
+        #         ].mean()
+        #         params[self.category]['s_cracker']['zone2_temp'] = self.data[
+        #             'Sulfur Cracker Zone 2 Current Temperature'
+        #         ].mean()
+        #         params[self.category]['s_cracker']['zone3_temp'] = self.data[
+        #             'Sulfur Cracker Zone 3 Current Temperature'
+        #         ].mean()
+        #         cond_column_feedback = (
+        #             'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
+        #         ) & (
+        #             'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+        #             in self.data.columns
+        #         )
+        #         if cond_column_feedback:
+        #             params[self.category]['s_cracker']['pulse_width'] = self.data[
+        #                 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+        #             ].mean()
+        #             params[self.category]['s_cracker']['pulse_freq'] = self.data[
+        #                 'Sulfur Cracker Control Setpoint Feedback'
+        #             ].mean()
+        #     else:
+        #         params[self.category]['s_cracker']['enabled'] = False
+        # else:
+        #     params[self.category]['s_cracker']['enabled'] = False
+        # Extract the anion input cutoff temperature as the last temperature of
+        # the high temperature ramp down
+
         return params
+
+    def _get_cracker_params(self):
+        cracker_params = {'enabled': False}
+
+        if 'Sulfur Cracker Zone 1 Current Temperature' not in self.data.columns:
+            return cracker_params
+
+        enabled = (
+            (self.data['Sulfur Cracker Control Enabled'] == 1).all()
+            and (
+                self.data['Sulfur Cracker Zone 1 Current Temperature']
+                > CRACKER_ZONE_1_MIN_TEMP
+            ).all()
+            and (
+                self.data['Sulfur Cracker Zone 2 Current Temperature']
+                > CRACKER_ZONE_2_MIN_TEMP
+            ).all()
+            and (
+                self.data['Sulfur Cracker Zone 3 Current Temperature']
+                > CRACKER_ZONE_3_MIN_TEMP
+            ).all()
+        )
+
+        if enabled:
+            cracker_params['enabled'] = True
+            cracker_params['zone1_temp'] = self.data[
+                'Sulfur Cracker Zone 1 Current Temperature'
+            ].mean()
+            cracker_params['zone2_temp'] = self.data[
+                'Sulfur Cracker Zone 2 Current Temperature'
+            ].mean()
+            cracker_params['zone3_temp'] = self.data[
+                'Sulfur Cracker Zone 3 Current Temperature'
+            ].mean()
+
+            if (
+                'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
+                and 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                in self.data.columns
+            ):
+                cracker_params['pulse_width'] = self.data[
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ].mean()
+                cracker_params['pulse_freq'] = self.data[
+                    'Sulfur Cracker Control Setpoint Feedback'
+                ].mean()
+
+        return cracker_params
 
 
 class Sub_Ramp_Down_Low_Temp_Event(Lf_Event):
@@ -2179,6 +2274,14 @@ def get_overview(raw_data, params=None):
     # Extract start and end time of the log file
     params['overview']['log_start_time'] = raw_data['Time Stamp'].iloc[0]
     params['overview']['log_end_time'] = raw_data['Time Stamp'].iloc[-1]
+
+    cond_column_feedback = (
+        'Sulfur Cracker Control Setpoint Feedback' in raw_data.columns
+    ) & (
+        'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in raw_data.columns
+    )
+
+    params['overview']['right_scracker_column'] = cond_column_feedback
 
     return params
 
@@ -2657,7 +2760,7 @@ def connect_source_to_power_supply(data, source_list):
 # This allows to harmonize the column name for samples deposited
 # before the 12/08/2024, for which the column name was wrong and
 # cracker data is not logged properly
-def rename_cracker_columns(data):
+def rename_cracker_columns(data, rename_cracker_col=False):
     cond_column = ('Sulfur Cracker Control Setpoint' in data.columns) & (
         'Sulfur Cracker Control Valve PulseWidth Setpoint' in data.columns
     )
@@ -2666,18 +2769,20 @@ def rename_cracker_columns(data):
     ) & ('Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in data.columns)
 
     if cond_column and not cond_column_feedback:
-        # If the wrong cracker columns are present exclusively, we rename them
-        data.rename(
-            columns={
-                'Sulfur Cracker Control Setpoint': (
-                    'Sulfur Cracker Control Setpoint Feedback'
-                ),
-                'Sulfur Cracker Control Valve PulseWidth Setpoint': (
-                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                ),
-            },
-            inplace=True,
-        )
+        if rename_cracker_col:
+            # If the wrong cracker columns are present exclusively, we rename them
+            data.rename(
+                columns={
+                    'Sulfur Cracker Control Setpoint': (
+                        'Sulfur Cracker Control Setpoint Feedback'
+                    ),
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint': (
+                        'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                    ),
+                },
+                inplace=True,
+            )
+
     return data
 
 
@@ -3054,17 +3159,27 @@ def filter_data_cracker_pressure(data, **kwargs):
             )
         )
 
-        valve_cond = within_range(
-            data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
-            deposition.data[
-                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-            ].mean(),
-            WITHIN_RANGE_PARAM,
-        ) & within_range(
-            data['Sulfur Cracker Control Setpoint Feedback'],
-            deposition.data['Sulfur Cracker Control Setpoint Feedback'].mean(),
-            WITHIN_RANGE_PARAM,
+        cond_column_feedback = (
+            'Sulfur Cracker Control Setpoint Feedback' in data.columns
+        ) & (
+            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in data.columns
         )
+
+        if cond_column_feedback:
+            valve_cond = within_range(
+                data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
+                deposition.data[
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ].mean(),
+                WITHIN_RANGE_PARAM,
+            ) & within_range(
+                data['Sulfur Cracker Control Setpoint Feedback'],
+                deposition.data['Sulfur Cracker Control Setpoint Feedback'].mean(),
+                WITHIN_RANGE_PARAM,
+            )
+        else:
+            # If the cracker columns are not present, we effectively ignore them
+            valve_cond = pd.Series(True, index=data.index)
 
         if not cracker_on_open.data.empty:
             cracker_base_pressure_cond = (
@@ -3218,6 +3333,10 @@ def define_deposition_conditions(data, deposition):
         deposition.data['PC MFC 6 Setpoint'].mean(),
         WITHIN_RANGE_PARAM,
     )
+
+    cond_column_feedback = (
+        'Sulfur Cracker Control Setpoint Feedback' in data.columns
+    ) & ('Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in data.columns)
     if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
         cracker_dep_cond = (
             within_range(
@@ -3235,19 +3354,26 @@ def define_deposition_conditions(data, deposition):
                 deposition.data['Sulfur Cracker Zone 3 Current Temperature'].mean(),
                 WITHIN_RANGE_PARAM,
             )
-            & within_range(
-                data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
-                deposition.data[
-                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                ].mean(),
-                WITHIN_RANGE_PARAM,
-            )
-            & within_range(
-                data['Sulfur Cracker Control Setpoint Feedback'],
-                deposition.data['Sulfur Cracker Control Setpoint Feedback'].mean(),
-                WITHIN_RANGE_PARAM,
-            )
         )
+        if cond_column_feedback:
+            # If the cracker columns are present, we use them to add
+            # the condition
+            cracker_dep_cond = (
+                cracker_dep_cond
+                & within_range(
+                    data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
+                    deposition.data[
+                        'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                    ].mean(),
+                    WITHIN_RANGE_PARAM,
+                )
+                & within_range(
+                    data['Sulfur Cracker Control Setpoint Feedback'],
+                    deposition.data['Sulfur Cracker Control Setpoint Feedback'].mean(),
+                    WITHIN_RANGE_PARAM,
+                )
+            )
+
     else:
         cracker_dep_cond = pd.Series(False, index=data.index)
     return pressure_cond, ph3_dep_cond, h2s_dep_cond, cracker_dep_cond
@@ -3342,18 +3468,27 @@ def define_sulfur_meas_conditions(data, deprate2_meas, deprate2_sulfur_meas, **k
                 WITHIN_RANGE_PARAM,
             )
         )
-
-        valve_cond = within_range(
-            data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
-            deposition.data[
-                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-            ].mean(),
-            WITHIN_RANGE_PARAM,
-        ) & within_range(
-            data['Sulfur Cracker Control Setpoint Feedback'],
-            deposition.data['Sulfur Cracker Control Setpoint Feedback'].mean(),
-            WITHIN_RANGE_PARAM,
+        cond_column_feedback = (
+            'Sulfur Cracker Control Setpoint Feedback' in data.columns
+        ) & (
+            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in data.columns
         )
+
+        if cond_column_feedback:
+            valve_cond = within_range(
+                data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
+                deposition.data[
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ].mean(),
+                WITHIN_RANGE_PARAM,
+            ) & within_range(
+                data['Sulfur Cracker Control Setpoint Feedback'],
+                deposition.data['Sulfur Cracker Control Setpoint Feedback'].mean(),
+                WITHIN_RANGE_PARAM,
+            )
+        else:
+            # If the cracker columns are not present, we effectively ignore them
+            valve_cond = pd.Series(True, index=data.index)
 
         pressure_cond = within_range(
             data['PC Capman Pressure'],
@@ -4992,7 +5127,7 @@ def format_logfile(data):
     # print('Formatting the dataframe for conditional filtering')
     # -----FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING-------
     # -------RENAME THE CRACKER COLUMNS OF THE DATAFRAME---------
-    data = rename_cracker_columns(data)
+    data = rename_cracker_columns(data, rename_cracker_col=RENAME_CRACKER_COL)
     # ---------READING THE SOURCE USED--------
     # Get the source list automatically from the logfile
     source_list = get_source_list(data)
@@ -6321,12 +6456,6 @@ def explore_log_files(
                             logfiles['name'].append(logfile_name)
                             logfiles['folder'].append(logfile_path)
                             logfiles['spectra'].append(spectra_file_path)
-    for name, folder, spectra in zip(
-        logfiles['name'], logfiles['folder'], logfiles['spectra']
-    ):
-        print(f'Logfile name: {name}')
-        print(f'Logfile folder: {folder}')
-        print(f'Spectra file: {spectra}')
     return logfiles
 
 
