@@ -1006,9 +1006,9 @@ class Lf_Event:
             )
 
         # extract if the cracker valve is pulsing (enabled) as a boolean series
-        params[self.step_id]['sources']['s_cracker']['valve_pulsing']['value'] = (
+        params[self.step_id]['sources']['s_cracker']['valve_pulsing']['value'] = [
             bool(x) for x in self.data['Sulfur Cracker Control Enabled'].tolist()
-        )
+        ]
         params[self.step_id]['sources']['s_cracker']['valve_pulsing']['time'] = (
             time_series
         )
@@ -2718,7 +2718,7 @@ def get_source_list(data):
 # is open and the source is switch at the same time
 # to ensure that the algorithm does think that we used a source if
 # we switched it on to a power supply by mistake
-def connect_source_to_power_supply(data, source_list):
+def connect_source_to_power_supply(data:pd.DataFrame, source_list):
     for source_number in source_list:
         shutter_col = f'PC Source {source_number} Shutter Open'
         if f'PC Source {source_number} Switch-PDC-PWS1' in data.columns:
@@ -2768,8 +2768,8 @@ def rename_cracker_columns(data, rename_cracker_col=False):
         'Sulfur Cracker Control Setpoint Feedback' in data.columns
     ) & ('Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in data.columns)
 
-    if cond_column and not cond_column_feedback:
-        if rename_cracker_col:
+    if rename_cracker_col:
+        if cond_column and not cond_column_feedback:
             # If the wrong cracker columns are present exclusively, we rename them
             data.rename(
                 columns={
@@ -3337,6 +3337,7 @@ def define_deposition_conditions(data, deposition):
     cond_column_feedback = (
         'Sulfur Cracker Control Setpoint Feedback' in data.columns
     ) & ('Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in data.columns)
+
     if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
         cracker_dep_cond = (
             within_range(
@@ -5618,7 +5619,7 @@ def map_params_to_nomad(params, gun_list):
                         'W',
                     ],
                     [
-                        ['source_presput', gun, ' avg_capman_pressure'],
+                        ['source_presput', gun, 'avg_capman_pressure'],
                         ['deposition_parameters', gun, 'presput_pressure'],
                         'mtorr',
                     ],
@@ -5719,8 +5720,8 @@ def map_params_to_nomad(params, gun_list):
                             'cm^3/minute',
                         ],
                         [
-                            ['ramp_up_temp', 'avg_ph3_in_ar_flow'],
-                            ['temp_ramp_up', 'ph3_flow'],
+                            ['ramp_up_temp', 'avg_ph3_flow'],
+                            ['temp_ramp_up', 'avg_ph3_in_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
@@ -5735,52 +5736,52 @@ def map_params_to_nomad(params, gun_list):
                         ],
                         # ramp down temperature
                         [
-                            ['ramp_down_temp', 'start_temp'],
+                            ['ramp_down_high_temp', 'start_temp'],
                             ['temp_ramp_down', 'start_temp'],
                             'degC',
                         ],
                         [
-                            ['ramp_down_temp', 'end_temp'],
+                            ['ramp_down_high_temp', 'end_temp'],
                             ['temp_ramp_down', 'end_temp'],
                             'degC',
                         ],
                         [
-                            ['ramp_down_temp', 'duration'],
+                            ['ramp_down_high_temp', 'duration'],
                             ['temp_ramp_down', 'duration'],
                             None,
                         ],
                         [
-                            ['ramp_down_temp', 'temp_slope'],
+                            ['ramp_down_high_temp', 'temp_slope'],
                             ['temp_ramp_down', 'temp_slope'],
                             'degC/minute',
                         ],
                         [
-                            ['ramp_down_temp', 'avg_capman_pressure'],
+                            ['ramp_down_high_temp', 'avg_capman_pressure'],
                             ['temp_ramp_down', 'avg_capman_pressure'],
                             'mtorr',
                         ],
                         [
-                            ['ramp_down_temp', 'avg_ar_flow'],
+                            ['ramp_down_high_temp', 'avg_ar_flow'],
                             ['temp_ramp_down', 'avg_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
-                            ['ramp_down_temp', 'avg_ph3_in_ar_flow'],
+                            ['ramp_down_high_temp', 'avg_ph3_in_ar_flow'],
                             ['temp_ramp_down', 'ph3_flow'],
                             'cm^3/minute',
                         ],
                         [
-                            ['ramp_down_temp', 'avg_h2s_flow'],
+                            ['ramp_down_high_temp', 'avg_h2s_flow'],
                             ['temp_ramp_down', 'avg_h2s_in_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
-                            ['ramp_down_temp', 's_cracker', 'enabled'],
+                            ['ramp_down_high_temp', 's_cracker', 'enabled'],
                             ['temp_ramp_down', 'cracker_enabled'],
                             None,
                         ],
                         [
-                            ['ramp_down_temp', 'anion_input_cutoff_temp'],
+                            ['ramp_down_high_temp', 'anion_input_cutoff_temp'],
                             ['temp_ramp_down', 'anion_input_cutoff_temp'],
                             'degC',
                         ],

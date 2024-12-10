@@ -1791,9 +1791,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     ) -> None:
         cracker_source = DtuCrackerSource()
         cracker_source.vapor_source = SCracker()
+        cracker_source.vapor_source.zone1_temp = DtuZoneTemp()
+
+        cracker_source.vapor_source.zone2_temp = DtuZoneTemp()
+        cracker_source.vapor_source.zone3_temp = DtuZoneTemp()
         cracker_source.valve_open = DTUShutter()
-        for zone in [1, 2, 3]:
-            cracker_source.vapor_source.__setattr__(f'zone{zone}_temp', DtuZoneTemp())
+
+
+
 
         s_cracker_param_nomad_map = map_s_cracker_params_to_nomad(key)
 
