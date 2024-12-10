@@ -1797,9 +1797,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         cracker_source.vapor_source.zone3_temp = DtuZoneTemp()
         cracker_source.valve_open = DTUShutter()
 
-
-
-
         s_cracker_param_nomad_map = map_s_cracker_params_to_nomad(key)
 
         # Looping through the s_cracker_param_nomad_map

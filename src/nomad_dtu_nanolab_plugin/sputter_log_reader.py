@@ -2718,7 +2718,7 @@ def get_source_list(data):
 # is open and the source is switch at the same time
 # to ensure that the algorithm does think that we used a source if
 # we switched it on to a power supply by mistake
-def connect_source_to_power_supply(data:pd.DataFrame, source_list):
+def connect_source_to_power_supply(data: pd.DataFrame, source_list):
     for source_number in source_list:
         shutter_col = f'PC Source {source_number} Shutter Open'
         if f'PC Source {source_number} Switch-PDC-PWS1' in data.columns:
