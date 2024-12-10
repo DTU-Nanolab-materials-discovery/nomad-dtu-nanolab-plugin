@@ -944,10 +944,9 @@ class Lf_Event:
 
         # get the time series in seconds from the start of the step
         time_series = (
-            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
-            .dt.total_seconds()
-            .tolist()
-        )
+            self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0]
+            ).dt.total_seconds().tolist()
+
 
         for zone_number in ['1', '2', '3']:
             # Extract the cracker zone temperature
@@ -983,9 +982,9 @@ class Lf_Event:
                     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                 ].tolist()
             )
-            params[self.step_id]['sources']['s_cracker']['valve_on_time']['time'] = (
-                time_series
-            )
+            params[self.step_id]['sources']['s_cracker'][
+                'valve_on_time'
+                ]['time'] = time_series
 
         # Extract the cracker valve frequency
         cond_column_feedback = (
@@ -1001,17 +1000,18 @@ class Lf_Event:
             params[self.step_id]['sources']['s_cracker']['valve_frequency']['value'] = (
                 self.data['Sulfur Cracker Control Setpoint Feedback'].tolist()
             )
-            params[self.step_id]['sources']['s_cracker']['valve_frequency']['time'] = (
-                time_series
-            )
+            params[self.step_id]['sources']['s_cracker'][
+                'valve_frequency'
+                ]['time'] = time_series
 
         # extract if the cracker valve is pulsing (enabled) as a boolean series
         params[self.step_id]['sources']['s_cracker']['valve_pulsing']['value'] = [
             bool(x) for x in self.data['Sulfur Cracker Control Enabled'].tolist()
         ]
-        params[self.step_id]['sources']['s_cracker']['valve_pulsing']['time'] = (
-            time_series
-        )
+        params[self.step_id]['sources']['s_cracker'][
+            'valve_pulsing'
+            ]['time'] = time_series
+
         # extract the mode value of the valve pulsing
         params[self.step_id]['sources']['s_cracker']['valve_pulsing']['mode_value'] = (
             bool(self.data['Sulfur Cracker Control Enabled'].value_counts().idxmax())
@@ -1059,10 +1059,9 @@ class Lf_Event:
 
         # get the time series in seconds from the start of the step
         time_series = (
-            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
-            .dt.total_seconds()
-            .tolist()
-        )
+            self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0]
+            ).dt.total_seconds().tolist()
+
         # Extract the source power setpoint
         params[self.step_id]['sources'][source_name]['power_supply']['avg_power_sp'] = (
             self.data[f'Source {source_number} Output Setpoint'].mean()
@@ -1991,7 +1990,7 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
         params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
         params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
 
-        # start and end temperature of the high temperature ramp down
+        #start and end temperature of the high temperature ramp down
         params[self.category]['start_temp'] = self.data[
             'Substrate Heater Temperature'
         ].iloc[0]
@@ -2123,9 +2122,14 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
             ].mean()
 
             if (
-                'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
-                and 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                in self.data.columns
+                (
+                    'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
+                )
+                and
+                (
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                    in self.data.columns
+                )
             ):
                 cracker_params['pulse_width'] = self.data[
                     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
@@ -5775,7 +5779,7 @@ def map_params_to_nomad(params, gun_list):
                             'cm^3/minute',
                         ],
                         [
-                            ['ramp_down_high_temp', 'ph3_flow'],
+                            ['ramp_down_high_temp', 'avg_ph3_flow'],
                             ['temp_ramp_down', 'avg_ph3_in_ar_flow'],
                             'cm^3/minute',
                         ],
