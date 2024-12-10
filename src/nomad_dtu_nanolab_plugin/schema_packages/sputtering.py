@@ -1613,7 +1613,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             logger.info(f'Set {params_str} to {subsection_str}')
         except Exception as e:
             logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
-            logger.warning(f'Shape of {params_str} is {value.shape}')
+            logger.warning(f'Shape of {params_str} is {value.type}')
 
 
     def generate_general_log_data(self, params: dict, logger: 'BoundLogger') -> None:
