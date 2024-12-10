@@ -944,9 +944,10 @@ class Lf_Event:
 
         # get the time series in seconds from the start of the step
         time_series = (
-            self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0]
-            ).dt.total_seconds().tolist()
-
+            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+            .dt.total_seconds()
+            .tolist()
+        )
 
         for zone_number in ['1', '2', '3']:
             # Extract the cracker zone temperature
@@ -962,7 +963,7 @@ class Lf_Event:
             ].tolist()
             params[self.step_id]['sources']['s_cracker'][f'zone{zone_number}_temp'][
                 'time'
-            ] = time_series
+            ] = (time_series)
 
         # Extract the cracker valve on time if possible
         cond_column_feedback = (
@@ -982,9 +983,9 @@ class Lf_Event:
                     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
                 ].tolist()
             )
-            params[self.step_id]['sources']['s_cracker'][
-                'valve_on_time'
-                ]['time'] = time_series
+            params[self.step_id]['sources']['s_cracker']['valve_on_time']['time'] = (
+                time_series
+            )
 
         # Extract the cracker valve frequency
         cond_column_feedback = (
@@ -1000,17 +1001,17 @@ class Lf_Event:
             params[self.step_id]['sources']['s_cracker']['valve_frequency']['value'] = (
                 self.data['Sulfur Cracker Control Setpoint Feedback'].tolist()
             )
-            params[self.step_id]['sources']['s_cracker'][
-                'valve_frequency'
-                ]['time'] = time_series
+            params[self.step_id]['sources']['s_cracker']['valve_frequency']['time'] = (
+                time_series
+            )
 
         # extract if the cracker valve is pulsing (enabled) as a boolean series
         params[self.step_id]['sources']['s_cracker']['valve_pulsing']['value'] = [
             bool(x) for x in self.data['Sulfur Cracker Control Enabled'].tolist()
         ]
-        params[self.step_id]['sources']['s_cracker'][
-            'valve_pulsing'
-            ]['time'] = time_series
+        params[self.step_id]['sources']['s_cracker']['valve_pulsing']['time'] = (
+            time_series
+        )
 
         # extract the mode value of the valve pulsing
         params[self.step_id]['sources']['s_cracker']['valve_pulsing']['mode_value'] = (
@@ -1059,8 +1060,10 @@ class Lf_Event:
 
         # get the time series in seconds from the start of the step
         time_series = (
-            self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0]
-            ).dt.total_seconds().tolist()
+            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+            .dt.total_seconds()
+            .tolist()
+        )
 
         # Extract the source power setpoint
         params[self.step_id]['sources'][source_name]['power_supply']['avg_power_sp'] = (
@@ -1072,7 +1075,7 @@ class Lf_Event:
         ] = self.data[f'Source {source_number} Output Setpoint'].tolist()
         params[self.step_id]['sources'][source_name]['power_supply']['power_sp'][
             'time'
-        ] = time_series
+        ] = (time_series)
 
         if f'Source {source_number} Current' in self.data.columns:
             params[self.step_id]['sources'][source_name]['power_supply'][
@@ -1084,7 +1087,7 @@ class Lf_Event:
             ] = self.data[f'Source {source_number} Current'].tolist()
             params[self.step_id]['sources'][source_name]['power_supply']['current'][
                 'time'
-            ] = time_series
+            ] = (time_series)
 
         # the quantities common to dc and plused
         # dc power supplies (avg and as time series)
@@ -1113,7 +1116,7 @@ class Lf_Event:
         ] = self.data[f'Source {source_number} DC Bias'].tolist()
         params[self.step_id]['sources'][source_name]['power_supply']['dc_bias'][
             'time'
-        ] = time_series
+        ] = (time_series)
 
         # Extract the fwd power
         params[self.step_id]['sources'][source_name]['power_supply'][
@@ -1125,7 +1128,7 @@ class Lf_Event:
         ] = self.data[f'Source {source_number} Fwd Power'].tolist()
         params[self.step_id]['sources'][source_name]['power_supply']['fwd_power'][
             'time'
-        ] = time_series
+        ] = (time_series)
 
         # Extract the rfl power
         params[self.step_id]['sources'][source_name]['power_supply'][
@@ -1137,7 +1140,7 @@ class Lf_Event:
         ] = self.data[f'Source {source_number} Rfl Power'].tolist()
         params[self.step_id]['sources'][source_name]['power_supply']['rfl_power'][
             'time'
-        ] = time_series
+        ] = (time_series)
 
         return params
 
@@ -1153,7 +1156,7 @@ class Lf_Event:
         ] = self.data[f'Source {source_number} Voltage'].tolist()
         params[self.step_id]['sources'][source_name]['power_supply']['voltage'][
             'time'
-        ] = time_series
+        ] = (time_series)
 
         params[self.step_id]['sources'][source_name]['power_supply']['avg_current'] = (
             self.data[f'Source {source_number} Current'].mean()
@@ -1164,7 +1167,7 @@ class Lf_Event:
         ] = self.data[f'Source {source_number} Current'].tolist()
         params[self.step_id]['sources'][source_name]['power_supply']['current'][
             'time'
-        ] = time_series
+        ] = (time_series)
 
         # Extract the pulse frequency and dead time if applicable
         # (avg and as time series)
@@ -1180,7 +1183,7 @@ class Lf_Event:
             ]['value'] = self.data[f'Source {source_number} Pulse Frequency'].tolist()
             params[self.step_id]['sources'][source_name]['power_supply'][
                 'pulse_frequency'
-            ]['time'] = time_series
+            ]['time'] = (time_series)
 
             params[self.step_id]['sources'][source_name]['power_supply'][
                 'avg_dead_time'
@@ -1193,7 +1196,7 @@ class Lf_Event:
             ] = self.data[f'Source {source_number} Reverse Time'].tolist()
             params[self.step_id]['sources'][source_name]['power_supply']['dead_time'][
                 'time'
-            ] = time_series
+            ] = (time_series)
 
         return params
 
@@ -1990,7 +1993,7 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
         params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
         params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
 
-        #start and end temperature of the high temperature ramp down
+        # start and end temperature of the high temperature ramp down
         params[self.category]['start_temp'] = self.data[
             'Substrate Heater Temperature'
         ].iloc[0]
@@ -2121,15 +2124,9 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
                 'Sulfur Cracker Zone 3 Current Temperature'
             ].mean()
 
-            if (
-                (
-                    'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
-                )
-                and
-                (
-                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                    in self.data.columns
-                )
+            if ('Sulfur Cracker Control Setpoint Feedback' in self.data.columns) and (
+                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                in self.data.columns
             ):
                 cracker_params['pulse_width'] = self.data[
                     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
