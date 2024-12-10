@@ -963,7 +963,7 @@ class Lf_Event:
             ].tolist()
             params[self.step_id]['sources']['s_cracker'][f'zone{zone_number}_temp'][
                 'time'
-            ] = (time_series)
+            ] = time_series
 
         # Extract the cracker valve on time if possible
         cond_column_feedback = (
@@ -1075,7 +1075,7 @@ class Lf_Event:
         ] = self.data[f'Source {source_number} Output Setpoint'].tolist()
         params[self.step_id]['sources'][source_name]['power_supply']['power_sp'][
             'time'
-        ] = (time_series)
+        ] = time_series
 
         if f'Source {source_number} Current' in self.data.columns:
             params[self.step_id]['sources'][source_name]['power_supply'][
@@ -1087,7 +1087,7 @@ class Lf_Event:
             ] = self.data[f'Source {source_number} Current'].tolist()
             params[self.step_id]['sources'][source_name]['power_supply']['current'][
                 'time'
-            ] = (time_series)
+            ] = time_series
 
         # the quantities common to dc and plused
         # dc power supplies (avg and as time series)
@@ -1116,7 +1116,7 @@ class Lf_Event:
         ] = self.data[f'Source {source_number} DC Bias'].tolist()
         params[self.step_id]['sources'][source_name]['power_supply']['dc_bias'][
             'time'
-        ] = (time_series)
+        ] = time_series
 
         # Extract the fwd power
         params[self.step_id]['sources'][source_name]['power_supply'][
@@ -1128,7 +1128,7 @@ class Lf_Event:
         ] = self.data[f'Source {source_number} Fwd Power'].tolist()
         params[self.step_id]['sources'][source_name]['power_supply']['fwd_power'][
             'time'
-        ] = (time_series)
+        ] = time_series
 
         # Extract the rfl power
         params[self.step_id]['sources'][source_name]['power_supply'][
@@ -1140,7 +1140,7 @@ class Lf_Event:
         ] = self.data[f'Source {source_number} Rfl Power'].tolist()
         params[self.step_id]['sources'][source_name]['power_supply']['rfl_power'][
             'time'
-        ] = (time_series)
+        ] = time_series
 
         return params
 
@@ -1156,7 +1156,7 @@ class Lf_Event:
         ] = self.data[f'Source {source_number} Voltage'].tolist()
         params[self.step_id]['sources'][source_name]['power_supply']['voltage'][
             'time'
-        ] = (time_series)
+        ] = time_series
 
         params[self.step_id]['sources'][source_name]['power_supply']['avg_current'] = (
             self.data[f'Source {source_number} Current'].mean()
@@ -1167,7 +1167,7 @@ class Lf_Event:
         ] = self.data[f'Source {source_number} Current'].tolist()
         params[self.step_id]['sources'][source_name]['power_supply']['current'][
             'time'
-        ] = (time_series)
+        ] = time_series
 
         # Extract the pulse frequency and dead time if applicable
         # (avg and as time series)
@@ -1183,7 +1183,7 @@ class Lf_Event:
             ]['value'] = self.data[f'Source {source_number} Pulse Frequency'].tolist()
             params[self.step_id]['sources'][source_name]['power_supply'][
                 'pulse_frequency'
-            ]['time'] = (time_series)
+            ]['time'] = time_series
 
             params[self.step_id]['sources'][source_name]['power_supply'][
                 'avg_dead_time'
@@ -1196,7 +1196,7 @@ class Lf_Event:
             ] = self.data[f'Source {source_number} Reverse Time'].tolist()
             params[self.step_id]['sources'][source_name]['power_supply']['dead_time'][
                 'time'
-            ] = (time_series)
+            ] = time_series
 
         return params
 
