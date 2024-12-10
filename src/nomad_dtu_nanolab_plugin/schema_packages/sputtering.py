@@ -1592,12 +1592,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             value = ureg.Quantity(value, 'second')
         elif unit is not None:
             if isinstance(value, list):
-                for i in range(len(value)):
-                    try:
-                        value[i] = ureg.Quantity(value[i], unit)
-                    except Exception as e:
-                        logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
-                        return
+                try:
+                    value = ureg.Quantity(value, unit)
+                except Exception as e:
+                    logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
+                    return
             else:
                 try:
                     value = ureg.Quantity(value, unit)
@@ -1613,8 +1612,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             logger.info(f'Set {params_str} to {subsection_str}')
         except Exception as e:
             logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
-            logger.warning(f'Type of {params_str} is {type(value)}')
-            logger.warning(f'Type of {params_str}[0] is {type(value[0])}')
 
 
 
