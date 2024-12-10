@@ -909,7 +909,6 @@ class InstrumentParameters(InstrumentReference, ArchiveSection):
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
 
-
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `InstrumentParameters` class.
