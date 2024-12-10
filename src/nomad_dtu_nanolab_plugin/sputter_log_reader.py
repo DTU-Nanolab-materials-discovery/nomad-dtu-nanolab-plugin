@@ -1991,7 +1991,7 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
         params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
         params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
 
-        #start and end temperature of the high temperature ramp down
+        # start and end temperature of the high temperature ramp down
         params[self.category]['start_temp'] = self.data[
             'Substrate Heater Temperature'
         ].iloc[0]

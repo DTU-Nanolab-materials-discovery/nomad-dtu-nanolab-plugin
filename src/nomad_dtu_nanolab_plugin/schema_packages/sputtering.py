@@ -249,7 +249,7 @@ class DtuDCBias(TimeSeries):
     value = Quantity(
         type=np.float64,
         unit='V',
-        description="""The DC bias.""",
+        description="""The DC self bias.""",
         shape=['*'],
     )
 
