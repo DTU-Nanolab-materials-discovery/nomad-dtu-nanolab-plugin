@@ -1614,7 +1614,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         except Exception as e:
             logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
             logger.warning(f'Type of {params_str} is {type(value)}')
-            logger.warning(f'Type of {params_str}[0] is {type(value)[0]}')
+            logger.warning(f'Type of {params_str}[0] is {type(value[0])}')
 
 
 
