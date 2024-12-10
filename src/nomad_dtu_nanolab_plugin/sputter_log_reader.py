@@ -5648,25 +5648,25 @@ def map_params_to_nomad(params, gun_list):
                         'V',
                     ],
                     [
-                        ['deposition', gun, 'start_minus_end_voltage'],
-                        ['deposition_parameters', gun, 'start_end_voltage'],
-                        'V',
-                    ],
-                    [
-                        ['deposition', gun, 'max_voltage'],
-                        ['deposition_parameters', gun, 'max_voltage'],
-                        'V',
-                    ],
-                    [
-                        ['deposition', gun, 'min_voltage'],
-                        ['deposition_parameters', gun, 'min_voltage'],
-                        'V',
-                    ],
-                    [
-                        ['deposition', gun, 'range_voltage'],
-                        ['deposition_parameters', gun, 'range_voltage'],
-                        'V',
-                    ],
+                    #     ['deposition', gun, 'start_minus_end_voltage'],
+                    #     ['deposition_parameters', gun, 'start_end_voltage'],
+                    #     'V',
+                    # ],
+                    # [
+                    #     ['deposition', gun, 'max_voltage'],
+                    #     ['deposition_parameters', gun, 'max_voltage'],
+                    #     'V',
+                    # ],
+                    # [
+                    #     ['deposition', gun, 'min_voltage'],
+                    #     ['deposition_parameters', gun, 'min_voltage'],
+                    #     'V',
+                    # ],
+                    # [
+                    #     ['deposition', gun, 'range_voltage'],
+                    #     ['deposition_parameters', gun, 'range_voltage'],
+                    #     'V',
+                    # ],
                     [
                         ['deposition', gun, 'std_voltage'],
                         ['deposition_parameters', gun, 'std_voltage'],

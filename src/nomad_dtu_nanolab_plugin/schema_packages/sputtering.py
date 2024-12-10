@@ -908,10 +908,7 @@ class InstrumentParameters(InstrumentReference, ArchiveSection):
         default='heating',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
-    platen_used = Quantity(
-        type=MEnum(['A', 'B']),
-        a_eln={'component': 'RadioEnumEditQuantity'},
-    )
+
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -971,21 +968,26 @@ class SourceOverview(ArchiveSection):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
     )
-    start_end_voltage = Quantity(
-        type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
-        unit='V',
-    )
-    max_voltage = Quantity(
-        type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
-        unit='V',
-    )
-    range_voltage = Quantity(
-        type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
-        unit='V',
-    )
+    # start_end_voltage = Quantity(
+    #     type=np.float64,
+    #     a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
+    #     unit='V',
+    # )
+    # max_voltage = Quantity(
+    #     type=np.float64,
+    #     a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
+    #     unit='V',
+    # )
+    # min_voltage = Quantity(
+    #     type=np.float64,
+    #     a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
+    #     unit='V',
+    # )
+    # range_voltage = Quantity(
+    #     type=np.float64,
+    #     a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
+    #     unit='V',
+    # )
     voltage_comments = Quantity(
         type=str,
         a_eln={'component': 'RichTextEditQuantity'},
@@ -1438,6 +1440,15 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     log_file_report = Quantity(
         type=str,
         a_eln={'component': 'RichTextEditQuantity', 'label': 'Log file report'},
+    )
+    platen_used = Quantity(
+        type=MEnum(['A', 'B']),
+        a_eln={'component': 'RadioEnumEditQuantity'},
+    )
+    base_pressure = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'torr'},
+        unit='kg/(m*s^2)',
     )
     target_image_before = Quantity(
         type=str,
