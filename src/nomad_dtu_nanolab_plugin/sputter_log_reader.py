@@ -1990,6 +1990,15 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
 
         params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
         params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
+
+        #start and end temperature of the high temperature ramp down
+        params[self.category]['start_temp'] = self.data[
+            'Substrate Heater Temperature'
+        ].iloc[0]
+        params[self.category]['end_temp'] = self.data[
+            'Substrate Heater Temperature'
+        ].iloc[-1]
+
         # get the avg capman pressure during the high temperature ramp down
         params[self.category]['avg_capman_pressure'] = self.data[
             'PC Capman Pressure'
@@ -5766,8 +5775,8 @@ def map_params_to_nomad(params, gun_list):
                             'cm^3/minute',
                         ],
                         [
-                            ['ramp_down_high_temp', 'avg_ph3_in_ar_flow'],
-                            ['temp_ramp_down', 'ph3_flow'],
+                            ['ramp_down_high_temp', 'ph3_flow'],
+                            ['temp_ramp_down', 'avg_ph3_in_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
