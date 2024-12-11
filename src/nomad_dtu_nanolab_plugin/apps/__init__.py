@@ -85,6 +85,11 @@ sputtering = AppEntryPoint(
                 ),
                 MenuItemHistogram(
                     x=f'data.deposition_parameters.deposition_temp#{schema}',
+                    unit='degC',
+                ),
+                MenuItemHistogram(
+                    x=f'data.deposition_parameters.deposition_time#{schema}',
+                    unit='minute',
                 ),
             ],
         ),
