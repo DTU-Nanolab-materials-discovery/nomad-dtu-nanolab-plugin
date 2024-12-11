@@ -39,6 +39,10 @@ PRINT_FIGURES = False
 TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
+RENAME_CRACKER_COL = True
+
+LOGFILES_EXTENSION = 'CSV'
+SPECTRA_EXTENSION = 'csv'
 
 SAMPLES_TO_REMOVE = [
     'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
@@ -47,16 +51,18 @@ SAMPLES_TO_REMOVE = [
 ]
 
 SAMPLES_TO_TEST = [
-    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
-    'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
+    # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
+    # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
     # 'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
     # 'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
     # 'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
     # 'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
     # 'mittma_0007_Cu_Recording Set 2024.06.03-09.52.29',
     # 'anait_0010_Ba_Recording Set 2024.11.12-09.20.00',
-    'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
-    'mittma_0028_Cu_Recording Set 2024.11.22-07.19.41',
+    # 'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
+    # 'mittma_0028_Cu_Recording Set 2024.11.22-07.19.41',
+    # 'anait_0012_Ba_Zr_Recording Set 2024.11.21-09.41.33',
+    'eugbe_0003_Sb_Recording Set 2024.09.04-14.54.11',
 ]
 
 
@@ -190,7 +196,7 @@ COL = {
     'ps7_out_sp': 'Power Supply 7 Output Setpoint',
     'ps7_fwd_pwr': 'Power Supply 7 Fwd Power',
     'ps7_rfl_pwr': 'Power Supply 7 Rfl Power',
-    'ps7_dc_bias': 'Power Supply 7 DC Bias',
+    'ps7_dc_bias': 'Power Supply 7  Bias',
     'ps7_load_cap_pos': 'Power Supply 7 Load Cap Position',
     'ps7_tune_cap_pos': 'Power Supply 7 Tune Cap Position',
 }
@@ -418,11 +424,9 @@ WITHIN_RANGE_PARAM = 5  # %
 # FWD and RFL Power difference threshold above which the plasma is considered
 # on
 POWER_FWD_RFL_THRESHOLD = 10  # watts
-# Categories of events to be considered in the main report
-
-
 # ---REPORT VALUES---
 
+# Categories of events to be considered in the main report
 CATEGORIES_MAIN_REPORT = [
     'deposition',
     'ramp_up_temp',
@@ -432,6 +436,7 @@ CATEGORIES_MAIN_REPORT = [
     'cracker_base_pressure',
     'source_deprate2_film_meas',
 ]
+# Categories of events to be considered in the step report
 CATEGORIES_STEPS = [
     'deposition',
     'ramp_up_temp',
@@ -477,9 +482,12 @@ GAS_NUMBER = {
 BASE_HEIGHT = 250
 WIDTH = 700
 HEIGHT = 450
-VERTICAL_SPACING = 0.02
+VERTICAL_SPACING = 0
 ROLLING_NUM = 50
 ROLLING_FRAC_MAX = 0.2
+
+BOOL_THRESHOLD = 0.5
+LINE_BREAK_LIMIT = 15
 
 EXPORT_SCALE = 20
 # Define a dictionary for step colors in the timeline plot
@@ -511,12 +519,16 @@ STEP_COLORS = {
     'S Dep Rate Meas': '#B22222',  # Firebrick
     'Cracker Pressure Meas': 'brown',
 }
+
+OVERVIEW_PLOT_RESAMPLING_TIME = 10  # seconds
+OVERVIEW_PLOT_COLOR_MAP = {True: 'green', False: 'red'}
+OVERVIEW_PLOT_MARKER_MAP = {True: 'x', False: 'circle'}
+
 # Choosing what to plot in the overview plot
 OVERVIEW_PLOT = [
-    'PC Substrate Shutter Open',
     'PC Capman Pressure',
     'Substrate Heater Temperature',
-    'Sulfur Cracker Control Enabled',
+    # 'Sulfur Cracker Control Enabled',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'Sulfur Cracker Control Setpoint Feedback',
     'Sulfur Cracker Control Sensor Value',
@@ -531,6 +543,7 @@ for source_number in ['1', '3', '4']:
 
 # Set y-axis titles
 DICT_RENAME = {
+    'Sulfur Cracker Control Sensor Value': 'Cracker Sensor Value',
     'Sulfur Cracker Control Enabled': 'Cracker Open',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback': 'Cracker Pulse Width',
     'Sulfur Cracker Control Setpoint Feedback': 'Cracker Frequency',
@@ -833,11 +846,6 @@ class Lf_Event:
             gas_flow['flow_rate'] = {}
 
             gas_flow['gas_name'] = gas_name
-            # In the following entry, we add the time series of the
-            # corresponding gas flow rate
-            # params[self.step_id]['environment']['gas_flow'][gas_name]['flow_rate'][
-            #     'set_value'
-            # ] = self.data[f'PC MFC {GAS_NUMBER[gas_name]} Setpoint'].iloc[-1]
             # In the following entry, we set the value of the gas flow rate
             gas_flow['flow_rate']['value'] = self.data[
                 f'PC MFC {GAS_NUMBER[gas_name]} Flow'
@@ -957,37 +965,54 @@ class Lf_Event:
                 'time'
             ] = time_series
 
-        # Extract the cracker valve on time
-        params[self.step_id]['sources']['s_cracker']['avg_valve_on_time'] = self.data[
+        # Extract the cracker valve on time if possible
+        cond_column_feedback = (
+            'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
+        ) & (
             'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-        ].mean()
-        params[self.step_id]['sources']['s_cracker']['valve_on_time']['value'] = (
-            self.data[
-                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-            ].tolist()
+            in self.data.columns
         )
-        params[self.step_id]['sources']['s_cracker']['valve_on_time']['time'] = (
-            time_series
-        )
+        if cond_column_feedback:
+            params[self.step_id]['sources']['s_cracker']['avg_valve_on_time'] = (
+                self.data[
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ].mean()
+            )
+            params[self.step_id]['sources']['s_cracker']['valve_on_time']['value'] = (
+                self.data[
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ].tolist()
+            )
+            params[self.step_id]['sources']['s_cracker']['valve_on_time']['time'] = (
+                time_series
+            )
 
         # Extract the cracker valve frequency
-        params[self.step_id]['sources']['s_cracker']['avg_valve_frequency'] = self.data[
-            'Sulfur Cracker Control Setpoint Feedback'
-        ].mean()
-        params[self.step_id]['sources']['s_cracker']['valve_frequency']['value'] = (
-            self.data['Sulfur Cracker Control Setpoint Feedback'].tolist()
+        cond_column_feedback = (
+            'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
+        ) & (
+            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+            in self.data.columns
         )
-        params[self.step_id]['sources']['s_cracker']['valve_frequency']['time'] = (
-            time_series
-        )
+        if cond_column_feedback:
+            params[self.step_id]['sources']['s_cracker']['avg_valve_frequency'] = (
+                self.data['Sulfur Cracker Control Setpoint Feedback'].mean()
+            )
+            params[self.step_id]['sources']['s_cracker']['valve_frequency']['value'] = (
+                self.data['Sulfur Cracker Control Setpoint Feedback'].tolist()
+            )
+            params[self.step_id]['sources']['s_cracker']['valve_frequency']['time'] = (
+                time_series
+            )
 
         # extract if the cracker valve is pulsing (enabled) as a boolean series
-        params[self.step_id]['sources']['s_cracker']['valve_pulsing']['value'] = (
+        params[self.step_id]['sources']['s_cracker']['valve_pulsing']['value'] = [
             bool(x) for x in self.data['Sulfur Cracker Control Enabled'].tolist()
-        )
+        ]
         params[self.step_id]['sources']['s_cracker']['valve_pulsing']['time'] = (
             time_series
         )
+
         # extract the mode value of the valve pulsing
         params[self.step_id]['sources']['s_cracker']['valve_pulsing']['mode_value'] = (
             bool(self.data['Sulfur Cracker Control Enabled'].value_counts().idxmax())
@@ -1039,6 +1064,7 @@ class Lf_Event:
             .dt.total_seconds()
             .tolist()
         )
+
         # Extract the source power setpoint
         params[self.step_id]['sources'][source_name]['power_supply']['avg_power_sp'] = (
             self.data[f'Source {source_number} Output Setpoint'].mean()
@@ -1223,10 +1249,7 @@ class Deposition_Event(Lf_Event):
 
         # Extract if the deposition has beem interrupted based the interrupt_deposition
         # flag
-        if interrupt_deposition:
-            params[self.category]['interrupted'] = True
-        else:
-            params[self.category]['interrupted'] = False
+        params[self.category]['interrupted'] = interrupt_deposition
 
         params = self.get_rt_bool(params=params)
         params = self.get_source_used_deposition(source_list, params=params)
@@ -1305,43 +1328,57 @@ class Deposition_Event(Lf_Event):
         if 's_cracker' not in params[self.category]:
             params[self.category]['s_cracker'] = {}
 
-        if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
-            if (
-                (self.data['Sulfur Cracker Control Enabled'] == 1).mean() >= TOLERANCE
-                and (
-                    self.data['Sulfur Cracker Zone 1 Current Temperature']
-                    > CRACKER_ZONE_1_MIN_TEMP
-                ).all()
-                and (
-                    self.data['Sulfur Cracker Zone 2 Current Temperature']
-                    > CRACKER_ZONE_2_MIN_TEMP
-                ).all()
-                and (
-                    self.data['Sulfur Cracker Zone 3 Current Temperature']
-                    > CRACKER_ZONE_3_MIN_TEMP
-                ).all()
-            ):
-                params[self.category]['s_cracker']['enabled'] = True
-                params[self.category]['s_cracker']['zone1_temp'] = self.data[
-                    'Sulfur Cracker Zone 1 Current Temperature'
-                ].mean()
-                params[self.category]['s_cracker']['zone2_temp'] = self.data[
-                    'Sulfur Cracker Zone 2 Current Temperature'
-                ].mean()
-                params[self.category]['s_cracker']['zone3_temp'] = self.data[
-                    'Sulfur Cracker Zone 3 Current Temperature'
-                ].mean()
-                params[self.category]['s_cracker']['pulse_width'] = self.data[
-                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                ].mean()
-                params[self.category]['s_cracker']['pulse_freq'] = self.data[
-                    'Sulfur Cracker Control Setpoint Feedback'
-                ].mean()
-            else:
-                params[self.category]['s_cracker']['enabled'] = False
-        else:
+        if 'Sulfur Cracker Zone 1 Current Temperature' not in self.data.columns:
             params[self.category]['s_cracker']['enabled'] = False
+            return params
+
+        if not self.is_cracker_enabled():
+            params[self.category]['s_cracker']['enabled'] = False
+            return params
+
+        params[self.category]['s_cracker']['enabled'] = True
+        params[self.category]['s_cracker']['zone1_temp'] = self.data[
+            'Sulfur Cracker Zone 1 Current Temperature'
+        ].mean()
+        params[self.category]['s_cracker']['zone2_temp'] = self.data[
+            'Sulfur Cracker Zone 2 Current Temperature'
+        ].mean()
+        params[self.category]['s_cracker']['zone3_temp'] = self.data[
+            'Sulfur Cracker Zone 3 Current Temperature'
+        ].mean()
+
+        cond_column_feedback = (
+            'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
+        ) & (
+            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+            in self.data.columns
+        )
+        if cond_column_feedback:
+            params[self.category]['s_cracker']['pulse_width'] = self.data[
+                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+            ].mean()
+            params[self.category]['s_cracker']['pulse_freq'] = self.data[
+                'Sulfur Cracker Control Setpoint Feedback'
+            ].mean()
+
         return params
+
+    def is_cracker_enabled(self):
+        return (
+            (self.data['Sulfur Cracker Control Enabled'] == 1).mean() >= TOLERANCE
+            and (
+                self.data['Sulfur Cracker Zone 1 Current Temperature']
+                > CRACKER_ZONE_1_MIN_TEMP
+            ).all()
+            and (
+                self.data['Sulfur Cracker Zone 2 Current Temperature']
+                > CRACKER_ZONE_2_MIN_TEMP
+            ).all()
+            and (
+                self.data['Sulfur Cracker Zone 3 Current Temperature']
+                > CRACKER_ZONE_3_MIN_TEMP
+            ).all()
+        )
 
     # method to extract important pressure parameters
     def get_pressure_params(self, raw_data, params=None):
@@ -1377,6 +1414,9 @@ class Deposition_Event(Lf_Event):
                 params['overview']['true_base_pressure_meas'] = False
         else:
             params['overview']['true_base_pressure_meas'] = False
+
+        if params['overview']['true_base_pressure_meas']:
+            params['overview']['base_pressure'] = min_pressure_before_depostion
 
         return params
 
@@ -1436,9 +1476,11 @@ class Deposition_Event(Lf_Event):
         ].mean()
 
         for gas in ['ar', 'ph3', 'h2s']:
-            params[self.category][f'avg_{gas}_flow'] = self.data[
-                f'PC MFC {GAS_NUMBER[gas]} Flow'
-            ].mean()
+            mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+            if mean_flow > MFC_FLOW_THRESHOLD:
+                params[self.category][f'avg_{gas}_flow'] = mean_flow
+            else:
+                params[self.category][f'avg_{gas}_flow'] = 0
 
         # calculate the partial pressure of the gases
         for gas in ['ph3', 'h2s']:
@@ -1701,9 +1743,14 @@ class Source_Presput_Event(Lf_Event):
                 'avg_capman_pressure'
             ] = self.data['PC Capman Pressure'].mean()
             # Extract the gas flows during presputtering
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                'avg_ar_flow'
-            ] = self.data['PC MFC 1 Flow'].mean()
+            if self.data['PC MFC 1 Flow'].mean() > MFC_FLOW_THRESHOLD:
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                    'avg_ar_flow'
+                ] = self.data['PC MFC 1 Flow'].mean()
+            else:
+                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                    'avg_ar_flow'
+                ] = 0
         return params
 
 
@@ -1799,6 +1846,12 @@ class Sub_Ramp_Up_Event(Lf_Event):
             # considered making easier to extract the slope
             params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
             params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
+            params[self.category]['start_temp'] = self.data[
+                'Substrate Heater Temperature Setpoint'
+            ].iloc[0]
+            params[self.category]['end_temp'] = self.data[
+                'Substrate Heater Temperature Setpoint'
+            ].iloc[-1]
             params[self.category]['duration'] = (
                 params[self.category]['end_time'] - params[self.category]['start_time']
             )
@@ -1817,9 +1870,11 @@ class Sub_Ramp_Up_Event(Lf_Event):
             # Extract the gas flows during the substrate ramp up
 
             for gas in ['ar', 'ph3', 'h2s']:
-                params[self.category][f'avg_{gas}_flow'] = self.data[
-                    f'PC MFC {GAS_NUMBER[gas]} Flow'
-                ].mean()
+                mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+                if mean_flow > MFC_FLOW_THRESHOLD:
+                    params[self.category][f'avg_{gas}_flow'] = mean_flow
+                else:
+                    params[self.category][f'avg_{gas}_flow'] = 0
 
             # Extract if the cracker has been used during ramp up
             # The column 'Sulfur Cracker Control Enabled' correspond to the
@@ -1852,12 +1907,19 @@ class Sub_Ramp_Up_Event(Lf_Event):
                     params[self.category]['s_cracker']['zone3_temp'] = self.data[
                         'Sulfur Cracker Zone 3 Current Temperature'
                     ].mean()
-                    params[self.category]['s_cracker']['pulse_width'] = self.data[
+                    cond_column_feedback = (
+                        'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
+                    ) & (
                         'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                    ].mean()
-                    params[self.category]['s_cracker']['pulse_freq'] = self.data[
-                        'Sulfur Cracker Control Setpoint Feedback'
-                    ].mean()
+                        in self.data.columns
+                    )
+                    if cond_column_feedback:
+                        params[self.category]['s_cracker']['pulse_width'] = self.data[
+                            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                        ].mean()
+                        params[self.category]['s_cracker']['pulse_freq'] = self.data[
+                            'Sulfur Cracker Control Setpoint Feedback'
+                        ].mean()
                 else:
                     params[self.category]['s_cracker']['enabled'] = False
             else:
@@ -1925,72 +1987,155 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
         if 'deposition' not in params:
             raise ValueError('Missing deposition info, run get_rt_bool first')
 
-        if not params['deposition']['rt']:
-            params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
-            params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
+        if params['deposition']['rt']:
+            return params
 
-            # Extract the start and end temperature of the
-            # high temperature ramp down
-            params[self.category]['start_setpoint_temp'] = self.data[
-                'Substrate Heater Temperature Setpoint'
-            ].iloc[0]
-            params[self.category]['end_setpoint_temp'] = self.data[
-                'Substrate Heater Temperature Setpoint'
-            ].iloc[-1]
+        params[self.category]['start_time'] = self.data['Time Stamp'].iloc[0]
+        params[self.category]['end_time'] = self.data['Time Stamp'].iloc[-1]
 
-            # Extract the gases used during the high substrate ramp down
-            for gas in ['ar', 'ph3', 'h2s']:
-                params[self.category][f'avg_{gas}_flow'] = self.data[
-                    f'PC MFC {GAS_NUMBER[gas]} Flow'
+        # start and end temperature of the high temperature ramp down
+        params[self.category]['start_temp'] = self.data[
+            'Substrate Heater Temperature'
+        ].iloc[0]
+        params[self.category]['end_temp'] = self.data[
+            'Substrate Heater Temperature'
+        ].iloc[-1]
+
+        # get the avg capman pressure during the high temperature ramp down
+        params[self.category]['avg_capman_pressure'] = self.data[
+            'PC Capman Pressure'
+        ].mean()
+        params[self.category]['duration'] = (
+            params[self.category]['end_time'] - params[self.category]['start_time']
+        )
+        # Extract the start and end temperature of the
+        # high temperature ramp down
+        params[self.category]['start_setpoint_temp'] = self.data[
+            'Substrate Heater Temperature'
+        ].iloc[0]
+        params[self.category]['end_setpoint_temp'] = self.data[
+            'Substrate Heater Temperature'
+        ].iloc[-1]
+        # slope assuming linear ramp down
+        temp_slope = (
+            params[self.category]['end_setpoint_temp']
+            - params[self.category]['start_setpoint_temp']
+        ) / params[self.category]['duration'].total_seconds()
+        params[self.category]['temp_slope'] = temp_slope
+
+        # Extract the gases used during the high substrate ramp down
+        for gas in ['ar', 'ph3', 'h2s']:
+            mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
+            if mean_flow > MFC_FLOW_THRESHOLD:
+                params[self.category][f'avg_{gas}_flow'] = mean_flow
+            else:
+                params[self.category][f'avg_{gas}_flow'] = 0
+
+        params[self.category]['anion_input_cutoff_temp'] = self.data[
+            'Substrate Heater Temperature Setpoint'
+        ].iloc[-1]
+        params[self.category]['anion_input_cutoff_time'] = self.data['Time Stamp'].iloc[
+            -1
+        ]
+
+        # Extract if the cracker has been used during ramp down
+        params[self.category]['s_cracker'] = self._get_cracker_params()
+
+        # if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
+        #     if (
+        #         (self.data['Sulfur Cracker Control Enabled'] == 1).all()
+        #         and (
+        #             self.data['Sulfur Cracker Zone 1 Current Temperature']
+        #             > CRACKER_ZONE_1_MIN_TEMP
+        #         ).all()
+        #         and (
+        #             self.data['Sulfur Cracker Zone 2 Current Temperature']
+        #             > CRACKER_ZONE_2_MIN_TEMP
+        #         ).all()
+        #         and (
+        #             self.data['Sulfur Cracker Zone 3 Current Temperature']
+        #             > CRACKER_ZONE_3_MIN_TEMP
+        #         ).all()
+        #     ):
+        #         params[self.category]['s_cracker']['enabled'] = True
+        #         # if the crack has been used, extract the cracker parameters
+        #         params[self.category]['s_cracker']['zone1_temp'] = self.data[
+        #             'Sulfur Cracker Zone 1 Current Temperature'
+        #         ].mean()
+        #         params[self.category]['s_cracker']['zone2_temp'] = self.data[
+        #             'Sulfur Cracker Zone 2 Current Temperature'
+        #         ].mean()
+        #         params[self.category]['s_cracker']['zone3_temp'] = self.data[
+        #             'Sulfur Cracker Zone 3 Current Temperature'
+        #         ].mean()
+        #         cond_column_feedback = (
+        #             'Sulfur Cracker Control Setpoint Feedback' in self.data.columns
+        #         ) & (
+        #             'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+        #             in self.data.columns
+        #         )
+        #         if cond_column_feedback:
+        #             params[self.category]['s_cracker']['pulse_width'] = self.data[
+        #                 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+        #             ].mean()
+        #             params[self.category]['s_cracker']['pulse_freq'] = self.data[
+        #                 'Sulfur Cracker Control Setpoint Feedback'
+        #             ].mean()
+        #     else:
+        #         params[self.category]['s_cracker']['enabled'] = False
+        # else:
+        #     params[self.category]['s_cracker']['enabled'] = False
+        # Extract the anion input cutoff temperature as the last temperature of
+        # the high temperature ramp down
+
+        return params
+
+    def _get_cracker_params(self):
+        cracker_params = {'enabled': False}
+
+        if 'Sulfur Cracker Zone 1 Current Temperature' not in self.data.columns:
+            return cracker_params
+
+        enabled = (
+            (self.data['Sulfur Cracker Control Enabled'] == 1).all()
+            and (
+                self.data['Sulfur Cracker Zone 1 Current Temperature']
+                > CRACKER_ZONE_1_MIN_TEMP
+            ).all()
+            and (
+                self.data['Sulfur Cracker Zone 2 Current Temperature']
+                > CRACKER_ZONE_2_MIN_TEMP
+            ).all()
+            and (
+                self.data['Sulfur Cracker Zone 3 Current Temperature']
+                > CRACKER_ZONE_3_MIN_TEMP
+            ).all()
+        )
+
+        if enabled:
+            cracker_params['enabled'] = True
+            cracker_params['zone1_temp'] = self.data[
+                'Sulfur Cracker Zone 1 Current Temperature'
+            ].mean()
+            cracker_params['zone2_temp'] = self.data[
+                'Sulfur Cracker Zone 2 Current Temperature'
+            ].mean()
+            cracker_params['zone3_temp'] = self.data[
+                'Sulfur Cracker Zone 3 Current Temperature'
+            ].mean()
+
+            if ('Sulfur Cracker Control Setpoint Feedback' in self.data.columns) and (
+                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                in self.data.columns
+            ):
+                cracker_params['pulse_width'] = self.data[
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ].mean()
+                cracker_params['pulse_freq'] = self.data[
+                    'Sulfur Cracker Control Setpoint Feedback'
                 ].mean()
 
-            # Extract if the cracker has been used during ramp down
-            if 'Sulfur Cracker Zone 1 Current Temperature' in self.data.columns:
-                if (
-                    (self.data['Sulfur Cracker Control Enabled'] == 1).all()
-                    and (
-                        self.data['Sulfur Cracker Zone 1 Current Temperature']
-                        > CRACKER_ZONE_1_MIN_TEMP
-                    ).all()
-                    and (
-                        self.data['Sulfur Cracker Zone 2 Current Temperature']
-                        > CRACKER_ZONE_2_MIN_TEMP
-                    ).all()
-                    and (
-                        self.data['Sulfur Cracker Zone 3 Current Temperature']
-                        > CRACKER_ZONE_3_MIN_TEMP
-                    ).all()
-                ):
-                    params[self.category]['s_cracker']['enabled'] = True
-                    # if the crack has been used, extract the cracker parameters
-                    params[self.category]['s_cracker']['zone1_temp'] = self.data[
-                        'Sulfur Cracker Zone 1 Current Temperature'
-                    ].mean()
-                    params[self.category]['s_cracker']['zone2_temp'] = self.data[
-                        'Sulfur Cracker Zone 2 Current Temperature'
-                    ].mean()
-                    params[self.category]['s_cracker']['zone3_temp'] = self.data[
-                        'Sulfur Cracker Zone 3 Current Temperature'
-                    ].mean()
-                    params[self.category]['s_cracker']['pulse_width'] = self.data[
-                        'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                    ].mean()
-                    params[self.category]['s_cracker']['pulse_freq'] = self.data[
-                        'Sulfur Cracker Control Setpoint Feedback'
-                    ].mean()
-                else:
-                    params[self.category]['s_cracker']['enabled'] = False
-            else:
-                params[self.category]['s_cracker']['enabled'] = False
-            # Extract the anion input cutoff temperature as the last temperature of
-            # the high temperature ramp down
-            params[self.category]['anion_input_cutoff_temp'] = self.data[
-                'Substrate Heater Temperature Setpoint'
-            ].iloc[-1]
-            params[self.category]['anion_input_cutoff_time'] = self.data[
-                'Time Stamp'
-            ].iloc[-1]
-        return params
+        return cracker_params
 
 
 class Sub_Ramp_Down_Low_Temp_Event(Lf_Event):
@@ -2139,6 +2284,14 @@ def get_overview(raw_data, params=None):
     # Extract start and end time of the log file
     params['overview']['log_start_time'] = raw_data['Time Stamp'].iloc[0]
     params['overview']['log_end_time'] = raw_data['Time Stamp'].iloc[-1]
+
+    cond_column_feedback = (
+        'Sulfur Cracker Control Setpoint Feedback' in raw_data.columns
+    ) & (
+        'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in raw_data.columns
+    )
+
+    params['overview']['right_scracker_column'] = cond_column_feedback
 
     return params
 
@@ -2357,6 +2510,10 @@ def build_file_paths(logfiles, i):
     overview_file_name = f'{logfiles["name"][i]}_plotly_overview.html'
     overview_file_path = os.path.join(file_dir, overview_file_name)
 
+    # specify the optix cascade plot export location and file name
+    optix_cascade_file_name = f'{logfiles["name"][i]}_optix_cascade.html'
+    optix_file_path = os.path.join(file_dir, optix_cascade_file_name)
+
     # Specify the chamber config plot export location and file name
     chamber_config_file_name = f'{logfiles["name"][i]}_chamber_config.png'
     chamber_config_file_path = os.path.join(file_dir, chamber_config_file_name)
@@ -2367,6 +2524,7 @@ def build_file_paths(logfiles, i):
         timeline_file_path,
         bias_file_path,
         overview_file_path,
+        optix_file_path,
         chamber_config_file_path,
     )
 
@@ -2570,7 +2728,7 @@ def get_source_list(data):
 # is open and the source is switch at the same time
 # to ensure that the algorithm does think that we used a source if
 # we switched it on to a power supply by mistake
-def connect_source_to_power_supply(data, source_list):
+def connect_source_to_power_supply(data: pd.DataFrame, source_list):
     for source_number in source_list:
         shutter_col = f'PC Source {source_number} Shutter Open'
         if f'PC Source {source_number} Switch-PDC-PWS1' in data.columns:
@@ -2612,7 +2770,7 @@ def connect_source_to_power_supply(data, source_list):
 # This allows to harmonize the column name for samples deposited
 # before the 12/08/2024, for which the column name was wrong and
 # cracker data is not logged properly
-def rename_cracker_columns(data):
+def rename_cracker_columns(data, rename_cracker_col=False):
     cond_column = ('Sulfur Cracker Control Setpoint' in data.columns) & (
         'Sulfur Cracker Control Valve PulseWidth Setpoint' in data.columns
     )
@@ -2620,19 +2778,21 @@ def rename_cracker_columns(data):
         'Sulfur Cracker Control Setpoint Feedback' in data.columns
     ) & ('Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in data.columns)
 
-    if cond_column and not cond_column_feedback:
-        # If the wrong cracker columns are present exclusively, we rename them
-        data.rename(
-            columns={
-                'Sulfur Cracker Control Setpoint': (
-                    'Sulfur Cracker Control Setpoint Feedback'
-                ),
-                'Sulfur Cracker Control Valve PulseWidth Setpoint': (
-                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                ),
-            },
-            inplace=True,
-        )
+    if rename_cracker_col:
+        if cond_column and not cond_column_feedback:
+            # If the wrong cracker columns are present exclusively, we rename them
+            data.rename(
+                columns={
+                    'Sulfur Cracker Control Setpoint': (
+                        'Sulfur Cracker Control Setpoint Feedback'
+                    ),
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint': (
+                        'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                    ),
+                },
+                inplace=True,
+            )
+
     return data
 
 
@@ -3009,17 +3169,27 @@ def filter_data_cracker_pressure(data, **kwargs):
             )
         )
 
-        valve_cond = within_range(
-            data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
-            deposition.data[
-                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-            ].mean(),
-            WITHIN_RANGE_PARAM,
-        ) & within_range(
-            data['Sulfur Cracker Control Setpoint Feedback'],
-            deposition.data['Sulfur Cracker Control Setpoint Feedback'].mean(),
-            WITHIN_RANGE_PARAM,
+        cond_column_feedback = (
+            'Sulfur Cracker Control Setpoint Feedback' in data.columns
+        ) & (
+            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in data.columns
         )
+
+        if cond_column_feedback:
+            valve_cond = within_range(
+                data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
+                deposition.data[
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ].mean(),
+                WITHIN_RANGE_PARAM,
+            ) & within_range(
+                data['Sulfur Cracker Control Setpoint Feedback'],
+                deposition.data['Sulfur Cracker Control Setpoint Feedback'].mean(),
+                WITHIN_RANGE_PARAM,
+            )
+        else:
+            # If the cracker columns are not present, we effectively ignore them
+            valve_cond = pd.Series(True, index=data.index)
 
         if not cracker_on_open.data.empty:
             cracker_base_pressure_cond = (
@@ -3173,6 +3343,11 @@ def define_deposition_conditions(data, deposition):
         deposition.data['PC MFC 6 Setpoint'].mean(),
         WITHIN_RANGE_PARAM,
     )
+
+    cond_column_feedback = (
+        'Sulfur Cracker Control Setpoint Feedback' in data.columns
+    ) & ('Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in data.columns)
+
     if 'Sulfur Cracker Zone 1 Current Temperature' in data.columns:
         cracker_dep_cond = (
             within_range(
@@ -3190,19 +3365,26 @@ def define_deposition_conditions(data, deposition):
                 deposition.data['Sulfur Cracker Zone 3 Current Temperature'].mean(),
                 WITHIN_RANGE_PARAM,
             )
-            & within_range(
-                data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
-                deposition.data[
-                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-                ].mean(),
-                WITHIN_RANGE_PARAM,
-            )
-            & within_range(
-                data['Sulfur Cracker Control Setpoint Feedback'],
-                deposition.data['Sulfur Cracker Control Setpoint Feedback'].mean(),
-                WITHIN_RANGE_PARAM,
-            )
         )
+        if cond_column_feedback:
+            # If the cracker columns are present, we use them to add
+            # the condition
+            cracker_dep_cond = (
+                cracker_dep_cond
+                & within_range(
+                    data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
+                    deposition.data[
+                        'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                    ].mean(),
+                    WITHIN_RANGE_PARAM,
+                )
+                & within_range(
+                    data['Sulfur Cracker Control Setpoint Feedback'],
+                    deposition.data['Sulfur Cracker Control Setpoint Feedback'].mean(),
+                    WITHIN_RANGE_PARAM,
+                )
+            )
+
     else:
         cracker_dep_cond = pd.Series(False, index=data.index)
     return pressure_cond, ph3_dep_cond, h2s_dep_cond, cracker_dep_cond
@@ -3297,18 +3479,27 @@ def define_sulfur_meas_conditions(data, deprate2_meas, deprate2_sulfur_meas, **k
                 WITHIN_RANGE_PARAM,
             )
         )
-
-        valve_cond = within_range(
-            data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
-            deposition.data[
-                'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
-            ].mean(),
-            WITHIN_RANGE_PARAM,
-        ) & within_range(
-            data['Sulfur Cracker Control Setpoint Feedback'],
-            deposition.data['Sulfur Cracker Control Setpoint Feedback'].mean(),
-            WITHIN_RANGE_PARAM,
+        cond_column_feedback = (
+            'Sulfur Cracker Control Setpoint Feedback' in data.columns
+        ) & (
+            'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in data.columns
         )
+
+        if cond_column_feedback:
+            valve_cond = within_range(
+                data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'],
+                deposition.data[
+                    'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback'
+                ].mean(),
+                WITHIN_RANGE_PARAM,
+            ) & within_range(
+                data['Sulfur Cracker Control Setpoint Feedback'],
+                deposition.data['Sulfur Cracker Control Setpoint Feedback'].mean(),
+                WITHIN_RANGE_PARAM,
+            )
+        else:
+            # If the cracker columns are not present, we effectively ignore them
+            valve_cond = pd.Series(True, index=data.index)
 
         pressure_cond = within_range(
             data['PC Capman Pressure'],
@@ -3972,7 +4163,7 @@ def create_stack_plot(plot_params):
         plot_params (dict): A dictionary containing the plot parameters.
 
     Returns:
-        tuple: A tuple containing the Plotly figure objec
+        tuple: A tuple containing the Plotly figure object
         and the number of plots.
     """
     df = plot_params['df']
@@ -3988,12 +4179,10 @@ def create_stack_plot(plot_params):
     )
 
     for i, y_col in enumerate(Y):
-        # Setup y-axis titles
-
-        if y_col in DICT_RENAME:
-            y_axis_title = DICT_RENAME[y_col]
-        else:
-            y_axis_title = y_col
+        # Setup y-axis titles with line breaks
+        y_axis_title = DICT_RENAME.get(y_col, y_col)
+        if len(y_axis_title) > LINE_BREAK_LIMIT:  # Add line break for long titles
+            y_axis_title = '<br>'.join(y_axis_title.split(' '))
 
         trace = go.Scatter(
             x=df[X],
@@ -4002,13 +4191,18 @@ def create_stack_plot(plot_params):
             name=y_axis_title,
         )
         fig.add_trace(trace, row=i + 1, col=1)
-        fig.update_yaxes(title_text=y_axis_title, row=i + 1, col=1)
+        fig.update_yaxes(
+            title_text=y_axis_title,
+            title_standoff=40,  # Adjust spacing for wrapped titles
+            row=i + 1,
+            col=1,
+        )
 
     num_plot = len(Y)
     fig.update_xaxes(title_text='Time', row=num_plot, col=1)
     fig.update_layout(
         title_text=plot_title,
-        height=height * 0.5 * num_plot,
+        height=height * 0.3 * num_plot,
         width=width,
         showlegend=False,  # Hide the legend
     )
@@ -4069,73 +4263,109 @@ def create_dual_y_plot(plot_params):
     return fig
 
 
-def update_scatter_colors(fig, df, color_column, color_map):
+def update_scatter_colors(fig, df, column, **kwargs):
     """
-    Update the colors of the existing traces in the Plotly figure based
-    on the direction.
+    Update the colors and markers of specific or all traces in the Plotly figure
+    based on the specified column, and optionally remove legends for updated traces.
 
     Args:
         fig (go.Figure): The Plotly figure object to update.
         df (pd.DataFrame): The original dataframe used for plotting.
-        color_column (str): The column containing the column name for coloring.
-        color_map (dict): A dictionary mapping values to colors.
+        column (str): The column used for determining marker properties.
+    **kwargs: Additional keyword arguments for customization:
+        color_map (dict, optional): A dictionary mapping values to colors.
+        marker_map (dict, optional): A dictionary mapping values to marker types.
+        trace_index (int, optional): The index of the specific
+            trace to update. Default is None, meaning all traces.
+        hide_legend (bool, optional): Whether to hide legends for the updated traces.
     """
+    # Extract values from kwargs with defaults
+    color_map = kwargs.get('color_map', None)
+    marker_map = kwargs.get('marker_map', None)
+    trace_index = kwargs.get('trace_index', None)
+    hide_legend = kwargs.get('hide_legend', True)  # Default to hiding legend
 
-    # Check if there is more than one trace
-    if len(fig.data) > 1:
-        raise ValueError('The figure contains more than one trace.')
+    if color_map is None and marker_map is None:
+        raise ValueError('At least one of color_map or marker_map must be provided.')
 
-    # If there is exactly one trace, proceed with updating it
-    if len(fig.data) == 1:
-        trace = fig.data[0]  # Get the only trace in the figure
+    # Determine which traces to update
+    traces_to_update = (
+        [trace_index] if trace_index is not None else range(len(fig.data))
+    )
+
+    for i in traces_to_update:
+        trace = fig.data[i]
 
         # Get the x-values of the current trace
         x_vals = trace.x
 
-        # Ensure the x-values are numeric or timestamp-like
+        # Ensure x-values are numeric or timestamp-like
         if isinstance(x_vals[0], str):
-            x_vals = pd.to_datetime(x_vals)  # Convert to datetime if necessary
+            x_vals = pd.to_datetime(x_vals)
 
         # Filter the DataFrame based on the x-values of the trace
         filtered_df = df[df['Time Stamp'].isin(x_vals)]
 
-        # Check if the color_column exists and update the trace color
-        if not filtered_df.empty and color_column in filtered_df.columns:
-            # Map the color for each point based on the color_column value
-            colors = filtered_df[color_column].map(color_map).fillna('gray')
+        # Apply color and marker updates
+        if not filtered_df.empty and column in filtered_df.columns:
+            if color_map:
+                # Map colors based on the color column
+                colors = filtered_df[column].map(color_map).fillna('gray')
+                trace.marker.color = colors.tolist()
+            if marker_map:
+                # Map marker symbols based on the column
+                markers = filtered_df[column].map(marker_map).fillna('circle')
+                trace.marker.symbol = markers.tolist()
 
-            # Update the trace's marker color (apply color for each point)
-            trace.marker.color = colors.tolist()
-            trace.showlegend = False  # Remove default legend for this trace
+            # Optionally hide the legend for this trace
+            if hide_legend:
+                trace.showlegend = False
 
-        # Create legend entries based on the color_map (keys are labels,
-        # values are colors)
-        legend_entries = []
-        # Add a legend entry for the color_column (no marker, just the label)
-        legend_entries.append(
-            go.Scatter(
-                x=[None],  # No data points needed for the legend entry
-                y=[None],  # No data points needed for the legend entry
-                mode='text',  # This makes it just a label without a marker
-                text=[f'{color_column}'],  # Display the color_column as the label
-                showlegend=True,
-                name=f'{color_column}',  # The legend label as the color column name
-            )
+    # Add custom legend entries if needed
+    legend_entries = []
+
+    # Add a legend entry for the column label (in text mode, no marker)
+    legend_entries.append(
+        go.Scatter(
+            x=[None],  # No data points for legend entry
+            y=[None],
+            mode='text',
+            text=[f'{column}'],  # Column name
+            showlegend=True,
+            name=f'{column}',  # Legend label
         )
+    )
+
+    # Add legend entries for the color map
+    if color_map:
         for key, color in color_map.items():
             legend_entries.append(
                 go.Scatter(
-                    x=[None],  # No data points needed for the legend entry
-                    y=[None],  # No data pointsi d needed for the legend entry
+                    x=[None],
+                    y=[None],
                     mode='markers',
-                    marker=dict(color=color, size=5),  # Customize marker
-                    name=str(key),  # The legend label as the color map key
-                    showlegend=True,
+                    marker=dict(color=color, size=10),
+                    name=f'{key} (Color)',
                 )
             )
 
-        # Add the legend entries to the figure
-        fig.add_traces(legend_entries)
+    # Add legend entries for the marker map
+    if marker_map:
+        for key, marker in marker_map.items():
+            legend_entries.append(
+                go.Scatter(
+                    x=[None],
+                    y=[None],
+                    mode='markers',
+                    marker=dict(symbol=marker, size=10),
+                    name=f'{key} (Marker)',
+                )
+            )
+
+    fig.add_traces(legend_entries)
+
+    # Ensure the legend is visible for the entire figure
+    fig.update_layout(showlegend=True)
 
 
 def generate_timeline(
@@ -4315,20 +4545,178 @@ def generate_bias_plot(
     return bias_plot
 
 
-def generate_overview_plot(data, logfile_name):
+def generate_overview_plot(data, logfile_name, events):
     Y_plot = OVERVIEW_PLOT
     # Check if the columns are in the data
     Y_plot = [col for col in Y_plot if col in data.columns]
+
+    # Get the deposition event
+    deposition = event_list_to_dict(events)['deposition']
+    # set the deposition condition col as the second column of deposition.cond
+    data['deposition_cond'] = deposition.cond
+
+    if 'cracker_on_open' in event_list_to_dict(events):
+        cracker_on_open = event_list_to_dict(events)['cracker_on_open']
+        data['cracker_open_cond'] = cracker_on_open.cond
+
+    # Convert boolean conditions to integers (0 and 1) before resampling
+    data['deposition_cond'] = data['deposition_cond'].astype(int)
+    if 'cracker_on_open' in event_list_to_dict(events):
+        data['cracker_open_cond'] = data['cracker_open_cond'].astype(int)
+
+    data_resampled = (
+        data.set_index('Time Stamp')  # Temporarily set 'Time Stamp' as index
+        .resample(f'{OVERVIEW_PLOT_RESAMPLING_TIME}s')  # Resample data
+        .mean(numeric_only=True)  # Apply aggregation (mean in this case)
+        .reset_index()  # Reset index to turn 'Time Stamp' back into a column
+    )
+
+    # Ensure the column is treated as numeric (float)
+    # before comparison and conversion to boolean
+    data_resampled['deposition_cond'] = pd.to_numeric(
+        data_resampled['deposition_cond'], errors='coerce'
+    )
+
+    # Apply the comparison and convert to boolean
+    data_resampled['deposition_cond'] = (
+        data_resampled['deposition_cond'] > BOOL_THRESHOLD
+    ).astype(bool)
+
+    if 'cracker_on_open' in event_list_to_dict(events):
+        data_resampled['cracker_open_cond'] = pd.to_numeric(
+            data_resampled['cracker_open_cond'], errors='coerce'
+        )
+        data_resampled['cracker_open_cond'] = (
+            data_resampled['cracker_open_cond'] > BOOL_THRESHOLD
+        ).astype(bool)
+        data = data.copy()
+        data = data_resampled
+
+    # Convert 'deposition_cond' based on mean values
+    data['deposition_cond'] = (data['deposition_cond'] > BOOL_THRESHOLD).astype(bool)
+    if 'cracker_on_open' in event_list_to_dict(events):
+        data['cracker_open_cond'] = (data['cracker_open_cond'] > BOOL_THRESHOLD).astype(
+            bool
+        )
+
     overview_plot = quick_plot(
         data,
         Y_plot,
-        plot_type='line',
+        plot_type='scatter',
         plot_title=f'Overview Plot: {logfile_name}',
         mode='stack',
         heigth=0.5 * HEIGHT,
         width=WIDTH,
     )
+
+    update_scatter_colors(
+        overview_plot,
+        data,
+        'deposition_cond',
+        color_map=OVERVIEW_PLOT_COLOR_MAP,
+    )
+
+    if 'cracker_on_open' in event_list_to_dict(events):
+        update_scatter_colors(
+            overview_plot,
+            data,
+            'cracker_open_cond',
+            marker_map=OVERVIEW_PLOT_MARKER_MAP,
+        )
+
     return overview_plot
+
+
+def generate_optix_plot(
+    spectra,
+    events_to_plot,
+    logfile_name,
+):
+    deposition = event_list_to_dict(events_to_plot)['deposition']
+    dep_spectra = filter_spectrum(spectra, deposition.bounds)
+
+    # make the cascade plot of the spectra during the deposition
+    optix_plot = generate_optix_cascade_plot(
+        dep_spectra,
+        plot_title=f'Optix Plot: {logfile_name}',
+        color_scale='None',
+    )
+
+    return optix_plot
+
+
+# def generate_better_overview_plot(data, logfile_name, events):
+
+#     Y_cracker = [
+#         'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
+#         'Sulfur Cracker Control Setpoint Feedback',
+#     ]
+#     # Check if the columns are in the data
+#     Y_cracker = [col for col in Y_cracker if col in data.columns]
+
+#     cracker_fig = quick_plot(
+#         data,
+#         Y_cracker,
+#         plot_type='line',
+#         plot_title=f'Cracker Plot: {logfile_name}',
+#         mode='dual_y',
+#         heigth=0.5 * HEIGHT,
+#         width=WIDTH,
+#     )
+
+#     Y_flows = []
+#     for gas in ['ar', 'ph3', 'h2s']:
+#         Y_flows.append(f'PC MFC {GAS_NUMBER[gas]} Flow')
+#     # Check if the columns are in the data
+#     Y_flows = [col for col in Y_flows if col in data.columns]
+
+#     flow_fig = quick_plot(
+#         data,
+#         Y_flows,
+#         plot_type='line',
+#         plot_title=f'Flow Plot: {logfile_name}',
+#         mode='default',
+#         heigth=0.5 * HEIGHT,
+#         width=WIDTH,
+#     )
+
+#     Y_sources = []
+#     for source_number in ['1', '3', '4']:
+#         Y_sources.append(f'Source {source_number} DC Bias')
+#         Y_sources.append(f'Source {source_number} Voltage')
+#         Y_sources.append(f'Source {source_number} Output Setpoint')
+#     # Check if the columns are in the data
+#     Y_sources = [col for col in Y_sources if col in data.columns]
+
+#     source_fig = quick_plot(
+#         data,
+#         Y_sources,
+#         plot_type='line',
+#         plot_title=f'Source Plot: {logfile_name}',
+#         mode='default',
+#         heigth=0.5 * HEIGHT,
+#         width=WIDTH,
+#     )
+
+#     Y_temp = [
+#         'Substrate Heater Temperature',
+#         'Substrate Heater Temperature 2',
+#         'Substrate Heater Temperature Setpoint',
+#     ]
+#     # Check if the columns are in the data
+
+#     temp_fig = quick_plot(
+#         data,
+#         Y_temp,
+#         plot_type='line',
+#         plot_title=f'Temperature Plot: {logfile_name}',
+#         mode='default',
+#         heigth=0.5 * HEIGHT,
+#         width=WIDTH,
+#     )
+#     # combine the figures into a single figure with a common x axis
+
+#     return fig
 
 
 def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
@@ -4348,7 +4736,7 @@ def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
     plots['bias_plot'] = bias_plot
 
     # Generate the overview plot
-    overview_plot = generate_overview_plot(log_data, sample_name)
+    overview_plot = generate_overview_plot(log_data, sample_name, events_to_plot)
     plots['overview_plot'] = overview_plot
 
     # _, chamber_plotly_plot = plot_logfile_chamber(main_params, sample_name)
@@ -4498,10 +4886,8 @@ def read_file(file_path):
             print('Reading as log file')
             return read_logfile(file_path)
 
-def follow_peak(
-        spectra,
-        peak_pos=[656.1, 341.76, 311.9]
-        ):
+
+def follow_peak(spectra, peak_pos=[656.1, 341.76, 311.9, 750.4]):
     """
     Track the intensity of specified peaks in the spectra data over time.
 
@@ -4527,7 +4913,8 @@ def follow_peak(
     PEAK_NAME = {
         656.1: 'H',
         341.76: 'PH',
-        311.9: 'S2'
+        311.9: 'S2',
+        750.4: 'Ar',
     }
 
     # Ensure peak_pos is iterable
@@ -4544,7 +4931,7 @@ def follow_peak(
             idx = (spectra['data']['x'] - pos).abs().idxmin()
             intensity = spectra['data'][key][idx]
             # Add intensity for position column
-            row[f"{pos}"] = intensity
+            row[f'{pos}'] = intensity
             # Add intensity for peak name column if exists
             if name:
                 row[name] = intensity
@@ -4557,6 +4944,7 @@ def follow_peak(
     peak_intensity = peak_intensity.groupby('Time Stamp').first().reset_index()
 
     return peak_intensity
+
 
 # Function to read the IDOL combinatorial chamber CSV logfile
 def read_logfile(file_path):
@@ -4611,7 +4999,7 @@ def merge_logfile_rga(
         pd.DataFrame: Merged DataFrame with aligned timestamps and NaN for missing
         values.
     """
-    #if df2 columns are found in df1, return df1 already
+    # if df2 columns are found in df1, return df1 already
     if all(col in df1.columns for col in df2.columns):
         return df1
 
@@ -4774,7 +5162,7 @@ def format_logfile(data):
     # print('Formatting the dataframe for conditional filtering')
     # -----FORMATTING THE DATAFRAME FOR CONDITIONAL FILTERING-------
     # -------RENAME THE CRACKER COLUMNS OF THE DATAFRAME---------
-    data = rename_cracker_columns(data)
+    data = rename_cracker_columns(data, rename_cracker_col=RENAME_CRACKER_COL)
     # ---------READING THE SOURCE USED--------
     # Get the source list automatically from the logfile
     source_list = get_source_list(data)
@@ -5099,17 +5487,36 @@ def get_nested_value(dictionary, key_path):
 def map_params_to_nomad(params, gun_list):
     # Definiting the input, ouput and unit
     param_nomad_map = [
+        [
+            ['deposition', 'interrupted'],
+            ['deposition_parameters', 'interrupted_deposition'],
+            None,
+        ],
         # Deposition parameters
         [
             ['deposition', 'avg_temp_1'],
             ['deposition_parameters', 'deposition_temp'],
             'degC',
         ],
-        # duration has no unit since it is a TimeDelta object
+        [
+            ['deposition', 'avg_temp_2'],
+            ['deposition_parameters', 'deposition_temp_2'],
+            'degC',
+        ],
+        [
+            ['deposition', 'avg_temp_setpoint'],
+            ['deposition_parameters', 'deposition_temp_sp'],
+            'degC',
+        ],
+        [
+            ['deposition', 'avg_true_temp'],
+            ['deposition_parameters', 'deposition_true_temp'],
+            'degC',
+        ],
         [
             ['deposition', 'duration'],
             ['deposition_parameters', 'deposition_time'],
-            None,
+            None,  # duration has no unit since it is a TimeDelta object
         ],
         [
             ['deposition', 'avg_capman_pressure'],
@@ -5158,6 +5565,22 @@ def map_params_to_nomad(params, gun_list):
             'second',
         ],
     ]
+    if 'ph3_h2s_ratio' in params['deposition']:
+        param_nomad_map.append(
+            [
+                ['deposition', 'ph3_h2s_ratio'],
+                ['deposition_parameters', 'ph3_h2s_ratio'],
+                None,
+            ]
+        )
+    if params['overview']['true_base_pressure_meas']:
+        param_nomad_map.append(
+            [
+                ['overview', 'base_pressure'],
+                ['base_pressure'],
+                'torr',
+            ]
+        )
     if params['deposition'].get('SCracker', {}).get('enabled', False):
         # SCracker parameters
         param_nomad_map.extend(
@@ -5215,6 +5638,31 @@ def map_params_to_nomad(params, gun_list):
                         'W',
                     ],
                     [
+                        ['source_ramp_up', gun, 'ignition_pressure'],
+                        ['deposition_parameters', gun, 'plasma_ignition_pressure'],
+                        'mtorr',
+                    ],
+                    [
+                        ['source_presput', gun, 'duration'],
+                        ['deposition_parameters', gun, 'presput_time'],
+                        None,
+                    ],
+                    [
+                        ['source_presput', gun, 'avg_output_power'],
+                        ['deposition_parameters', gun, 'presput_power'],
+                        'W',
+                    ],
+                    [
+                        ['source_presput', gun, 'avg_capman_pressure'],
+                        ['deposition_parameters', gun, 'presput_pressure'],
+                        'mtorr',
+                    ],
+                    [
+                        ['source_presput', gun, 'avg_ar_flow'],
+                        ['deposition_parameters', gun, 'presput_ar_flow'],
+                        'cm^3/minute',
+                    ],
+                    [
                         ['deposition', gun, 'plasma_type'],
                         ['deposition_parameters', gun, 'power_type'],
                         None,
@@ -5224,8 +5672,155 @@ def map_params_to_nomad(params, gun_list):
                         ['deposition_parameters', gun, 'average_voltage'],
                         'V',
                     ],
+                    [
+                        ['deposition', gun, 'start_voltage'],
+                        ['deposition_parameters', gun, 'start_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'end_voltage'],
+                        ['deposition_parameters', gun, 'end_voltage'],
+                        'V',
+                    ],
+                    # [
+                    #     ['deposition', gun, 'start_minus_end_voltage'],
+                    #     ['deposition_parameters', gun, 'start_end_voltage'],
+                    #     'V',
+                    # ],
+                    # [
+                    #     ['deposition', gun, 'max_voltage'],
+                    #     ['deposition_parameters', gun, 'max_voltage'],
+                    #     'V',
+                    # ],
+                    # [
+                    #     ['deposition', gun, 'min_voltage'],
+                    #     ['deposition_parameters', gun, 'min_voltage'],
+                    #     'V',
+                    # ],
+                    # [
+                    #     ['deposition', gun, 'range_voltage'],
+                    #     ['deposition_parameters', gun, 'range_voltage'],
+                    #     'V',
+                    # ],
+                    [
+                        ['deposition', gun, 'std_voltage'],
+                        ['deposition_parameters', gun, 'std_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['source_deprate2_film_meas', gun, 'dep_rate'],
+                        ['deposition_parameters', gun, 'source_deprate'],
+                        'Å/s',  # check if it is in A/s
+                    ],
+                    [
+                        ['source_deprate2_film_meas', gun, 'dep_rate_ref_mat'],
+                        ['deposition_parameters', gun, 'source_deprate_ref_mat'],
+                        None,
+                    ],
                 ]
             )
+            if not params['deposition']['rt']:
+                # ramp up temperature
+                param_nomad_map.extend(
+                    [
+                        [
+                            ['ramp_up_temp', 'start_temp'],
+                            ['temperature_ramp_up', 'start_temp_sp'],
+                            'degC',
+                        ],
+                        [
+                            ['ramp_up_temp', 'end_temp'],
+                            ['temperature_ramp_up', 'end_temp_sp'],
+                            'degC',
+                        ],
+                        [
+                            ['ramp_up_temp', 'duration'],
+                            ['temperature_ramp_up', 'duration'],
+                            None,
+                        ],
+                        [
+                            ['ramp_up_temp', 'temp_slope'],
+                            ['temperature_ramp_up', 'temp_slope'],
+                            'degC/minute',
+                        ],
+                        [
+                            ['ramp_up_temp', 'avg_capman_pressure'],
+                            ['temperature_ramp_up', 'avg_capman_pressure'],
+                            'mtorr',
+                        ],
+                        [
+                            ['ramp_up_temp', 'avg_ar_flow'],
+                            ['temperature_ramp_up', 'avg_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_up_temp', 'avg_ph3_flow'],
+                            ['temperature_ramp_up', 'avg_ph3_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_up_temp', 'avg_h2s_flow'],
+                            ['temperature_ramp_up', 'avg_h2s_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_up_temp', 's_cracker', 'enabled'],
+                            ['temperature_ramp_up', 'cracker_enabled'],
+                            None,
+                        ],
+                        # ramp down temperature
+                        [
+                            ['ramp_down_high_temp', 'start_temp'],
+                            ['temperature_ramp_down', 'start_temp'],
+                            'degC',
+                        ],
+                        [
+                            ['ramp_down_high_temp', 'end_temp'],
+                            ['temperature_ramp_down', 'end_temp'],
+                            'degC',
+                        ],
+                        [
+                            ['ramp_down_high_temp', 'duration'],
+                            ['temperature_ramp_down', 'duration'],
+                            None,
+                        ],
+                        [
+                            ['ramp_down_high_temp', 'temp_slope'],
+                            ['temperature_ramp_down', 'temp_slope'],
+                            'degC/minute',
+                        ],
+                        [
+                            ['ramp_down_high_temp', 'avg_capman_pressure'],
+                            ['temperature_ramp_down', 'avg_capman_pressure'],
+                            'mtorr',
+                        ],
+                        [
+                            ['ramp_down_high_temp', 'avg_ar_flow'],
+                            ['temperature_ramp_down', 'avg_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_down_high_temp', 'avg_ph3_flow'],
+                            ['temperature_ramp_down', 'avg_ph3_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_down_high_temp', 'avg_h2s_flow'],
+                            ['temperature_ramp_down', 'avg_h2s_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_down_high_temp', 's_cracker', 'enabled'],
+                            ['temperature_ramp_down', 'cracker_enabled'],
+                            None,
+                        ],
+                        [
+                            ['ramp_down_high_temp', 'anion_input_cutoff_temp'],
+                            ['temperature_ramp_down', 'anion_input_cutoff_temp'],
+                            'degC',
+                        ],
+                    ]
+                )
 
     return param_nomad_map
 
@@ -5859,49 +6454,58 @@ def plot_matplotlib_chamber_config(
     return fig
 
 
-def explore_log_files(samples_dir, logfiles_extension):
-    """
-    Explore all the folders in samples_dir and collect log files based on
-    the specified conditions.
-
-    Args:
-        samples_dir (str): The directory containing sample folders.
-        logfiles_extension (str): The extension of the log files to look for.
-        TEST_SPECIFIC_LOGFILE (bool): Flag to test specific log files.
-        SAMPLES_TO_TEST (list): List of sample names to test.
-        REMOVE_SAMPLES (bool): Flag to remove specific samples.
-        SAMPLES_TO_REMOVE (list): List of sample names to remove.
-
-    Returns:
-        dict: A dictionary with log file names and their corresponding folders.
-    """
-    logfiles = {'name': [], 'folder': []}
+def explore_log_files(
+    samples_dir,
+    logfiles_extension=LOGFILES_EXTENSION,
+    spectra_extension=SPECTRA_EXTENSION,
+):
+    logfiles = {'name': [], 'folder': [], 'spectra': []}
 
     # In samples_dir, explore all the folders (samples names)
     for folder in os.listdir(samples_dir):
-        sample_path = os.path.join(samples_dir, folder, 'log_files')
+        logfile_path = os.path.join(samples_dir, folder, 'log_files')
+        spectra_path = os.path.join(samples_dir, folder, 'optix_spectra')
 
-        # Check if the sample_path exists and is a directory
-        if os.path.isdir(sample_path):
-            # Iterate over files in the sample_path directory
-            for file in os.listdir(sample_path):
+        # Check if the logfile_path exists and is a directory
+        if os.path.isdir(logfile_path):
+            # Iterate over files in the logfile_path directory
+            for file in os.listdir(logfile_path):
                 if re.match(r'^\w+\d{4}\w+', file) and file.endswith(
                     f'.{logfiles_extension}'
                 ):
                     logfile_name = re.sub(rf'\.{logfiles_extension}$', '', file)
+                    spectra_file_path = check_for_spectra(
+                        spectra_path, spectra_extension
+                    )
                     if TEST_SPECIFIC_LOGFILE:
                         if logfile_name in SAMPLES_TO_TEST:
                             logfiles['name'].append(logfile_name)
-                            logfiles['folder'].append(sample_path)
+                            logfiles['folder'].append(logfile_path)
+                            logfiles['spectra'].append(spectra_file_path)
                     elif not TEST_SPECIFIC_LOGFILE:
                         if REMOVE_SAMPLES and (logfile_name not in SAMPLES_TO_REMOVE):
                             logfiles['name'].append(logfile_name)
-                            logfiles['folder'].append(sample_path)
+                            logfiles['folder'].append(logfile_path)
+                            logfiles['spectra'].append(spectra_file_path)
                         elif not REMOVE_SAMPLES:
                             logfiles['name'].append(logfile_name)
-                            logfiles['folder'].append(sample_path)
-
+                            logfiles['folder'].append(logfile_path)
+                            logfiles['spectra'].append(spectra_file_path)
     return logfiles
+
+
+def check_for_spectra(spectra_path, spectra_extension):
+    # Check if the spectra_path exists and is a directory
+    if os.path.isdir(spectra_path):
+        # Iterate over files in the spectra_path directory
+        for file in os.listdir(spectra_path):
+            if (
+                re.match(r'^\w+\d{4}\w+', file)
+                and file.endswith(f'.{spectra_extension}')
+                and 'RGA' not in file
+            ):
+                return os.path.join(spectra_path, file)
+    return None
 
 
 # ---------------MAIN-----------
@@ -5910,12 +6514,11 @@ def explore_log_files(samples_dir, logfiles_extension):
 def main():
     # global events_to_plot, main_params, step_params, all_params
     samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\Samples'
-    logfiles_extension = 'CSV'
 
     # Initialize the the general param dictionary
     all_params = {}
 
-    logfiles = explore_log_files(samples_dir, logfiles_extension)
+    logfiles = explore_log_files(samples_dir)
 
     # Loop over all the logfiles in the directory
     for i in range(len(logfiles['name'])):
@@ -5923,7 +6526,7 @@ def main():
         print('\n')
         print(f'Processing logfile {logfiles["name"][i]}.CSV')
         logfile_path = (
-            f'{logfiles["folder"][i]}/{logfiles["name"][i]}.{logfiles_extension}'
+            f'{logfiles["folder"][i]}/{logfiles["name"][i]}.{LOGFILES_EXTENSION}'
         )
 
         # ---------DEFAULT EXPORT LOCATIONS-------------
@@ -5935,6 +6538,7 @@ def main():
             timeline_file_path,
             bias_file_path,
             overview_file_path,
+            optix_file_path,
             chamber_file_path,
         ) = build_file_paths(logfiles, i)
         # ---------READ THE DATA-------------
@@ -5973,14 +6577,32 @@ def main():
 
         # --------GRAPH THE OVERVIEW PLOT----------------
 
-        overview_plot = generate_overview_plot(data, logfiles['name'][i])
+        overview_plot = generate_overview_plot(
+            data, logfiles['name'][i], events_to_plot
+        )
 
         if PRINT_FIGURES:
             overview_plot.show(config=PLOTLY_CONFIG)
 
         overview_plot.write_html(overview_file_path)
 
+        # ------GRAPH THE OPTIX SPECTRA PLOT------------
+
+        if logfiles['spectra'][i] is not None:
+            spectra = read_spectrum(logfiles['spectra'][i])
+            optix_plot = generate_optix_plot(
+                spectra,
+                events_to_plot,
+                logfiles['name'][i],
+            )
+
+            if PRINT_FIGURES:
+                optix_plot.show(config=PLOTLY_CONFIG)
+
+            optix_plot.write_html(optix_file_path)
+
         # -----GRAPH THE CHAMBER CONFIG---
+
         if 'platen_position' in main_params['deposition']:
             chamber_plot, _ = plot_logfile_chamber(main_params, logfiles['name'][i])
             # export matplotlib plot as png
