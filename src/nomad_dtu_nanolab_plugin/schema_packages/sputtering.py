@@ -1470,6 +1470,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             'label': 'Image of plasma during deposition',
         },
     )
+    sample_image = Quantity(
+        type=str,
+        a_eln={'component': 'FileEditQuantity', 'label': 'Image of sample'},
+    )
     optix_spectra = Quantity(
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Optix spectra'},
