@@ -4561,7 +4561,7 @@ def generate_overview_plot(data, logfile_name, events):
 
     data_resampled = (
         data.set_index('Time Stamp')  # Temporarily set 'Time Stamp' as index
-        .resample(f'{OVERVIEW_PLOT_RESAMPLING_TIME}S')  # Resample data
+        .resample(f'{OVERVIEW_PLOT_RESAMPLING_TIME}s')  # Resample data
         .mean()  # Apply aggregation (mean in this case)
         .reset_index()  # Reset index to turn 'Time Stamp' back into a column
     )
