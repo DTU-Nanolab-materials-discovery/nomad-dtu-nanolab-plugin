@@ -109,7 +109,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 #[tool.ruff.lint.per-file-ignores]
-#"analysis_functions.py" = ["PLR2004","PLR0913","PLR0912","PLR0915"]
+#"analysis_functions.py" = ["PLR0913","PLR0912","PLR0915"]
 
 [tool.uv]
 extra-index-url = ["https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple"]
