@@ -5011,9 +5011,9 @@ def merge_logfile_rga(
     avg_time_diff_df1 = df1['Time Stamp'].diff().mean()
     avg_time_diff_df2 = df2['Time Stamp'].diff().mean()
 
-    # calculate the tolerance based on the df with the largest
+    # calculate the tolerance based on the df with the smallest
     # average time difference
-    tolerance = min(avg_time_diff_df1, avg_time_diff_df2) / 1.5
+    tolerance = max(avg_time_diff_df1, avg_time_diff_df2)
 
     # Perform asof merge
     merged_df = pd.merge_asof(
