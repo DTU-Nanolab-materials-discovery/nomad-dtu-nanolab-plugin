@@ -5725,98 +5725,98 @@ def map_params_to_nomad(params, gun_list):
                     [
                         [
                             ['ramp_up_temp', 'start_temp'],
-                            ['temp_ramp_up', 'start_temp_sp'],
+                            ['temperature_ramp_up', 'start_temp_sp'],
                             'degC',
                         ],
                         [
                             ['ramp_up_temp', 'end_temp'],
-                            ['temp_ramp_up', 'end_temp_sp'],
+                            ['temperature_ramp_up', 'end_temp_sp'],
                             'degC',
                         ],
                         [
                             ['ramp_up_temp', 'duration'],
-                            ['temp_ramp_up', 'duration'],
+                            ['temperature_ramp_up', 'duration'],
                             None,
                         ],
                         [
                             ['ramp_up_temp', 'temp_slope'],
-                            ['temp_ramp_up', 'temp_slope'],
+                            ['temperature_ramp_up', 'temp_slope'],
                             'degC/minute',
                         ],
                         [
                             ['ramp_up_temp', 'avg_capman_pressure'],
-                            ['temp_ramp_up', 'avg_capman_pressure'],
+                            ['temperature_ramp_up', 'avg_capman_pressure'],
                             'mtorr',
                         ],
                         [
                             ['ramp_up_temp', 'avg_ar_flow'],
-                            ['temp_ramp_up', 'avg_ar_flow'],
+                            ['temperature_ramp_up', 'avg_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
                             ['ramp_up_temp', 'avg_ph3_flow'],
-                            ['temp_ramp_up', 'avg_ph3_in_ar_flow'],
+                            ['temperature_ramp_up', 'avg_ph3_in_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
                             ['ramp_up_temp', 'avg_h2s_flow'],
-                            ['temp_ramp_up', 'avg_h2s_in_ar_flow'],
+                            ['temperature_ramp_up', 'avg_h2s_in_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
                             ['ramp_up_temp', 's_cracker', 'enabled'],
-                            ['temp_ramp_up', 'cracker_enabled'],
+                            ['temperature_ramp_up', 'cracker_enabled'],
                             None,
                         ],
                         # ramp down temperature
                         [
                             ['ramp_down_high_temp', 'start_temp'],
-                            ['temp_ramp_down', 'start_temp'],
+                            ['temperature_ramp_down', 'start_temp'],
                             'degC',
                         ],
                         [
                             ['ramp_down_high_temp', 'end_temp'],
-                            ['temp_ramp_down', 'end_temp'],
+                            ['temperature_ramp_down', 'end_temp'],
                             'degC',
                         ],
                         [
                             ['ramp_down_high_temp', 'duration'],
-                            ['temp_ramp_down', 'duration'],
+                            ['temperature_ramp_down', 'duration'],
                             None,
                         ],
                         [
                             ['ramp_down_high_temp', 'temp_slope'],
-                            ['temp_ramp_down', 'temp_slope'],
+                            ['temperature_ramp_down', 'temp_slope'],
                             'degC/minute',
                         ],
                         [
                             ['ramp_down_high_temp', 'avg_capman_pressure'],
-                            ['temp_ramp_down', 'avg_capman_pressure'],
+                            ['temperature_ramp_down', 'avg_capman_pressure'],
                             'mtorr',
                         ],
                         [
                             ['ramp_down_high_temp', 'avg_ar_flow'],
-                            ['temp_ramp_down', 'avg_ar_flow'],
+                            ['temperature_ramp_down', 'avg_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
                             ['ramp_down_high_temp', 'avg_ph3_flow'],
-                            ['temp_ramp_down', 'avg_ph3_in_ar_flow'],
+                            ['temperature_ramp_down', 'avg_ph3_in_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
                             ['ramp_down_high_temp', 'avg_h2s_flow'],
-                            ['temp_ramp_down', 'avg_h2s_in_ar_flow'],
+                            ['temperature_ramp_down', 'avg_h2s_in_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
                             ['ramp_down_high_temp', 's_cracker', 'enabled'],
-                            ['temp_ramp_down', 'cracker_enabled'],
+                            ['temperature_ramp_down', 'cracker_enabled'],
                             None,
                         ],
                         [
                             ['ramp_down_high_temp', 'anion_input_cutoff_temp'],
-                            ['temp_ramp_down', 'anion_input_cutoff_temp'],
+                            ['temperature_ramp_down', 'anion_input_cutoff_temp'],
                             'degC',
                         ],
                     ]

@@ -1188,30 +1188,6 @@ class DepositionParameters(ArchiveSection):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity'},
     )
-    # heating_procedure = Quantity(
-    #     type=str,
-    #     a_eln={'component': 'RichTextEditQuantity'},
-    # )
-    # cooling_procedure = Quantity(
-    #     type=str,
-    #     a_eln={'component': 'RichTextEditQuantity'},
-    # ) DISPLACED TO A INDEPENDENT SECTION (TempRampUp)
-
-    # target_image_before = Quantity(
-    #     type=str,
-    #     a_eln={
-    #         'component': 'FileEditQuantity',
-    #         'label': 'Image of target before the deposition',
-    #     },
-    # )
-    # target_image_after = Quantity(
-    #     type=str,
-    #     a_eln={
-    #         'component': 'FileEditQuantity',
-    #         'label': 'Image of target after the deposition',
-    #     },
-    # ) #DISPLACED TO THE TOP LEVEL SECTION (DTUSputtering)
-
     magkeeper3 = SubSection(
         section_def=SourceOverview,
     )
@@ -1500,10 +1476,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     deposition_parameters = SubSection(
         section_def=DepositionParameters,
     )
-    temp_ramp_up = SubSection(
+    temperature_ramp_up = SubSection(
         section_def=TempRampUp,
     )
-    temp_ramp_down = SubSection(
+    temperature_ramp_down = SubSection(
         section_def=TempRampDown,
     )
 
@@ -1520,23 +1496,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 )
             )
 
-        # Plotting the events on a timeline from the generate_timeline function
-        # timeline = generate_timeline(events_plot, self.lab_id)
-
-        # # Converting the timeline to a plotly json
-        # timeline_json = json.loads(timeline.to_json())
-        # timeline_json['config'] = dict(
-        #     scrollZoom=False,
-        # )
-
-        # # Adding the plotly figure to the figures list
-        # self.figures.append(
-        #     PlotlyFigure(
-        #         label='Process timeline',
-        #         figure=timeline_json,
-        #     )
-        # )
-
+        '''
+        the plots does not work at the moment as it is not implemented
+        as a plotly figure, but as a matplotlib figure
+        at the figure assumes four samples at the typical positions but in the
+        future it should get the actual positions from the nomad samples
+        '''
         # # Plotting the sample positions on the platen
         # try:
         #     samples_plot = read_samples(self.samples)
@@ -1641,8 +1606,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.samples = []
         sputtering.steps = []
         sputtering.deposition_parameters = DepositionParameters()
-        sputtering.temp_ramp_up = TempRampUp()
-        sputtering.temp_ramp_down = TempRampDown()
+        sputtering.temperature_ramp_up = TempRampUp()
+        sputtering.temperature_ramp_down = TempRampDown()
 
         for gun in gun_list:
             if params['deposition'].get(gun, {}).get('enabled', False):
