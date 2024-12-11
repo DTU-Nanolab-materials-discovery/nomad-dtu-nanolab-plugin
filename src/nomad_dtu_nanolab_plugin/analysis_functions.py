@@ -40,10 +40,13 @@ def convert_to_eV(data):
 
 
 def measurement_grid(
-    ncolumns, nrows, gridlength, gridheight, startcolumn=0, startrow=0
+    ncolumns, nrows, gridlength, gridheight, startposition= [0,0]
 ):
     """Define a grid based on number of columns and rows, length and height of grid in
     mm, and the first coordinate (lower left corner) in the column and row."""
+    startcolumn = startposition[0]
+    startrow = startposition[1]
+
     xgrid = np.round(np.linspace(startcolumn, gridlength + startcolumn, ncolumns), 3)
     ygrid = np.round(np.linspace(startrow, gridheight + startrow, nrows), 3)
     grid = np.array([xgrid[0], ygrid[0]])
@@ -182,14 +185,11 @@ def make_model_raman(num, i, peaks, col_counts, col_theta, params):
 
 def initial_peaks(
     data,
-    dataRangeMin,
-    dataRangeMax,
+    dataRange,
     filterstrength,
     peakprominence,
     peakwidth,
     peakheight=0,
-    withplots=True,
-    plotscale='log',
 ):
     """finds peaks using scipy find_peaks on filtered data to construct a model for
     fitting, filter strength is based on filtervalue and
@@ -197,6 +197,9 @@ def initial_peaks(
     toggling plots on/off and picking scale.
     Output: dataframe with peak locations and intensity, to be used for raman_fit or
     xrd_fit, and data limited by the dataRangemin/max, in index"""
+    plotscale='log'
+    dataRangeMin = dataRange[0]
+    dataRangeMax = dataRange[1]
     # setup data
     column_headers = data.columns.values
     col_theta = column_headers[::2]
@@ -225,14 +228,13 @@ def initial_peaks(
         )
 
         # plot
-        if withplots == 1:
-            plt.plot(x, dataSelect)
-            plt.plot(x[peaks], dataSelect[peaks], 'x')
-            plt.yscale(plotscale)
-            plt.xlabel(col_theta[i][1])
-            plt.ylabel(col_counts[i][1])
-            plt.title(col_counts[i][0])
-            plt.show()
+        plt.plot(x, dataSelect)
+        plt.plot(x[peaks], dataSelect[peaks], 'x')
+        plt.yscale(plotscale)
+        plt.xlabel(col_theta[i][1])
+        plt.ylabel(col_counts[i][1])
+        plt.title(col_counts[i][0])
+        plt.show()
 
         # save peaks data in the list
         peaksOut = data[[col_theta[i], col_counts[i]]].loc[peaks]
@@ -254,11 +256,8 @@ def initial_peaks(
 def xrd_fit(
     data,
     Peaks,
-    dataRangeMin,
-    dataRangeMax,
+    dataRange,
     knots,
-    withplots=True,
-    plotscale='log',
     remove_background_fit=False,
 ):
     """Fit data using models from lmfit. Pseudo-voigt for peaks, based on thePeaks
@@ -268,9 +267,15 @@ def xrd_fit(
     Outputs: dataframe with theta, measured intensity, the entire fit, peak locations,
     intensity, FWHM, and Lorentzian/Gaussian fraction"""
     # setup data
+    dataRangeMin = dataRange[0]
+    dataRangeMax = dataRange[1]
+    plotscale='log'
+
     column_headers = data.columns.values
     col_theta = column_headers[::2]
     col_counts = column_headers[1::2]
+    #dataRangeMin =
+    #dataRangeMax =
     data = data.iloc[dataRangeMin:dataRangeMax]
     data.reset_index(drop=True, inplace=True)
 
@@ -354,24 +359,23 @@ def xrd_fit(
         XRDoutFrame = pd.concat([XRDoutFrame, fitOutput, peakOutput], axis=1)
 
         # plot fit
-        if withplots == 1:
-            plt.plot(x, y, label='data')
-            plt.plot(x, out.best_fit, label='best fit')
-            plt.plot(x, comps['bkg_'], '--', label='background')
-            plt.xlabel(col_theta[i][1])
-            plt.ylabel(col_counts[i][1])
-            plt.title(col_counts[i][0])
-            plt.yscale(plotscale)
-            plt.legend()
-            plt.show()
-            # print output peak positions, intensity, and FWHM
-            print('Peak positions:\n', peakOutput)
+        plt.plot(x, y, label='data')
+        plt.plot(x, out.best_fit, label='best fit')
+        plt.plot(x, comps['bkg_'], '--', label='background')
+        plt.xlabel(col_theta[i][1])
+        plt.ylabel(col_counts[i][1])
+        plt.title(col_counts[i][0])
+        plt.yscale(plotscale)
+        plt.legend()
+        plt.show()
+        # print output peak positions, intensity, and FWHM
+        print('Peak positions:\n', peakOutput)
 
     return XRDoutFrame
 
 
 def XRD_background(
-    data, peaks, cut_range=2, order=4, window_length=10, Si_cut=True, withplots=True
+    data, peaks, cut_range=2, order=4, window_length=10, Si_cut=True
 ):
     data_out = data.copy()
     headerlength = len(data.columns.get_level_values(1).unique())
@@ -380,6 +384,9 @@ def XRD_background(
     peaks_theta = peaks.columns.values[::2]
 
     k = 0
+    #variables for Si cut
+    Si_start= 60
+    Si_end = 70
 
     for i in range(0, len(col_theta)):
         cut_intensity = []
@@ -398,7 +405,7 @@ def XRD_background(
                 )  # cut data intensity around peaks in data_out
 
         if Si_cut is True:
-            idx_Si = np.where((two_theta >= 60) & (two_theta <= 70))[0]
+            idx_Si = np.where((two_theta >= Si_start) & (two_theta <= Si_end))[0]
             data_out[col_counts[i]][idx_Si] = np.nan
 
         cut_intensity = data_out[col_counts[i]]
@@ -437,21 +444,21 @@ def XRD_background(
         data_out.rename(columns={'': 'Corrected Intensity'}, inplace=True)
         k = k + 2
 
-        if withplots is True:
-            plt.figure()
-            coord = data_out.columns.get_level_values(0).unique()[i]
-            plt.plot(two_theta, intensity, label='Original Data')
-            plt.plot(filtered_two_theta, filtered_intensity, label='filtered Data')
-            plt.plot(
-                two_theta,
-                background,
-                label='Background, order=' + str(order),
-                linestyle='--',
-            )
-            plt.plot(two_theta, corrected_intensity, label='Corrected Data')
-            plt.title(f'XRD data at {coord}')
-            plt.legend()
-            plt.show()
+
+        plt.figure()
+        coord = data_out.columns.get_level_values(0).unique()[i]
+        plt.plot(two_theta, intensity, label='Original Data')
+        plt.plot(filtered_two_theta, filtered_intensity, label='filtered Data')
+        plt.plot(
+            two_theta,
+            background,
+            label='Background, order=' + str(order),
+            linestyle='--',
+        )
+        plt.plot(two_theta, corrected_intensity, label='Corrected Data')
+        plt.title(f'XRD data at {coord}')
+        plt.legend()
+        plt.show()
     # display(data_out)
 
     return data_out
@@ -460,19 +467,19 @@ def XRD_background(
 def raman_fit(
     data,
     Peaks,
-    dataRangeMin,
-    dataRangeMax,
+    dataRange,
     knots,
-    withplots=True,
-    plotscale='log',
     remove_background_fit=False,
 ):
     """Fit data using models from lmfit. Gaussian for peaks, based on thePeaks output
     from initial_peaks, and
-    spline background model adjustable with knots. withplots and plotscale allows
+    spline background model adjustable with knots. withplots allows
     toggling plots on/off and picking scale.
     Outputs: dataframe with Raman shift, measured intensity, fit intensity, peak
     locations, intensity, and FWHM"""
+    dataRangeMin = dataRange[0]
+    dataRangeMax = dataRange[1]
+    plotscale='log',
     # setup data
     column_headers = data.columns.values
     col_theta = column_headers[::2]
@@ -552,25 +559,26 @@ def raman_fit(
         RamanoutFrame = pd.concat([RamanoutFrame, fitOutput, peakOutput], axis=1)
 
         # plot fit
-        if withplots == 1:
-            plt.plot(x, y, label='data')
-            plt.plot(x, out.best_fit, label='best fit')
-            plt.xlabel(col_theta[i][1])
-            plt.ylabel(col_counts[i][1])
-            plt.title(col_counts[i][0])
-            plt.yscale(plotscale)
-            plt.legend()
-            plt.show()
-            # print output peak positions, intensity, and FWHM
-            print('Peak positions:\n', peakOutput)
+        plt.plot(x, y, label='data')
+        plt.plot(x, out.best_fit, label='best fit')
+        plt.xlabel(col_theta[i][1])
+        plt.ylabel(col_counts[i][1])
+        plt.title(col_counts[i][0])
+        plt.yscale(plotscale)
+        plt.legend()
+        plt.show()
+        # print output peak positions, intensity, and FWHM
+        print('Peak positions:\n', peakOutput)
 
     return RamanoutFrame
+
+
 
 
 ##########################
 # Functions related to UPS analysis
 ##########################
-def UPS_fit(data, startvalue, fit_background=True, withplots=True, plotscale='linear'):
+def UPS_fit(data, startvalue, fit_background=True, plotscale='linear'):
     """Fit UPS data using dataframe input from read_UPS, the data is fitted by finding
     background and valence bands based on slope, they are both fitted
     Output: dataframe with the background and fit intersection point, as well as the
@@ -596,10 +604,11 @@ def UPS_fit(data, startvalue, fit_background=True, withplots=True, plotscale='li
 
         # finding the background onset from slope
         k = 1
+        slope_cutof= 2000
         slope = None
         while k < len(yselect) - 1:
             slope = yselect[k] - yselect[k - 1]
-            if slope < 2000:
+            if slope < slope_cutof:
                 k = k + 1
             else:
                 bkg_start = k
@@ -611,8 +620,9 @@ def UPS_fit(data, startvalue, fit_background=True, withplots=True, plotscale='li
         yselect1 = yselect[list(range(bkg_start, len(yselect)))]
 
         k = 25
+        v=100
         slope = None
-        while k < 100:
+        while k < v:
             slope = yselect1[k] - yselect1[k - 1]
             if slope < bkg_slope * 1.5:
                 k = k + 1
@@ -679,35 +689,34 @@ def UPS_fit(data, startvalue, fit_background=True, withplots=True, plotscale='li
                 - out_valence.params['reg_slope'].value
             )
 
-            if withplots == 1:
-                plt.plot(x, y, label='data')
-                plt.plot(x_valence, out_valence.best_fit, label='valence fit')
-                plt.plot(
-                    xselect_valence[valence_start],
-                    yselect_valence[valence_start],
-                    'o',
-                    label='valence_start',
-                )
-                plt.plot(
-                    xselect_valence1[valence_end],
-                    yselect_valence1[valence_end],
-                    'o',
-                    label='valence_end',
-                )
-                plt.plot(xselect[bkg_start], yselect[bkg_start], 'o', label='bkg_start')
-                plt.plot(xselect1[bkg_end], yselect1[bkg_end], 'o', label='bkg_end')
-                plt.plot(x_bkg, out_bkg.best_fit, label='background fit')
-                plt.xlabel(col_BE[i][1])
-                plt.ylabel(col_counts[i][1])
-                plt.title(col_counts[i][0])
-                plt.yscale(plotscale)
-                plt.xlim(-4, 8)
-                plt.ylim(-1e4, 2e6)
-                plt.legend()
-                plt.show()
+            plt.plot(x, y, label='data')
+            plt.plot(x_valence, out_valence.best_fit, label='valence fit')
+            plt.plot(
+                xselect_valence[valence_start],
+                yselect_valence[valence_start],
+                'o',
+                label='valence_start',
+            )
+            plt.plot(
+                xselect_valence1[valence_end],
+                yselect_valence1[valence_end],
+                'o',
+                label='valence_end',
+            )
+            plt.plot(xselect[bkg_start], yselect[bkg_start], 'o', label='bkg_start')
+            plt.plot(xselect1[bkg_end], yselect1[bkg_end], 'o', label='bkg_end')
+            plt.plot(x_bkg, out_bkg.best_fit, label='background fit')
+            plt.xlabel(col_BE[i][1])
+            plt.ylabel(col_counts[i][1])
+            plt.title(col_counts[i][0])
+            plt.yscale(plotscale)
+            plt.xlim(-4, 8)
+            plt.ylim(-1e4, 2e6)
+            plt.legend()
+            plt.show()
 
-                print('bkg_x_intercept:\n', bkg_x_intercept)
-                print('fits_intercept:\n', fits_intercept)
+            print('bkg_x_intercept:\n', bkg_x_intercept)
+            print('fits_intercept:\n', fits_intercept)
 
             intercepts = np.vstack((bkg_x_intercept, fits_intercept)).T
             UPS_header = pd.MultiIndex.from_product(
@@ -717,19 +726,19 @@ def UPS_fit(data, startvalue, fit_background=True, withplots=True, plotscale='li
             UPS_output = pd.DataFrame(data=intercepts, columns=UPS_header)
 
         else:
-            if withplots == 1:
-                plt.plot(x, y, label='data')
-                plt.plot(x_bkg, out_bkg.best_fit, label='valence fit')
-                plt.xlabel(col_BE[i][1])
-                plt.ylabel(col_counts[i][1])
-                plt.title(col_counts[i][0])
-                plt.yscale(plotscale)
-                plt.xlim(0, 8)
-                plt.ylim(-1e4, 2e6)
-                plt.legend()
-                plt.show()
 
-                print('bkg_x_intercept:\n', bkg_x_intercept)
+            plt.plot(x, y, label='data')
+            plt.plot(x_bkg, out_bkg.best_fit, label='valence fit')
+            plt.xlabel(col_BE[i][1])
+            plt.ylabel(col_counts[i][1])
+            plt.title(col_counts[i][0])
+            plt.yscale(plotscale)
+            plt.xlim(0, 8)
+            plt.ylim(-1e4, 2e6)
+            plt.legend()
+            plt.show()
+
+            print('bkg_x_intercept:\n', bkg_x_intercept)
 
             UPS_header = pd.MultiIndex.from_product(
                 [[col_BE[i][0]], ['bkg_x_intercept']], names=['Coordinate', 'Data type']
@@ -745,7 +754,7 @@ def UPS_fit(data, startvalue, fit_background=True, withplots=True, plotscale='li
 ##########################
 # Functions related to REELS analysis
 ##########################
-def REELS_fit(data, withplots=True, plotscale='linear'):
+def REELS_fit(data, plotscale='linear'):
     """Fit REELS data using dataframe input from read_REELS, the data is fitted by
     finding the the 0 energy loss peak position, and the onset of the energy loss curve
     Output: dataframe with the onset and peak positions, as well as the band gap and the
@@ -778,36 +787,35 @@ def REELS_fit(data, withplots=True, plotscale='linear'):
         # locates the onset of the energy loss.
         j = False
         k = 0
+        v=100
+        slope_cutof = 1400
         while j is not True:
             slope = yselect1[k + 1] - yselect1[k]
-            if slope < 1400:
+            if slope < slope_cutof:
                 k = k + 1
             else:
                 idx2 = k
                 j = True
-            if k == 100:
+            if k == v:
                 j = True
 
         onset = xselect1[idx2]
         # finds the onset from the peak location and onset
         BG = onset - peak
 
-        if withplots == 1:
-            plt.plot(x, y, label='data')
-            plt.plot(x[peaks], y[peaks], 'o', label='elastic scattering peak')
-            plt.plot(xselect1[idx2], yselect1[idx2], 'o', label='onset of energy loss')
-            plt.xlabel(col_BE[i][1])
-            plt.ylabel(col_counts[i][1])
-            plt.title(col_counts[i][0])
-            plt.yscale(plotscale)
-            plt.xlim(20, 4)
-            plt.legend()
-            plt.show()
+        plt.plot(x, y, label='data')
+        plt.plot(x[peaks], y[peaks], 'o', label='elastic scattering peak')
+        plt.plot(xselect1[idx2], yselect1[idx2], 'o', label='onset of energy loss')
+        plt.xlabel(col_BE[i][1])
+        plt.ylabel(col_counts[i][1])
+        plt.title(col_counts[i][0])
+        plt.yscale(plotscale)
+        plt.xlim(20, 4)
+        plt.legend()
+        plt.show()
 
-            # print output peak positions, intensity, and FWHM
-            print('Onset:\n', onset)
-            print('Peak:\n', peak)
-            print('Band gap:\n', BG)
+        # print output peak positions, intensity, and FWHM
+        print(f"Onset:\n{onset}\nPeak:\n{peak}\nBand gap:\n{BG}")
 
         # constructs output dataframe of band gap, onset and Peak values.
         BGS = np.vstack((BG, xselect1[idx2], x[peaks])).T
@@ -853,7 +861,6 @@ def plot_data(
     y='all',
     datatype_select=None,
     datatype_select_value=None,
-    legend=True,
     scatter_plot=False,
     plotscale='linear',
     title='auto',
@@ -915,23 +922,20 @@ def plot_data(
         labels = datatype_select + ': ' + str(round(datatype_select_value, 2))
 
     # plots scatter plot if scatter_plot is not false, else line plot
-    if x[0] == 'all' and y[0] == 'all':
-        for idx, (x_val, y_val) in enumerate(zip(x_data.values.T, y_data.values.T)):
-            if scatter_plot:
-                plt.plot(x_val, y_val, 'o', color=colors[idx], label=labels[idx])
-            else:
-                plt.plot(x_val, y_val, color=colors[idx], label=labels[idx])
-    else:
-        for idx, (x_val, y_val) in enumerate(zip(x_data.T, y_data.T)):
-            if scatter_plot:
-                plt.plot(x_val, y_val, 'o', color=colors[idx], label=labels[idx])
-            else:
-                plt.plot(x_val, y_val, color=colors[idx], label=labels[idx])
+    # Determine the data to use based on the condition
+    x_values = x_data.values.T if x[0] == 'all' else x_data.T
+    y_values = y_data.values.T if y[0] == 'all' else y_data.T
+    #now plot check that this change works
+    for idx, (x_val, y_val) in enumerate(zip(x_values, y_values)):
+        if scatter_plot:
+            plt.plot(x_val, y_val, 'o', color=colors[idx], label=labels[idx])
+        else:
+            plt.plot(x_val, y_val, color=colors[idx], label=labels[idx])
+
     plt.xlabel(datatype_x)
     plt.ylabel(datatype_y)
     plt.yscale(plotscale)
-    if legend is True:
-        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     if title == 'auto':
         plt.title(f'{datatype_y} over {datatype_x}')
     else:
@@ -941,23 +945,15 @@ def plot_data(
 def new_heatmap(
     datatype,
     data=None,
-    filepath=None,
     exclude=None,
     cbar=None,
     index=None,
-    savepath=None,
-    title=None,
 ):
     """
     plot heatmaps with interpolated background, like in Nomad, if savepath ends with
     .png, it will save as png, if it ends with .html, it will save as html (interactive)
     """
 
-    if filepath is not None:
-        raw_data = pd.read_excel(filepath, header=0)
-        x = raw_data['X (mm)'].values
-        y = raw_data['Y (mm)'].values
-        z = raw_data[datatype].values
 
     if data is not None:
         if exclude is not None:
@@ -1003,16 +999,10 @@ def new_heatmap(
     )
     if datatype == 'Layer 1 Thickness (nm)':
         cbar_title = 'Thickness (nm)'
-    elif datatype == 'Layer 1 P Atomic %':
-        cbar_title = 'P Atomic %'
-    elif datatype == 'Layer 1 S Atomic %':
-        cbar_title = 'S Atomic %'
-    elif datatype == 'Layer 1 Cu Atomic %':
-        cbar_title = 'Cu Atomic %'
-    elif datatype == 'Layer 1 Zr Atomic %':
-        cbar_title = 'Zr Atomic %'
-    elif datatype == 'Layer 1 Ba Atomic %':
-        cbar_title = 'Ba Atomic %'
+    elif datatype.startswith('Layer 1 ') and datatype.endswith(' Atomic %'):
+        element = datatype.split()[2]
+        cbar_title = f'{element} Atomic %'
+        #hope this works (simplifies the code but not tested)
     else:
         cbar_title = datatype
     if cbar is not None:
@@ -1029,8 +1019,8 @@ def new_heatmap(
 
     fig = go.Figure(data=[heatmap, scatter])
 
-    if title is None:
-        title = datatype
+
+    title = datatype
 
     fig.update_layout(
         title=title,
@@ -1042,12 +1032,6 @@ def new_heatmap(
         height=500,
     )
 
-    if savepath:
-        if savepath.endswith('.png'):
-            fig.write_image(savepath, scale=2)  # scale sets the resolution here
-
-        if savepath.endswith('.html'):
-            fig.write_html(savepath)
 
     fig.show()
 
@@ -1251,20 +1235,18 @@ def math_on_columns(data, type1, type2, operation='/'):
     return data
 
 
-def get_data(data, type='all', x='all', y='all', printinfo=True, drop_nan=True):
+def get_data(data, type='all', x='all', y='all', drop_nan=True):
     """Print a data type from a multi index dataframe at a specific coordinate. The
     coordinate does not have to be exact. Leave type as blank or 'all' to select all
     types. Leave coordinates blank or 'all' to select all coordinates."""
     if x == 'all' and y == 'all':
         if type == 'all':
-            if printinfo is True:
-                print('All data at all coordinates.')
+            print('All data at all coordinates.')
             if drop_nan is True:
                 data = data.dropna(axis=0, how='all').fillna('-')
             return data
         else:
-            if printinfo is True:
-                print(f'{type} data at all coordinates.')
+            print(f'{type} data at all coordinates.')
             if drop_nan is True:
                 data = data.dropna(axis=0, how='all').fillna('-')
             return data.iloc[:, data.columns.get_level_values(1) == type]
@@ -1274,14 +1256,12 @@ def get_data(data, type='all', x='all', y='all', printinfo=True, drop_nan=True):
         xcoord, ycoord = closest_coord(datagrid, x, y)
         coords = f'{xcoord},{ycoord}'
         if type == 'all':
-            if printinfo is True:
-                print(f'All data at {x},{y}.')
+            print(f'All data at {x},{y}.')
             if drop_nan is True:
                 data = data.dropna(axis=0, how='all').fillna('-')
             return data.xs(coords, axis=1)
         else:
-            if printinfo is True:
-                print(f'{type} data at {x},{y}.')
+            print(f'{type} data at {x},{y}.')
             if drop_nan is True:
                 data = data.dropna(axis=0, how='all').fillna('-')
             return data.xs(coords, axis=1)[type]
@@ -1378,8 +1358,6 @@ def CRAIC_map(
     transmission_name,
     grid,
     unit='nm',
-    with_plots=True,
-    savepath=None,
 ):
     # x axis is taken from the background file, maybe check that it is always the same
     data = pd.DataFrame()
@@ -1410,25 +1388,24 @@ def CRAIC_map(
         # calculate absorption coefficient
         data_A = -(np.log(data_T['Intensity'] / (100 - data_R['Intensity']))) * 10**5
 
-        if with_plots is True:
-            ax[0].plot(x_axis, data_R['Intensity'], label=f' {i}')
-            ax[1].plot(x_axis, data_T['Intensity'], label=f' {i}')
-            ax[2].plot(x_axis, data_A, label=f' {i}')
 
-            ax[0].legend(bbox_to_anchor=(1, 1), loc='upper right')
-            ax[1].legend(bbox_to_anchor=(1, 1), loc='upper right')
-            ax[2].legend(bbox_to_anchor=(1, 1), loc='upper right')
+        ax[0].plot(x_axis, data_R['Intensity'], label=f' {i}')
+        ax[1].plot(x_axis, data_T['Intensity'], label=f' {i}')
+        ax[2].plot(x_axis, data_A, label=f' {i}')
 
-            ax[0].set_ylabel('R %')
-            ax[1].set_ylabel('T %')
-            ax[2].set_ylabel(r'$\alpha$ (cm$^{-1}$)')
+        ax[0].legend(bbox_to_anchor=(1, 1), loc='upper right')
+        ax[1].legend(bbox_to_anchor=(1, 1), loc='upper right')
+        ax[2].legend(bbox_to_anchor=(1, 1), loc='upper right')
 
-            for ax_ in ax:
-                ax_.set_xlabel(x_label)
+        ax[0].set_ylabel('R %')
+        ax[1].set_ylabel('T %')
+        ax[2].set_ylabel(r'$\alpha$ (cm$^{-1}$)')
+
+        for ax_ in ax:
+            ax_.set_xlabel(x_label)
 
         plt.tight_layout()
-        if savepath:
-            plt.savefig(savepath, dpi=300)
+
 
         # save data in a multiindex dataframe
 
@@ -1530,7 +1507,7 @@ def plot_XRD_shift_subplots(
 
 
 def plot_XRD_shift(
-    data, datatype_x, datatype_y, shift, x, y, title=None, savepath=False
+    data, datatype_x, datatype_y, shift, x, y, title=None
 ):  # x, y = list of points to plot]
     x_data = []
     y_data = []
@@ -1551,10 +1528,6 @@ def plot_XRD_shift(
     plt.ylabel(datatype_y)
     plt.title(title)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-
-    if savepath:
-        path = os.path.join('plots', title + 'shift.png')
-        plt.savefig(path, dpi=120, bbox_inches='tight')
 
     plt.show()
 
@@ -1715,7 +1688,6 @@ def interactive_XRD_shift(
     ref_peaks_df,
     title=None,
     colors='rows',
-    savepath=None,
 ):
     """
     interactive shifted plot for assigning phases to XRD data, specify if you want
@@ -1884,9 +1856,6 @@ def interactive_XRD_shift(
         yaxis_title=datatype_y,
     )
 
-    if savepath:
-        fig.write_html(savepath)
-
     fig.show()
     return fig
 
@@ -2013,7 +1982,8 @@ def EDX_sample_coords(folder, filename):
     workbook.close()
 
     # check for correct translation (allow 0.3 mm misalignment from sample rotation)
-    if np.abs(X[-1] + X[0]) > 0.3 or np.abs(Y[-1] + Y[0]) > 0.3:
+    allowed_dev = 0.3
+    if np.abs(X[-1] + X[0]) > allowed_dev or np.abs(Y[-1] + Y[0]) > allowed_dev:
         print(filename, ' - coordinates calculated and saved, but not symmetric')
         print('X shift: ', X[-1] + X[0])
         print('Y shift: ', Y[-1] + Y[0])
@@ -2159,9 +2129,12 @@ def select_points(data, x_min=-40, x_max=40, y_min=-40, y_max=40):
     return new_x, new_y
 
 
-def ternary_plot(df, el1, el2, el3, datatype, title, savepath=None):
+def ternary_plot(df, element_list, datatype, title):
     """make a ternary plot of the data in df, with el1, el2, el3 as the corners, and
     colorscale based on datatype"""
+    el1=element_list[0]
+    el2=element_list[1]
+    el3=element_list[2]
 
     A = f'Layer 1 {el1} Atomic %'
     B = f'Layer 1 {el2} Atomic %'
@@ -2232,11 +2205,6 @@ def ternary_plot(df, el1, el2, el3, datatype, title, savepath=None):
         width=800,
         height=600,
     )
-    if savepath:
-        if savepath.endswith('.png'):
-            fig.write_image(savepath, scale=2)
-        if savepath.endswith('.html'):
-            fig.write_html(savepath)
 
     # Show the plot
     fig.show()
@@ -2272,14 +2240,11 @@ def add_info(data, info_dict):
 
 def ternary_discrete_attempt(
     df,
-    el1,
-    el2,
-    el3,
+    element_list,
     intensity_label,
     shape_label,
     title,
     include_id=True,
-    savepath=None,
 ):
     """
     Create a ternary plot with discrete colors for string intensities and different
@@ -2294,6 +2259,9 @@ def ternary_discrete_attempt(
     shape_label (str): Label for the phase values.
     title (str): Title of the plot.
     """
+    el1 = element_list[0]
+    el2 = element_list[1]
+    el3 = element_list[2]
 
     # Extract element percentages, intensity, and phase
     A = f'Layer 1 {el1} Atomic %'
@@ -2429,12 +2397,6 @@ def ternary_discrete_attempt(
         width=800,
         height=600,
     )
-
-    if savepath:
-        if savepath.endswith('.png'):
-            fig.write_image(savepath, scale=2)
-        if savepath.endswith('.html'):
-            fig.write_html(savepath)
 
     # Show the plot
     fig.show()
@@ -2626,9 +2588,7 @@ def assign_phases_numbers(data):
 
 def find_composition(
     data,
-    el1,
-    el2,
-    el3,
+    element_list,
     range1=[0, 100],
     range2=[0, 100],
     range3=[0, 100],
@@ -2639,6 +2599,9 @@ def find_composition(
 ):
     """find te points in the sample where the composition is in a certain range, given
     in % ranges or in stoichiometry and tolerance"""
+    el1 = element_list[0]
+    el2 = element_list[1]
+    el3 = element_list[2]
 
     if stoichiometry:
         tot = sum(stoichiometry)
@@ -2657,6 +2620,7 @@ def find_composition(
 
     ranges = [range1, range2, range3]
     elements = [el1, el2, el3]
+    indices = [None, None, None]
 
     for i in range(0, len(elements)):
         idx_min = np.where(
@@ -2668,12 +2632,13 @@ def find_composition(
             < ranges[i][1]
         )[0]
         idx = np.intersect1d(idx_max, idx_min)
-        if i == 0:
-            idx1 = idx
-        elif i == 1:
-            idx2 = idx
-        elif i == 2:
-            idx3 = idx
+        if 0 <= i < len(indices):
+            indices[i] = idx
+        else:
+            print('Error')
+    idx1 = indices[0]
+    idx2 = indices[1]
+    idx3 = indices[2]
     idx = np.intersect1d(idx1, idx2)
     idx = np.intersect1d(idx, idx3)
     x, y = extract_coordinates(data)
