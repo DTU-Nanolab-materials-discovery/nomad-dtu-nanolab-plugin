@@ -4564,7 +4564,6 @@ def generate_overview_plot(data, logfile_name, events):
     if 'cracker_on_open' in event_list_to_dict(events):
         data['cracker_open_cond'] = data['cracker_open_cond'].astype(int)
 
-
     data_resampled = (
         data.set_index('Time Stamp')  # Temporarily set 'Time Stamp' as index
         .resample(f'{OVERVIEW_PLOT_RESAMPLING_TIME}s')  # Resample data
@@ -4572,15 +4571,24 @@ def generate_overview_plot(data, logfile_name, events):
         .reset_index()  # Reset index to turn 'Time Stamp' back into a column
     )
 
-    # Ensure the column is treated as numeric (float) before comparison and conversion to boolean
-    data_resampled['deposition_cond'] = pd.to_numeric(data_resampled['deposition_cond'], errors='coerce')
+    # Ensure the column is treated as numeric (float)
+    # before comparison and conversion to boolean
+    data_resampled['deposition_cond'] = pd.to_numeric(
+        data_resampled['deposition_cond'], errors='coerce'
+    )
 
     # Apply the comparison and convert to boolean
-    data_resampled['deposition_cond'] = (data_resampled['deposition_cond'] > BOOL_THRESHOLD).astype(bool)
+    data_resampled['deposition_cond'] = (
+        data_resampled['deposition_cond'] > BOOL_THRESHOLD
+    ).astype(bool)
 
     if 'cracker_on_open' in event_list_to_dict(events):
-        data_resampled['cracker_open_cond'] = pd.to_numeric(data_resampled['cracker_open_cond'], errors='coerce')
-        data_resampled['cracker_open_cond'] = (data_resampled['cracker_open_cond'] > BOOL_THRESHOLD).astype(bool)
+        data_resampled['cracker_open_cond'] = pd.to_numeric(
+            data_resampled['cracker_open_cond'], errors='coerce'
+        )
+        data_resampled['cracker_open_cond'] = (
+            data_resampled['cracker_open_cond'] > BOOL_THRESHOLD
+        ).astype(bool)
         data = data.copy()
         data = data_resampled
 

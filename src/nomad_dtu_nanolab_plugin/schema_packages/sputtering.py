@@ -1617,8 +1617,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         except Exception as e:
             logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
 
-
-
     def generate_general_log_data(self, params: dict, logger: 'BoundLogger') -> None:
         """
         Method for writing the log data to the respective sections.
@@ -2080,7 +2078,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Openning the log file
             with archive.m_context.raw_file(self.log_file, 'r') as log:
                 log_df = read_logfile(log.name)
-                formated_log_df,_ = format_logfile(log_df)
+                formated_log_df, _ = format_logfile(log_df)
                 events_plot, params, step_params = read_events(log_df)
             if params is not None:
                 # Writing logfile data to the respective sections
