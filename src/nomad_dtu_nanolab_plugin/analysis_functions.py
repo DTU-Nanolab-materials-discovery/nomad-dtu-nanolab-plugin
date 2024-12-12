@@ -611,13 +611,9 @@ def lp_translate_excel(folder, filename):
 
 def find_composition(
     data,
-    element_list,
-    range1=[0, 100],
-    range2=[0, 100],
-    range3=[0, 100],
-    display_option=True,
+    element_list, #shape element_list = ['Si', 'Ge', 'O']
+    range_array, #shape range_array = [[0, 3], [4, 7], [8, 11]]
     stoichiometry=None,
-    tolerance=3,
     sample='sample',
 ):
     """find te points in the sample where the composition is in a certain range, given
@@ -625,6 +621,11 @@ def find_composition(
     el1 = element_list[0]
     el2 = element_list[1]
     el3 = element_list[2]
+    range1 = [range_array[0][0], range_array[0][1]]
+    range2 = [range_array[1][0], range_array[1][1]]
+    range3 = [range_array[2][0], range_array[2][1]]
+    tolerance=3
+
 
     if stoichiometry:
         tot = sum(stoichiometry)
@@ -687,9 +688,10 @@ def find_composition(
             f'{el2}: {range2[0]:.1f}-{range2[1]:.1f}%, {el3}: {range3[0]:.1f}-'
             f'{range3[1]:.1f}%'
         )
-    # if display_option == True:
-    #     for i in range(0, len(good_comp)):
-    #         display(get_data(data, x=good_comp['X'][i], y=good_comp['Y'][i]))
+
+    for i in range(0, len(good_comp)):
+        print(get_data(data, x=good_comp['X'][i], y=good_comp['Y'][i]))
+
     return good_comp
 
 
@@ -746,7 +748,7 @@ def initial_peaks(
     filterstrength,
     peakprominence,
     peakwidth,
-    peakheight=0,
+
 ):
     """finds peaks using scipy find_peaks on filtered data to construct a model for
     fitting, filter strength is based on filtervalue and
@@ -757,6 +759,7 @@ def initial_peaks(
     plotscale='log'
     dataRangeMin = dataRange[0]
     dataRangeMax = dataRange[1]
+    peakheight=0 # not sure if good here butgood enough for now!!!
     # setup data
     column_headers = data.columns.values
     col_theta = column_headers[::2]
@@ -811,8 +814,9 @@ def initial_peaks(
 
 
 def XRD_background(
-    data, peaks, cut_range=2, order=4, window_length=10, Si_cut=True
+    data, peaks, cut_range=2, order=4, window_length=10
 ):
+    Si_cut=True #foe now always disregard Si peak
     data_out = data.copy()
     headerlength = len(data.columns.get_level_values(1).unique())
     col_theta = data.columns.values[::2]
@@ -901,17 +905,11 @@ def XRD_background(
 
 def plot_XRD_shift_subplots(
     data,
-    datatype_x,
-    datatype_y,
     x,
     y_list,
-    shift,
-    title,
-    material_guess,
-    nrows,
-    ncols,
-    figsize=(12, 10),
-    save=True,
+    input_numbers, # nrows, ncols, shift!
+    input_str, #datatype_x, datatype_y, title, material_guess
+
 ):
     """
     Plots XRD shift for multiple y-coordinates in subplots.
@@ -933,6 +931,10 @@ def plot_XRD_shift_subplots(
     Returns:
     - plots the XRD data for multiple y-coordinates in subplots
     """
+    figsize=(12, 10) #fix figure size
+    nrows, ncols, shift= input_numbers
+    datatype_x, datatype_y, title, material_guess = input_str
+
     with open(os.path.join('XRD', 'reflections', 'reflections.pkl'), 'rb') as file:
         ref_peaks_df = pickle.load(file)
 
@@ -968,15 +970,21 @@ def plot_XRD_shift_subplots(
     plt.suptitle(title)
     plt.tight_layout(rect=[0, 0, 1, 0.97])
 
-    if save:
-        plt.savefig(f'{title}_XRD_shift_subplots.png', dpi=120, bbox_inches='tight')
+
+    plt.savefig(f'{title}_XRD_shift_subplots.png', dpi=120, bbox_inches='tight')
 
     plt.show()
 
 
 def plot_XRD_shift(
-    data, datatype_x, datatype_y, shift, x, y, title=None
+    data,
+    datatype_x_y,
+    shift,
+    x_y, # f.e x_y = [[1, 2], [3, 4]]
+    title=None
 ):  # x, y = list of points to plot]
+    datatype_x, datatype_y = datatype_x_y
+    x, y = x_y
     x_data = []
     y_data = []
     labels = []
@@ -1148,19 +1156,21 @@ def fit_this_peak(data, peak_position, fit_range, withplots=True, printinfo=Fals
 
 def interactive_XRD_shift(
     data,
-    datatype_x,
-    datatype_y,
+    datatype_x_y,
     shift,
-    x,
-    y,
+    x_y,
     ref_peaks_df,
-    title=None,
-    colors='rows',
 ):
     """
     interactive shifted plot for assigning phases to XRD data, specify if you want
     different colors per each row or a rainbow colormap
     """
+
+    datatype_x, datatype_y = datatype_x_y
+    x, y = x_y
+    colors='rows'
+
+
     fig = make_subplots(
         rows=2,
         cols=1,
@@ -1278,7 +1288,7 @@ def interactive_XRD_shift(
                     {
                         'visible': [True] * len(x) + [False] * len(ref_traces)
                     },  # Show all raw spectra, hide refs by default
-                    {'title': f'{title} - {ref_material} Reference'},
+                    {'title': f'with {ref_material} Reference'},
                 ],
             )
         )
@@ -1316,7 +1326,7 @@ def interactive_XRD_shift(
             }
         ],
         template='plotly_white',  # Choose a template (e.g., 'plotly_dark')
-        title=title,
+        #title=title,
         height=600,  # Adjust the height of the figure (e.g., 700)
         width=900,  # Adjust the width of the figure (e.g., 900)
         legend=dict(x=1.05, y=1),
@@ -1815,19 +1825,20 @@ def plot_grid(coords, grid):
 
 def plot_data(
     data,
-    datatype_x,
-    datatype_y,
-    x='all',
-    y='all',
-    datatype_select=None,
-    datatype_select_value=None,
-    scatter_plot=False,
-    plotscale='linear',
+    datatype_x_y,
+    x_y=['all','all'],
+    select=[None,None, False],
+    #scatter_plot=False,
     title='auto',
 ):
     """Creates a XY plot/scatter plot based on datatype from a dataframe"""
 
     # x and y to list if only 1 value specified
+    datatype_x, datatype_y = datatype_x_y
+    x , y = x_y
+    datatype_select, datatype_select_value, scatter_plot = select
+    plotscale='linear',
+
     x = [x] if not isinstance(x, list) else x
     y = [y] if not isinstance(y, list) else y
     x_data = []
@@ -1994,20 +2005,19 @@ def new_heatmap(
 
 def plot_scatter_colormap(
     data,
-    datatype_x,
-    datatype_y,
-    datatype_z,
-    x='all',
-    y='all',
+    datatype_x_y_z,
+    x_y=['all','all'],
     datatype_select=None,
     datatype_select_value=None,
-    min_limit=None,
-    max_limit=None,
-    plotscale='linear',
+    limits=[None,None],
     title='auto',
     colormap_label=None,
 ):
     """Creates a XY plot/scatter plot based on datatype"""
+    datatype_x, datatype_y, datatype_z = datatype_x_y_z
+    x, y = x_y
+    min_limit, max_limit = limits
+    plotscale='linear'
     # x and y to list if only 1 value specified
     #if not isinstance(x, list):
     #    x = [x]
@@ -2184,8 +2194,7 @@ def ternary_plot(df, element_list, datatype, title):
 def ternary_discrete(
     df,
     element_list,
-    intensity_label,
-    shape_label,
+    labels,
     title,
     include_id=True,
 ):
@@ -2202,6 +2211,7 @@ def ternary_discrete(
     shape_label (str): Label for the phase values.
     title (str): Title of the plot.
     """
+    intensity_label, shape_label = labels
     el1 = element_list[0]
     el2 = element_list[1]
     el3 = element_list[2]
@@ -2373,12 +2383,13 @@ def read_CRAIC(file_path, header_lines=10, print_header=True):
 def CRAIC_map(
     folder,
     background,
-    reflection_name,
-    transmission_name,
+    reflection_transmission_list,
     grid,
     unit='nm',
 ):
     # x axis is taken from the background file, maybe check that it is always the same
+    #redo!!!! it relies on folder structure!!!
+    reflection_name, transmission_name = reflection_transmission_list
     data = pd.DataFrame()
     npoints = len(grid)
     background = read_CRAIC(os.path.join(folder, background), print_header=False)
