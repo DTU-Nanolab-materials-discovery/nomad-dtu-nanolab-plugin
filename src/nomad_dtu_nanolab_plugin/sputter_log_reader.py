@@ -4727,17 +4727,18 @@ def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
     plotly_timeline = generate_timeline(events_to_plot, sample_name)
     plots['timeline'] = plotly_timeline
 
-    bias_plot = generate_bias_plot(
-        events_to_plot,
-        sample_name,
-        rolling_num=ROLLING_NUM,
-        rolling_frac_max=ROLLING_FRAC_MAX,
-    )
-    plots['bias_plot'] = bias_plot
-
     # Generate the overview plot
     overview_plot = generate_overview_plot(log_data, sample_name, events_to_plot)
     plots['overview_plot'] = overview_plot
+
+    bias_plot = generate_bias_plot(
+        events_to_plot,
+        sample_name,
+        # rolling_num=ROLLING_NUM,
+        # rolling_frac_max=ROLLING_FRAC_MAX,
+    )
+    plots['bias_plot'] = bias_plot
+
 
     # _, chamber_plotly_plot = plot_logfile_chamber(main_params, sample_name)
     # plots.append(chamber_plotly_plot)
