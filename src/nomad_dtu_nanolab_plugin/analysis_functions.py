@@ -2007,17 +2007,16 @@ def plot_scatter_colormap(
     data,
     datatype_x_y_z,
     x_y=['all','all'],
-    datatype_select=None,
-    datatype_select_value=None,
+    select=[None, None,None], #datatype_select, datatype_select_value, colormap_label
     limits=[None,None],
-    title='auto',
-    colormap_label=None,
 ):
     """Creates a XY plot/scatter plot based on datatype"""
     datatype_x, datatype_y, datatype_z = datatype_x_y_z
     x, y = x_y
     min_limit, max_limit = limits
     plotscale='linear'
+    title='auto'
+    datatype_select, datatype_select_value, colormap_label = select
     # x and y to list if only 1 value specified
     #if not isinstance(x, list):
     #    x = [x]
@@ -2054,13 +2053,9 @@ def plot_scatter_colormap(
     # formating
     labels = labels[0] if len(labels) == 1 else labels
     if x[0] == 'all' and y[0] == 'all':
-        x_data = x_data[0]
-        y_data = y_data[0]
-        z_data = z_data[0]
+        x_data, y_data, z_data = x_data[0], y_data[0], z_data[0]
     else:
-        x_data = np.transpose(x_data)
-        y_data = np.transpose(y_data)
-        z_data = np.transpose(z_data)
+        x_data, y_data, z_data = map(np.transpose, [x_data, y_data, z_data])
 
     # if datatype with multiple values per point is plotted only selects one value,
     # based on the datatype_select, datatype_select_value.
@@ -2080,9 +2075,7 @@ def plot_scatter_colormap(
         data_coords = [j for j in x_data_coords if j not in z_data_coords]
         x_data.drop(data_coords, level=0, axis=1, inplace=True)
         y_data.drop(data_coords, level=0, axis=1, inplace=True)
-        x_data = x_data.values[0]
-        y_data = y_data.values[0]
-        z_data = z_data.values[0]
+        x_data, y_data, z_data = x_data.values[0], y_data.values[0], z_data.values[0]
 
     # removes data points above the max limit of the z data
     if max_limit is not None:
