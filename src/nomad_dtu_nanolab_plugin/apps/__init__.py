@@ -4,6 +4,7 @@ from nomad.config.models.ui import (
     Column,
     Columns,
     Filters,
+    Format,
     Menu,
     MenuItemHistogram,
     MenuItemPeriodicTable,
@@ -28,54 +29,65 @@ sputtering = AppEntryPoint(
                 f'*#{schema}',
             ],
         ),
-        columns=Columns(
-            selected=[
-                f'data.lab_id#{schema}',
-                f'data.datetime#{schema}',
-                f'data.deposition_parameters.deposition_temp#{schema}',
-                f'data.deposition_parameters.deposition_time#{schema}',
-                f'data.deposition_parameters.sputter_pressure#{schema}',
-                f'data.deposition_parameters.material_space#{schema}',
-                f'data.deposition_parameters.ar_flow#{schema}',
-                f'data.deposition_parameters.h2s_in_ar_flow#{schema}',
-                f'data.deposition_parameters.ph3_in_ar_flow#{schema}',
-            ],
-            options={
-                f'data.lab_id#{schema}': Column(
-                    label='Sputtering ID',
-                ),
-                f'data.datetime#{schema}': Column(
-                    label='Date and time',
-                ),
-                f'data.deposition_parameters.deposition_temp#{schema}': Column(
-                    label='Deposition temperature',
-                    unit='degC',
-                ),
-                f'data.deposition_parameters.deposition_time#{schema}': Column(
-                    label='Deposition time',
-                    unit='minute',
-                ),
-                f'data.deposition_parameters.sputter_pressure#{schema}': Column(
-                    label='Sputter pressure',
-                    unit='mtorr',
-                ),
-                f'data.deposition_parameters.material_space#{schema}': Column(
-                    label='Material space',
-                ),
-                f'data.deposition_parameters.ar_flow#{schema}': Column(
-                    label='Ar flow',
-                    unit='cm^3/minute',
-                ),
-                f'data.deposition_parameters.h2s_in_ar_flow#{schema}': Column(
-                    label='H2S in Ar flow',
-                    unit='cm^3/minute',
-                ),
-                f'data.deposition_parameters.ph3_in_ar_flow#{schema}': Column(
-                    label='PH3 in Ar flow',
-                    unit='cm^3/minute',
-                ),
-            },
-        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{schema}',
+                selected=True,
+                label='Sputtering ID',
+            ),
+            Column(
+                search_quantity=f'data.datetime#{schema}',
+                selected=True,
+                label='Date and time',
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.deposition_temp#{schema}',
+                selected=True,
+                label='Deposition temperature',
+                unit='degC',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.deposition_time#{schema}',
+                selected=True,
+                label='Deposition time',
+                unit='minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.sputter_pressure#{schema}',
+                selected=True,
+                label='Sputter pressure',
+                unit='mtorr',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.material_space#{schema}',
+                selected=True,
+                label='Material space',
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.ar_flow#{schema}',
+                selected=True,
+                label='Ar flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.h2s_in_ar_flow#{schema}',
+                selected=True,
+                label='H2S in Ar flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.ph3_in_ar_flow#{schema}',
+                selected=True,
+                label='PH3 in Ar flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+        ],
         menu=Menu(
             title='Material',
             size=MenuSizeEnum.XL,
@@ -85,11 +97,13 @@ sputtering = AppEntryPoint(
                 ),
                 MenuItemHistogram(
                     x=f'data.deposition_parameters.deposition_temp#{schema}',
-                    unit='degC',
+                    # unit='degC',
+                    # title='Deposition temperature (°C)',
                 ),
                 MenuItemHistogram(
                     x=f'data.deposition_parameters.deposition_time#{schema}',
-                    unit='minute',
+                    # unit='minute',
+                    # title='Deposition time (min)',
                 ),
             ],
         ),
@@ -116,37 +130,41 @@ sputtering_targets = AppEntryPoint(
                 f'*#{target_schema}',
             ],
         ),
-        columns=Columns(
-            selected=[
-                f'data.lab_id#{target_schema}',
-                f'data.main_material#{target_schema}',
-                f'data.purity#{target_schema}',
-                f'data.supplier_id#{target_schema}',
-                f'data.refill_or_mounting_date#{target_schema}',
-                f'data.thickness#{target_schema}',
-            ],
-            options={
-                f'data.lab_id#{target_schema}': Column(
-                    label='Target ID',
-                ),
-                f'data.purity#{target_schema}': Column(
-                    label='Purity (%)',
-                ),
-                f'data.main_material#{target_schema}': Column(
-                    label='Material',
-                ),
-                f'data.supplier_id#{target_schema}': Column(
-                    label='Supplier',
-                ),
-                f'data.refill_or_mounting_date#{target_schema}': Column(
-                    label='Refill or mounting date',
-                ),
-                f'data.thickness#{target_schema}': Column(
-                    label='Thickness',
-                    unit='mm',
-                ),
-            },
-        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{target_schema}',
+                selected=True,
+                label='Target ID',
+            ),
+            Column(
+                search_quantity=f'data.purity#{target_schema}',
+                selected=True,
+                label='Purity (%)',
+                format=Format(decimals=5),
+            ),
+            Column(
+                search_quantity=f'data.main_material#{target_schema}',
+                selected=True,
+                label='Material',
+            ),
+            Column(
+                search_quantity=f'data.supplier_id#{target_schema}',
+                selected=True,
+                label='Supplier',
+            ),
+            Column(
+                search_quantity=f'data.refill_or_mounting_date#{target_schema}',
+                selected=True,
+                label='Refill or mounting date',
+            ),
+            Column(
+                search_quantity=f'data.thickness#{target_schema}',
+                selected=True,
+                label='Thickness',
+                unit='mm',
+                format=Format(decimals=1),
+            ),
+        ],
         menu=Menu(
             title='Material',
             size=MenuSizeEnum.XXL,
