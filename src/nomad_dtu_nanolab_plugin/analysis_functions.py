@@ -1481,207 +1481,209 @@ def assign_phases_numbers(data):
 ##########################
 # Functions related to UPS analysis
 ##########################
-def UPS_fit(
-    data,
-    startvalue,
-    guess_slope=2000,
-    slope_change=1.5,
-    window=1,
-    background_end=None,
-    fit_background = True,
-    plotscale = 'linear'
-    ):
-    '''New: actually never used to fit semiconductor data.
-    Fit UPS data using dataframe input from read_UPS,
-    the data is fitted by finding background and valence bands based on slope,
-    they are both fitted
-    Output: dataframe with the background and fit intersection point,
-    as well as the backgrounds intersect with x'''
-    column_headers = data.columns.values
-    col_BE = column_headers[::2]
-    col_counts = column_headers[1::2]
-    mod = LinearModel(prefix='reg_')
+
+#redo this function with more time and care!!!! Too many assumptions and wierd fits
+# def UPS_fit(
+#     data,
+#     startvalue,
+#     guess_slope=2000,
+#     slope_change=1.5,
+#     window=1,
+#     background_end=None,
+#     fit_background = True,
+#     plotscale = 'linear'
+#     ):
+#     '''New: actually never used to fit semiconductor data.
+#     Fit UPS data using dataframe input from read_UPS,
+#     the data is fitted by finding background and valence bands based on slope,
+#     they are both fitted
+#     Output: dataframe with the background and fit intersection point,
+#     as well as the backgrounds intersect with x'''
+#     column_headers = data.columns.values
+#     col_BE = column_headers[::2]
+#     col_counts = column_headers[1::2]
+#     mod = LinearModel(prefix='reg_')
 
 
-    UPS_outframe = pd.DataFrame()
-    for i in range(0,len(col_BE)):
-        x = data[col_BE[i]]
-        y = data[col_counts[i]]
+#     UPS_outframe = pd.DataFrame()
+#     for i in range(0,len(col_BE)):
+#         x = data[col_BE[i]]
+#         y = data[col_counts[i]]
 
-        #reversing the data
-        x_reversed = x[::-1].values
-        y_reversed = y[::-1].values
-        #y_reversed = savgol_filter(y[::-1].values, 2, 1)
+#         #reversing the data
+#         x_reversed = x[::-1].values
+#         y_reversed = y[::-1].values
+#         #y_reversed = savgol_filter(y[::-1].values, 2, 1)
 
-        #select based on input start value
-        xselect = x_reversed[list(range(startvalue,len(x)))]
-        yselect = y_reversed[list(range(startvalue,len(y)))]
+#         #select based on input start value
+#         xselect = x_reversed[list(range(startvalue,len(x)))]
+#         yselect = y_reversed[list(range(startvalue,len(y)))]
 
-        #finding the background onset from slope
-        k = 1
-        slope = None
-        while k < len(yselect)-1:
-            slope = yselect[k]-yselect[k-window]
-            if slope < guess_slope:
-                k = k + 1
-            else:
-                bkg_start = k
-                bkg_slope = slope
-                k = len(yselect)-1
+#         #finding the background onset from slope
+#         k = 1
+#         slope = None
+#         while k < len(yselect)-1:
+#             slope = yselect[k]-yselect[k-window]
+#             if slope < guess_slope:
+#                 k = k + 1
+#             else:
+#                 bkg_start = k
+#                 bkg_slope = slope
+#                 k = len(yselect)-1
 
-        #finding the background end from onset point and slope
-        xselect1 = xselect[list(range(bkg_start,len(xselect)))]
-        yselect1 = yselect[list(range(bkg_start,len(yselect)))]
+#         #finding the background end from onset point and slope
+#         xselect1 = xselect[list(range(bkg_start,len(xselect)))]
+#         yselect1 = yselect[list(range(bkg_start,len(yselect)))]
 
-        k = 25
-        v= 100
-        slope = None
-        while k < v:
-            slope = yselect1[k]-yselect1[k-window]
-            if slope < bkg_slope*slope_change:
-                k = k + 1
-            else:
-                bkg_end = k
-                k = 101
+#         k = 25
+#         v= 100
+#         slope = None
+#         while k < v:
+#             slope = yselect1[k]-yselect1[k-window]
+#             if slope < bkg_slope*slope_change:
+#                 k = k + 1
+#             else:
+#                 bkg_end = k
+#                 k = 101
 
-        if background_end:
-            bkg_end = np.where(xselect1 == background_end)[0][0]
+#         if background_end:
+#             bkg_end = np.where(xselect1 == background_end)[0][0]
 
-        #fitting the background with a linear model
-        x_bkg = xselect1[list(range(0,bkg_end))]
-        y_bkg = yselect1[list(range(0,bkg_end))]
-        out_bkg = mod.fit(y_bkg, x = x_bkg)
-        bkg_x_intercept = (
-            -out_bkg.params['reg_intercept'].value/out_bkg.params['reg_slope'].value
-            )
+#         #fitting the background with a linear model
+#         x_bkg = xselect1[list(range(0,bkg_end))]
+#         y_bkg = yselect1[list(range(0,bkg_end))]
+#         out_bkg = mod.fit(y_bkg, x = x_bkg)
+#         bkg_x_intercept = (
+#             -out_bkg.params['reg_intercept'].value/out_bkg.params['reg_slope'].value
+#             )
 
-        if fit_background:
-            #finding the valence onset
+#         if fit_background:
+#             #finding the valence onset
 
-            xselect_valence = x_reversed[
-                list(range(bkg_end+bkg_start+startvalue,len(x)))
-                ]
-            yselect_valence = y_reversed[
-                list(range(bkg_end+bkg_start+startvalue,len(y)))
-                ]
+#             xselect_valence = x_reversed[
+#                 list(range(bkg_end+bkg_start+startvalue,len(x)))
+#                 ]
+#             yselect_valence = y_reversed[
+#                 list(range(bkg_end+bkg_start+startvalue,len(y)))
+#                 ]
 
-            k = 5
-            slope = None
-            while k < len(yselect_valence)-1:
-                slope = yselect_valence[k]-yselect_valence[k-1]
-                if slope < bkg_slope*4:
-                    k = k + 1
-                else:
-                    valence_start = k
-                    valence_slope = slope
-                    k = len(yselect_valence)-1
+#             k = 5
+#             slope = None
+#             while k < len(yselect_valence)-1:
+#                 slope = yselect_valence[k]-yselect_valence[k-1]
+#                 if slope < bkg_slope*4:
+#                     k = k + 1
+#                 else:
+#                     valence_start = k
+#                     valence_slope = slope
+#                     k = len(yselect_valence)-1
 
-            #finding valence end
-            xselect_valence1 = xselect_valence[
-                list(range(valence_start,len(xselect_valence)))
-                ]
-            yselect_valence1 = yselect_valence[
-                list(range(valence_start,len(yselect_valence)))
-                ]
+#             #finding valence end
+#             xselect_valence1 = xselect_valence[
+#                 list(range(valence_start,len(xselect_valence)))
+#                 ]
+#             yselect_valence1 = yselect_valence[
+#                 list(range(valence_start,len(yselect_valence)))
+#                 ]
 
-            k = 15
-            slope = None
-            while k < len(yselect_valence1)-1:
-                slope = yselect_valence1[k]-yselect_valence1[k-1]
-                if slope < valence_slope*1.2:
-                    k = k + 1
-                    valence_end = len(yselect_valence1)-2
-                else:
-                    valence_end = k -1
-                    k = len(yselect_valence1)
-            try:
-                x_valence = xselect_valence1[list(range(0,valence_end))]
-                y_valence = yselect_valence1[list(range(0,valence_end))]
-                out_valence = mod.fit(y_valence, x = x_valence)
-                fits_intercept = ((
-                    out_valence.params['reg_intercept'].value
-                    - out_bkg.params['reg_intercept'].value
-                    )/(
-                    out_bkg.params['reg_slope'].value
-                    - out_valence.params['reg_slope'].value)
-                    )
+#             k = 15
+#             slope = None
+#             while k < len(yselect_valence1)-1:
+#                 slope = yselect_valence1[k]-yselect_valence1[k-1]
+#                 if slope < valence_slope*1.2:
+#                     k = k + 1
+#                     valence_end = len(yselect_valence1)-2
+#                 else:
+#                     valence_end = k -1
+#                     k = len(yselect_valence1)
+#             try:
+#                 x_valence = xselect_valence1[list(range(0,valence_end))]
+#                 y_valence = yselect_valence1[list(range(0,valence_end))]
+#                 out_valence = mod.fit(y_valence, x = x_valence)
+#                 fits_intercept = ((
+#                     out_valence.params['reg_intercept'].value
+#                     - out_bkg.params['reg_intercept'].value
+#                     )/(
+#                     out_bkg.params['reg_slope'].value
+#                     - out_valence.params['reg_slope'].value)
+#                     )
 
-            except(AttributeError, TypeError) as e:
-                print('No valence band found'+ e)
-                out_valence = None
-
-
-
-            plt.plot(x,y, label = 'data')
-            try:
-                plt.plot(x_valence,out_valence.best_fit, label = 'valence fit')
-                plt.plot(
-                    xselect_valence[valence_start],yselect_valence[valence_start],
-                    'o',
-                    label = 'valence_start',
-                    )
-                plt.plot(
-                    xselect_valence1[valence_end],yselect_valence1[valence_end],
-                    'o',
-                    label = 'valence_end',
-                    )
-            except(AttributeError, TypeError) as e:
-                print(f"An error occurred: {e}")
-                pass
-            plt.plot(xselect[bkg_start], yselect[bkg_start], 'o',label = 'bkg_start')
-            plt.plot(xselect1[bkg_end], yselect1[bkg_end], 'o',label = 'bkg_end')
-            plt.plot(x_bkg, out_bkg.best_fit, '--',label='background fit')
-            plt.xlabel(col_BE[i][1])
-            plt.ylabel(col_counts[i][1])
-            plt.title(col_counts[i][0])
-            plt.yscale(plotscale)
-            plt.xlim(-1, 4)
-            # plt.ylim(-1e4,2e6)
-            plt.legend()
-            plt.show()
-
-            try:
-                print("bkg_x_intercept:\n",bkg_x_intercept)
-                print("fits_intercept:\n",fits_intercept)
-            except(AttributeError, TypeError) as e:
-                print(f"An error occurred: {e}")
-                fits_intercept = None*len(bkg_x_intercept)
-
-            intercepts = np.vstack((bkg_x_intercept,fits_intercept)).T
-            UPS_header = pd.MultiIndex.from_product(
-                [[col_BE[i][0]],
-                ['bkg_x_intercept','fits_intercept']],
-                names=['Coordinate','Data type'],
-                )
-            UPS_output = pd.DataFrame(data=intercepts, columns=UPS_header)
+#             except(AttributeError, TypeError) as e:
+#                 print('No valence band found'+ e)
+#                 out_valence = None
 
 
-        else:
-            plt.plot(x,y, label = 'data')
-            plt.plot(x_bkg, out_bkg.best_fit, label='valence fit')
-            plt.xlabel(col_BE[i][1])
-            plt.ylabel(col_counts[i][1])
-            plt.title(col_counts[i][0])
-            plt.yscale(plotscale)
-            plt.xlim(-1, 4)
-            # plt.ylim(-1e4,2e6)
-            plt.legend()
-            plt.show()
 
-            print("bkg_x_intercept:\n",bkg_x_intercept)
+#             plt.plot(x,y, label = 'data')
+#             try:
+#                 plt.plot(x_valence,out_valence.best_fit, label = 'valence fit')
+#                 plt.plot(
+#                     xselect_valence[valence_start],yselect_valence[valence_start],
+#                     'o',
+#                     label = 'valence_start',
+#                     )
+#                 plt.plot(
+#                     xselect_valence1[valence_end],yselect_valence1[valence_end],
+#                     'o',
+#                     label = 'valence_end',
+#                     )
+#             except(AttributeError, TypeError) as e:
+#                 print(f"An error occurred: {e}")
+#                 pass
+#             plt.plot(xselect[bkg_start], yselect[bkg_start], 'o',label = 'bkg_start')
+#             plt.plot(xselect1[bkg_end], yselect1[bkg_end], 'o',label = 'bkg_end')
+#             plt.plot(x_bkg, out_bkg.best_fit, '--',label='background fit')
+#             plt.xlabel(col_BE[i][1])
+#             plt.ylabel(col_counts[i][1])
+#             plt.title(col_counts[i][0])
+#             plt.yscale(plotscale)
+#             plt.xlim(-1, 4)
+#             # plt.ylim(-1e4,2e6)
+#             plt.legend()
+#             plt.show()
 
-        UPS_header = pd.MultiIndex.from_product(
-            [[col_BE[i][0]],
-            ['bkg_x_intercept']],
-            names=['Coordinate','Data type'],
-            )
-        UPS_output = pd.DataFrame(
-            data=np.array([bkg_x_intercept])
-            , columns=UPS_header,
-            )
+#             try:
+#                 print("bkg_x_intercept:\n",bkg_x_intercept)
+#                 print("fits_intercept:\n",fits_intercept)
+#             except(AttributeError, TypeError) as e:
+#                 print(f"An error occurred: {e}")
+#                 fits_intercept = None*len(bkg_x_intercept)
 
-        UPS_outframe = pd.concat([UPS_outframe, UPS_output], axis = 1)
-    return UPS_outframe
+#             intercepts = np.vstack((bkg_x_intercept,fits_intercept)).T
+#             UPS_header = pd.MultiIndex.from_product(
+#                 [[col_BE[i][0]],
+#                 ['bkg_x_intercept','fits_intercept']],
+#                 names=['Coordinate','Data type'],
+#                 )
+#             UPS_output = pd.DataFrame(data=intercepts, columns=UPS_header)
+
+
+#         else:
+#             plt.plot(x,y, label = 'data')
+#             plt.plot(x_bkg, out_bkg.best_fit, label='valence fit')
+#             plt.xlabel(col_BE[i][1])
+#             plt.ylabel(col_counts[i][1])
+#             plt.title(col_counts[i][0])
+#             plt.yscale(plotscale)
+#             plt.xlim(-1, 4)
+#             # plt.ylim(-1e4,2e6)
+#             plt.legend()
+#             plt.show()
+
+#             print("bkg_x_intercept:\n",bkg_x_intercept)
+
+#         UPS_header = pd.MultiIndex.from_product(
+#             [[col_BE[i][0]],
+#             ['bkg_x_intercept']],
+#             names=['Coordinate','Data type'],
+#             )
+#         UPS_output = pd.DataFrame(
+#             data=np.array([bkg_x_intercept])
+#             , columns=UPS_header,
+#             )
+
+#         UPS_outframe = pd.concat([UPS_outframe, UPS_output], axis = 1)
+#     return UPS_outframe
 
 def adjust_BE_values(data):
     """
@@ -2007,19 +2009,30 @@ def plot_scatter_colormap(
 ):
     """Creates a XY plot/scatter plot based on datatype"""
     # x and y to list if only 1 value specified
-    if not isinstance(x, list):
-        x = [x]
-    if not isinstance(y, list):
-        y = [y]
-    x_data = []
-    y_data = []
-    z_data = []
+    #if not isinstance(x, list):
+    #    x = [x]
+    #if not isinstance(y, list):
+    #    y = [y]
+    #x_data = []
+    #y_data = []
+    #z_data = []
+
+    # new copilot code. Test!!!!
+    x = [x] if not isinstance(x, list) else x
+    y = [y] if not isinstance(y, list) else y
+
+    # Extract data
+    x_data = [get_data(data, datatype_x, xi, yi, False, False) for xi, yi in zip(x, y)]
+    y_data = [get_data(data, datatype_y, xi, yi, False, False) for xi, yi in zip(x, y)]
+    z_data = [get_data(data, datatype_z, xi, yi, False, False) for xi, yi in zip(x, y)]
+
+
     labels = []
     # extracts the specified data point by point
     for i in range(len(x)):
-        x_data.append(get_data(data, datatype_x, x[i], y[i], False, False))
-        y_data.append(get_data(data, datatype_y, x[i], y[i], False, False))
-        z_data.append(get_data(data, datatype_z, x[i], y[i], False, False))
+        #x_data.append(get_data(data, datatype_x, x[i], y[i], False, False))
+        #y_data.append(get_data(data, datatype_y, x[i], y[i], False, False))
+        #z_data.append(get_data(data, datatype_z, x[i], y[i], False, False))
         if x[0] == 'all' and y[0] == 'all':
             labels = data.columns.get_level_values(0).unique().values
 
