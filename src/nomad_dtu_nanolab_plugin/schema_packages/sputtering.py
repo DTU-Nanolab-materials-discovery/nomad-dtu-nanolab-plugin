@@ -50,6 +50,7 @@ from nomad_material_processing.vapor_deposition.general import (
     Pressure,
     TimeSeries,
     VolumetricFlowRate,
+    SubstrateHeater,
 )
 from nomad_material_processing.vapor_deposition.pvd.general import (
     PVDEvaporationSource,
@@ -73,6 +74,8 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     generate_plots,
     get_nested_value,
     map_environment_params_to_nomad,
+    map_platen_bias_params_to_nomad,
+    map_heater_params_to_nomad,
     map_gas_flow_params_to_nomad,
     map_material_params_to_nomad,
     map_params_to_nomad,
@@ -803,10 +806,52 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         self.gas.canonical_smile = self.used_gas_supply.canonical_smiles
         self.gas.cas_number = self.used_gas_supply.cas_number
 
+class DtuTemperature(TimeSeries):
+    m_def = Section(
+        a_plot=dict(
+            x='time',
+            y='value',
+        ),
+    )
 
-class DtuSubstrateHeater(PureSubstanceSection):
-    # TODO: Construct the heater section
-    pass
+    value = Quantity(
+        type=np.float64,
+        unit='K',
+        description="""The temperature of the first heater.""",
+        shape=['*'],
+    )
+
+
+class DtuSubstrateHeater(SubstrateHeater):
+    """
+    Custom class for the substrate heater.
+    """
+
+    m_def = Section()
+
+    avg_temperature_1 = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
+        unit='kelvin',
+    )
+    avg_temperature_2 = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
+        unit='kelvin',
+    )
+    temperature_1 = SubSection(
+        section_def=DtuTemperature,
+    )
+
+    temperature_2 = SubSection(
+        section_def=DtuTemperature,
+    )
+
+    temperature_sp = SubSection(
+        section_def=DtuTemperature,
+    )
+
+
 
 
 class DTUChamberEnvironment(ChamberEnvironment, ArchiveSection):
@@ -823,7 +868,9 @@ class DTUChamberEnvironment(ChamberEnvironment, ArchiveSection):
     platen_bias = SubSection(
         section_def=DtuPlasma,
     )
-    heater = SubSection(section_def=DtuSubstrateHeater)
+    heater = SubSection(
+        section_def=DtuSubstrateHeater
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -1896,10 +1943,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         environment = DTUChamberEnvironment()
         environment.gas_flow = []
         environment.pressure = Pressure()
+        environment.platen_bias = DtuPlasma()
+        environment.heater = DtuSubstrateHeater()
 
         environment_param_nomad_map = map_environment_params_to_nomad(key)
 
-        # Looping through the environment_param_nomad_map
+        # Looping through the environment_param_nomad_map (writing pressure data)
         for input_keys, output_keys, unit in environment_param_nomad_map:
             config = {
                 'input_dict': step_params,
@@ -1916,7 +1965,78 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         environment.gas_flow.extend(gas_flow)
 
+        #write platen bias data
+
+        platen_bias = self.generate_platen_bias_log_data(step_params, key, logger)
+
+        environment.platen_bias = platen_bias
+
+        #write heater data
+
+        heater = self.generate_heater_log_data(step_params, key, logger)
+
+        environment.heater = heater
+
+
         return environment
+
+    def generate_platen_bias_log_data(
+        self, step_params: dict, key: str, logger: 'BoundLogger'
+    ) -> None:
+        platen_bias = DtuPlasma()
+
+        platen_bias.source_shutter_open = DTUShutter()
+
+
+        platen_bias.vapor_source = DTUSputterRFPowerSupply()
+        platen_bias.vapor_source.power_sp = DtuPowerSetPoint()
+        platen_bias.vapor_source.dc_bias = DtuDCBias()
+        platen_bias.vapor_source.fwd_power = DtuForwardPower()
+        platen_bias.vapor_source.rfl_power = DtuReflectedPower()
+
+        platen_bias_param_nomad_map = map_platen_bias_params_to_nomad(key)
+
+        # Looping through the platen_bias_param_nomad_map
+        for input_keys, output_keys, unit in platen_bias_param_nomad_map:
+            config = {
+                'input_dict': step_params,
+                'input_keys': input_keys,
+                'output_obj': platen_bias,
+                'output_obj_name': 'platen_bias',
+                'output_keys': output_keys,
+                'unit': unit,
+                'logger': logger,
+            }
+            self.write_data(config)
+
+        return platen_bias
+
+    def generate_heater_log_data(
+        self, step_params: dict, key: str, logger: 'BoundLogger'
+    ) -> None:
+
+        heater = DtuSubstrateHeater()
+
+        heater.temperature_1 = DtuTemperature()
+        heater.temperature_2 = DtuTemperature()
+        heater.temperature_sp = DtuTemperature()
+
+        heater_param_nomad_map = map_heater_params_to_nomad(key)
+
+        # Looping through the heater_param_nomad_map
+        for input_keys, output_keys, unit in heater_param_nomad_map:
+            config = {
+                'input_dict': step_params,
+                'input_keys': input_keys,
+                'output_obj': heater,
+                'output_obj_name': 'heater',
+                'output_keys': output_keys,
+                'unit': unit,
+                'logger': logger,
+            }
+            self.write_data(config)
+
+        return heater
 
     def generate_gas_flow_log_data(
         self, step_params: dict, key: str, logger: 'BoundLogger'

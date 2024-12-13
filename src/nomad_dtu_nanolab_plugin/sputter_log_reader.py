@@ -71,6 +71,7 @@ SAMPLES_TO_TEST = [
 # column names dictionary
 COL = {
     'time': 'Time Stamp',
+    'time_stamp': 'Time Stamp',
     'pressure_wrg': 'PC Wide Range Gauge',
     'pressure': 'PC Capman Pressure',
     'pressure_sp': 'PC Capman Pressure Setpoint',
@@ -869,15 +870,6 @@ class Lf_Event:
 
         if pressure_col is not None:
             # Extract the pressure parameters
-
-            # params[self.step_id]['environment']['pressure']['set_time'] = [
-            #     start_time.to_pydatetime()
-            # ]
-            # params[self.step_id]['environment']['pressure']['set_value'] = [
-            #     self.data[
-            #     pressure_col
-            # ].iloc[-1]
-            # ]
             params[self.step_id]['environment']['pressure']['time'] = (
                 (self.data['Time Stamp'] - start_time).dt.total_seconds().tolist()
             )
@@ -885,7 +877,156 @@ class Lf_Event:
                 pressure_col
             ].tolist()
 
-        # Extract the heater parameters
+        # Extract the platen bias parameters
+        params = self.get_platen_bias_params(params)
+
+        # Extract the substrate heater parameters
+        params = self.get_substrate_heater_params(params)
+
+        return params
+
+    def get_platen_bias_params(self, params):
+        # Initialize the source dictionary if it does not exist
+        if 'platen_bias' not in params[self.step_id]['environment']:
+            params[self.step_id]['environment']['platen_bias'] = {}
+            params[self.step_id]['environment']['platen_bias']['power_supply'] = {}
+            params[self.step_id]['environment']['platen_bias']['shutter_open'] = {}
+
+        # Extract the source source id
+        params[self.step_id]['environment']['platen_bias']['name'] = 'platen_bias'
+
+
+        # extract the state of the source shutter
+        params[self.step_id]['environment']['platen_bias']['shutter_open']['value'] = [
+            bool(x)
+            for x in self.data[f'PC Substrate Shutter Open'].tolist()
+        ]
+        params[self.step_id]['environment']['platen_bias']['shutter_open']['time'] = (
+            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+            .dt.total_seconds()
+            .tolist()
+        )
+        # we check if the shutter is open during more than the TOLERANCE
+        params[self.step_id]['environment']['platen_bias']['shutter_open'][
+            'mode_value'  # most common value
+        ] = bool(
+            self.data[f'PC Substrate Shutter Open'].value_counts().idxmax()
+        )
+
+        # extract the power supply parameters
+        params[self.step_id]['environment']['platen_bias']['power_supply']['power_type'] = (
+            'RF'
+        )
+
+        # get the time series in seconds from the start of the step
+        time_series = (
+            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+            .dt.total_seconds()
+            .tolist()
+        )
+
+
+        #the platen power supply is the seven
+        params[self.step_id]['environment']['platen_bias']['power_supply']['avg_power_sp'] = (
+            self.data[f'Power Supply 7 Output Setpoint'].mean()
+        )
+        params[self.step_id]['environment']['platen_bias']['power_supply']['power_sp'] = {}
+        params[self.step_id]['environment']['platen_bias']['power_supply']['power_sp'][
+            'value'
+        ] = self.data[f'Power Supply 7 Output Setpoint'].tolist()
+        params[self.step_id]['environment']['platen_bias']['power_supply']['power_sp'][
+            'time'
+        ] = time_series
+
+        # Extract the source dc bias setpoint
+        params[self.step_id]['environment']['platen_bias']['power_supply']['avg_dc_bias'] = (
+            self.data[f'Power Supply 7 DC Bias'].mean()
+        )
+        params[self.step_id]['environment']['platen_bias']['power_supply']['dc_bias'] = {}
+        params[self.step_id]['environment']['platen_bias']['power_supply']['dc_bias'][
+            'value'
+        ] = self.data[f'Power Supply 7 DC Bias'].tolist()
+        params[self.step_id]['environment']['platen_bias']['power_supply']['dc_bias'][
+            'time'
+        ] = time_series
+
+        # Extract the fwd power
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'avg_fwd_power'
+        ] = self.data[f'Power Supply 7 Fwd Power'].mean()
+        params[self.step_id]['environment']['platen_bias']['power_supply']['fwd_power'] = {}
+        params[self.step_id]['environment']['platen_bias']['power_supply']['fwd_power'][
+            'value'
+        ] = self.data[f'Power Supply 7 Fwd Power'].tolist()
+        params[self.step_id]['environment']['platen_bias']['power_supply']['fwd_power'][
+            'time'
+        ] = time_series
+
+        # Extract the rfl power
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'avg_rfl_power'
+        ] = self.data[f'Power Supply 7 Rfl Power'].mean()
+        params[self.step_id]['environment']['platen_bias']['power_supply']['rfl_power'] = {}
+        params[self.step_id]['environment']['platen_bias']['power_supply']['rfl_power'][
+            'value'
+        ] = self.data[f'Power Supply 7 Rfl Power'].tolist()
+        params[self.step_id]['environment']['platen_bias']['power_supply']['rfl_power'][
+            'time'
+        ] = time_series
+
+        return params
+
+
+    def get_substrate_heater_params(self, params):
+
+        # Initialize the source dictionary if it does not exist
+        if 'substrate_heater' not in params[self.step_id]['environment']:
+            params[self.step_id]['environment']['heater'] = {}
+            params[self.step_id]['environment']['heater']['temp_1'] = {}
+            params[self.step_id]['environment']['heater']['temp_2'] = {}
+            params[self.step_id]['environment']['heater']['temp_sp'] = {}
+
+
+        # extract the substrate heater avg temperature 1 and 2 and the setpoint
+        params[self.step_id]['environment']['heater']['avg_temp_1'] = self.data[
+            'Substrate Heater Temperature'
+        ].mean()
+
+        params[self.step_id]['environment']['heater']['avg_temp_2'] = self.data[
+            'Substrate Heater Temperature 2'
+        ].mean()
+
+        params[self.step_id]['environment']['heater']['avg_temp_sp'] = self.data[
+        'Substrate Heater Temperature Setpoint'
+        ].mean()
+
+        # get the time series in seconds from the start of the step
+        time_series = (
+            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+            .dt.total_seconds()
+            .tolist()
+        )
+
+        # Extract the substrate heater temperature 1
+
+        params[self.step_id]['environment']['heater']['temp_1']['value'] = self.data[
+            'Substrate Heater Temperature'
+        ].tolist()
+        params[self.step_id]['environment']['heater']['temp_1']['time'] = time_series
+
+        # Extract the substrate heater temperature 2
+
+        params[self.step_id]['environment']['heater']['temp_2']['value'] = self.data[
+            'Substrate Heater Temperature 2'
+        ].tolist()
+        params[self.step_id]['environment']['heater']['temp_2']['time'] = time_series
+
+        # Extract the substrate heater temperature setpoint
+
+        params[self.step_id]['environment']['heater']['temp_sp']['value'] = self.data[
+            'Substrate Heater Temperature Setpoint'
+        ].tolist()
+        params[self.step_id]['environment']['heater']['temp_sp']['time'] = time_series
 
         return params
 
@@ -5883,6 +6024,143 @@ def map_gas_flow_params_to_nomad(key, gas_name):
 
     return gas_flow_param_nomad_map
 
+
+def map_platen_bias_params_to_nomad(key):
+    platen_bias_param_nomad_map = [
+        [
+            [key, 'environment', 'platen_bias','shutter_open', 'value'],
+            ['source_shutter_open', 'value'],
+            'V'
+        ],
+        [
+            [key, 'environment', 'platen_bias','shutter_open', 'time'],
+            ['source_shutter_open', 'time'],
+            'second'
+        ],
+        [
+            [key, 'environment', 'platen_bias','shutter_open', 'mode_value'],
+            ['source_shutter_open', 'mode_value'],
+            None
+        ],
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'power_type'],
+            ['vapor_source', 'power_type'],
+            None
+        ],
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'avg_power_sp'],
+            ['vapor_source', 'avg_power_sp'],
+            'W'
+        ],
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'power_sp', 'value'],
+            ['vapor_source', 'power_sp', 'value'],
+            'W'
+        ],
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'power_sp', 'time'],
+            ['vapor_source', 'power_sp', 'time'],
+            'second'
+        ],
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'avg_dc_bias'],
+            ['vapor_source', 'avg_dc_bias'],
+            'V'
+        ],
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'dc_bias', 'value'],
+            ['vapor_source', 'dc_bias', 'value'],
+            'V'
+        ],
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'dc_bias', 'time'],
+            ['vapor_source', 'dc_bias', 'time'],
+            'second'
+        ],
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'avg_fwd_power'],
+            ['vapor_source', 'avg_fwd_power'],
+            'W'
+        ],
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'fwd_power', 'value'],
+            ['vapor_source', 'fwd_power', 'value'],
+            'W'
+        ],
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'fwd_power', 'time'],
+            ['vapor_source', 'fwd_power', 'time'],
+            'second'
+        ]
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'avg_rfl_power'],
+            ['vapor_source', 'avg_rfl_power'],
+            'W'
+        ],
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'rfl_power', 'value'],
+            ['vapor_source', 'rfl_power', 'value'],
+            'W'
+        ],
+        [
+            [key, 'environment', 'platen_bias','power_supply', 'rfl_power', 'time'],
+            ['vapor_source', 'rfl_power', 'time'],
+            'second'
+        ]
+    ]
+
+    return platen_bias_param_nomad_map
+
+def map_heater_params_to_nomad(key):
+    heater_param_nomad_map = [
+        [
+            [key, 'environment', 'heater', 'avg_temp_1'],
+            ['avg_temperature_1'],
+            'degC',
+        ],
+        [
+            [key, 'environment', 'heater', 'avg_temp_2'],
+            ['avg_temperature_2'],
+            'degC',
+        ],
+        [
+            [key, 'environment', 'heater', 'avg_temp_sp'],
+            ['avg_temperature_setpoint'],
+            'degC',
+        ],
+        [
+            [key, 'environment', 'heater', 'temp_1', 'value'],
+            ['temperature_1', 'value'],
+            'degC',
+        ],
+        [
+            [key, 'environment', 'heater', 'temp_1', 'time'],
+            ['temperature_1', 'time'],
+            'second',
+        ],
+        [
+            [key, 'environment', 'heater', 'temp_2', 'value'],
+            ['temperature_2', 'value'],
+            'degC',
+        ],
+        [
+            [key, 'environment', 'heater', 'temp_2', 'time'],
+            ['temperature_2', 'time'],
+            'second',
+        ],
+        [
+            [key, 'environment', 'heater', 'temp_sp', 'value'],
+            ['temperature_sp', 'value'],
+            'degC',
+        ],
+        [
+            [key, 'environment', 'heater', 'temp_sp', 'time'],
+            ['temperature_sp', 'time'],
+            'second',
+        ],
+    ]
+
+    return heater_param_nomad_map
 
 def map_s_cracker_params_to_nomad(key):
     s_cracker_param_nomad_map = [
