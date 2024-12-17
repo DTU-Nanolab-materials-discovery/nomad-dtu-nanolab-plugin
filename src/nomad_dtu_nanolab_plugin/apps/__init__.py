@@ -7,6 +7,7 @@ from nomad.config.models.ui import (
     Menu,
     MenuItemHistogram,
     MenuItemPeriodicTable,
+    MenuItemTerms,
     MenuSizeEnum,
     SearchQuantities,
 )
@@ -94,20 +95,136 @@ sputtering = AppEntryPoint(
                 MenuItemPeriodicTable(
                     quantity='results.material.elements',
                 ),
-                MenuItemHistogram(
-                    x=f'data.deposition_parameters.deposition_temp#{schema}',
-                    # unit='degC',
-                    # title='Deposition temperature (°C)',
-                ),
-                MenuItemHistogram(
-                    x=f'data.deposition_parameters.deposition_time#{schema}',
-                    # unit='minute',
-                    # title='Deposition time (min)',
+                MenuItemTerms(
+                    search_quantity='authors.name',
+                    show_input=True,
                 ),
             ],
         ),
         filters_locked={
             'entry_type': 'DTUSputtering',
+        },
+        dashboard={
+            'widgets': [
+                {
+                    'type': 'histogram',
+                    'title': 'Deposition temperature',
+                    'show_input': False,
+                    'autorange': False,
+                    'nbins': 30,
+                    'y': {
+                        'scale': 'linear',
+                    },
+                    'x': {
+                        'search_quantity': (
+                            f'data.deposition_parameters.deposition_temp#{schema}'
+                        ),
+                        'unit': 'degree_Celsius',
+                        'title': 'Deposition temperature',
+                    },
+                    'layout': {
+                        'xxl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 4,
+                            'w': 18,
+                            'y': 0,
+                            'x': 0,
+                        },
+                        'xl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 15,
+                            'y': 0,
+                            'x': 0,
+                        },
+                        'lg': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 12,
+                            'y': 0,
+                            'x': 0,
+                        },
+                        'md': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 9,
+                            'y': 0,
+                            'x': 0,
+                        },
+                        'sm': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 6,
+                            'y': 0,
+                            'x': 0,
+                        },
+                    },
+                },
+                {
+                    'type': 'histogram',
+                    'title': 'Deposition time',
+                    'show_input': False,
+                    'autorange': False,
+                    'nbins': 30,
+                    'y': {
+                        'scale': 'linear',
+                    },
+                    'x': {
+                        'search_quantity': (
+                            f'data.deposition_parameters.deposition_time#{schema}'
+                        ),
+                        'unit': 'minute',
+                        'title': 'Deposition time',
+                    },
+                    'layout': {
+                        'xxl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 4,
+                            'w': 18,
+                            'y': 0,
+                            'x': 18,
+                        },
+                        'xl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 15,
+                            'y': 0,
+                            'x': 15,
+                        },
+                        'lg': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 12,
+                            'y': 0,
+                            'x': 12,
+                        },
+                        'md': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 9,
+                            'y': 0,
+                            'x': 9,
+                        },
+                        'sm': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 6,
+                            'y': 0,
+                            'x': 6,
+                        },
+                    },
+                },
+            ]
         },
     ),
 )
