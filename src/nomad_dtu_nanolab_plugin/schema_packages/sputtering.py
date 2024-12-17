@@ -22,7 +22,12 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from nomad.datamodel.metainfo.annotations import (
+    BrowserAdaptors,
+    BrowserAnnotation,
+    ELNAnnotation,
+    ELNComponentEnum,
+)
 from nomad.datamodel.metainfo.basesections import (
     Component,
     CompositeSystem,
@@ -1431,6 +1436,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             'component': 'FileEditQuantity',
             'label': 'Image of target before the deposition',
         },
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
     )
     target_image_after = Quantity(
         type=str,
@@ -1438,6 +1446,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             'component': 'FileEditQuantity',
             'label': 'Image of target after the deposition',
         },
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
     )
     plasma_image = Quantity(
         type=str,
@@ -1445,18 +1456,33 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             'component': 'FileEditQuantity',
             'label': 'Image of plasma during deposition',
         },
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
     )
     sample_image = Quantity(
         type=str,
-        a_eln={'component': 'FileEditQuantity', 'label': 'Image of sample'},
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+            label='Image of sample',
+        ),
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
     )
     optix_spectra = Quantity(
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Optix spectra'},
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
     )
     rga_file = Quantity(
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'RGA file'},
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
     )
     substrates = SubSection(
         section_def=DtuSubstrateMounting,
@@ -1496,12 +1522,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 )
             )
 
-        '''
-        the plots does not work at the moment as it is not implemented
-        as a plotly figure, but as a matplotlib figure
-        at the figure assumes four samples at the typical positions but in the
-        future it should get the actual positions from the nomad samples
-        '''
+        # the plots does not work at the moment as it is not implemented
+        # as a plotly figure, but as a matplotlib figure
+        # at the figure assumes four samples at the typical positions but in the
+        # future it should get the actual positions from the nomad samples
         # # Plotting the sample positions on the platen
         # try:
         #     samples_plot = read_samples(self.samples)
