@@ -1869,14 +1869,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         all_targets = SourceDepRate()
 
-        source_deprate_param_nomad_map = map_source_deprate_params_to_nomad('all')
+        all_deprate_param_nomad_map = map_source_deprate_params_to_nomad('all')
 
         # Looping through the source_deprate_param_nomad_map
-        for input_keys, output_keys, unit in source_deprate_param_nomad_map:
+        for input_keys, output_keys, unit in all_deprate_param_nomad_map:
             config = {
                 'input_dict': params,
                 'input_keys': input_keys,
-                'output_obj': target_deprate,
+                'output_obj': all_targets,
                 'output_obj_name': 'deprate',
                 'output_keys': output_keys,
                 'unit': unit,
