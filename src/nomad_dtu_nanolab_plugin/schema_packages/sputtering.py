@@ -1989,10 +1989,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         environment.gas_flow.extend(gas_flow)
 
         # write platen bias data
-        if 'platen_bias' in step_params[key]['environment']:
-            platen_bias = self.generate_platen_bias_log_data(step_params, key, logger)
+        platen_bias = self.generate_platen_bias_log_data(step_params, key, logger)
 
-            environment.platen_bias = platen_bias
+        environment.platen_bias = platen_bias
 
         # write heater data
 
@@ -2016,7 +2015,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         platen_bias.vapor_source.rfl_power = DtuReflectedPower()
 
 
-        platen_bias_param_nomad_map = map_platen_bias_params_to_nomad(key)
+        platen_bias_param_nomad_map = map_platen_bias_params_to_nomad(key,step_params)
 
         # Looping through the platen_bias_param_nomad_map
         for input_keys, output_keys, unit in platen_bias_param_nomad_map:
