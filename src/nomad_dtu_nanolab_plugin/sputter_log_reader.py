@@ -36,7 +36,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = True
+TEST_SPECIFIC_LOGFILE = False
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 RENAME_CRACKER_COL = True
@@ -45,9 +45,9 @@ LOGFILES_EXTENSION = 'CSV'
 SPECTRA_EXTENSION = 'csv'
 
 SAMPLES_TO_REMOVE = [
-    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
-    'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
-    'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
+    # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
+    # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
+    # 'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
 ]
 
 SAMPLES_TO_TEST = [
@@ -62,7 +62,10 @@ SAMPLES_TO_TEST = [
     # 'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
     # 'mittma_0028_Cu_Recording Set 2024.11.22-07.19.41',
     # 'anait_0012_Ba_Zr_Recording Set 2024.11.21-09.41.33',
-    'eugbe_0003_Sb_Recording Set 2024.09.04-14.54.11',
+    # 'eugbe_0003_Sb_Recording Set 2024.09.04-14.54.11',
+    # 'eugbe_0001_Zr_Recording Set 2024.07.12-11.10.12',
+    'eugbe_0014_Sb_Recording Set 2024.12.18-11.59.09',
+    'anait_0011_Ba_Recording Set 2024.11.18-10.27.58',
 ]
 
 
@@ -110,12 +113,12 @@ COL = {
     'ar_sp': 'PC MFC 1 Setpoint',
     'mfc2_flow': 'PC MFC 2 Flow',
     'mfc2_sp': 'PC MFC 2 Setpoint',
-    # "n2_flow": "PC MFC 2 Flow",  # Need to check
-    # "n2_sp": "PC MFC 2 Setpoint",  # Need to check
+    'n2_flow':'PC MFC 2 Flow',
+    "n2_sp": 'PC MFC 2 Setpoint',
     'mfc3_flow': 'PC MFC 3 Flow',
     'mfc3_sp': 'PC MFC 3 Setpoint',
-    # "o2_flow": "PC MFC 3 Flow",   # Need to check
-    # "o2_sp": "PC MFC 3 Setpoint",   # Need to check
+    'o2_flow': 'PC MFC 3 Flow',
+    'o2_sp': 'PC MFC 3 Setpoint',
     'mfc4_flow': 'PC MFC 4 Flow',
     'mfc4_sp': 'PC MFC 4 Setpoint',
     'ph3_flow': 'PC MFC 4 Flow',
@@ -132,6 +135,7 @@ COL = {
     'proc_phase': 'Process Phase',
     'proc_time_tracker': 'Process Time Tracker',
     'thk_rate': 'Thickness Rate',
+    'deprate': 'Thickness Rate',
     'thk': 'Thickness',
     'thk_tooling': 'Thickness Tooling',
     'thk_active_mat': 'Thickness Active Material',
@@ -145,24 +149,43 @@ COL = {
     'sub_temp2': 'Substrate Heater Temperature 2',
     'sub_curr': 'Substrate Heater Current',
     'sul_crk_zone1_temp': 'Sulfur Cracker Zone 1 Current Temperature',
+    'crk_z1_temp': 'Sulfur Cracker Zone 1 Current Temperature',
     'sul_crk_zone1_en': 'Sulfur Cracker Zone 1 Enabled',
+    'crk_z1_en': 'Sulfur Cracker Zone 1 Enabled',
     'sul_crk_zone1_sp': 'Sulfur Cracker Zone 1 Temperature Setpoint',
+    'crk_z1_sp': 'Sulfur Cracker Zone 1 Temperature Setpoint',
     'sul_crk_zone2_temp': 'Sulfur Cracker Zone 2 Current Temperature',
+    'crk_z2_temp': 'Sulfur Cracker Zone 2 Current Temperature',
     'sul_crk_zone2_en': 'Sulfur Cracker Zone 2 Enabled',
+    'crk_z2_en': 'Sulfur Cracker Zone 2 Enabled',
     'sul_crk_zone2_sp': 'Sulfur Cracker Zone 2 Temperature Setpoint',
+    'crk_z2_sp': 'Sulfur Cracker Zone 2 Temperature Setpoint',
     'sul_crk_zone3_temp': 'Sulfur Cracker Zone 3 Current Temperature',
+    'crk_z3_temp': 'Sulfur Cracker Zone 3 Current Temperature',
     'sul_crk_zone3_en': 'Sulfur Cracker Zone 3 Enabled',
+    'crk_z3_en': 'Sulfur Cracker Zone 3 Enabled',
     'sul_crk_zone3_sp': 'Sulfur Cracker Zone 3 Temperature Setpoint',
+    'crk_z3_sp': 'Sulfur Cracker Zone 3 Temperature Setpoint',
     'sul_crk_lambda': 'Sulfur Cracker Control Sensor Value',
+    'crk_lambda': 'Sulfur Cracker Control Sensor Value',
     'sul_crk_ctrl_en': 'Sulfur Cracker Control Enabled',
+    'crk_ctrl_en': 'Sulfur Cracker Control Enabled',
     'sul_crk_ctrl_mode': 'Sulfur Cracker Control Mode',
+    'crk_ctrl_mode': 'Sulfur Cracker Control Mode',
     'sul_crk_ctrl_sensor': 'Sulfur Cracker Control Sensor Value',
+    'crk_ctrl_sensor': 'Sulfur Cracker Control Sensor Value',
     'sul_crk_ctrl_sp': 'Sulfur Cracker Control Setpoint',
+    'crk_ctrl_sp': 'Sulfur Cracker Control Setpoint',
     'sul_crk_ctrl_fb': 'Sulfur Cracker Control Setpoint Feedback',
+    'crk_freq': 'Sulfur Cracker Control Setpoint Feedback',
     'sul_crk_valve_freq_sp': 'Sulfur Cracker Control Valve InitFrequency Setpoint',
+    'crk_valve_freq_sp': 'Sulfur Cracker Control Valve InitFrequency Setpoint',
     'sul_crk_valve_pw_sp': 'Sulfur Cracker Control Valve PulseWidth Setpoint',
+    'crk_valve_pw_sp': 'Sulfur Cracker Control Valve PulseWidth Setpoint',
     'sul_crk_valve_pw_fb': 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
+    'crk_valve_pw_fb': 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'sul_crk_valve_sp': 'Sulfur Cracker Control Valve Setpoint',
+    'crk_valve_sp': 'Sulfur Cracker Control Valve Setpoint',
     'sul_crk_valve_val': 'Sulfur Cracker Control Valve Value',
     's1_load': 'PC Source 1 Loaded Target',
     's1_mat': 'PC Source 1 Material',
@@ -529,10 +552,9 @@ OVERVIEW_PLOT_MARKER_MAP = {True: 'x', False: 'circle'}
 OVERVIEW_PLOT = [
     'PC Capman Pressure',
     'Substrate Heater Temperature',
-    # 'Sulfur Cracker Control Enabled',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'Sulfur Cracker Control Setpoint Feedback',
-    'Sulfur Cracker Control Sensor Value',
+    'Sulfur Cracker Zone 1 Current Temperature',
 ]
 for gas in ['ar', 'ph3', 'h2s']:
     OVERVIEW_PLOT.append(f'PC MFC {GAS_NUMBER[gas]} Flow')
@@ -878,7 +900,8 @@ class Lf_Event:
             ].tolist()
 
         # Extract the platen bias parameters
-        params = self.get_platen_bias_params(params)
+        if 'Power Supply 7 Output Setpoint' in self.data.columns:
+            params = self.get_platen_bias_params(params)
 
         # Extract the substrate heater parameters
         params = self.get_substrate_heater_params(params)
@@ -895,11 +918,9 @@ class Lf_Event:
         # Extract the source source id
         params[self.step_id]['environment']['platen_bias']['name'] = 'platen_bias'
 
-
         # extract the state of the source shutter
         params[self.step_id]['environment']['platen_bias']['shutter_open']['value'] = [
-            bool(x)
-            for x in self.data[f'PC Substrate Shutter Open'].tolist()
+            bool(x) for x in self.data['PC Substrate Shutter Open'].tolist()
         ]
         params[self.step_id]['environment']['platen_bias']['shutter_open']['time'] = (
             (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
@@ -909,14 +930,12 @@ class Lf_Event:
         # we check if the shutter is open during more than the TOLERANCE
         params[self.step_id]['environment']['platen_bias']['shutter_open'][
             'mode_value'  # most common value
-        ] = bool(
-            self.data[f'PC Substrate Shutter Open'].value_counts().idxmax()
-        )
+        ] = bool(self.data['PC Substrate Shutter Open'].value_counts().idxmax())
 
         # extract the power supply parameters
-        params[self.step_id]['environment']['platen_bias']['power_supply']['power_type'] = (
-            'RF'
-        )
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'power_type'
+        ] = 'RF'
 
         # get the time series in seconds from the start of the step
         time_series = (
@@ -925,27 +944,30 @@ class Lf_Event:
             .tolist()
         )
 
-
-        #the platen power supply is the seven
-        params[self.step_id]['environment']['platen_bias']['power_supply']['avg_power_sp'] = (
-            self.data[f'Power Supply 7 Output Setpoint'].mean()
-        )
-        params[self.step_id]['environment']['platen_bias']['power_supply']['power_sp'] = {}
+        # the platen power supply is the seven
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'avg_power_sp'
+        ] = self.data['Power Supply 7 Output Setpoint'].mean()
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'power_sp'
+        ] = {}
         params[self.step_id]['environment']['platen_bias']['power_supply']['power_sp'][
             'value'
-        ] = self.data[f'Power Supply 7 Output Setpoint'].tolist()
+        ] = self.data['Power Supply 7 Output Setpoint'].tolist()
         params[self.step_id]['environment']['platen_bias']['power_supply']['power_sp'][
             'time'
         ] = time_series
 
         # Extract the source dc bias setpoint
-        params[self.step_id]['environment']['platen_bias']['power_supply']['avg_dc_bias'] = (
-            self.data[f'Power Supply 7 DC Bias'].mean()
-        )
-        params[self.step_id]['environment']['platen_bias']['power_supply']['dc_bias'] = {}
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'avg_dc_bias'
+        ] = self.data['Power Supply 7 DC Bias'].mean()
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'dc_bias'
+        ] = {}
         params[self.step_id]['environment']['platen_bias']['power_supply']['dc_bias'][
             'value'
-        ] = self.data[f'Power Supply 7 DC Bias'].tolist()
+        ] = self.data['Power Supply 7 DC Bias'].tolist()
         params[self.step_id]['environment']['platen_bias']['power_supply']['dc_bias'][
             'time'
         ] = time_series
@@ -953,11 +975,13 @@ class Lf_Event:
         # Extract the fwd power
         params[self.step_id]['environment']['platen_bias']['power_supply'][
             'avg_fwd_power'
-        ] = self.data[f'Power Supply 7 Fwd Power'].mean()
-        params[self.step_id]['environment']['platen_bias']['power_supply']['fwd_power'] = {}
+        ] = self.data['Power Supply 7 Fwd Power'].mean()
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'fwd_power'
+        ] = {}
         params[self.step_id]['environment']['platen_bias']['power_supply']['fwd_power'][
             'value'
-        ] = self.data[f'Power Supply 7 Fwd Power'].tolist()
+        ] = self.data['Power Supply 7 Fwd Power'].tolist()
         params[self.step_id]['environment']['platen_bias']['power_supply']['fwd_power'][
             'time'
         ] = time_series
@@ -965,27 +989,26 @@ class Lf_Event:
         # Extract the rfl power
         params[self.step_id]['environment']['platen_bias']['power_supply'][
             'avg_rfl_power'
-        ] = self.data[f'Power Supply 7 Rfl Power'].mean()
-        params[self.step_id]['environment']['platen_bias']['power_supply']['rfl_power'] = {}
+        ] = self.data['Power Supply 7 Rfl Power'].mean()
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'rfl_power'
+        ] = {}
         params[self.step_id]['environment']['platen_bias']['power_supply']['rfl_power'][
             'value'
-        ] = self.data[f'Power Supply 7 Rfl Power'].tolist()
+        ] = self.data['Power Supply 7 Rfl Power'].tolist()
         params[self.step_id]['environment']['platen_bias']['power_supply']['rfl_power'][
             'time'
         ] = time_series
 
         return params
 
-
     def get_substrate_heater_params(self, params):
-
         # Initialize the source dictionary if it does not exist
         if 'substrate_heater' not in params[self.step_id]['environment']:
             params[self.step_id]['environment']['heater'] = {}
             params[self.step_id]['environment']['heater']['temp_1'] = {}
             params[self.step_id]['environment']['heater']['temp_2'] = {}
             params[self.step_id]['environment']['heater']['temp_sp'] = {}
-
 
         # extract the substrate heater avg temperature 1 and 2 and the setpoint
         params[self.step_id]['environment']['heater']['avg_temp_1'] = self.data[
@@ -997,7 +1020,7 @@ class Lf_Event:
         ].mean()
 
         params[self.step_id]['environment']['heater']['avg_temp_sp'] = self.data[
-        'Substrate Heater Temperature Setpoint'
+            'Substrate Heater Temperature Setpoint'
         ].mean()
 
         # get the time series in seconds from the start of the step
@@ -4880,7 +4903,6 @@ def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
     )
     plots['bias_plot'] = bias_plot
 
-
     # _, chamber_plotly_plot = plot_logfile_chamber(main_params, sample_name)
     # plots.append(chamber_plotly_plot)
 
@@ -6028,88 +6050,89 @@ def map_gas_flow_params_to_nomad(key, gas_name):
 def map_platen_bias_params_to_nomad(key):
     platen_bias_param_nomad_map = [
         [
-            [key, 'environment', 'platen_bias','shutter_open', 'value'],
+            [key, 'environment', 'platen_bias', 'shutter_open', 'value'],
             ['source_shutter_open', 'value'],
-            'V'
+            'V',
         ],
         [
-            [key, 'environment', 'platen_bias','shutter_open', 'time'],
+            [key, 'environment', 'platen_bias', 'shutter_open', 'time'],
             ['source_shutter_open', 'time'],
-            'second'
+            'second',
         ],
         [
-            [key, 'environment', 'platen_bias','shutter_open', 'mode_value'],
+            [key, 'environment', 'platen_bias', 'shutter_open', 'mode_value'],
             ['source_shutter_open', 'mode_value'],
-            None
+            None,
         ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'power_type'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'power_type'],
             ['vapor_source', 'power_type'],
-            None
+            None,
         ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'avg_power_sp'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'avg_power_sp'],
             ['vapor_source', 'avg_power_sp'],
-            'W'
+            'W',
         ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'power_sp', 'value'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'power_sp', 'value'],
             ['vapor_source', 'power_sp', 'value'],
-            'W'
+            'W',
         ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'power_sp', 'time'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'power_sp', 'time'],
             ['vapor_source', 'power_sp', 'time'],
-            'second'
+            'second',
         ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'avg_dc_bias'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'avg_dc_bias'],
             ['vapor_source', 'avg_dc_bias'],
-            'V'
+            'V',
         ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'dc_bias', 'value'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'dc_bias', 'value'],
             ['vapor_source', 'dc_bias', 'value'],
-            'V'
+            'V',
         ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'dc_bias', 'time'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'dc_bias', 'time'],
             ['vapor_source', 'dc_bias', 'time'],
-            'second'
+            'second',
         ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'avg_fwd_power'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'avg_fwd_power'],
             ['vapor_source', 'avg_fwd_power'],
-            'W'
+            'W',
         ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'fwd_power', 'value'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'fwd_power', 'value'],
             ['vapor_source', 'fwd_power', 'value'],
-            'W'
+            'W',
         ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'fwd_power', 'time'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'fwd_power', 'time'],
             ['vapor_source', 'fwd_power', 'time'],
-            'second'
-        ]
+            'second',
+        ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'avg_rfl_power'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'avg_rfl_power'],
             ['vapor_source', 'avg_rfl_power'],
-            'W'
+            'W',
         ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'rfl_power', 'value'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'rfl_power', 'value'],
             ['vapor_source', 'rfl_power', 'value'],
-            'W'
+            'W',
         ],
         [
-            [key, 'environment', 'platen_bias','power_supply', 'rfl_power', 'time'],
+            [key, 'environment', 'platen_bias', 'power_supply', 'rfl_power', 'time'],
             ['vapor_source', 'rfl_power', 'time'],
-            'second'
-        ]
+            'second',
+        ],
     ]
 
     return platen_bias_param_nomad_map
+
 
 def map_heater_params_to_nomad(key):
     heater_param_nomad_map = [
@@ -6161,6 +6184,7 @@ def map_heater_params_to_nomad(key):
     ]
 
     return heater_param_nomad_map
+
 
 def map_s_cracker_params_to_nomad(key):
     s_cracker_param_nomad_map = [
@@ -6770,6 +6794,7 @@ def explore_log_files(
                             logfiles['name'].append(logfile_name)
                             logfiles['folder'].append(logfile_path)
                             logfiles['spectra'].append(spectra_file_path)
+    print(logfiles['name'])
     return logfiles
 
 
