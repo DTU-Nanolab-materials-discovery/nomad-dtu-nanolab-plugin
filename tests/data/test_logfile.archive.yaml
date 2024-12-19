@@ -1,6 +1,6 @@
 data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering
-  log_file: mittma_0007_Cu_Recording Set 2024.06.03-09.52.29.CSV
+  log_file: eugbe_0014_Sb_Recording Set 2024.12.18-11.59.09.CSV
   # lab_id: 'mittma_0007_Cu'
   substrates:
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DtuSubstrateMounting
