@@ -6047,89 +6047,91 @@ def map_gas_flow_params_to_nomad(key, gas_name):
     return gas_flow_param_nomad_map
 
 
-def map_platen_bias_params_to_nomad(key):
-    platen_bias_param_nomad_map = [
-        [
-            [key, 'environment', 'platen_bias', 'shutter_open', 'value'],
-            ['source_shutter_open', 'value'],
-            'V',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'shutter_open', 'time'],
-            ['source_shutter_open', 'time'],
-            'second',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'shutter_open', 'mode_value'],
-            ['source_shutter_open', 'mode_value'],
-            None,
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'power_type'],
-            ['vapor_source', 'power_type'],
-            None,
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'avg_power_sp'],
-            ['vapor_source', 'avg_power_sp'],
-            'W',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'power_sp', 'value'],
-            ['vapor_source', 'power_sp', 'value'],
-            'W',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'power_sp', 'time'],
-            ['vapor_source', 'power_sp', 'time'],
-            'second',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'avg_dc_bias'],
-            ['vapor_source', 'avg_dc_bias'],
-            'V',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'dc_bias', 'value'],
-            ['vapor_source', 'dc_bias', 'value'],
-            'V',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'dc_bias', 'time'],
-            ['vapor_source', 'dc_bias', 'time'],
-            'second',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'avg_fwd_power'],
-            ['vapor_source', 'avg_fwd_power'],
-            'W',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'fwd_power', 'value'],
-            ['vapor_source', 'fwd_power', 'value'],
-            'W',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'fwd_power', 'time'],
-            ['vapor_source', 'fwd_power', 'time'],
-            'second',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'avg_rfl_power'],
-            ['vapor_source', 'avg_rfl_power'],
-            'W',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'rfl_power', 'value'],
-            ['vapor_source', 'rfl_power', 'value'],
-            'W',
-        ],
-        [
-            [key, 'environment', 'platen_bias', 'power_supply', 'rfl_power', 'time'],
-            ['vapor_source', 'rfl_power', 'time'],
-            'second',
-        ],
-    ]
+def map_platen_bias_params_to_nomad(key,step_params):
+    if 'platen_bias' in step_params[key]['environment']:
+
+        platen_bias_param_nomad_map = [
+            [
+                [key, 'environment', 'platen_bias', 'shutter_open', 'value'],
+                ['source_shutter_open', 'value'],
+                'V',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'shutter_open', 'time'],
+                ['source_shutter_open', 'time'],
+                'second',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'shutter_open', 'mode_value'],
+                ['source_shutter_open', 'mode_value'],
+                None,
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'power_type'],
+                ['vapor_source', 'power_type'],
+                None,
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'avg_power_sp'],
+                ['vapor_source', 'avg_power_sp'],
+                'W',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'power_sp', 'value'],
+                ['vapor_source', 'power_sp', 'value'],
+                'W',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'power_sp', 'time'],
+                ['vapor_source', 'power_sp', 'time'],
+                'second',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'avg_dc_bias'],
+                ['vapor_source', 'avg_dc_bias'],
+                'V',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'dc_bias', 'value'],
+                ['vapor_source', 'dc_bias', 'value'],
+                'V',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'dc_bias', 'time'],
+                ['vapor_source', 'dc_bias', 'time'],
+                'second',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'avg_fwd_power'],
+                ['vapor_source', 'avg_fwd_power'],
+                'W',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'fwd_power', 'value'],
+                ['vapor_source', 'fwd_power', 'value'],
+                'W',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'fwd_power', 'time'],
+                ['vapor_source', 'fwd_power', 'time'],
+                'second',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'avg_rfl_power'],
+                ['vapor_source', 'avg_rfl_power'],
+                'W',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'rfl_power', 'value'],
+                ['vapor_source', 'rfl_power', 'value'],
+                'W',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'rfl_power', 'time'],
+                ['vapor_source', 'rfl_power', 'time'],
+                'second',
+            ],
+        ]
 
     return platen_bias_param_nomad_map
 
