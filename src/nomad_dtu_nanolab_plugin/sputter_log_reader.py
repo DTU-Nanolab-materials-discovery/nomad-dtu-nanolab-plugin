@@ -113,8 +113,8 @@ COL = {
     'ar_sp': 'PC MFC 1 Setpoint',
     'mfc2_flow': 'PC MFC 2 Flow',
     'mfc2_sp': 'PC MFC 2 Setpoint',
-    'n2_flow':'PC MFC 2 Flow',
-    "n2_sp": 'PC MFC 2 Setpoint',
+    'n2_flow': 'PC MFC 2 Flow',
+    'n2_sp': 'PC MFC 2 Setpoint',
     'mfc3_flow': 'PC MFC 3 Flow',
     'mfc3_sp': 'PC MFC 3 Setpoint',
     'o2_flow': 'PC MFC 3 Flow',
@@ -6047,9 +6047,8 @@ def map_gas_flow_params_to_nomad(key, gas_name):
     return gas_flow_param_nomad_map
 
 
-def map_platen_bias_params_to_nomad(key,step_params):
+def map_platen_bias_params_to_nomad(key, step_params):
     if 'platen_bias' in step_params[key]['environment']:
-
         platen_bias_param_nomad_map = [
             [
                 [key, 'environment', 'platen_bias', 'shutter_open', 'value'],
@@ -6077,7 +6076,14 @@ def map_platen_bias_params_to_nomad(key,step_params):
                 'W',
             ],
             [
-                [key, 'environment', 'platen_bias', 'power_supply', 'power_sp', 'value'],
+                [
+                    key,
+                    'environment',
+                    'platen_bias',
+                    'power_supply',
+                    'power_sp',
+                    'value',
+                ],
                 ['vapor_source', 'power_sp', 'value'],
                 'W',
             ],
@@ -6107,12 +6113,26 @@ def map_platen_bias_params_to_nomad(key,step_params):
                 'W',
             ],
             [
-                [key, 'environment', 'platen_bias', 'power_supply', 'fwd_power', 'value'],
+                [
+                    key,
+                    'environment',
+                    'platen_bias',
+                    'power_supply',
+                    'fwd_power',
+                    'value',
+                ],
                 ['vapor_source', 'fwd_power', 'value'],
                 'W',
             ],
             [
-                [key, 'environment', 'platen_bias', 'power_supply', 'fwd_power', 'time'],
+                [
+                    key,
+                    'environment',
+                    'platen_bias',
+                    'power_supply',
+                    'fwd_power',
+                    'time',
+                ],
                 ['vapor_source', 'fwd_power', 'time'],
                 'second',
             ],
@@ -6122,12 +6142,26 @@ def map_platen_bias_params_to_nomad(key,step_params):
                 'W',
             ],
             [
-                [key, 'environment', 'platen_bias', 'power_supply', 'rfl_power', 'value'],
+                [
+                    key,
+                    'environment',
+                    'platen_bias',
+                    'power_supply',
+                    'rfl_power',
+                    'value',
+                ],
                 ['vapor_source', 'rfl_power', 'value'],
                 'W',
             ],
             [
-                [key, 'environment', 'platen_bias', 'power_supply', 'rfl_power', 'time'],
+                [
+                    key,
+                    'environment',
+                    'platen_bias',
+                    'power_supply',
+                    'rfl_power',
+                    'time',
+                ],
                 ['vapor_source', 'rfl_power', 'time'],
                 'second',
             ],
