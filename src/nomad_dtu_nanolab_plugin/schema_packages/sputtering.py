@@ -432,12 +432,12 @@ class Substrate(ArchiveSection):
     """
 
     m_def = Section()
-    set_point_temp = Quantity(
+    setpoint_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    corrected_real_temp = Quantity(
+    corrected_real_temperature = Quantity(
         type=np.float64,
         a_eln={'defaultDisplayUnit': 'degC'},
         unit='kelvin',
@@ -453,13 +453,13 @@ class Substrate(ArchiveSection):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        if self.set_point_temp is not None:
+        if self.setpoint_temperature is not None:
             # Convert set_point_temp to 'kelvin' explicitly and get its magnitude
-            set_point_temp_in_kelvin = self.set_point_temp.to('kelvin').magnitude
+            set_point_temp_in_kelvin = self.setpoint_temperature.to('kelvin').magnitude
             # Perform the calculation using the magnitude
             r_temp = (set_point_temp_in_kelvin * 0.905) + 12
             # Assign the result back to, ensuring it's a Quantity with 'kelvin' unit
-            self.corrected_real_temp = r_temp * self.set_point_temp.u
+            self.corrected_real_temperature = r_temp * self.setpoint_temperature.u
 
 
 class SCrackerOverview(ArchiveSection):
@@ -468,17 +468,17 @@ class SCrackerOverview(ArchiveSection):
     """
 
     m_def = Section()
-    zone1_temp = Quantity(
+    zone1_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    zone2_temp = Quantity(
+    zone2_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    zone3_temp = Quantity(
+    zone3_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
@@ -569,13 +569,13 @@ class SCracker(ArchiveSection):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'Hz'},
         unit='1/s',
     )
-    zone1_temp = SubSection(
+    zone1_temperature = SubSection(
         section_def=DtuZoneTemp,
     )
-    zone2_temp = SubSection(
+    zone2_temperature = SubSection(
         section_def=DtuZoneTemp,
     )
-    zone3_temp = SubSection(
+    zone3_temperature = SubSection(
         section_def=DtuZoneTemp,
     )
     valve_on_time = SubSection(
@@ -927,7 +927,7 @@ class EndOfProcess(ArchiveSection):
         default='front',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
-    heater_temp = Quantity(
+    heater_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
@@ -1342,9 +1342,9 @@ class DepositionParameters(ArchiveSection):
             self.h2s_partial_pressure = h2s * 0.1 / flow * p * self.sputter_pressure.u
             self.ph3_partial_pressure = ph3 * 0.1 / flow * p * self.sputter_pressure.u
 
-        if self.deposition_temp is not None:
-            self.deposition_true_temp = calculate_avg_true_temp(
-                self.deposition_temp, self.deposition_temp_2
+        if self.deposition_temperature is not None:
+            self.deposition_true_temperature = calculate_avg_true_temp(
+                self.deposition_temperature, self.deposition_temperature_2
             )
 
         if self.ph3_in_ar_flow.magnitude != 0 and self.h2s_in_ar_flow.magnitude != 0:
@@ -1968,10 +1968,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     ) -> None:
         cracker_source = DtuCrackerSource()
         cracker_source.vapor_source = SCracker()
-        cracker_source.vapor_source.zone1_temp = DtuZoneTemp()
+        cracker_source.vapor_source.zone1_temperature = DtuZoneTemp()
 
-        cracker_source.vapor_source.zone2_temp = DtuZoneTemp()
-        cracker_source.vapor_source.zone3_temp = DtuZoneTemp()
+        cracker_source.vapor_source.zone2_temperature = DtuZoneTemp()
+        cracker_source.vapor_source.zone3_temperature = DtuZoneTemp()
         cracker_source.valve_open = DTUShutter()
 
         s_cracker_param_nomad_map = map_s_cracker_params_to_nomad(key)
@@ -2177,7 +2177,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         heater.temperature_1 = DtuTemperature()
         heater.temperature_2 = DtuTemperature()
-        heater.temperature_sp = DtuTemperature()
+        heater.temperature_setpoint = DtuTemperature()
 
         heater_param_nomad_map = map_heater_params_to_nomad(key)
 
