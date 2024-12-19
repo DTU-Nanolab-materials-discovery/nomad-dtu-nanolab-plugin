@@ -484,7 +484,7 @@ SOURCE_NAME = {
     '1': 'taurus',
     '3': 'magkeeper3',
     '4': 'magkeeper4',
-    'all': 'All',
+    'all': 'all',
 }
 
 SOURCE_LABEL = {
@@ -492,7 +492,7 @@ SOURCE_LABEL = {
     'taurus': 'Taurus',
     'magkeeper3': 'Magkeeper3',
     'magkeeper4': 'Magkeeper4',
-    'all': 'All',
+    'all': 'all',
 }
 GAS_NUMBER = {
     'ar': 1,
@@ -1799,6 +1799,10 @@ class Deposition_Event(Lf_Event):
 
     # method to deduce the source material and target of the source during deposition
     def get_source_material_and_target(self, params, source_number, elements):
+        params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_name'] = (
+            f'{SOURCE_NAME[str(source_number)]}'
+        )
+
         source_material = self.data[f'PC Source {source_number} Material'].iloc[0]
         elements, material = elements_from_string(source_material, elements)
 
@@ -5782,6 +5786,11 @@ def map_params_to_nomad(params, gun_list):
             param_nomad_map.extend(
                 [
                     [
+                        ['deposition', gun, 'target_name'],
+                        ['deposition_parameters', gun, 'target_name'],
+                        None,
+                    ],
+                    [
                         ['deposition', gun, 'target_material'],
                         ['deposition_parameters', gun, 'target_material'],
                         None,
@@ -5795,36 +5804,6 @@ def map_params_to_nomad(params, gun_list):
                         ['deposition', gun, 'avg_output_power'],
                         ['deposition_parameters', gun, 'applied_power'],
                         'W',
-                    ],
-                    [
-                        ['source_ramp_up', gun, 'ignition_power'],
-                        ['deposition_parameters', gun, 'plasma_ignition_power'],
-                        'W',
-                    ],
-                    [
-                        ['source_ramp_up', gun, 'ignition_pressure'],
-                        ['deposition_parameters', gun, 'plasma_ignition_pressure'],
-                        'mtorr',
-                    ],
-                    [
-                        ['source_presput', gun, 'duration'],
-                        ['deposition_parameters', gun, 'presput_time'],
-                        None,
-                    ],
-                    [
-                        ['source_presput', gun, 'avg_output_power'],
-                        ['deposition_parameters', gun, 'presput_power'],
-                        'W',
-                    ],
-                    [
-                        ['source_presput', gun, 'avg_capman_pressure'],
-                        ['deposition_parameters', gun, 'presput_pressure'],
-                        'mtorr',
-                    ],
-                    [
-                        ['source_presput', gun, 'avg_ar_flow'],
-                        ['deposition_parameters', gun, 'presput_ar_flow'],
-                        'cm^3/minute',
                     ],
                     [
                         ['deposition', gun, 'plasma_type'],
@@ -5846,40 +5825,30 @@ def map_params_to_nomad(params, gun_list):
                         ['deposition_parameters', gun, 'end_voltage'],
                         'V',
                     ],
-                    # [
-                    #     ['deposition', gun, 'start_minus_end_voltage'],
-                    #     ['deposition_parameters', gun, 'start_end_voltage'],
-                    #     'V',
-                    # ],
-                    # [
-                    #     ['deposition', gun, 'max_voltage'],
-                    #     ['deposition_parameters', gun, 'max_voltage'],
-                    #     'V',
-                    # ],
-                    # [
-                    #     ['deposition', gun, 'min_voltage'],
-                    #     ['deposition_parameters', gun, 'min_voltage'],
-                    #     'V',
-                    # ],
-                    # [
-                    #     ['deposition', gun, 'range_voltage'],
-                    #     ['deposition_parameters', gun, 'range_voltage'],
-                    #     'V',
-                    # ],
+                    [
+                        ['deposition', gun, 'start_minus_end_voltage'],
+                        ['deposition_parameters', gun, 'start_end_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'max_voltage'],
+                        ['deposition_parameters', gun, 'max_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'min_voltage'],
+                        ['deposition_parameters', gun, 'min_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'range_voltage'],
+                        ['deposition_parameters', gun, 'range_voltage'],
+                        'V',
+                    ],
                     [
                         ['deposition', gun, 'std_voltage'],
                         ['deposition_parameters', gun, 'std_voltage'],
                         'V',
-                    ],
-                    [
-                        ['source_deprate2_film_meas', gun, 'dep_rate'],
-                        ['deposition_parameters', gun, 'source_deprate'],
-                        'Å/s',  # check if it is in A/s
-                    ],
-                    [
-                        ['source_deprate2_film_meas', gun, 'dep_rate_ref_mat'],
-                        ['deposition_parameters', gun, 'source_deprate_ref_mat'],
-                        None,
                     ],
                 ]
             )
@@ -5987,6 +5956,82 @@ def map_params_to_nomad(params, gun_list):
                 )
 
     return param_nomad_map
+
+
+def map_source_up_params_to_nomad(target_name):
+    source_up_param_nomad_map = [
+        [
+            ['source_ramp_up', target_name, 'target_name'],
+            ['target_name'],
+            None,
+        ],
+        [
+            ['source_ramp_up', target_name, 'ignition_power'],
+            ['plasma_ignition_power'],
+            'W',
+        ],
+        [
+            ['source_ramp_up', target_name, 'ignition_pressure'],
+            ['plasma_ignition_pressure'],
+            'mtorr',
+        ],
+    ]
+
+    return source_up_param_nomad_map
+
+
+def map_source_presput_params_to_nomad(target_name):
+    source_presput_param_nomad_map = [
+        [
+            ['source_presput', target_name, 'target_name'],
+            ['target_name'],
+            None,
+        ],
+        [
+            ['source_presput', target_name, 'duration'],
+            ['presput_time'],
+            None,
+        ],
+        [
+            ['source_presput', target_name, 'avg_output_power'],
+            ['presput_power'],
+            'W',
+        ],
+        [
+            ['source_presput', target_name, 'avg_capman_pressure'],
+            ['presput_pressure'],
+            'mtorr',
+        ],
+        [
+            ['source_presput', target_name, 'avg_ar_flow'],
+            ['presput_ar_flow'],
+            'cm^3/minute',
+        ],
+    ]
+
+    return source_presput_param_nomad_map
+
+
+def map_source_deprate_params_to_nomad(target_name):
+    source_deprate_param_nomad_map = [
+        [
+            ['source_deprate2_film_meas', target_name, 'target_name'],
+            ['target_name'],
+            None,
+        ],
+        [
+            ['source_deprate2_film_meas', target_name, 'dep_rate'],
+            ['source_deprate'],
+            'Å/s',
+        ],
+        [
+            ['source_deprate2_film_meas', target_name, 'dep_rate_ref_mat'],
+            ['source_deprate_ref_mat'],
+            None,
+        ],
+    ]
+
+    return source_deprate_param_nomad_map
 
 
 def map_step_params_to_nomad(key):
