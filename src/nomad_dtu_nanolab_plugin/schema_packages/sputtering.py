@@ -549,17 +549,17 @@ class DtuValveFrequency(TimeSeries):
 
 
 class SCracker(ArchiveSection):
-    avg_zone1_temp = Quantity(
+    avg_zone1_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    avg_zone2_temp = Quantity(
+    avg_zone2_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    avg_zone3_temp = Quantity(
+    avg_zone3_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
@@ -825,7 +825,7 @@ class DtuTemperature(TimeSeries):
 
     value = Quantity(
         type=np.float64,
-        unit='K',
+        unit='kelvin',
         description="""The temperature of the first heater.""",
         shape=['*'],
     )
@@ -848,6 +848,11 @@ class DtuSubstrateHeater(SubstrateHeater):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
+    avg_temperature_setpoint = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
+        unit='kelvin',
+    )
     temperature_1 = SubSection(
         section_def=DtuTemperature,
     )
@@ -856,7 +861,7 @@ class DtuSubstrateHeater(SubstrateHeater):
         section_def=DtuTemperature,
     )
 
-    temperature_sp = SubSection(
+    temperature_setpoint = SubSection(
         section_def=DtuTemperature,
     )
 
@@ -1183,25 +1188,25 @@ class DepositionParameters(ArchiveSection):
     """
 
     m_def = Section()
-    deposition_temp = Quantity(
+    deposition_temperature = Quantity(
         type=np.float64,
         default=300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    deposition_temp_2 = Quantity(
+    deposition_temperature_2 = Quantity(
         type=np.float64,
         default=300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    deposition_temp_sp = Quantity(
+    deposition_temperature_setpoint = Quantity(
         type=np.float64,
         default=300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    deposition_true_temp = Quantity(
+    deposition_true_temperature = Quantity(
         type=np.float64,
         a_eln={'defaultDisplayUnit': 'degC'},
         unit='kelvin',
