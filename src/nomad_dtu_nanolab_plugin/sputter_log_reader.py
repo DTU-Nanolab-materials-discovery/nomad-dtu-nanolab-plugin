@@ -5660,22 +5660,22 @@ def map_params_to_nomad(params, gun_list):
         # Deposition parameters
         [
             ['deposition', 'avg_temp_1'],
-            ['deposition_parameters', 'deposition_temp'],
+            ['deposition_parameters', 'deposition_temperature'],
             'degC',
         ],
         [
             ['deposition', 'avg_temp_2'],
-            ['deposition_parameters', 'deposition_temp_2'],
+            ['deposition_parameters', 'deposition_temperature_2'],
             'degC',
         ],
         [
             ['deposition', 'avg_temp_setpoint'],
-            ['deposition_parameters', 'deposition_temp_sp'],
+            ['deposition_parameters', 'deposition_temperature_setpoint'],
             'degC',
         ],
         [
             ['deposition', 'avg_true_temp'],
-            ['deposition_parameters', 'deposition_true_temp'],
+            ['deposition_parameters', 'deposition_true_temperature'],
             'degC',
         ],
         [
@@ -6251,12 +6251,12 @@ def map_heater_params_to_nomad(key):
         ],
         [
             [key, 'environment', 'heater', 'temp_sp', 'value'],
-            ['temperature_sp', 'value'],
+            ['temperature_setpoint', 'value'],
             'degC',
         ],
         [
             [key, 'environment', 'heater', 'temp_sp', 'time'],
-            ['temperature_sp', 'time'],
+            ['temperature_setpoint', 'time'],
             'second',
         ],
     ]
@@ -6287,17 +6287,17 @@ def map_s_cracker_params_to_nomad(key):
             [
                 [
                     [key, 'sources', 's_cracker', f'avg_zone{zone_number}_temp'],
-                    ['vapor_source', f'avg_zone{zone_number}_temp'],
+                    ['vapor_source', f'avg_zone{zone_number}_temperature'],
                     'degC',
                 ],
                 [
                     [key, 'sources', 's_cracker', f'zone{zone_number}_temp', 'value'],
-                    ['vapor_source', f'zone{zone_number}_temp', 'value'],
+                    ['vapor_source', f'zone{zone_number}_temperature', 'value'],
                     'degC',
                 ],
                 [
                     [key, 'sources', 's_cracker', f'zone{zone_number}_temp', 'time'],
-                    ['vapor_source', f'zone{zone_number}_temp', 'time'],
+                    ['vapor_source', f'zone{zone_number}_temperature', 'time'],
                     'second',
                 ],
             ]
