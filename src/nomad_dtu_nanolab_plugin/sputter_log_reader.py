@@ -5752,17 +5752,17 @@ def map_params_to_nomad(params, gun_list):
             [
                 [
                     ['deposition', 'SCracker', 'zone1_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone1_temp'],
+                    ['deposition_parameters', 'SCracker', 'zone1_temperature'],
                     'degC',
                 ],
                 [
                     ['deposition', 'SCracker', 'zone2_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone2_temp'],
+                    ['deposition_parameters', 'SCracker', 'zone2_temperature'],
                     'degC',
                 ],
                 [
                     ['deposition', 'SCracker', 'zone3_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone3_temp'],
+                    ['deposition_parameters', 'SCracker', 'zone3_temperature'],
                     'degC',
                 ],
                 [
@@ -5855,12 +5855,12 @@ def map_params_to_nomad(params, gun_list):
                     [
                         [
                             ['ramp_up_temp', 'start_temp'],
-                            ['temperature_ramp_up', 'start_temp_sp'],
+                            ['temperature_ramp_up', 'start_temperature_setpoint'],
                             'degC',
                         ],
                         [
                             ['ramp_up_temp', 'end_temp'],
-                            ['temperature_ramp_up', 'end_temp_sp'],
+                            ['temperature_ramp_up', 'end_temperature_setpoint'],
                             'degC',
                         ],
                         [
@@ -5870,7 +5870,7 @@ def map_params_to_nomad(params, gun_list):
                         ],
                         [
                             ['ramp_up_temp', 'temp_slope'],
-                            ['temperature_ramp_up', 'temp_slope'],
+                            ['temperature_ramp_up', 'temperature_slope'],
                             'degC/minute',
                         ],
                         [
@@ -5901,12 +5901,12 @@ def map_params_to_nomad(params, gun_list):
                         # ramp down temperature
                         [
                             ['ramp_down_high_temp', 'start_temp'],
-                            ['temperature_ramp_down', 'start_temp'],
+                            ['temperature_ramp_down', 'start_temperature'],
                             'degC',
                         ],
                         [
                             ['ramp_down_high_temp', 'end_temp'],
-                            ['temperature_ramp_down', 'end_temp'],
+                            ['temperature_ramp_down', 'end_temperature'],
                             'degC',
                         ],
                         [
@@ -5916,7 +5916,7 @@ def map_params_to_nomad(params, gun_list):
                         ],
                         [
                             ['ramp_down_high_temp', 'temp_slope'],
-                            ['temperature_ramp_down', 'temp_slope'],
+                            ['temperature_ramp_down', 'temperature_slope'],
                             'degC/minute',
                         ],
                         [
@@ -5946,7 +5946,7 @@ def map_params_to_nomad(params, gun_list):
                         ],
                         [
                             ['ramp_down_high_temp', 'anion_input_cutoff_temp'],
-                            ['temperature_ramp_down', 'anion_input_cutoff_temp'],
+                            ['temperature_ramp_down', 'anion_input_cutoff_temperature'],
                             'degC',
                         ],
                     ]

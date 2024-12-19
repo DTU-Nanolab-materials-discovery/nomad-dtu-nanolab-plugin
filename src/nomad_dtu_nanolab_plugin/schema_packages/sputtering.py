@@ -1364,17 +1364,17 @@ class TempRampUp(ArchiveSection):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
-    start_temp_sp = Quantity(
+    start_temperature_setpoint = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    end_temp_sp = Quantity(
+    end_temperature_setpoint= Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    temp_slope = Quantity(
+    temperature_slope = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC/minute'},
         unit='kelvin/s',
@@ -1428,12 +1428,12 @@ class TempRampDown(ArchiveSection):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
     )
-    start_temp = Quantity(
+    start_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    end_temp = Quantity(
+    end_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
@@ -1475,7 +1475,7 @@ class TempRampDown(ArchiveSection):
         default=False,
         a_eln={'component': 'BoolEditQuantity'},
     )
-    anion_input_cutoff_temp = Quantity(
+    anion_input_cutoff_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
