@@ -1364,7 +1364,7 @@ class TempRampUp(ArchiveSection):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
     )
-    end_temperature_setpoint= Quantity(
+    end_temperature_setpoint = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
