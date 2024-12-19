@@ -1885,13 +1885,19 @@ class Source_Presput_Event(Lf_Event):
         if self.category not in params:
             params[self.category] = {}
 
+        target_name = f'{SOURCE_NAME[str(source_number)]}'
+
         source_number = self.source
-        if f'{SOURCE_NAME[str(source_number)]}' not in params[self.category]:
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'] = {}
+        if target_name not in params[self.category]:
+            params[self.category][target_name] = {}
+
+
+
 
         # We check if the source is enabled during deposition
-        if params['deposition'][f'{SOURCE_NAME[str(source_number)]}']['enabled']:
+        if params['deposition'][target_name]['enabled']:
             # ----source presputtering parameters-----
+            params[self.category][target_name]['target_name'] = target_name
             # Extract the presputtering duration
             presput_duration = 0
             for i in range(len(self.bounds)):
@@ -1899,24 +1905,24 @@ class Source_Presput_Event(Lf_Event):
                     self.bounds[i][1] - self.bounds[i][0]
                 ).total_seconds()
             presput_duration = pd.to_timedelta(presput_duration, unit='s')
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['duration'] = (
+            params[self.category][target_name]['duration'] = (
                 presput_duration
             )
             # Extract the average output power during presputtering
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+            params[self.category][target_name][
                 'avg_output_power'
             ] = self.data[f'Source {source_number} Output Setpoint'].mean()
             # Extract the avg capman pressure during presputtering
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+            params[self.category][target_name][
                 'avg_capman_pressure'
             ] = self.data['PC Capman Pressure'].mean()
             # Extract the gas flows during presputtering
             if self.data['PC MFC 1 Flow'].mean() > MFC_FLOW_THRESHOLD:
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                params[self.category][target_name][
                     'avg_ar_flow'
                 ] = self.data['PC MFC 1 Flow'].mean()
             else:
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                params[self.category][target_name][
                     'avg_ar_flow'
                 ] = 0
         return params
@@ -1938,10 +1944,14 @@ class Source_Ramp_Up_Event(Lf_Event):
             params[self.category] = {}
 
         source_number = self.source
-        if f'{SOURCE_NAME[str(source_number)]}' not in params[self.category]:
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'] = {}
+        target_name = f'{SOURCE_NAME[str(source_number)]}'
+        if target_name not in params[self.category]:
+            params[self.category][target_name] = {}
         # We check if the source is enabled during deposition
-        if params['deposition'][f'{SOURCE_NAME[str(source_number)]}']['enabled']:
+        if params['deposition'][target_name]['enabled']:
+            params[self.category][target_name][
+                    'target_name'
+                ] = target_name
             # Extract the plasma ignition power as the power at which
             # the plasma really ignites
             # We first filter only the last [-1] source ramp up event with the
@@ -1971,21 +1981,21 @@ class Source_Ramp_Up_Event(Lf_Event):
             # not be empty
             if not data_ignition_time.empty:
                 ignition_time = data_ignition_time['Time Stamp'].iloc[0]
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                params[self.category][target_name][
                     'ignition'
                 ] = True
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                params[self.category][target_name][
                     'ignition_time'
                 ] = ignition_time
                 ignition_data = self.data[self.data['Time Stamp'] == ignition_time]
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                params[self.category][target_name][
                     'ignition_power'
                 ] = ignition_data[f'Source {source_number} Output Setpoint'].iloc[0]
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                params[self.category][target_name][
                     'ignition_pressure'
                 ] = ignition_data['PC Capman Pressure'].iloc[0]
             else:
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                params[self.category][target_name][
                     'source_ignition'
                 ] = False
 
@@ -2356,8 +2366,12 @@ class DepRate_Meas_Event(Lf_Event):
         elif self.source is not None:
             source_number = self.source
 
-        if SOURCE_NAME[str(source_number)] not in params[self.category]:
-            params[self.category][SOURCE_NAME[str(source_number)]] = {}
+        target_name = SOURCE_NAME[str(source_number)]
+
+        if target_name not in params[self.category]:
+            params[self.category][target_name] = {}
+
+        params[self.category][target_name]['target_name'] = target_name
 
         if self.source is not None and self.source != 0:
             source_number = self.source
@@ -2365,28 +2379,28 @@ class DepRate_Meas_Event(Lf_Event):
                 self.data[f'PC Source {source_number} Material'].iloc[0]
             )
             source_element = re.split(r'\s+', source_element)[0]
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+            params[self.category][target_name][
                 'target_material'
             ] = ELEMENTS[source_element]
         if self.source == 0:
             source_number = 0
             source_element = 'S'
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+            params[self.category][target_name][
                 'target_material'
             ] = source_element
 
-        params[self.category][f'{SOURCE_NAME[str(source_number)]}']['dep_rate'] = (
+        params[self.category][target_name]['dep_rate'] = (
             self.data['Thickness Rate'].mean()
         )
-        params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+        params[self.category][target_name][
             'dep_rate_ref_mat'
         ] = self.data['Thickness Active Material'].iloc[0]
         if 'Thickness Material Density' in self.data.columns:
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+            params[self.category][target_name][
                 'dep_rate_ref_density'
             ] = self.data['Thickness Material Density'].mean()
         if 'Thickness Material Z' in self.data.columns:
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+            params[self.category][target_name][
                 'dep_rate_ref_z'
             ] = self.data['Thickness Material Z'].mean()
 
