@@ -24,6 +24,6 @@ data:
   #     target_material: 'BaS'
   #   SCracker:
   #     m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
-  instruments:
-    - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.InstrumentParameters
-      platen_rotation: 1.39626
+  #instruments:
+  #  - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.InstrumentParameters
+  #    platen_rotation: 1.39626
