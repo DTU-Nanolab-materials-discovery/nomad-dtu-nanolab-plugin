@@ -36,7 +36,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = False
+TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 RENAME_CRACKER_COL = True
@@ -64,14 +64,15 @@ SAMPLES_TO_TEST = [
     # 'anait_0012_Ba_Zr_Recording Set 2024.11.21-09.41.33',
     # 'eugbe_0003_Sb_Recording Set 2024.09.04-14.54.11',
     # 'eugbe_0001_Zr_Recording Set 2024.07.12-11.10.12',
-    'eugbe_0014_Sb_Recording Set 2024.12.18-11.59.09',
-    'anait_0011_Ba_Recording Set 2024.11.18-10.27.58',
+    # 'eugbe_0014_Sb_Recording Set 2024.12.18-11.59.09',
+    # 'anait_0011_Ba_Recording Set 2024.11.18-10.27.58',
+    'eugbe_0017_Sb_Recording Set 2025.01.22-09.16.32'
 ]
-
 
 # -----USEFUL DICTIONARIES AND LISTS-----
 
-# column names dictionary
+# column names dictionary. Feel free to add more columns to this dictionary for easier
+# access to the data
 COL = {
     'time': 'Time Stamp',
     'time_stamp': 'Time Stamp',
@@ -215,6 +216,8 @@ COL = {
     'sub_rot_pos_sp': 'Substrate Rotation_PositionSetpoint',
     'xtal1_shutter': 'Xtal 1 Shutter Open',
     'xtal2_shutter': 'Xtal 2 Shutter Open',
+    'xtal1_open': 'Xtal 1 Shutter Open',
+    'xtal2_open': 'Xtal 2 Shutter Open',
     'ps7_en': 'Power Supply 7 Enable',
     'ps7_ed': 'Power Supply 7 Enabled',
     'ps7_out_sp': 'Power Supply 7 Output Setpoint',
@@ -555,6 +558,7 @@ OVERVIEW_PLOT = [
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'Sulfur Cracker Control Setpoint Feedback',
     'Sulfur Cracker Zone 1 Current Temperature',
+    'Thickness Rate',
 ]
 for gas in ['ar', 'ph3', 'h2s']:
     OVERVIEW_PLOT.append(f'PC MFC {GAS_NUMBER[gas]} Flow')
@@ -583,7 +587,6 @@ PLOTLY_CONFIG = {
 
 ##------EVENT CLASS DEFINITION------
 
-
 class Lf_Event:
     def __init__(
         self, name: str, source=None, category=None, step_number=None, step_id=None
@@ -600,6 +603,8 @@ class Lf_Event:
         # consecutive timestamps in the raw_logfile. It is used as a reference
         # time to determine the continuity of the time domains
         self.avg_timestep = None
+        # we also enable storring of the original raw data, whenever it is passed
+        self.raw_data = pd.DataFrame()
         # the condition is a boolean pd.Series that indicates which rows of the
         # raw_data are part of the particular event
         self.cond = pd.DataFrame()
@@ -623,6 +628,12 @@ class Lf_Event:
         self.sep_name = ['']
         # the bounds of each subevent
         self.sep_bounds = []
+        # we also store the raw spectra data from the optix, and trigger the filtering of
+        # the spectra data when the raw_spectra is set, same of sep_evenets
+        self.raw_spectra = pd.DataFrame()
+        self.filtered_spectra = pd.DataFrame()
+        self.sep_spectra = [pd.DataFrame()]
+
 
         # here we create a unique identifier for the event
         # based on the name, category, source and step number
@@ -658,6 +669,9 @@ class Lf_Event:
         self.bounds = bounds
         # whenever the bounds are set, we also run the update_events_and_separated_data
         self.update_events_and_separated_data()
+        #whenever the bounds are set, we also filter the spectra data if applicable
+        if not self.raw_spectra:
+            self.filtered_spectra = filter_spectrum(self.raw_spectra, self.bounds)
 
     # helper method to update events, sep_data, sep_name, and sep_bounds after
     # bounds changes
@@ -666,6 +680,9 @@ class Lf_Event:
         self.sep_data = [event_filter(self.data, bound) for bound in self.bounds]
         self.sep_name = [f'{self.name}({i})' for i in range(self.events)]
         self.sep_bounds = [self.bounds[i] for i in range(self.events)]
+        self.sep_spectra = [filter_spectrum(
+            self.raw_spectra, self.bounds[i]
+            ) for i in range(self.events)]
 
     # very important method to extract the bounds of the continuous time domains
     def extract_domains(
@@ -675,7 +692,7 @@ class Lf_Event:
         This function extracts the bounds of continuous time domains in a
         DataFrame based on the time continuity
         For example, if the time difference between two consecutive
-        timestamps of df1 is greater than the avg_timestep of df2,
+        timestamps of df1 is greater than the continuity limit,
         then the two timestamps are considered to be in
         different timedomains.
         """
@@ -726,8 +743,11 @@ class Lf_Event:
             return bounds
 
     # method to filter the data of the event based on a conditionnal boolean pd.Series
-    def filter_data(self, raw_data):
+    def filter_data(self, raw_data, cond=None):
+        if cond is not None:
+            self.cond = cond
         if not self.cond.empty:
+            self.raw_data = raw_data
             self.avg_timestep = cal_avg_timestep(raw_data)
             filtered_data = raw_data[self.cond]
             self.set_data(filtered_data, raw_data)
@@ -739,6 +759,12 @@ class Lf_Event:
 
     def set_source(self, source):
         self.source = source
+
+    def set_spectra(self, raw_spectra):
+        self.raw_spectra = raw_spectra
+        if not self.bounds:
+            self.filtered_spectra = filter_spectrum(raw_spectra, self.bounds)
+
 
     # simple method to exlude events that are too small
     def filter_out_small_events(self, min_domain_size):
@@ -4714,6 +4740,16 @@ def generate_overview_plot(data, logfile_name, events):
     Y_plot = OVERVIEW_PLOT
     # Check if the columns are in the data
     Y_plot = [col for col in Y_plot if col in data.columns]
+
+    if 'Thickness Rate' in OVERVIEW_PLOT:
+        if 'Xtal 2 Shutter Open' in data.columns:
+            data['Thickness Rate (0 if closed)'] = (
+                data['Thickness Rate'] * data['Xtal 2 Shutter Open']
+        )
+            Y_plot.append('Thickness Rate (0 if closed)')
+            Y_plot.remove('Thickness Rate')
+
+        #remove the thickness rate from the plot
 
     # Get the deposition event
     deposition = event_list_to_dict(events)['deposition']

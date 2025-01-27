@@ -1508,10 +1508,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Log file'},
     )
-    log_file_report = Quantity(
+    cracker_warmup_log_file = Quantity(
         type=str,
-        a_eln={'component': 'RichTextEditQuantity', 'label': 'Log file report'},
+        a_eln={'component': 'FileEditQuantity', 'label': 'Cracker warmup log file'},
     )
+    # log_file_report = Quantity(
+    #     type=str,
+    #     a_eln={'component': 'RichTextEditQuantity', 'label': 'Log file report'},
+    # )
     platen_used = Quantity(
         type=MEnum(['A', 'B']),
         a_eln={'component': 'RadioEnumEditQuantity'},
