@@ -150,13 +150,13 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
                 ),
                 nbformat.v4.new_code_cell(
                     source=f"""from nomad.client import ArchiveQuery
+from nomad.config import client
 
 analysis_id = "{archive.metadata.entry_id}"
-api_url = "http://nomad.nanolab.dtu.dk/nomad-oasis/api"
 a_query = ArchiveQuery(
     query={{'entry_id:any': [analysis_id]}},
     required='*',
-    url=api_url,
+    url=client.url,
 )
 entry_list = a_query.download()
 analysis = entry_list[0].data"""
