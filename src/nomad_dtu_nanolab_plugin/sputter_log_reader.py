@@ -587,6 +587,7 @@ PLOTLY_CONFIG = {
 
 ##------EVENT CLASS DEFINITION------
 
+
 class Lf_Event:
     def __init__(
         self, name: str, source=None, category=None, step_number=None, step_id=None
@@ -628,12 +629,12 @@ class Lf_Event:
         self.sep_name = ['']
         # the bounds of each subevent
         self.sep_bounds = []
-        # we also store the raw spectra data from the optix, and trigger the filtering of
-        # the spectra data when the raw_spectra is set, same of sep_evenets
+        # we also store the raw spectra data from the optix, and trigger the
+        # filtering of the spectra data when the raw_spectra is set,
+        # same of sep_evenets
         self.raw_spectra = pd.DataFrame()
         self.filtered_spectra = pd.DataFrame()
         self.sep_spectra = [pd.DataFrame()]
-
 
         # here we create a unique identifier for the event
         # based on the name, category, source and step number
@@ -669,7 +670,7 @@ class Lf_Event:
         self.bounds = bounds
         # whenever the bounds are set, we also run the update_events_and_separated_data
         self.update_events_and_separated_data()
-        #whenever the bounds are set, we also filter the spectra data if applicable
+        # whenever the bounds are set, we also filter the spectra data if applicable
         if not self.raw_spectra:
             self.filtered_spectra = filter_spectrum(self.raw_spectra, self.bounds)
 
@@ -681,9 +682,10 @@ class Lf_Event:
         self.sep_name = [f'{self.name}({i})' for i in range(self.events)]
         self.sep_bounds = [self.bounds[i] for i in range(self.events)]
         if not self.raw_spectra.empty:
-            self.sep_spectra = [filter_spectrum(
-                self.raw_spectra, self.bounds[i]
-                ) for i in range(self.events)]
+            self.sep_spectra = [
+                filter_spectrum(self.raw_spectra, self.bounds[i])
+                for i in range(self.events)
+            ]
 
     # very important method to extract the bounds of the continuous time domains
     def extract_domains(
@@ -765,7 +767,6 @@ class Lf_Event:
         self.raw_spectra = raw_spectra
         if not self.bounds:
             self.filtered_spectra = filter_spectrum(raw_spectra, self.bounds)
-
 
     # simple method to exlude events that are too small
     def filter_out_small_events(self, min_domain_size):
@@ -4746,11 +4747,11 @@ def generate_overview_plot(data, logfile_name, events):
         if 'Xtal 2 Shutter Open' in data.columns:
             data['Thickness Rate (0 if closed)'] = (
                 data['Thickness Rate'] * data['Xtal 2 Shutter Open']
-        )
+            )
             Y_plot.append('Thickness Rate (0 if closed)')
             Y_plot.remove('Thickness Rate')
 
-        #remove the thickness rate from the plot
+        # remove the thickness rate from the plot
 
     # Get the deposition event
     deposition = event_list_to_dict(events)['deposition']
