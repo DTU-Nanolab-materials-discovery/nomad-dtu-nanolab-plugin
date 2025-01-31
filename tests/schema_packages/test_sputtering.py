@@ -9,6 +9,6 @@ def test_schema():
     entry_archive = parse(test_file)[0]
     normalize_all(entry_archive)
 
-    assert entry_archive.data.deposition_parameters.deposition_temp.to(
+    assert entry_archive.data.deposition_parameters.deposition_temperature.to(
         'K'
     ).magnitude == pytest.approx(423.275608889086)
