@@ -74,7 +74,6 @@ from nomad_dtu_nanolab_plugin.schema_packages.substrate import (
 )
 from nomad_dtu_nanolab_plugin.schema_packages.target import DTUTarget
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
-    calculate_avg_true_temp,
     format_logfile,
     generate_plots,
     get_nested_value,
@@ -1354,7 +1353,7 @@ class DepositionParameters(ArchiveSection):
                         self.deposition_temperature + self.deposition_temperature_2
                         )
                     )
-                + 12
+                + Quantity(12, 'degC')
             )
 
         if self.ph3_in_ar_flow.magnitude != 0 and self.h2s_in_ar_flow.magnitude != 0:
