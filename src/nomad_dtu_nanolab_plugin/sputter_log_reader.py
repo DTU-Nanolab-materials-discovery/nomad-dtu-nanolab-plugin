@@ -2807,7 +2807,18 @@ def make_timestamps_tz_naive(timestamps):
 
 # Function to calculate the true temperature
 def calculate_avg_true_temp(temp_1, temp_2):
-    return 0.905 * (0.5 * (temp_1 + temp_2)) + 12
+    # if temp_1 is a pint quantity, convert it to a float
+    if isinstance(temp_1, Quantity):
+        temp_1 = temp_1.to('degC').magnitude
+    # if temp_2 is a pint quantity, convert it to a float
+    if isinstance(temp_2, Quantity):
+        temp_2 = temp_2.to('degC').magnitude
+    # Calculate the average true temperature
+    avg_true_temp = 0.905 * (0.5 * (temp_1 + temp_2)) + 12
+    #if temp_1 is a pint quantity, convert it back to a pint quantity
+    if isinstance(temp_1, Quantity):
+        avg_true_temp = avg_true_temp * ureg.degC
+    return avg_true_temp
 
 
 # Helper function to check if a column is within a certain range
