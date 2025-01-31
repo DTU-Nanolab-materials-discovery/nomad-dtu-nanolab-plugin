@@ -1344,8 +1344,9 @@ class DepositionParameters(ArchiveSection):
 
         if self.deposition_temperature is not None:
             self.deposition_true_temperature = calculate_avg_true_temp(
-                self.deposition_temperature, self.deposition_temperature_2
-            )
+                self.deposition_temperature.to('degC').magnitude,
+                self.deposition_temperature_2.to('degC').magnitude
+            ).to('kelvin')
 
         if self.ph3_in_ar_flow.magnitude != 0 and self.h2s_in_ar_flow.magnitude != 0:
             self.ph3_h2s_ratio = (
