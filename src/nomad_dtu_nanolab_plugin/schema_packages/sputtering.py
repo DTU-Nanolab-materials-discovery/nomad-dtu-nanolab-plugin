@@ -2080,9 +2080,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # Merging the sputtering object with self
             merge_sections(self, sputtering, logger)
 
-            # Run the normalizer of the deposition.parameters subsection
-            self.deposition_parameters.normalize(archive, logger)
-
             # Run the nomalizer of the environment subsection
             for step in self.steps:
                 for gas_flow in step.environment.gas_flow:
