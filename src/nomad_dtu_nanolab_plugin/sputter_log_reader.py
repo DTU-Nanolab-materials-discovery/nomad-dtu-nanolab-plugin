@@ -680,9 +680,10 @@ class Lf_Event:
         self.sep_data = [event_filter(self.data, bound) for bound in self.bounds]
         self.sep_name = [f'{self.name}({i})' for i in range(self.events)]
         self.sep_bounds = [self.bounds[i] for i in range(self.events)]
-        self.sep_spectra = [filter_spectrum(
-            self.raw_spectra, self.bounds[i]
-            ) for i in range(self.events)]
+        if not self.raw_spectra.empty:
+            self.sep_spectra = [filter_spectrum(
+                self.raw_spectra, self.bounds[i]
+                ) for i in range(self.events)]
 
     # very important method to extract the bounds of the continuous time domains
     def extract_domains(
