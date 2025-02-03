@@ -1492,7 +1492,10 @@ class DtuFlag(ArchiveSection):
     m_def = Section()
     flag = ELNAnnotation(
         component=ELNComponentEnum.EnumEditQuantity,
-        props=dict(suggestions=['WRONG_TOXIC_GAS_FLOW']),
+        props=dict(suggestions=[
+            'WRONG_TOXIC_GAS_FLOW',
+            'WRONG_CRACKER_SIGNAL'
+            ]),
     )
     flag_description = Quantity(
         type=str,
@@ -1512,7 +1515,16 @@ class DtuFlag(ArchiveSection):
         FLAG_DICT = {
             'WRONG_TOXIC_GAS_FLOW': (
                 'The Ar bottle was leaking into the toxic gas line. Therefore,'
-                'the toxic gas flows (PH2, H2S) are wrong'
+                'the toxic gas flows (PH2, H2S) are wrong. The impacted signals'
+                '(MFC Flows) have been replaced by 999 in the logfile.'
+            ),
+            'WRONG_CRACKER_SIGNAL': (
+                'The appropriate sulfur cracker signal were not being logged '
+                '(Scracker pulse frequency and pulse width). The corresponding '
+                'signal columns value have all been replaced the value cooresponding '
+                'to the true signal as logged in the phosphosulfide_logbook for '
+                ' timestamps during deposition. Therefore, the signal values are only'
+                'correct for the timestamps corresponding to the deposition.'
             )
         }
 
