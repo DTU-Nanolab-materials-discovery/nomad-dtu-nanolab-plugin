@@ -68,6 +68,26 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
         description='Generate a Jupyter notebook',
     )
 
+    def copy_from_analysis(self, archive: 'EntryArchive', logger: 'BoundLogger') -> str:
+        source_notebook = None
+        with archive.m_context.raw_file(self.from_analysis, 'r') as src_file:
+            source_notebook = src_file.read()
+        # TODO: Replace upload_id with the correct value
+        new_notebook_path = archive.metadata.mainfile.split('.')[0] + '.ipynb'
+        if archive.m_context.raw_path_exists(new_notebook_path):
+            logger.error(f'Notebook {new_notebook_path} already exists.')
+            return
+        with archive.m_context.raw_file(new_notebook_path, 'w') as dest_file:
+            dest_file.write(source_notebook)
+
+        return new_notebook_path
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        if self.generate_notebook and self.from_analysis:
+            self.notebook = self.copy_from_analysis(archive, logger)
+            self.generate_notebook = False
+
 
 class DtuAnalysisStep(ActivityStep, PlotSection):
     pass
