@@ -113,6 +113,9 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
 
     def create_notebook(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         filename = archive.metadata.mainfile.split('.')[0] + '.ipynb'
+        if archive.m_context.raw_path_exists(filename):
+            logger.error(f'Notebook {filename} already exists.')
+            return
         self.notebook = filename
         user = 'Unknown user'
         if archive.metadata.main_author:
