@@ -53,7 +53,7 @@ SAMPLES_TO_REMOVE = [
 SAMPLES_TO_TEST = [
     # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
     # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
-    # 'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
+    'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
     # 'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
     # 'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
     # 'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
@@ -66,7 +66,7 @@ SAMPLES_TO_TEST = [
     # 'eugbe_0001_Zr_Recording Set 2024.07.12-11.10.12',
     # 'eugbe_0014_Sb_Recording Set 2024.12.18-11.59.09',
     # 'anait_0011_Ba_Recording Set 2024.11.18-10.27.58',
-    'eugbe_0017_Sb_Recording Set 2025.01.22-09.16.32'
+    # 'eugbe_0017_Sb_Recording Set 2025.01.22-09.16.32'
 ]
 
 # -----USEFUL DICTIONARIES AND LISTS-----
@@ -4695,8 +4695,9 @@ def generate_bias_plot(
             )
             Y_plot.append(f'{col} Smoothed {rolling_num}pt')
 
-            # check that the sample name contains Sb
-            if '_Sb_' in logfile_name:
+            # check if more than 10percent of the dc bias data is zero
+            if deposition.data[col].eq(0).sum() / len(deposition.data) > 0.1:
+            # if '_Sb_' in logfile_name:
                 rolling_num_max = int(rolling_num * rolling_frac_max)
                 # add the max instead of the mean after rolling
                 deposition.data[f'{col} Max {rolling_num_max}pt'] = (
@@ -4741,6 +4742,7 @@ def generate_bias_plot(
 
 def generate_overview_plot(data, logfile_name, events):
     Y_plot = OVERVIEW_PLOT
+
     # Check if the columns are in the data
     Y_plot = [col for col in Y_plot if col in data.columns]
 
@@ -4752,7 +4754,12 @@ def generate_overview_plot(data, logfile_name, events):
             Y_plot.append('Thickness Rate (0 if closed)')
             Y_plot.remove('Thickness Rate')
 
-        # remove the thickness rate from the plot
+    #remove all the Y_col for which the data is constant throughout the data
+    new_Y_plot = []
+    for col in Y_plot:
+        if not data[col].nunique() == 1:
+            new_Y_plot.append(col)
+    Y_plot = new_Y_plot
 
     # Get the deposition event
     deposition = event_list_to_dict(events)['deposition']
