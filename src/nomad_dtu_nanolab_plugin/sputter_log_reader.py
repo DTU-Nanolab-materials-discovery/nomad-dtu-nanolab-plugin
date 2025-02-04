@@ -36,7 +36,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = True
+TEST_SPECIFIC_LOGFILE = False
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 RENAME_CRACKER_COL = True
@@ -403,6 +403,8 @@ TOLERANCE = 0.85
 # Propotion of values needed to be above the threshold to consider the
 # plasma to be one particular type or the other
 POWER_TYPE_TOLERANCE = 0.1
+# fraction of the zeros in the dc bias data above which extra smoothing is triggered
+DC_BIAS_SMOOTHING_THRESHOLD = 0.1
 # Eletrical current threshold above which a dc plasma is considered on
 CURRENT_THRESHOLD = 0.01  # miliamps
 # Bias threshold above which a rf plasma is considered on
@@ -4696,8 +4698,11 @@ def generate_bias_plot(
             Y_plot.append(f'{col} Smoothed {rolling_num}pt')
 
             # check if more than 10percent of the dc bias data is zero
-            if deposition.data[col].eq(0).sum() / len(deposition.data) > 0.1:
-            # if '_Sb_' in logfile_name:
+            if (
+                deposition.data[col].eq(0).sum() / len(deposition.data)
+                > DC_BIAS_SMOOTHING_THRESHOLD
+            ):
+                # if '_Sb_' in logfile_name:
                 rolling_num_max = int(rolling_num * rolling_frac_max)
                 # add the max instead of the mean after rolling
                 deposition.data[f'{col} Max {rolling_num_max}pt'] = (
@@ -4754,7 +4759,7 @@ def generate_overview_plot(data, logfile_name, events):
             Y_plot.append('Thickness Rate (0 if closed)')
             Y_plot.remove('Thickness Rate')
 
-    #remove all the Y_col for which the data is constant throughout the data
+    # remove all the Y_col for which the data is constant throughout the data
     new_Y_plot = []
     for col in Y_plot:
         if not data[col].nunique() == 1:
