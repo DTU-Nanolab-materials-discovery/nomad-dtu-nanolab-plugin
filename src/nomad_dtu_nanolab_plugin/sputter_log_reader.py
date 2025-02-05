@@ -3910,7 +3910,7 @@ def generate_optix_cascade_plot(spectra, **kwargs):
         # Match timestamps in timestamp_map to the closest time in color_df
         for col in cols:
             spectrum_time = timestamp_map[col]
-            closest_idx = color_df.index.get_loc(spectrum_time, method='nearest')
+            closest_idx = color_df.index.get_indexer([spectrum_time], method='nearest')[0]
             color_value = color_df.iloc[closest_idx][color_column]
             colors.append(color_value)
 
@@ -5180,7 +5180,8 @@ def read_logfile(file_path):
 
 
 def read_rga(file_path):
-    rga_file = pd.read_csv(file_path, sep=',', header=0, parse_dates=['Time'])
+    rga_file = pd.read_csv(file_path, sep=',', header=0, parse_dates=['Time'],
+                           date_format = '%m/%d/%Y %I:%M:%S %p')
     # Rename the 'Time' column to 'Time Stamp'
     rga_file.rename(columns={'Time': 'Time Stamp'}, inplace=True)
 
