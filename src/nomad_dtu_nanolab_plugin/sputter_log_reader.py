@@ -36,7 +36,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = True
+TEST_SPECIFIC_LOGFILE = False
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 RENAME_CRACKER_COL = True
@@ -50,24 +50,7 @@ SAMPLES_TO_REMOVE = [
     # 'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
 ]
 
-SAMPLES_TO_TEST = [
-    # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
-    # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
-    'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
-    # 'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
-    # 'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
-    # 'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
-    # 'mittma_0007_Cu_Recording Set 2024.06.03-09.52.29',
-    # 'anait_0010_Ba_Recording Set 2024.11.12-09.20.00',
-    # 'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
-    # 'mittma_0028_Cu_Recording Set 2024.11.22-07.19.41',
-    # 'anait_0012_Ba_Zr_Recording Set 2024.11.21-09.41.33',
-    # 'eugbe_0003_Sb_Recording Set 2024.09.04-14.54.11',
-    # 'eugbe_0001_Zr_Recording Set 2024.07.12-11.10.12',
-    # 'eugbe_0014_Sb_Recording Set 2024.12.18-11.59.09',
-    # 'anait_0011_Ba_Recording Set 2024.11.18-10.27.58',
-    # 'eugbe_0017_Sb_Recording Set 2025.01.22-09.16.32'
-]
+SAMPLES_TO_TEST = ['eugbe_0020_Zr_Recording Set 2025.02.05-09.07.05']
 
 # -----USEFUL DICTIONARIES AND LISTS-----
 
