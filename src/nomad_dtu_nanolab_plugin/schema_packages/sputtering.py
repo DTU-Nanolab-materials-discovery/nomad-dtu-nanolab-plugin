@@ -74,6 +74,7 @@ from nomad_dtu_nanolab_plugin.schema_packages.substrate import (
 )
 from nomad_dtu_nanolab_plugin.schema_packages.target import DTUTarget
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
+    GAS_FRACTION,
     format_logfile,
     generate_plots,
     get_nested_value,
@@ -92,7 +93,6 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     read_events,
     read_logfile,
     write_params,
-    GAS_FRACTION,
 )
 
 if TYPE_CHECKING:
@@ -1411,30 +1411,27 @@ class DepositionParameters(ArchiveSection):
         total_pressure = self.sputter_pressure.magnitude
 
         h2s_partial_pressure = (
-            h2s_in_ar_flow*GAS_FRACTION['h2s']/total_flow*total_pressure
+            h2s_in_ar_flow * GAS_FRACTION['h2s'] / total_flow * total_pressure
         )
         self.h2s_partial_pressure = h2s_partial_pressure * ureg('kg/(m*s^2)')
 
         nh3_partial_pressure = (
-            nh3_in_ar_flow*GAS_FRACTION['nh3']/total_flow*total_pressure
+            nh3_in_ar_flow * GAS_FRACTION['nh3'] / total_flow * total_pressure
         )
         self.nh3_partial_pressure = nh3_partial_pressure * ureg('kg/(m*s^2)')
 
         ph3_partial_pressure = (
-            ph3_in_ar_flow*GAS_FRACTION['ph3']/total_flow*total_pressure
+            ph3_in_ar_flow * GAS_FRACTION['ph3'] / total_flow * total_pressure
         )
         self.ph3_partial_pressure = ph3_partial_pressure * ureg('kg/(m*s^2)')
 
-        n2_partial_pressure = (
-            n2_flow*GAS_FRACTION['n2']/total_flow*total_pressure
-        )
+        n2_partial_pressure = n2_flow * GAS_FRACTION['n2'] / total_flow * total_pressure
         self.n2_partial_pressure = n2_partial_pressure * ureg('kg/(m*s^2)')
 
         o2_partial_pressure = (
-            o2_in_ar_flow*GAS_FRACTION['o2']/total_flow*total_pressure
+            o2_in_ar_flow * GAS_FRACTION['o2'] / total_flow * total_pressure
         )
         self.o2_partial_pressure = o2_partial_pressure * ureg('kg/(m*s^2)')
-
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
