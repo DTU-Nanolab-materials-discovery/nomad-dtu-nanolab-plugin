@@ -36,7 +36,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = False
+TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 RENAME_CRACKER_COL = True
@@ -391,6 +391,15 @@ IONS = {
     'carbide': 'C',
     'hydride': 'H',
 }
+# volumne fraction in the respective gas mixture (the complementary gas is Ar)
+GAS_FRACTION = {
+    'ar': 1,
+    'n2': 1,
+    'o2': 0.2,
+    'ph3': 0.1,
+    'nh3': 0.1,
+    'h2s': 0.1,
+}
 
 # ----SPUTTER LOG READER METHODS----
 
@@ -501,7 +510,10 @@ SOURCE_LABEL = {
 }
 GAS_NUMBER = {
     'ar': 1,
+    'n2': 2,
+    'o2': 3,
     'ph3': 4,
+    'nh3': 5,
     'h2s': 6,
 }
 
@@ -562,7 +574,7 @@ OVERVIEW_PLOT = [
     'Sulfur Cracker Zone 1 Current Temperature',
     'Thickness Rate',
 ]
-for gas in ['ar', 'ph3', 'h2s']:
+for gas in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
     OVERVIEW_PLOT.append(f'PC MFC {GAS_NUMBER[gas]} Flow')
 
 for source_number in ['1', '3', '4']:
@@ -891,7 +903,7 @@ class Lf_Event:
         # Get the strat time of the step
         start_time = self.data['Time Stamp'].iloc[0]
 
-        for gas_name in ['ar', 'ph3', 'h2s']:
+        for gas_name in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
             # initialize the gas_flow dictionary
             gas_flow = {}
 
@@ -1620,11 +1632,14 @@ class Deposition_Event(Lf_Event):
         def add_partial_pressures(gas, params):
             params[self.category][f'avg_{gas}_partial_pressure'] = (
                 params[self.category]['avg_capman_pressure']
-                * 0.1
+                * GAS_FRACTION[gas]
                 * params[self.category][f'avg_{gas}_flow']
                 / (
                     params[self.category]['avg_ar_flow']
+                    + params[self.category]['avg_n2_flow']
+                    + params[self.category]['avg_o2_flow']
                     + params[self.category]['avg_ph3_flow']
+                    + params[self.category]['avg_nh3_flow']
                     + params[self.category]['avg_h2s_flow']
                 )
             )
@@ -1669,7 +1684,7 @@ class Deposition_Event(Lf_Event):
             'PC Capman Pressure'
         ].mean()
 
-        for gas in ['ar', 'ph3', 'h2s']:
+        for gas in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
             mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
             if mean_flow > MFC_FLOW_THRESHOLD:
                 params[self.category][f'avg_{gas}_flow'] = mean_flow
@@ -1677,7 +1692,7 @@ class Deposition_Event(Lf_Event):
                 params[self.category][f'avg_{gas}_flow'] = 0
 
         # calculate the partial pressure of the gases
-        for gas in ['ph3', 'h2s']:
+        for gas in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
             params = add_partial_pressures(gas, params)
 
         # calculate the ratio between the PH3 and H2S flow
@@ -1689,6 +1704,7 @@ class Deposition_Event(Lf_Event):
                 params[self.category]['avg_ph3_flow']
                 / params[self.category]['avg_h2s_flow']
             )
+        # TODO, add the ratio for other reactive gases ?
 
         return params
 
@@ -1722,7 +1738,18 @@ class Deposition_Event(Lf_Event):
             or (params[self.category]['s_cracker']['enabled'])
         ):
             elements += ['S']
-            # add the element as an hypen separated string
+        if (
+            'N' not in elements
+            and params[self.category]['avg_n2_flow'] > MFC_FLOW_THRESHOLD
+            or params[self.category]['avg_nh3_flow'] > MFC_FLOW_THRESHOLD
+        ):
+            elements += ['N']
+        if (
+            'O' not in elements
+            and params[self.category]['avg_o2_flow'] > MFC_FLOW_THRESHOLD
+        ):
+            elements += ['O']
+        # add the element as an hypen separated string
         params[self.category]['material_space'] = '-'.join(elements)
         return params
 
@@ -2062,7 +2089,7 @@ class Sub_Ramp_Up_Event(Lf_Event):
             ].mean()
             # Extract the gas flows during the substrate ramp up
 
-            for gas in ['ar', 'ph3', 'h2s']:
+            for gas in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
                 mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
                 if mean_flow > MFC_FLOW_THRESHOLD:
                     params[self.category][f'avg_{gas}_flow'] = mean_flow
@@ -2217,7 +2244,7 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
         params[self.category]['temp_slope'] = temp_slope
 
         # Extract the gases used during the high substrate ramp down
-        for gas in ['ar', 'ph3', 'h2s']:
+        for gas in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
             mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
             if mean_flow > MFC_FLOW_THRESHOLD:
                 params[self.category][f'avg_{gas}_flow'] = mean_flow
@@ -3152,14 +3179,23 @@ def filter_data_temp_ctrl(data):
 # by MFC_FLOW_THRESHOLD
 def filter_gas(data):
     ph3 = Lf_Event('PH3 On', category='ph3_on')
+    nh3 = Lf_Event('NH3 On', category='nh3_on')
     h2s = Lf_Event('H2S On', category='h2s_on')
     ar = Lf_Event('Ar On', category='ar_on')
+    n2 = Lf_Event('N2 On', category='n2_on')
+    o2 = Lf_Event('O2 On', category='o2_on')
 
     ph3_cond = (data['PC MFC 4 Setpoint'] > MFC_FLOW_THRESHOLD) & (
         data['PC MFC 4 Flow'] > MFC_FLOW_THRESHOLD
     )
     ph3.set_condition(ph3_cond)
     ph3.filter_data(data)
+
+    nh3_cond = (data['PC MFC 5 Setpoint'] > MFC_FLOW_THRESHOLD) & (
+        data['PC MFC 5 Flow'] > MFC_FLOW_THRESHOLD
+    )
+    nh3.set_condition(nh3_cond)
+    nh3.filter_data(data)
 
     h2s_cond = (data['PC MFC 6 Setpoint'] > MFC_FLOW_THRESHOLD) & (
         data['PC MFC 6 Flow'] > MFC_FLOW_THRESHOLD
@@ -3173,7 +3209,19 @@ def filter_gas(data):
     ar.set_condition(ar_cond)
     ar.filter_data(data)
 
-    return ph3, h2s, ar
+    n2_cond = (data['PC MFC 2 Setpoint'] > MFC_FLOW_THRESHOLD) & (
+        data['PC MFC 2 Flow'] > MFC_FLOW_THRESHOLD
+    )
+    n2.set_condition(n2_cond)
+    n2.filter_data(data)
+
+    o2_cond = (data['PC MFC 3 Setpoint'] > MFC_FLOW_THRESHOLD) & (
+        data['PC MFC 3 Flow'] > MFC_FLOW_THRESHOLD
+    )
+    o2.set_condition(o2_cond)
+    o2.filter_data(data)
+
+    return ph3, nh3, h2s, ar, n2, o2
 
 
 # We can also define composite conditions for different events by
@@ -3253,7 +3301,10 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
         'source_ramp_up',
         'cracker_on_open',
         'ph3',
+        'nh3',
         'h2s',
+        'n2',
+        'o2',
         'deposition',
     ]
 
@@ -3265,7 +3316,11 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
     source_ramp_up = kwargs.get('source_ramp_up')
     cracker_on_open = kwargs.get('cracker_on_open')
     ph3 = kwargs.get('ph3')
+    nh3 = kwargs.get('nh3')
     h2s = kwargs.get('h2s')
+    n2 = kwargs.get('n2')
+    o2 = kwargs.get('o2')
+
     deposition = kwargs.get('deposition')
 
     source_presput = {}
@@ -3285,7 +3340,14 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
                         )
                     )
                     & ~source_ramp_up[str(source_number)].cond
-                    & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
+                    & ~(
+                        ph3.cond
+                        | nh3.cond
+                        | h2s.cond
+                        | n2.cond
+                        | o2.cond
+                        | cracker_on_open.cond
+                    )
                 )
             except IndexError:
                 print(
@@ -3298,7 +3360,14 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
                         source_on[str(source_number)].cond
                         & (data['Time Stamp'] < deposition.bounds[0][0])
                         & ~source_ramp_up[str(source_number)].cond
-                        & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
+                        & ~(
+                            ph3.cond
+                            | nh3.cond
+                            | h2s.cond
+                            | n2.cond
+                            | o2.cond
+                            | cracker_on_open.cond
+                        )
                     )
                 except IndexError:
                     print(
@@ -3308,7 +3377,14 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
                     source_presput_cond = (
                         source_on[str(source_number)].cond
                         & ~source_ramp_up[str(source_number)].cond
-                        & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
+                        & ~(
+                            ph3.cond
+                            | nh3.cond
+                            | h2s.cond
+                            | n2.cond
+                            | o2.cond
+                            | cracker_on_open.cond
+                        )
                     )
 
             source_presput[str(source_number)] = Source_Presput_Event(
@@ -3331,7 +3407,16 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
 # are within WITHIN_RANGE_PARAM of the deposition conditions (for the cracker, and
 # and the pressure)
 def filter_data_cracker_pressure(data, **kwargs):
-    required_keys = ['cracker_on_open', 'ph3', 'h2s', 'ar', 'deposition']
+    required_keys = [
+        'cracker_on_open',
+        'ph3',
+        'nh3',
+        'h2s',
+        'ar',
+        'n2',
+        'o2',
+        'deposition',
+    ]
 
     for key in required_keys:
         if key not in kwargs:
@@ -3339,8 +3424,12 @@ def filter_data_cracker_pressure(data, **kwargs):
 
     cracker_on_open = kwargs.get('cracker_on_open')
     ph3 = kwargs.get('ph3')
+    nh3 = kwargs.get('nh3')
     h2s = kwargs.get('h2s')
     ar = kwargs.get('ar')
+    n2 = kwargs.get('n2')
+    o2 = kwargs.get('o2')
+
     deposition = kwargs.get('deposition')
 
     cracker_base_pressure = SCracker_Pressure_Event(
@@ -3392,8 +3481,11 @@ def filter_data_cracker_pressure(data, **kwargs):
                 cracker_on_open.cond
                 & (data['Time Stamp'] < deposition.bounds[0][0])
                 & ~h2s.cond
+                & ~nh3.cond
                 & ~ph3.cond
                 & ~ar.cond
+                & ~n2.cond
+                & ~o2.cond
                 & cracker_temp_cond
                 & valve_cond
                 & (data['Sulfur Cracker Control Enabled'] == 1)
@@ -3420,7 +3512,10 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
         'any_source_on_open',
         'cracker_on_open',
         'ph3',
+        'nh3',
         'h2s',
+        'n2',
+        'o2',
     ]
 
     for key in required_keys:
@@ -3432,7 +3527,10 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
     any_source_on_open = kwargs.get('any_source_on_open')
     cracker_on_open = kwargs.get('cracker_on_open')
     ph3 = kwargs.get('ph3')
+    nh3 = kwargs.get('nh3')
     h2s = kwargs.get('h2s')
+    n2 = kwargs.get('n2')
+    o2 = kwargs.get('o2')
 
     xtal2_open = Lf_Event('Xtal 2 Shutter Open', category='xtal2_shutter_open')
     deprate2_meas = Lf_Event('Deposition Rate Measurement', category='deprate2_meas')
@@ -3453,9 +3551,15 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
     # We also include that the condition of the plasma are within the
     # WITHIN_RANGE_PARAM of the deposition conditions
 
-    pressure_cond, ph3_dep_cond, h2s_dep_cond, cracker_dep_cond = (
-        define_deposition_conditions(data, deposition)
-    )
+    (
+        pressure_cond,
+        ph3_dep_cond,
+        nh3_dep_cond,
+        h2s_dep_cond,
+        n2_dep_cond,
+        o2_dep_cond,
+        cracker_dep_cond,
+    ) = define_deposition_conditions(data, deposition)
 
     deprate2_film_meas, deprate2_ternary_meas = define_film_meas_conditions(
         data,
@@ -3464,7 +3568,10 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
         source_on_open=source_on_open,
         cracker_dep_cond=cracker_dep_cond,
         h2s_dep_cond=h2s_dep_cond,
+        nh3_dep_cond=nh3_dep_cond,
         ph3_dep_cond=ph3_dep_cond,
+        n2_dep_cond=n2_dep_cond,
+        o2_dep_cond=o2_dep_cond,
         deposition=deposition,
         pressure_cond=pressure_cond,
         deprate2_film_meas=deprate2_film_meas,
@@ -3478,7 +3585,10 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
         any_source_on_open=any_source_on_open,
         cracker_on_open=cracker_on_open,
         ph3=ph3,
+        nh3=nh3,
         h2s=h2s,
+        n2=n2,
+        o2=o2,
     )
 
     return (
@@ -3534,9 +3644,27 @@ def define_deposition_conditions(data, deposition):
         WITHIN_RANGE_PARAM,
     )
 
+    nh3_dep_cond = within_range(
+        data['PC MFC 5 Setpoint'],
+        deposition.data['PC MFC 5 Setpoint'].mean(),
+        WITHIN_RANGE_PARAM,
+    )
+
     h2s_dep_cond = within_range(
         data['PC MFC 6 Setpoint'],
         deposition.data['PC MFC 6 Setpoint'].mean(),
+        WITHIN_RANGE_PARAM,
+    )
+
+    n2_dep_cond = within_range(
+        data['PC MFC 2 Setpoint'],
+        deposition.data['PC MFC 2 Setpoint'].mean(),
+        WITHIN_RANGE_PARAM,
+    )
+
+    o2_dep_cond = within_range(
+        data['PC MFC 3 Setpoint'],
+        deposition.data['PC MFC 3 Setpoint'].mean(),
         WITHIN_RANGE_PARAM,
     )
 
@@ -3583,7 +3711,15 @@ def define_deposition_conditions(data, deposition):
 
     else:
         cracker_dep_cond = pd.Series(False, index=data.index)
-    return pressure_cond, ph3_dep_cond, h2s_dep_cond, cracker_dep_cond
+    return (
+        pressure_cond,
+        ph3_dep_cond,
+        nh3_dep_cond,
+        h2s_dep_cond,
+        n2_dep_cond,
+        o2_dep_cond,
+        cracker_dep_cond,
+    )
 
 
 def define_film_meas_conditions(data, source_list, **kwargs):
@@ -3591,7 +3727,10 @@ def define_film_meas_conditions(data, source_list, **kwargs):
     source_on_open = kwargs.get('source_on_open')
     cracker_dep_cond = kwargs.get('cracker_dep_cond')
     h2s_dep_cond = kwargs.get('h2s_dep_cond')
+    nh3_dep_cond = kwargs.get('nh3_dep_cond')
     ph3_dep_cond = kwargs.get('ph3_dep_cond')
+    n2_dep_cond = kwargs.get('n2_dep_cond')
+    o2_dep_cond = kwargs.get('o2_dep_cond')
     deposition = kwargs.get('deposition')
     pressure_cond = kwargs.get('pressure_cond')
     deprate2_film_meas = kwargs.get('deprate2_film_meas')
@@ -3609,7 +3748,10 @@ def define_film_meas_conditions(data, source_list, **kwargs):
                 & source_on_open[str(source_number)].cond
                 & cracker_dep_cond
                 & h2s_dep_cond
+                & nh3_dep_cond
                 & ph3_dep_cond
+                & n2_dep_cond
+                & o2_dep_cond
                 & (data['Thickness Active Material'] != 'Sulfur')
                 & power_cond
                 & pressure_cond
@@ -3650,7 +3792,10 @@ def define_sulfur_meas_conditions(data, deprate2_meas, deprate2_sulfur_meas, **k
     any_source_on_open = kwargs.get('any_source_on_open')
     cracker_on_open = kwargs.get('cracker_on_open')
     ph3 = kwargs.get('ph3')
+    nh3 = kwargs.get('nh3')
     h2s = kwargs.get('h2s')
+    n2 = kwargs.get('n2')
+    o2 = kwargs.get('o2')
 
     # Define the condition for the onlt Sulfur film deposition rate measurement as:
     #  with the material used as refereced by the QCM
@@ -3707,7 +3852,7 @@ def define_sulfur_meas_conditions(data, deprate2_meas, deprate2_sulfur_meas, **k
             deprate2_meas.cond
             & ~any_source_on_open.cond
             & cracker_on_open.cond
-            & ~(ph3.cond | h2s.cond)
+            & ~(ph3.cond | nh3.cond | h2s.cond | n2.cond | o2.cond)
             & (data['Thickness Active Material'] == 'Sulfur')
             & ~deposition.cond
             & cracker_temp_cond
@@ -3728,7 +3873,16 @@ def define_sulfur_meas_conditions(data, deprate2_meas, deprate2_sulfur_meas, **k
 # - the temperature setpoint is increasing faster than the threshold
 # defined in the reference values
 def filter_data_temp_ramp_up_down(data, **kwargs):
-    required_keys = ['cracker_on_open', 'temp_ctrl', 'ph3', 'h2s', 'deposition']
+    required_keys = [
+        'cracker_on_open',
+        'temp_ctrl',
+        'ph3',
+        'nh3',
+        'h2s',
+        'n2',
+        'o2',
+        'deposition',
+    ]
 
     for key in required_keys:
         if key not in kwargs:
@@ -3737,7 +3891,10 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
     cracker_on_open = kwargs.get('cracker_on_open')
     temp_ctrl = kwargs.get('temp_ctrl')
     ph3 = kwargs.get('ph3')
+    nh3 = kwargs.get('nh3')
     h2s = kwargs.get('h2s')
+    n2 = kwargs.get('n2')
+    o2 = kwargs.get('o2')
     deposition = kwargs.get('deposition')
 
     ramp_up_temp = Sub_Ramp_Up_Event('Sub Temp Ramp Up', category='ramp_up_temp')
@@ -3793,7 +3950,14 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
         try:
             ramp_down_high_temp_cond = (
                 data['Time Stamp'] > ramp_down_temp.data['Time Stamp'].iloc[0]
-            ) & (h2s.cond | cracker_on_open.cond | ph3.cond)
+            ) & (
+                h2s.cond
+                | nh3.cond
+                | ph3.cond
+                | n2.cond
+                | o2.cond
+                | cracker_on_open.cond
+            )
         except Exception:
             ramp_down_high_temp_cond = pd.Series(False, index=data.index)
         ramp_down_high_temp.set_condition(ramp_down_high_temp_cond)
@@ -3806,7 +3970,14 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
         try:
             ramp_down_low_temp_cond = (
                 data['Time Stamp'] > ramp_down_temp.data['Time Stamp'].iloc[0]
-            ) & ~(h2s.cond | cracker_on_open.cond | ph3.cond)
+            ) & ~(
+                h2s.cond
+                | nh3.cond
+                | ph3.cond
+                | n2.cond
+                | o2.cond
+                | cracker_on_open.cond
+            )
         except Exception:
             ramp_down_low_temp_cond = pd.Series(False, index=data.index)
         ramp_down_low_temp.set_condition(ramp_down_low_temp_cond)
@@ -5508,9 +5679,9 @@ def read_events(data):
     add_event_to_events(temp_ctrl, events)
 
     # ----- 4/CONDITIONS FOR THE DIFFERENT GASES BEING FLOWN--------
-    ph3, h2s, ar = filter_gas(data)
+    ph3, nh3, h2s, ar, n2, o2 = filter_gas(data)
 
-    add_event_to_events([ph3, h2s, ar], events)
+    add_event_to_events([ph3, nh3, h2s, ar, n2, o2], events)
 
     # ---------5/CONDITIONS FOR THE DEPOSITION--------
     any_source_on, any_source_on_open, deposition, source_used_list = (
@@ -5527,7 +5698,10 @@ def read_events(data):
         source_ramp_up=source_ramp_up,
         cracker_on_open=cracker_on_open,
         ph3=ph3,
+        nh3=nh3,
         h2s=h2s,
+        n2=n2,
+        o2=o2,
         deposition=deposition,
     )
 
@@ -5539,8 +5713,11 @@ def read_events(data):
         data,
         cracker_on_open=cracker_on_open,
         ph3=ph3,
+        nh3=nh3,
         h2s=h2s,
         ar=ar,
+        n2=n2,
+        o2=o2,
         deposition=deposition,
     )
 
@@ -5562,7 +5739,10 @@ def read_events(data):
         any_source_on_open=any_source_on_open,
         cracker_on_open=cracker_on_open,
         ph3=ph3,
+        nh3=nh3,
         h2s=h2s,
+        n2=n2,
+        o2=o2,
     )
 
     add_event_to_events(
@@ -5584,7 +5764,11 @@ def read_events(data):
             cracker_on_open=cracker_on_open,
             temp_ctrl=temp_ctrl,
             ph3=ph3,
+            nh3=nh3,
             h2s=h2s,
+            ar=ar,
+            n2=n2,
+            o2=o2,
             deposition=deposition,
         )
     )
@@ -5768,6 +5952,16 @@ def map_params_to_nomad(params, gun_list):
             'mtorr',
         ],
         [
+            ['deposition', 'avg_nh3_flow'],
+            ['deposition_parameters', 'nh3_in_ar_flow'],
+            'cm^3/minute',
+        ],
+        [
+            ['deposition', 'avg_nh3_partial_pressure'],
+            ['deposition_parameters', 'nh3_partial_pressure'],
+            'mtorr',
+        ],
+        [
             ['deposition', 'avg_ph3_flow'],
             ['deposition_parameters', 'ph3_in_ar_flow'],
             'cm^3/minute',
@@ -5775,6 +5969,26 @@ def map_params_to_nomad(params, gun_list):
         [
             ['deposition', 'avg_ph3_partial_pressure'],
             ['deposition_parameters', 'ph3_partial_pressure'],
+            'mtorr',
+        ],
+        [
+            ['deposition', 'avg_n2_flow'],
+            ['deposition_parameters', 'n2_flow'],
+            'cm^3/minute',
+        ],
+        [
+            ['deposition', 'avg_n2_partial_pressure'],
+            ['deposition_parameters', 'n2_partial_pressure'],
+            'mtorr',
+        ],
+        [
+            ['deposition', 'avg_o2_flow'],
+            ['deposition_parameters', 'o2_in_ar_flow'],
+            'cm^3/minute',
+        ],
+        [
+            ['deposition', 'avg_o2_partial_pressure'],
+            ['deposition_parameters', 'o2_partial_pressure'],
             'mtorr',
         ],
         # End of process parameters
@@ -5948,8 +6162,23 @@ def map_params_to_nomad(params, gun_list):
                             'cm^3/minute',
                         ],
                         [
+                            ['ramp_up_temp', 'avg_nh3_flow'],
+                            ['temperature_ramp_up', 'avg_nh3_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
                             ['ramp_up_temp', 'avg_h2s_flow'],
                             ['temperature_ramp_up', 'avg_h2s_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_up_temp', 'avg_n2_flow'],
+                            ['temperature_ramp_up', 'avg_n2_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_up_temp', 'avg_o2_flow'],
+                            ['temperature_ramp_up', 'avg_o2_in_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
@@ -5994,8 +6223,23 @@ def map_params_to_nomad(params, gun_list):
                             'cm^3/minute',
                         ],
                         [
+                            ['ramp_down_high_temp', 'avg_nh3_flow'],
+                            ['temperature_ramp_down', 'avg_nh3_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
                             ['ramp_down_high_temp', 'avg_h2s_flow'],
                             ['temperature_ramp_down', 'avg_h2s_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_down_high_temp', 'avg_n2_flow'],
+                            ['temperature_ramp_down', 'avg_n2_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_down_high_temp', 'avg_o2_flow'],
+                            ['temperature_ramp_down', 'avg_o2_in_ar_flow'],
                             'cm^3/minute',
                         ],
                         [

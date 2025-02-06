@@ -87,6 +87,7 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     read_events,
     read_logfile,
     write_params,
+    GAS_FRACTION,
 )
 
 if TYPE_CHECKING:
@@ -1266,6 +1267,28 @@ class DepositionParameters(ArchiveSection):
         },
         unit='kg/(m*s^2)',
     )
+    nh3_in_ar_flow = Quantity(
+        type=np.float64,
+        description="""
+            Flow of 10% NH3 in Ar in equivalent flow at standard conditions 0, i.e.
+            the equivalent rate at a temperature of 0 °C (273.15 K) and a pressure of
+            1 atm (101325 Pa).
+        """,
+        a_eln={
+            'component': 'NumberEditQuantity',
+            'defaultDisplayUnit': 'cm^3/minute',
+            'label': 'NH3 in Ar flow',
+        },
+        unit='m^3/s',
+    )
+    nh3_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln={
+            'defaultDisplayUnit': 'mtorr',
+            'label': 'NH3 partial pressure',
+        },
+        unit='kg/(m*s^2)',
+    )
     ph3_in_ar_flow = Quantity(
         type=np.float64,
         description="""
@@ -1285,6 +1308,50 @@ class DepositionParameters(ArchiveSection):
         a_eln={
             'defaultDisplayUnit': 'mtorr',
             'label': 'PH3 partial pressure',
+        },
+        unit='kg/(m*s^2)',
+    )
+    n2_flow = Quantity(
+        type=np.float64,
+        description="""
+            Flow of 100% N2 in equivalent flow at standard conditions 0, i.e.
+            the equivalent rate at a temperature of 0 °C (273.15 K) and a pressure of
+            1 atm (101325 Pa).
+        """,
+        a_eln={
+            'component': 'NumberEditQuantity',
+            'defaultDisplayUnit': 'cm^3/minute',
+            'label': 'N2 flow',
+        },
+        unit='m^3/s',
+    )
+    n2_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln={
+            'defaultDisplayUnit': 'mtorr',
+            'label': 'N2 partial pressure',
+        },
+        unit='kg/(m*s^2)',
+    )
+    o2_in_ar_flow = Quantity(
+        type=np.float64,
+        description="""
+            Flow of 20% O2 in Ar in equivalent flow at standard conditions 0, i.e.
+            the equivalent rate at a temperature of 0 °C (273.15 K) and a pressure of
+            1 atm (101325 Pa).
+        """,
+        a_eln={
+            'component': 'NumberEditQuantity',
+            'defaultDisplayUnit': 'cm^3/minute',
+            'label': 'O2 in Ar flow',
+        },
+        unit='m^3/s',
+    )
+    o2_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln={
+            'defaultDisplayUnit': 'mtorr',
+            'label': 'O2 partial pressure',
         },
         unit='kg/(m*s^2)',
     )
@@ -1308,6 +1375,61 @@ class DepositionParameters(ArchiveSection):
         section_def=UsedGas,
         repeats=True,
     )
+
+    def _calc_partial_pressure(self):
+        pass
+        # TODO make the calculation of the partial pressure
+        ar_flow = self.ar_flow.magnitude if self.ar_flow is not None else 0
+        h2s_in_ar_flow = (
+            self.h2s_in_ar_flow.magnitude if self.h2s_in_ar_flow is not None else 0
+        )
+        nh3_in_ar_flow = (
+            self.nh3_in_ar_flow.magnitude if self.nh3_in_ar_flow is not None else 0
+        )
+        ph3_in_ar_flow = (
+            self.ph3_in_ar_flow.magnitude if self.ph3_in_ar_flow is not None else 0
+        )
+        n2_flow = self.n2_flow.magnitude if self.n2_flow is not None else 0
+        o2_in_ar_flow = (
+            self.o2_in_ar_flow.magnitude if self.o2_in_ar_flow is not None else 0
+        )
+
+        total_flow = (
+            ar_flow
+            + h2s_in_ar_flow
+            + nh3_in_ar_flow
+            + ph3_in_ar_flow
+            + n2_flow
+            + o2_in_ar_flow
+        )
+
+        total_pressure = self.sputter_pressure.magnitude
+
+        h2s_partial_pressure = (
+            h2s_in_ar_flow*GAS_FRACTION['h2s']/total_flow*total_pressure
+        )
+        self.h2s_partial_pressure = h2s_partial_pressure * ureg('kg/(m*s^2)')
+
+        nh3_partial_pressure = (
+            nh3_in_ar_flow*GAS_FRACTION['nh3']/total_flow*total_pressure
+        )
+        self.nh3_partial_pressure = nh3_partial_pressure * ureg('kg/(m*s^2)')
+
+        ph3_partial_pressure = (
+            ph3_in_ar_flow*GAS_FRACTION['ph3']/total_flow*total_pressure
+        )
+        self.ph3_partial_pressure = ph3_partial_pressure * ureg('kg/(m*s^2)')
+
+        n2_partial_pressure = (
+            n2_flow*GAS_FRACTION['n2']/total_flow*total_pressure
+        )
+        self.n2_partial_pressure = n2_partial_pressure * ureg('kg/(m*s^2)')
+
+        o2_partial_pressure = (
+            o2_in_ar_flow*GAS_FRACTION['o2']/total_flow*total_pressure
+        )
+        self.o2_partial_pressure = o2_partial_pressure * ureg('kg/(m*s^2)')
+
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -2251,7 +2373,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     ) -> None:
         gas_flow = []
 
-        for gas_name in ['ar', 'h2s', 'ph3']:
+        for gas_name in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
             single_gas_flow = DTUGasFlow()
             single_gas_flow.flow_rate = VolumetricFlowRate()
             single_gas_flow.gas = PureSubstanceSection()
