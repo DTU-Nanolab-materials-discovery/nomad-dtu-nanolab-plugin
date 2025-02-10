@@ -88,6 +88,9 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     read_events,
     read_logfile,
     write_params,
+    read_samples,
+    read_guns,
+    plot_plotly_chamber_config,
 )
 
 if TYPE_CHECKING:
@@ -1770,41 +1773,45 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     figure=plot_json,
                 )
             )
+        # Plotting the sample positions on the platen
+        try:
+            samples_plot = read_samples(self.samples)
+            dep_params: DepositionParameters = self.deposition_parameters
+            guns_plot = read_guns(
+                [
+                    dep_params.magkeeper3,
+                    dep_params.magkeeper4,
+                    dep_params.taurus,
+                    dep_params.s_cracker,
+                ],
+                ['magkeeper3', 'magkeeper4', 'taurus', 's_cracker'],
+            )
+            condition_for_plot = (
+                self.instruments[0].platen_rotation is not None and
+                samples_plot is not None and
+                guns_plot is not None
+            )
+            if condition_for_plot:
+                platen_rot = (
+                self.instruments[0].platen_rotation.to('degree').magnitude
+                )
+                sample_pos_plot = plot_plotly_chamber_config(
+                    samples_plot, guns_plot, platen_rot
+                )
 
-        """
-        the plots does not work at the moment as it is not implemented
-        as a plotly figure, but as a matplotlib figure
-        at the figure assumes four samples at the typical positions but in the
-        future it should get the actual positions from the nomad samples
-        """
-        # # Plotting the sample positions on the platen
-        # try:
-        #     samples_plot = read_samples(self.samples)
-        #     dep_params: DepositionParameters = self.deposition_parameters
-        #     guns_plot = read_guns(
-        #         [
-        #             dep_params.magkeeper3,
-        #             dep_params.magkeeper4,
-        #             dep_params.taurus,
-        #             dep_params.s_cracker,
-        #         ],
-        #         ['magkeeper3', 'magkeeper4', 'taurus', 's_cracker'],
-        #     )
-        #     condition_for_plot = (
-        #         self.instruments[0].platen_rotation is not None and
-        #         samples_plot is not None and
-        #         guns_plot is not None
-        #     )
-        #     if condition_for_plot:
-        #         platen_rot = (
-        # self.instruments[0].platen_rotation.to('degree').magnitude)
+                sample_pos_plot_json = json.loads(sample_pos_plot.to_json())
+                sample_pos_plot_json['config'] = dict(
+                    scrollZoom=False,
+                )
+                self.figures.append(
+                    PlotlyFigure(
+                        label='Sample positions',
+                        figure=sample_pos_plot,
+                    )
+                )
 
-        #     sample_pos_plot = plot_matplotlib_chamber_config(
-        #         samples_plot, guns_plot, platen_rot
-        #     )
-
-        # except Exception as e:
-        #     logger.warning(f'Failed to plot the sample positions: {e}')
+        except Exception as e:
+            logger.warning(f'Failed to plot the sample positions: {e}')
 
     # Helper method to write the data
     def write_data(self, config: dict):
