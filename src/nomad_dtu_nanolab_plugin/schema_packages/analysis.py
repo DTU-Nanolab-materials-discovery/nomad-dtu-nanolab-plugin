@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import re
 from typing import TYPE_CHECKING
 
 import nbformat
@@ -46,11 +47,39 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
+
+FIRST_CODE_CELL = """from nomad.client import ArchiveQuery
+from nomad.config import client
+
+analysis_id = "%s"
+a_query = ArchiveQuery(
+    query={'entry_id:any': [analysis_id]},
+    required='*',
+    url=client.url,
+)
+entry_list = a_query.download()
+analysis = entry_list[0].data"""
+
+def replace_analysis_id(
+        notebook: nbformat.notebooknode.NotebookNode,
+        analysis_id: str) -> nbformat.notebooknode.NotebookNode|None:
+    first_cell_pattern = re.compile(
+        re.escape(FIRST_CODE_CELL.strip()).replace('%s', '(.*)')
+    )
+    for cell in notebook.cells:
+        if cell.cell_type == 'code':
+            match = first_cell_pattern.match(cell.source)
+            if match:
+                cell.source = FIRST_CODE_CELL % analysis_id
+                return notebook
+    return
+
+
 m_package = Package()
 
 
 class DtuJupyterAnalysisTemplate(Analysis, Schema):
-    notebook = Quantity(
+    template_notebook = Quantity(
         type=str,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
@@ -66,26 +95,35 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
     generate_notebook = Quantity(
         type=bool,
         description='Generate a Jupyter notebook',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+        ),
     )
 
     def copy_from_analysis(self, archive: 'EntryArchive', logger: 'BoundLogger') -> str:
-        source_notebook = None
-        with archive.m_context.raw_file(self.from_analysis, 'r') as src_file:
-            source_notebook = src_file.read()
-        # TODO: Replace upload_id with the correct value
+        context = self.from_analysis.m_context
+        with context.raw_file(self.from_analysis.notebook, 'r') as src_file:
+            source_notebook = nbformat.read(src_file, as_version=4)
+
+        template_notebook = replace_analysis_id(source_notebook, 'THE_ANALYSIS_ID')
+        if template_notebook is None:
+            logger.error('Standard Analysis query block is not found in the notebook.')
+            return
+        
         new_notebook_path = archive.metadata.mainfile.split('.')[0] + '.ipynb'
         if archive.m_context.raw_path_exists(new_notebook_path):
             logger.error(f'Notebook {new_notebook_path} already exists.')
             return
+        
         with archive.m_context.raw_file(new_notebook_path, 'w') as dest_file:
-            dest_file.write(source_notebook)
+            nbformat.write(template_notebook, dest_file)
 
         return new_notebook_path
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-        if self.generate_notebook and self.from_analysis:
-            self.notebook = self.copy_from_analysis(archive, logger)
+        if self.generate_notebook and self.from_analysis and self.from_analysis.notebook:
+            self.template_notebook = self.copy_from_analysis(archive, logger)
             self.generate_notebook = False
 
 
@@ -172,17 +210,7 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
                     source='Query for the analysis entry associated with this notebook:'
                 ),
                 nbformat.v4.new_code_cell(
-                    source=f"""from nomad.client import ArchiveQuery
-from nomad.config import client
-
-analysis_id = "{archive.metadata.entry_id}"
-a_query = ArchiveQuery(
-    query={{'entry_id:any': [analysis_id]}},
-    required='*',
-    url=client.url,
-)
-entry_list = a_query.download()
-analysis = entry_list[0].data"""
+                    source=FIRST_CODE_CELL % archive.metadata.entry_id
                 ),
                 nbformat.v4.new_markdown_cell(source='### Analysis'),
                 nbformat.v4.new_markdown_cell(
