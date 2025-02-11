@@ -317,31 +317,32 @@ sputtering_targets = AppEntryPoint(
                 f'*#{xrd_schema}',
             ],
         ),
-        columns=Columns(
-            selected=[
-                f'data.lab_id#{xrd_schema}',
-                f'data.xrd_settings.source.xray_tube_voltage#{xrd_schema}',
-                f'data.xrd_settings.source.xray_tube_current#{xrd_schema}',
-                f'metadata.main_author#{xrd_schema}',
-
-            ],
-            options={
-                f'data.lab_id#{xrd_schema}': Column(
-                    label='Measurement ID',
-                ),
-                f'data.xrd_settings.source.xray_tube_voltage#{xrd_schema}': Column(
-                    label='X-ray tube voltage',
-                    unit='kV',
-                ),
-                f'data.xrd_settings.source.xray_tube_current#{xrd_schema}': Column(
-                    label='X-ray tube current',
-                    unit='mA',
-                ),
-                f'metadata.main_author#{xrd_schema}': Column(
-                    label='Main author',
-                )
-            },
-        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{target_schema}',
+                selected=True,
+                label='Target ID',
+            ),
+            Column(
+                search_quantity=f'data.xrd_settings.source.xray_tube_voltage#{xrd_schema}',
+                selected=True,
+                label='X-ray tube voltage',
+                unit='kV',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.xrd_settings.source.xray_tube_current#{xrd_schema}',
+                selected=True,
+                label='X-ray tube current',
+                unit='mA',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'metadata.main_author#{xrd_schema}',
+                selected=True,
+                label='Main author',
+            )
+        ],
         menu=Menu(
         ),
         filters_locked={
@@ -368,30 +369,30 @@ sputtering_targets = AppEntryPoint(
                 f'*#{edx_schema}',
             ],
         ),
-        columns=Columns(
-            selected=[
-                f'data.lab_id#{edx_schema}',
-                f'data.samples.0.lab_id#{edx_schema}',
-                f'data.avg_layer_thickness#{edx_schema}',
-                f'metadata.main_author#{edx_schema}',
-
-            ],
-            options={
-                f'data.lab_id#{edx_schema}': Column(
-                    label='Measurement ID',
-                ),
-                f'data.samples.0.lab_id#{edx_schema}': Column(
-                    label='Sample ID',
-                ),
-                f'data.avg_layer_thickness#{edx_schema}': Column(
-                    label='Average layer thickness',
-                    unit='nm',
-                ),
-                f'metadata.main_author#{edx_schema}': Column(
-                    label='Main author',
-                )
-            },
-        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{target_schema}',
+                selected=True,
+                label='Target ID',
+            ),
+            Column(
+                search_quantity=f'data.samples.0.lab_id#{target_schema}',
+                selected=True,
+                label='Sample ID',
+            ),
+            Column(
+                search_quantity=f'data.avg_layer_thickness#{target_schema}',
+                selected=True,
+                label='Average layer thickness',
+                unit='nm',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'metadata.main_author#{target_schema}',
+                selected=True,
+                label='Main author',
+            )
+        ],
         menu=Menu(
         ),
         filters_locked={
@@ -418,29 +419,28 @@ sputtering_targets = AppEntryPoint(
                 f'*#{analysis_schema}',
             ],
         ),
-        columns=Columns(
-            selected=[
-                f'data.name#{analysis_schema}',
-                f'data.notebook#{analysis_schema}',
-                f'data.datetime#{analysis_schema}',
-                f'metadata.main_author#{analysis_schema}',
-
-            ],
-            options={
-                f'data.name#{analysis_schema}': Column(
-                    label='Measurement ID',
-                ),
-                f'data.notebook#{analysis_schema}': Column(
-                    label='Notebook',
-                ),
-                f'data.datetime#{analysis_schema}': Column(
-                    label='Date and time',
-                ),
-                f'metadata.main_author#{analysis_schema}': Column(
-                    label='Main author',
-                )
-            },
-        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{target_schema}',
+                selected=True,
+                label='Target ID',
+            ),
+            Column(
+                search_quantity=f'data.notebook#{analysis_schema}',
+                selected=True,
+                label='Notebook',
+            ),
+            Column(
+                search_quantity=f'data.datetime#{analysis_schema}',
+                selected=True,
+                label='Date and time',
+            ),
+            Column(
+                search_quantity=f'metadata.main_author#{analysis_schema}',
+                selected=True,
+                label='Main author',
+            )
+        ],
         menu=Menu(
         ),
         filters_locked={
