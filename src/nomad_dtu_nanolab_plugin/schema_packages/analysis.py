@@ -79,6 +79,10 @@ m_package = Package()
 
 
 class DtuJupyterAnalysisTemplate(Analysis, Schema):
+    m_def = Section(
+        categories=[DTUNanolabCategory],
+        label='Jupyter Analysis Template',
+    )
     template_notebook = Quantity(
         type=str,
         a_eln=ELNAnnotation(
@@ -122,7 +126,11 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-        if self.generate_notebook and self.from_analysis and self.from_analysis.notebook:
+        if (
+            self.generate_notebook 
+            and self.from_analysis 
+            and self.from_analysis.notebook
+        ):
             self.template_notebook = self.copy_from_analysis(archive, logger)
             self.generate_notebook = False
 
@@ -272,7 +280,8 @@ analysis.save()"""
         with context.raw_file(self.template.template_notebook, 'r') as src_file:
             source_notebook = nbformat.read(src_file, as_version=4)
 
-        template_notebook = replace_analysis_id(source_notebook, archive.metadata.entry_id)
+        template_notebook = replace_analysis_id(
+            source_notebook, archive.metadata.entry_id)
         if template_notebook is None:
             logger.error('Standard Analysis query block is not found in the notebook.')
             return
