@@ -167,7 +167,7 @@ sputtering_targets = AppEntryPoint(
     name='XRD app',
     description='App for searching the XRD measurements.',
     app=App(
-        label='XRD Measurementss',
+        label='XRD Measurements',
         path='xrd-measurements',
         category='Activities',
         description="""
@@ -218,7 +218,7 @@ sputtering_targets = AppEntryPoint(
     name='EDX app',
     description='App for searching the EDX measurements.',
     app=App(
-        label='EDX Measurementss',
+        label='EDX Measurements',
         path='edx-measurements',
         category='Activities',
         description="""
@@ -249,6 +249,55 @@ sputtering_targets = AppEntryPoint(
                     unit='nm',
                 ),
                 f'metadata.main_author#{edx_schema}': Column(
+                    label='Main author',
+                )
+            },
+        ),
+        menu=Menu(
+        ),
+        filters_locked={
+            'entry_type': 'EDXMeasurement',
+        },
+    ),
+)
+
+
+analysis_schema = 'nomad_dtu_nanolab_plugin.schema_packages.analysis.DtuJupiterAnalysis'
+
+sputtering_targets = AppEntryPoint(
+    name='Analysis app',
+    description='App for searching the performed analysis.',
+    app=App(
+        label='Analysis',
+        path='analysis',
+        category='Activities',
+        description="""
+        Explore the different Jupyter Notebooks and analysis results.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{analysis_schema}',
+            ],
+        ),
+        columns=Columns(
+            selected=[
+                f'data.name#{analysis_schema}',
+                f'data.notebook#{analysis_schema}',
+                f'data.datetime#{analysis_schema}',
+                f'metadata.main_author#{analysis_schema}',
+
+            ],
+            options={
+                f'data.name#{analysis_schema}': Column(
+                    label='Measurement ID',
+                ),
+                f'data.notebook#{analysis_schema}': Column(
+                    label='Notebook',
+                ),
+                f'data.datetime#{analysis_schema}': Column(
+                    label='Date and time',
+                ),
+                f'metadata.main_author#{analysis_schema}': Column(
                     label='Main author',
                 )
             },
