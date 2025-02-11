@@ -159,3 +159,104 @@ sputtering_targets = AppEntryPoint(
         },
     ),
 )
+
+
+xrd_schema = 'nomad_dtu_nanolab_plugin.schema_packages.xrd.DTUXRDMeasurement'
+
+sputtering_targets = AppEntryPoint(
+    name='XRD app',
+    description='App for searching the XRD measurements.',
+    app=App(
+        label='XRD Measurementss',
+        path='xrd-measurements',
+        category='Activities',
+        description="""
+        Explore the different measurements.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{xrd_schema}',
+            ],
+        ),
+        columns=Columns(
+            selected=[
+                f'data.lab_id#{xrd_schema}',
+                f'data.xrd_settings.source.xray_tube_voltage#{xrd_schema}',
+                f'data.xrd_settings.source.xray_tube_current#{xrd_schema}',
+                f'metadata.main_author#{xrd_schema}',
+
+            ],
+            options={
+                f'data.lab_id#{xrd_schema}': Column(
+                    label='Measurement ID',
+                ),
+                f'data.xrd_settings.source.xray_tube_voltage#{xrd_schema}': Column(
+                    label='X-ray tube voltage',
+                    unit='kV',
+                ),
+                f'data.xrd_settings.source.xray_tube_current#{xrd_schema}': Column(
+                    label='X-ray tube current',
+                    unit='mA',
+                ),
+                f'metadata.main_author#{xrd_schema}': Column(
+                    label='Main author',
+                )
+            },
+        ),
+        menu=Menu(
+        ),
+        filters_locked={
+            'entry_type': 'DTUXRDMeasurement',
+        },
+    ),
+)
+
+
+edx_schema = 'nomad_dtu_nanolab_plugin.schema_packages.edx.EDXMeasurement'
+
+sputtering_targets = AppEntryPoint(
+    name='EDX app',
+    description='App for searching the EDX measurements.',
+    app=App(
+        label='EDX Measurementss',
+        path='edx-measurements',
+        category='Activities',
+        description="""
+        Explore the different measurements.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{edx_schema}',
+            ],
+        ),
+        columns=Columns(
+            selected=[
+                f'data.lab_id#{edx_schema}',
+                f'data.samples.0.lab_id#{edx_schema}',
+                f'data.avg_layer_thickness#{edx_schema}',
+                f'metadata.main_author#{edx_schema}',
+
+            ],
+            options={
+                f'data.lab_id#{edx_schema}': Column(
+                    label='Measurement ID',
+                ),
+                f'data.samples.0.lab_id#{edx_schema}': Column(
+                    label='Sample ID',
+                ),
+                f'data.avg_layer_thickness#{edx_schema}': Column(
+                    label='Average layer thickness',
+                    unit='nm',
+                ),
+                f'metadata.main_author#{edx_schema}': Column(
+                    label='Main author',
+                )
+            },
+        ),
+        menu=Menu(
+        ),
+        filters_locked={
+            'entry_type': 'EDXMeasurement',
+        },
+    ),
+)
