@@ -6833,7 +6833,8 @@ def read_samples(sample_list: list):
         label = str(sample_obj.relative_position)
         pos_x = sample_obj.position_x.to('mm').magnitude
         pos_y = sample_obj.position_y.to('mm').magnitude
-        # size = sample_obj.reference.SIZE?#TODO get the size
+        # size = sample_obj.substrate.geometry.width? #TODO get the height and width of the sample
+        #and adapt the code for height and width
         sample = Sample(label, pos_x, pos_y)
         samples.append(sample)
     return samples
