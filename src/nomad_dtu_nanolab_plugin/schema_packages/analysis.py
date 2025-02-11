@@ -267,6 +267,26 @@ analysis.save()"""
             nbformat.write(nb, nb_file)
         archive.m_context.process_updated_raw_file(self.notebook, allow_modify=True)
 
+    def copy_from_template(self, archive: 'EntryArchive', logger: 'BoundLogger') -> str:
+        context = self.template.m_context
+        with context.raw_file(self.template.template_notebook, 'r') as src_file:
+            source_notebook = nbformat.read(src_file, as_version=4)
+
+        template_notebook = replace_analysis_id(source_notebook, archive.metadata.entry_id)
+        if template_notebook is None:
+            logger.error('Standard Analysis query block is not found in the notebook.')
+            return
+        
+        new_notebook_path = archive.metadata.mainfile.split('.')[0] + '.ipynb'
+        if archive.m_context.raw_path_exists(new_notebook_path):
+            logger.error(f'Notebook {new_notebook_path} already exists.')
+            return
+        
+        with archive.m_context.raw_file(new_notebook_path, 'w') as dest_file:
+            nbformat.write(template_notebook, dest_file)
+
+        self.notebook = new_notebook_path
+
     def save(self):
         archive = self.m_parent
         create_entry_with_api(
@@ -279,5 +299,8 @@ analysis.save()"""
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
         if self.generate_notebook:
-            self.create_notebook(archive, logger)
+            if self.template and self.template.template_notebook:
+                self.copy_from_template(archive, logger)
+            else:
+                self.create_notebook(archive, logger)
             self.generate_notebook = False
