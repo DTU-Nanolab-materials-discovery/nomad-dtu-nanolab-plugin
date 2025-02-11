@@ -85,12 +85,12 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     map_source_up_params_to_nomad,
     map_sputter_source_params_to_nomad,
     map_step_params_to_nomad,
-    read_events,
-    read_logfile,
-    write_params,
-    read_samples,
-    read_guns,
     plot_plotly_chamber_config,
+    read_events,
+    read_guns,
+    read_logfile,
+    read_samples,
+    write_params,
 )
 
 if TYPE_CHECKING:
@@ -1787,14 +1787,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 ['magkeeper3', 'magkeeper4', 'taurus', 's_cracker'],
             )
             condition_for_plot = (
-                self.instruments[0].platen_rotation is not None and
-                samples_plot is not None and
-                guns_plot is not None
+                self.instruments[0].platen_rotation is not None
+                and samples_plot is not None
+                and guns_plot is not None
             )
             if condition_for_plot:
-                platen_rot = (
-                self.instruments[0].platen_rotation.to('degree').magnitude
-                )
+                platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
                 sample_pos_plot = plot_plotly_chamber_config(
                     samples_plot, guns_plot, platen_rot
                 )
