@@ -204,14 +204,16 @@ class DtuSubstrateMounting(ArchiveSection):
             self.substrate = substrate
         if self.position_x is None and self.position_y is None:
             positions = {
-                'BL': (-0.02, 0.035),
-                'BR': (0.02, 0.035),
-                'FL': (-0.02, -0.005),
-                'FR': (0.02, -0.005),
-                'G': (0, -0.038),
+                'BL': (-0.02, 0.035, 0),
+                'BR': (0.02, 0.035 , 0),
+                'FL': (-0.02, -0.005, 0),
+                'FR': (0.02, -0.005 , 0),
+                'G': (0, -0.038, np.pi/2),
             }
             if self.relative_position in positions:
-                self.position_x, self.position_y = positions[self.relative_position]
+                self.position_x, self.position_y, self.rotation = (
+                    positions[self.relative_position]
+                )
         if self.relative_position is not None:
             self.name = self.relative_position
         elif self.position_x is not None and self.position_y is not None:
