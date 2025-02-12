@@ -2514,7 +2514,7 @@ def get_end_of_process(raw_data, params=None):
 
     if 'deposition' not in params:
         raise ValueError(
-            'Missing deposition info, ' 'run get_simple_deposition_params first'
+            'Missing deposition info, run get_simple_deposition_params first'
         )
     params['overview']['end_of_process_temp'] = raw_data[
         'Substrate Heater Temperature'
@@ -4160,9 +4160,9 @@ def create_3d_plot(**kwargs):
                 name=f'Trace {col}',
                 line=dict(color=color),
                 hovertemplate=(
-                    f"X: %{{x}}<br>"
-                    f"Intensity: %{{z}}<br>"
-                    f"Time: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}<extra></extra>"
+                    f'X: %{{x}}<br>'
+                    f'Intensity: %{{z}}<br>'
+                    f'Time: {timestamp.strftime("%Y-%m-%d %H:%M:%S")}<extra></extra>'
                 ),
             )
         )
@@ -4239,10 +4239,10 @@ def plot_logfile_chamber(main_params, logfile_name=''):
 
     # Assuming dummy samples for now
     samples = [
-        Sample('BR', 20, 35, [40,40]),
-        Sample('BL', -20, 35, [40,40]),
-        Sample('FR', 20, -5, [40,40]),
-        Sample('FL', -20, -5, [40,40]),
+        Sample('BR', 20, 35, [40, 40]),
+        Sample('BL', -20, 35, [40, 40]),
+        Sample('FR', 20, -5, [40, 40]),
+        Sample('FL', -20, -5, [40, 40]),
     ]
 
     platen_rot = main_params['deposition']['platen_position']
@@ -5440,7 +5440,7 @@ def read_spectrum(file_path):
 
     # Rename the columns appropriately
     result_df.columns.name = None
-    y_columns = [f'y{i+1}' for i in range(len(result_df.columns) - 1)]
+    y_columns = [f'y{i + 1}' for i in range(len(result_df.columns) - 1)]
     result_df.columns = ['x'] + y_columns
 
     # Step 8: Drop the first row if it is filled with NaNs
@@ -5449,7 +5449,7 @@ def read_spectrum(file_path):
 
     # Step 9: Create a timestamp map
     timestamp_map = {
-        f'y{i+1}': timestamp
+        f'y{i + 1}': timestamp
         for i, timestamp in enumerate(reshaped_data['Timestamp'].unique())
     }
 
@@ -5565,8 +5565,8 @@ def verify_deposition_unicity(events, raw_data):
                 print('Number of deposition events after filtering:', event.events)
                 for i in range(event.events):
                     print(
-                        f'Deposition({i+1}) start time: {event.bounds[i][0]}',
-                        f'Deposition({i+1}) end time: {event.bounds[i][1]}',
+                        f'Deposition({i + 1}) start time: {event.bounds[i][0]}',
+                        f'Deposition({i + 1}) end time: {event.bounds[i][1]}',
                     )
                 if event.events == 1:
                     print('A unique deposition event was succesfully filtered')
@@ -6786,7 +6786,7 @@ GUN_OVERVIEW_NAMES = [
 class Sample:
     # Note that sample positions are the position of the center of
     # the square samples. sub_size=40 is assumed by default.
-    def __init__(self, label, pos_x, pos_y, size:list, mat='cSi'):
+    def __init__(self, label, pos_x, pos_y, size: list, mat='cSi'):
         self.label = label
         self.pos_x = pos_x
         self.pos_y = pos_y
@@ -6836,7 +6836,7 @@ def read_samples(sample_list: list):
         pos_y = sample_obj.position_y.to('mm').magnitude
         width = sample_obj.substrate.geometry.width
         length = sample_obj.obj.substrate.geometry.length
-        sample = Sample(label, pos_x, pos_y,[width, length])
+        sample = Sample(label, pos_x, pos_y, [width, length])
         samples.append(sample)
     return samples
 

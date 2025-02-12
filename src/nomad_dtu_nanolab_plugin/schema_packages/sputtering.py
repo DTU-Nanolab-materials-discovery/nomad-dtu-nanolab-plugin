@@ -210,8 +210,8 @@ class DtuSubstrateMounting(ArchiveSection):
             self.name = self.relative_position
         elif self.position_x is not None and self.position_y is not None:
             self.name = (
-                f"x{self.position_x.to('cm').magnitude:.1f}-"
-                f"y{self.position_y.to('cm').magnitude:.1f}"
+                f'x{self.position_x.to("cm").magnitude:.1f}-'
+                f'y{self.position_y.to("cm").magnitude:.1f}'
             ).replace('.', 'p')
 
 
@@ -1467,7 +1467,7 @@ class DepositionParameters(ArchiveSection):
             temp = self.deposition_temperature.to('degC').magnitude
             temp2 = self.deposition_temperature_2.to('degC').magnitude
             tru_temp = 0.905 * (0.5 * (temp + temp2)) + 12
-            self.deposition_true_temperature = tru_temp * ureg('degC')
+            self.deposition_true_temperature = ureg.Quantity(tru_temp, 'degC')
 
         if self.ph3_in_ar_flow.magnitude != 0 and self.h2s_in_ar_flow.magnitude != 0:
             self.ph3_h2s_ratio = (
@@ -1792,8 +1792,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 and guns_plot is not None
             )
             if condition_for_plot:
-                platen_rot = self.instruments[0].platen_rotation.copy()
-                platen_rot = platen_rot.to('degree').magnitude
+                platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
                 sample_pos_plot = plot_plotly_chamber_config(
                     samples_plot, guns_plot, platen_rot
                 )
@@ -1824,7 +1823,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         joined_keys = "']['".join(input_keys)
         params_str = f"params['{joined_keys}']"
-        subsection_str = f"{output_obj_name}.{'.'.join(output_keys)}"
+        subsection_str = f'{output_obj_name}.{".".join(output_keys)}'
 
         value = get_nested_value(input_dict, input_keys)
 
