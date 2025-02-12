@@ -302,7 +302,7 @@ sputtering_targets = AppEntryPoint(
 
 xrd_schema = 'nomad_dtu_nanolab_plugin.schema_packages.xrd.DTUXRDMeasurement'
 
-sputtering_targets = AppEntryPoint(
+xrd = AppEntryPoint(
     name='XRD app',
     description='App for searching the XRD measurements.',
     app=App(
@@ -344,6 +344,14 @@ sputtering_targets = AppEntryPoint(
             )
         ],
         menu=Menu(
+            size=MenuSizeEnum.MD,
+            items=[
+                MenuItemTerms(
+                    title='Sample ID',
+                    search_quantity=f'data.samples.lab_id#{xrd_schema}',
+                    show_input=True,
+                ),
+            ],
         ),
         filters_locked={
             'entry_type': 'DTUXRDMeasurement',
@@ -354,7 +362,7 @@ sputtering_targets = AppEntryPoint(
 
 edx_schema = 'nomad_dtu_nanolab_plugin.schema_packages.edx.EDXMeasurement'
 
-sputtering_targets = AppEntryPoint(
+edx = AppEntryPoint(
     name='EDX app',
     description='App for searching the EDX measurements.',
     app=App(
@@ -371,29 +379,32 @@ sputtering_targets = AppEntryPoint(
         ),
         columns=[
             Column(
-                search_quantity=f'data.lab_id#{target_schema}',
+                search_quantity=f'data.lab_id#{edx_schema}',
                 selected=True,
                 label='Target ID',
             ),
             Column(
-                search_quantity=f'data.samples.0.lab_id#{target_schema}',
-                selected=True,
-                label='Sample ID',
-            ),
-            Column(
-                search_quantity=f'data.avg_layer_thickness#{target_schema}',
+                search_quantity=f'data.avg_layer_thickness#{edx_schema}',
                 selected=True,
                 label='Average layer thickness',
                 unit='nm',
                 format=Format(decimals=1),
             ),
             Column(
-                search_quantity=f'metadata.main_author#{target_schema}',
+                search_quantity=f'metadata.main_author#{edx_schema}',
                 selected=True,
                 label='Main author',
             )
         ],
         menu=Menu(
+            size=MenuSizeEnum.MD,
+            items=[
+                MenuItemTerms(
+                    title='Sample ID',
+                    search_quantity=f'data.samples.lab_id#{edx_schema}',
+                    show_input=True,
+                ),
+            ],
         ),
         filters_locked={
             'entry_type': 'EDXMeasurement',
@@ -402,9 +413,9 @@ sputtering_targets = AppEntryPoint(
 )
 
 
-analysis_schema = 'nomad_dtu_nanolab_plugin.schema_packages.analysis.DtuJupiterAnalysis'
+analysis_schema = 'nomad_dtu_nanolab_plugin.schema_packages.analysis.DtuJupyterAnalysis'
 
-sputtering_targets = AppEntryPoint(
+analysis = AppEntryPoint(
     name='Analysis app',
     description='App for searching the performed analysis.',
     app=App(
@@ -421,9 +432,9 @@ sputtering_targets = AppEntryPoint(
         ),
         columns=[
             Column(
-                search_quantity=f'data.lab_id#{target_schema}',
+                search_quantity=f'data.lab_id#{analysis_schema}',
                 selected=True,
-                label='Target ID',
+                label='Analysis ID',
             ),
             Column(
                 search_quantity=f'data.notebook#{analysis_schema}',
@@ -441,10 +452,8 @@ sputtering_targets = AppEntryPoint(
                 label='Main author',
             )
         ],
-        menu=Menu(
-        ),
         filters_locked={
-            'entry_type': 'EDXMeasurement',
+            'entry_type': 'DtuJupyterAnalysis',
         },
     ),
 )
