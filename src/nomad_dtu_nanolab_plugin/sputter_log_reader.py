@@ -4239,20 +4239,20 @@ def plot_logfile_chamber(main_params, logfile_name=''):
 
     # Assuming dummy samples for now
     samples = [
-        Sample('BR', 20, 35, [40, 40]),
-        Sample('BL', -20, 35, [40, 40]),
-        Sample('FR', 20, -5, [40, 40]),
-        Sample('FL', -20, -5, [40, 40]),
+        Sample('BR', [20, 35], 0, [40, 40]),
+        Sample('BL', [-20, 35], 0, [40, 40]),
+        Sample('FR', [20, -5], 0, [40, 40]),
+        Sample('FL', [-20, -5], 0, [40, 40]),
+        Sample('G', [0, -38], 90, [26, 76]),
     ]
 
     platen_rot = main_params['deposition']['platen_position']
 
     # Plotting
-    fig = plot_matplotlib_chamber_config(samples, guns, platen_rot)
     plotly_fig = plot_plotly_chamber_config(samples, guns, platen_rot)
 
     # Return both the Matplotlib and Plotly figures
-    return fig, plotly_fig
+    return plotly_fig
 
 
 def quick_plot(df, Y, **kwargs):
@@ -6786,14 +6786,15 @@ GUN_OVERVIEW_NAMES = [
 class Sample:
     # Note that sample positions are the position of the center of
     # the square samples. sub_size=40 is assumed by default.
-    def __init__(self, label, pos_x, pos_y, size: list, mat='cSi'):
+    def __init__(self, label, pos: list, rotation, size: list, mat='cSi'):
         self.label = label
-        self.pos_x = pos_x
-        self.pos_y = pos_y
+        self.pos_x = pos[0]
+        self.pos_y = pos[1]
+        self.rotation = rotation
         self.width = size[0]
         self.length = size[1]
-        self.pos_x_bl = pos_x - size[0] / 2
-        self.pos_y_bl = pos_y - size[1] / 2
+        self.pos_x_bl = pos[0] - size[0] / 2
+        self.pos_y_bl = pos[1] - size[1] / 2
         self.mat = mat
 
 
@@ -6834,9 +6835,10 @@ def read_samples(sample_list: list):
         label = str(sample_obj.relative_position)
         pos_x = sample_obj.position_x.to('mm').magnitude
         pos_y = sample_obj.position_y.to('mm').magnitude
+        rotation = sample_obj.rotation.to('degree').magnitude
         width = sample_obj.substrate.geometry.width
         length = sample_obj.obj.substrate.geometry.length
-        sample = Sample(label, pos_x, pos_y, [width, length])
+        sample = Sample(label, [pos_x, pos_y], rotation, [width, length])
         samples.append(sample)
     return samples
 
@@ -7128,11 +7130,16 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=Tr
     )
 
     # Rotation function
-    def rotate_point(x, y, angle_deg):
-        angle_rad = np.radians(angle_deg - 90)
+    def rotate_point(x, y, angle_deg, platen_rot=True):
+        if platen_rot:
+            angle_rad = np.radians(angle_deg - 90)
+        else:
+            angle_rad = np.radians(angle_deg)
         x_rotated = x * np.cos(angle_rad) - y * np.sin(angle_rad)
         y_rotated = x * np.sin(angle_rad) + y * np.cos(angle_rad)
         return x_rotated, y_rotated
+
+    # XY_PLOTTED = False
 
     # Add sample squares and arrows
     # Add sample rectangles and arrows
@@ -7149,6 +7156,17 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=Tr
             (x0, y0 + length),
         ]
 
+        # rotate sample by sample.rotation around its center
+        if sample.rotation != 0:
+            center = [x0 + width / 2, y0 + length / 2]
+            corners = [
+                rotate_point(
+                    x - center[0], y - center[1], sample.rotation, platen_rot=False
+                )
+                for x, y in corners
+            ]
+            corners = [(x + center[0], y + center[1]) for x, y in corners]
+
         # Rotate all corners
         rotated_corners = [rotate_point(x, y, platen_angle) for x, y in corners]
 
@@ -7162,49 +7180,83 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=Tr
             line=dict(color='green', width=DEFAULT_LINEWIDTH),
             fillcolor=None,
         )
+        if sample.rotation == 0:
+            # XY_PLOTTED = True
 
-        # X arrow (aligned with rotated rectangle)
-        arrow_x_start = x0 + width / 10
-        arrow_x_end = arrow_x_start + width / 4
-        x_arrow_points = [
-            (arrow_x_start, y0 + length / 10),
-            (arrow_x_end, y0 + length / 10),
-        ]
-        rotated_x_arrow = [rotate_point(x, y, platen_angle) for x, y in x_arrow_points]
+            # X arrow (aligned with rotated rectangle)
+            arrow_x_start = x0 + width / 10
+            arrow_x_end = arrow_x_start + width / 4
+            x_arrow_points = [
+                (arrow_x_start, y0 + length / 10),
+                (arrow_x_end, y0 + length / 10),
+            ]
+            rotated_x_arrow = [
+                rotate_point(x, y, platen_angle) for x, y in x_arrow_points
+            ]
 
-        fig.add_trace(
-            go.Scatter(
-                x=[p[0] for p in rotated_x_arrow],
-                y=[p[1] for p in rotated_x_arrow],
-                mode='lines',
-                line=dict(color='red', width=2),
-                showlegend=False,
+            fig.add_trace(
+                go.Scatter(
+                    x=[p[0] for p in rotated_x_arrow],
+                    y=[p[1] for p in rotated_x_arrow],
+                    mode='lines',
+                    line=dict(color='red', width=2),
+                    showlegend=False,
+                )
             )
-        )
 
-        # Y arrow (aligned with rotated rectangle)
-        arrow_y_start = y0 + length / 10
-        arrow_y_end = arrow_y_start + length / 4
-        y_arrow_points = [
-            (x0 + width / 10, arrow_y_start),
-            (x0 + width / 10, arrow_y_end),
-        ]
-        rotated_y_arrow = [rotate_point(x, y, platen_angle) for x, y in y_arrow_points]
+            # Y arrow (aligned with rotated rectangle)
+            arrow_y_start = y0 + length / 10
+            arrow_y_end = arrow_y_start + length / 4
+            y_arrow_points = [
+                (x0 + width / 10, arrow_y_start),
+                (x0 + width / 10, arrow_y_end),
+            ]
+            rotated_y_arrow = [
+                rotate_point(x, y, platen_angle) for x, y in y_arrow_points
+            ]
 
-        fig.add_trace(
-            go.Scatter(
-                x=[p[0] for p in rotated_y_arrow],
-                y=[p[1] for p in rotated_y_arrow],
-                mode='lines',
-                line=dict(color='blue', width=2),
-                showlegend=False,
+            fig.add_trace(
+                go.Scatter(
+                    x=[p[0] for p in rotated_y_arrow],
+                    y=[p[1] for p in rotated_y_arrow],
+                    mode='lines',
+                    line=dict(color='blue', width=2),
+                    showlegend=False,
+                )
             )
-        )
+            # X and Y labels
+            arrowX_label_x, arrowX_label_y = rotate_point(
+                sample.pos_x_bl + 0.55 * width,
+                sample.pos_y_bl + 0.15 * length,
+                platen_angle,
+            )
+            arrowY_label_x, arrowY_label_y = rotate_point(
+                sample.pos_x_bl + 0.15 * width,
+                sample.pos_y_bl + 0.55 * length,
+                platen_angle,
+            )
+
+            fig.add_annotation(
+                x=arrowX_label_x,
+                y=arrowX_label_y,
+                text='X',
+                showarrow=False,
+                font=dict(color='red', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
+            )
+            fig.add_annotation(
+                x=arrowY_label_x,
+                y=arrowY_label_y,
+                text='Y',
+                showarrow=False,
+                font=dict(
+                    color='blue', size=DEFAULT_FONTSIZE + 4, family='Arial Black'
+                ),
+            )
 
         # Sample label
         label_x, label_y = rotate_point(
-            sample.pos_x_bl + 0.8 * width,
-            sample.pos_y_bl + 0.8 * length,
+            sample.pos_x_bl + 0.5 * width,
+            sample.pos_y_bl + 0.5 * length,
             platen_angle,
         )
         fig.add_annotation(
@@ -7213,33 +7265,6 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=Tr
             text=sample.label,
             showarrow=False,
             font=dict(color='black', size=DEFAULT_FONTSIZE + 4),
-        )
-
-        # X and Y labels
-        arrowX_label_x, arrowX_label_y = rotate_point(
-            sample.pos_x_bl + 0.55 * width,
-            sample.pos_y_bl + 0.15 * length,
-            platen_angle,
-        )
-        arrowY_label_x, arrowY_label_y = rotate_point(
-            sample.pos_x_bl + 0.15 * width,
-            sample.pos_y_bl + 0.55 * length,
-            platen_angle,
-        )
-
-        fig.add_annotation(
-            x=arrowX_label_x,
-            y=arrowX_label_y,
-            text='X',
-            showarrow=False,
-            font=dict(color='red', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
-        )
-        fig.add_annotation(
-            x=arrowY_label_x,
-            y=arrowY_label_y,
-            text='Y',
-            showarrow=False,
-            font=dict(color='blue', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
         )
 
     # Add guns
@@ -7500,11 +7525,7 @@ def main():
         # -----GRAPH THE CHAMBER CONFIG---
 
         if 'platen_position' in main_params['deposition']:
-            chamber_plot, plolty_chamber_plot = plot_logfile_chamber(
-                main_params, logfiles['name'][i]
-            )
-            # export matplotlib plot as png
-            chamber_plot.savefig(chamber_file_path, dpi=300)
+            plolty_chamber_plot = plot_logfile_chamber(main_params, logfiles['name'][i])
 
             plolty_chamber_plot.write_html(chamber_file_path.replace('.png', '.html'))
 

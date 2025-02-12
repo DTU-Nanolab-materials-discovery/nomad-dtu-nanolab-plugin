@@ -200,15 +200,15 @@ class DtuSubstrateMounting(ArchiveSection):
         if self.position_x is None and self.position_y is None:
             positions = {
                 'BL': (-0.02, 0.035, 0),
-                'BR': (0.02, 0.035 , 0),
+                'BR': (0.02, 0.035, 0),
                 'FL': (-0.02, -0.005, 0),
-                'FR': (0.02, -0.005 , 0),
-                'G': (0, -0.038, np.pi/2),
+                'FR': (0.02, -0.005, 0),
+                'G': (0, -0.038, np.pi / 2),
             }
             if self.relative_position in positions:
-                self.position_x, self.position_y, self.rotation = (
-                    positions[self.relative_position]
-                )
+                self.position_x, self.position_y, self.rotation = positions[
+                    self.relative_position
+                ]
         if self.relative_position is not None:
             self.name = self.relative_position
         elif self.position_x is not None and self.position_y is not None:
@@ -1790,15 +1790,15 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             samples_plot = read_samples(self.substrates)
         except Exception as e:
             samples_plot = [
-                Sample('BR', 20, 35, [40, 40]),
-                Sample('BL', -20, 35, [40, 40]),
-                Sample('FR', 20, -5, [40, 40]),
-                Sample('FL', -20, -5, [40, 40]),
-                Sample('G', 0, -38, [26, 76]),
+                Sample('BR', [20, 35], 0, [40, 40]),
+                Sample('BL', [-20, 35], 0, [40, 40]),
+                Sample('FR', [20, -5], 0, [40, 40]),
+                Sample('FL', [-20, -5], 0, [40, 40]),
+                Sample('G', [0, -38], 90, [26, 76]),
             ]
             logger.warning(
                 f'Failed to read the sample positions. '
-                f'Defaulting to BL, BR, FL, FR, and G {e}'
+                f'Defaulting to BL, BR, FL, FR, and G:{e}'
             )
 
             dep_params: DepositionParameters = self.deposition_parameters
