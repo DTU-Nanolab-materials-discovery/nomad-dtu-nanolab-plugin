@@ -4239,10 +4239,10 @@ def plot_logfile_chamber(main_params, logfile_name=''):
 
     # Assuming dummy samples for now
     samples = [
-        Sample('BR', 20, 35, 40),
-        Sample('BL', -20, 35, 40),
-        Sample('FR', 20, -5, 40),
-        Sample('FL', -20, -5, 40),
+        Sample('BR', 20, 35, [40,40]),
+        Sample('BL', -20, 35, [40,40]),
+        Sample('FR', 20, -5, [40,40]),
+        Sample('FL', -20, -5, [40,40]),
     ]
 
     platen_rot = main_params['deposition']['platen_position']
@@ -6786,13 +6786,14 @@ GUN_OVERVIEW_NAMES = [
 class Sample:
     # Note that sample positions are the position of the center of
     # the square samples. sub_size=40 is assumed by default.
-    def __init__(self, label, pos_x, pos_y, sub_size=40, mat='cSi'):
+    def __init__(self, label, pos_x, pos_y, size:list, mat='cSi'):
         self.label = label
         self.pos_x = pos_x
         self.pos_y = pos_y
-        self.sub_size = sub_size
-        self.pos_x_bl = pos_x - sub_size / 2
-        self.pos_y_bl = pos_y - sub_size / 2
+        self.width = size[0]
+        self.length = size[1]
+        self.pos_x_bl = pos_x - size[0] / 2
+        self.pos_y_bl = pos_y - size[1] / 2
         self.mat = mat
 
 
@@ -6833,9 +6834,9 @@ def read_samples(sample_list: list):
         label = str(sample_obj.relative_position)
         pos_x = sample_obj.position_x.to('mm').magnitude
         pos_y = sample_obj.position_y.to('mm').magnitude
-        # size = sample_obj.substrate.geometry.width? #TODO get the height and width of the sample
-        #and adapt the code for height and width
-        sample = Sample(label, pos_x, pos_y)
+        width = sample_obj.substrate.geometry.width
+        length = sample_obj.obj.substrate.geometry.length
+        sample = Sample(label, pos_x, pos_y,[ width, length])
         samples.append(sample)
     return samples
 
@@ -7134,23 +7135,24 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=Fa
         return x_rotated, y_rotated
 
     # Add sample squares and arrows
+    # Add sample rectangles and arrows
     for sample in samples:
         # Original rectangle coordinates
         x0, y0 = sample.pos_x_bl, sample.pos_y_bl
-        sub_size = sample.sub_size
+        width, length = sample.width, sample.length
 
-        # Compute all four corners of the square
+        # Compute all four corners of the rectangle
         corners = [
             (x0, y0),
-            (x0 + sub_size, y0),
-            (x0 + sub_size, y0 + sub_size),
-            (x0, y0 + sub_size),
+            (x0 + width, y0),
+            (x0 + width, y0 + length),
+            (x0, y0 + length),
         ]
 
         # Rotate all corners
         rotated_corners = [rotate_point(x, y, platen_angle) for x, y in corners]
 
-        # Create polygon shape for rotated square
+        # Create polygon shape for rotated rectangle
         fig.add_shape(
             type='path',
             path=f'M{rotated_corners[0][0]},{rotated_corners[0][1]} '
@@ -7161,12 +7163,12 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=Fa
             fillcolor=None,
         )
 
-        # X arrow (aligned with rotated square)
-        arrow_x_start = x0 + sub_size / 10
-        arrow_x_end = arrow_x_start + sub_size / 4
+        # X arrow (aligned with rotated rectangle)
+        arrow_x_start = x0 + width / 10
+        arrow_x_end = arrow_x_start + width / 4
         x_arrow_points = [
-            (arrow_x_start, y0 + sub_size / 10),
-            (arrow_x_end, y0 + sub_size / 10),
+            (arrow_x_start, y0 + length / 10),
+            (arrow_x_end, y0 + length / 10),
         ]
         rotated_x_arrow = [rotate_point(x, y, platen_angle) for x, y in x_arrow_points]
 
@@ -7180,12 +7182,12 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=Fa
             )
         )
 
-        # Y arrow (aligned with rotated square)
-        arrow_y_start = y0 + sub_size / 10
-        arrow_y_end = arrow_y_start + sub_size / 4
+        # Y arrow (aligned with rotated rectangle)
+        arrow_y_start = y0 + length / 10
+        arrow_y_end = arrow_y_start + length / 4
         y_arrow_points = [
-            (x0 + sub_size / 10, arrow_y_start),
-            (x0 + sub_size / 10, arrow_y_end),
+            (x0 + width / 10, arrow_y_start),
+            (x0 + width / 10, arrow_y_end),
         ]
         rotated_y_arrow = [rotate_point(x, y, platen_angle) for x, y in y_arrow_points]
 
@@ -7201,8 +7203,8 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=Fa
 
         # Sample label
         label_x, label_y = rotate_point(
-            sample.pos_x_bl + 0.8 * sample.sub_size,
-            sample.pos_y_bl + 0.8 * sample.sub_size,
+            sample.pos_x_bl + 0.8 * width,
+            sample.pos_y_bl + 0.8 * length,
             platen_angle,
         )
         fig.add_annotation(
@@ -7215,13 +7217,13 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=Fa
 
         # X and Y labels
         arrowX_label_x, arrowX_label_y = rotate_point(
-            sample.pos_x_bl + 0.55 * sample.sub_size,
-            sample.pos_y_bl + 0.15 * sample.sub_size,
+            sample.pos_x_bl + 0.55 * width,
+            sample.pos_y_bl + 0.15 * length,
             platen_angle,
         )
         arrowY_label_x, arrowY_label_y = rotate_point(
-            sample.pos_x_bl + 0.15 * sample.sub_size,
-            sample.pos_y_bl + 0.55 * sample.sub_size,
+            sample.pos_x_bl + 0.15 * width,
+            sample.pos_y_bl + 0.55 * length,
             platen_angle,
         )
 
