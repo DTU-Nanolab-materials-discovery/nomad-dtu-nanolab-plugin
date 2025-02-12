@@ -8,8 +8,6 @@ data:
       position_y: 20
   deposition_parameters:
     m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters
-    ph3_in_ar_flow: 10
-    h2s_in_ar_flow: 10
     Magkeeper3:
       m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
       target_material: 'Cu'
@@ -23,4 +21,4 @@ data:
       m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
   instruments:
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.InstrumentParameters
-      platen_rotation: 1.39626
+

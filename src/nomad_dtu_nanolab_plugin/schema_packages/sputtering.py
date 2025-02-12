@@ -75,6 +75,7 @@ from nomad_dtu_nanolab_plugin.schema_packages.substrate import (
 from nomad_dtu_nanolab_plugin.schema_packages.target import DTUTarget
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     GAS_FRACTION,
+    Sample,
     format_logfile,
     generate_plots,
     get_nested_value,
@@ -1225,6 +1226,7 @@ class DepositionParameters(ArchiveSection):
         default=False,
         a_eln={'component': 'BoolEditQuantity'},
     )  # flag for if the deposition was interrupted (e.g. due to plasma turn off)
+
     sputter_pressure = Quantity(
         type=np.float64,
         default=0.6666,
@@ -1385,8 +1387,6 @@ class DepositionParameters(ArchiveSection):
     )
 
     def _calc_partial_pressure(self):
-        pass
-        # TODO make the calculation of the partial pressure
         ar_flow = self.ar_flow.magnitude if self.ar_flow is not None else 0
         h2s_in_ar_flow = (
             self.h2s_in_ar_flow.magnitude if self.h2s_in_ar_flow is not None else 0
@@ -1449,35 +1449,45 @@ class DepositionParameters(ArchiveSection):
         super().normalize(archive, logger)
         # derived quantities
         # partial pressures without the S-cracker taken into account
-        p_ok = False
+        # p_ok = False
+        # if self.ar_flow is not None:
+        # flow = self.ar_flow.magnitude
+        # ar = self.ar_flow.magnitude
+        # if self.h2s_in_ar_flow is not None:
+        # flow += self.h2s_in_ar_flow.magnitude
+        # h2s = self.h2s_in_ar_flow.magnitude
+        # if self.ph3_in_ar_flow is not None:
+        # flow += self.ph3_in_ar_flow.magnitude
+        # ph3 = self.ph3_in_ar_flow.magnitude
+        # p_ok = True
+
         if self.ar_flow is not None:
-            flow = self.ar_flow.magnitude
-            ar = self.ar_flow.magnitude
-            if self.h2s_in_ar_flow is not None:
-                flow += self.h2s_in_ar_flow.magnitude
-                h2s = self.h2s_in_ar_flow.magnitude
-                if self.ph3_in_ar_flow is not None:
-                    flow += self.ph3_in_ar_flow.magnitude
-                    ph3 = self.ph3_in_ar_flow.magnitude
-                    p_ok = True
+            self._calc_partial_pressure()
 
-        if self.sputter_pressure is not None and p_ok:
-            p = self.sputter_pressure.to('kg/(m*s^2)').magnitude
-            total_ar = ar / flow * p + h2s * 0.9 / flow * p + ph3 * 0.9 / flow * p
-            self.ar_partial_pressure = total_ar * self.sputter_pressure.u
-            self.h2s_partial_pressure = h2s * 0.1 / flow * p * self.sputter_pressure.u
-            self.ph3_partial_pressure = ph3 * 0.1 / flow * p * self.sputter_pressure.u
+        # if self.sputter_pressure is not None and p_ok:
+        #   p = self.sputter_pressure.to('kg/(m*s^2)').magnitude
+        #   total_ar = ar / flow * p + h2s * 0.9 / flow * p + ph3 * 0.9 / flow * p
+        #   elf.ar_partial_pressure = total_ar * self.sputter_pressure.u
+        #   self.h2s_partial_pressure = h2s * 0.1 / flow * p * self.sputter_pressure.u
+        #   self.ph3_partial_pressure = ph3 * 0.1 / flow * p * self.sputter_pressure.u
 
-        if self.deposition_temperature is not None:
-            temp = self.deposition_temperature.to('degC').magnitude
-            temp2 = self.deposition_temperature_2.to('degC').magnitude
-            tru_temp = 0.905 * (0.5 * (temp + temp2)) + 12
-            self.deposition_true_temperature = ureg.Quantity(tru_temp, 'degC')
+        # if (
+        #    self.deposition_temperature is not None
+        #    and self.deposition_true_temperature is None
+        # ):
+        #    temp = self.deposition_temperature.to('degC').magnitude
+        #    temp2 = self.deposition_temperature_2.to('degC').magnitude
+        #    tru_temp = 0.905 * (0.5 * (temp + temp2)) + 12
+        #    self.deposition_true_temperature = ureg.Quantity(tru_temp, 'degC')
 
-        if self.ph3_in_ar_flow.magnitude != 0 and self.h2s_in_ar_flow.magnitude != 0:
-            self.ph3_h2s_ratio = (
-                self.ph3_in_ar_flow.magnitude / self.h2s_in_ar_flow.magnitude
-            )
+        if self.h2s_in_ar_flow is not None and self.ph3_in_ar_flow is not None:
+            if (
+                self.ph3_in_ar_flow.magnitude != 0
+                and self.h2s_in_ar_flow.magnitude != 0
+            ):
+                self.ph3_h2s_ratio = (
+                    self.ph3_in_ar_flow.magnitude / self.h2s_in_ar_flow.magnitude
+                )
 
 
 class TempRampUp(ArchiveSection):
@@ -1802,6 +1812,19 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # Plotting the sample positions on the platen
         try:
             samples_plot = read_samples(self.substrates)
+        except Exception as e:
+            samples_plot = [
+                Sample('BR', 20, 35, [40, 40]),
+                Sample('BL', -20, 35, [40, 40]),
+                Sample('FR', 20, -5, [40, 40]),
+                Sample('FL', -20, -5, [40, 40]),
+                Sample('G', 0, 38, [26, 76]),
+            ]
+            logger.warning(
+                f'Failed to read the sample positions. '
+                f'Defaulting to BL, BR, FL, FR, and G {e}'
+            )
+
             dep_params: DepositionParameters = self.deposition_parameters
             guns_plot = read_guns(
                 [
@@ -1812,6 +1835,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 ],
                 ['magkeeper3', 'magkeeper4', 'taurus', 's_cracker'],
             )
+
             condition_for_plot = (
                 self.instruments[0].platen_rotation is not None
                 and samples_plot is not None
@@ -1830,12 +1854,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 self.figures.append(
                     PlotlyFigure(
                         label='Sample positions',
-                        figure=sample_pos_plot,
+                        figure=sample_pos_plot_json,
                     )
                 )
-
-        except Exception as e:
-            logger.warning(f'Failed to plot the sample positions: {e}')
 
     # Helper method to write the data
     def write_data(self, config: dict):
