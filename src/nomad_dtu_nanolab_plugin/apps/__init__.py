@@ -298,3 +298,153 @@ sputtering_targets = AppEntryPoint(
         },
     ),
 )
+
+
+xrd_schema = 'nomad_dtu_nanolab_plugin.schema_packages.xrd.DTUXRDMeasurement'
+
+sputtering_targets = AppEntryPoint(
+    name='XRD app',
+    description='App for searching the XRD measurements.',
+    app=App(
+        label='XRD Measurements',
+        path='xrd-measurements',
+        category='Activities',
+        description="""
+        Explore the different measurements.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{xrd_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{target_schema}',
+                selected=True,
+                label='Target ID',
+            ),
+            Column(
+                search_quantity=f'data.xrd_settings.source.xray_tube_voltage#{xrd_schema}',
+                selected=True,
+                label='X-ray tube voltage',
+                unit='kV',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.xrd_settings.source.xray_tube_current#{xrd_schema}',
+                selected=True,
+                label='X-ray tube current',
+                unit='mA',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'metadata.main_author#{xrd_schema}',
+                selected=True,
+                label='Main author',
+            )
+        ],
+        menu=Menu(
+        ),
+        filters_locked={
+            'entry_type': 'DTUXRDMeasurement',
+        },
+    ),
+)
+
+
+edx_schema = 'nomad_dtu_nanolab_plugin.schema_packages.edx.EDXMeasurement'
+
+sputtering_targets = AppEntryPoint(
+    name='EDX app',
+    description='App for searching the EDX measurements.',
+    app=App(
+        label='EDX Measurements',
+        path='edx-measurements',
+        category='Activities',
+        description="""
+        Explore the different measurements.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{edx_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{target_schema}',
+                selected=True,
+                label='Target ID',
+            ),
+            Column(
+                search_quantity=f'data.samples.0.lab_id#{target_schema}',
+                selected=True,
+                label='Sample ID',
+            ),
+            Column(
+                search_quantity=f'data.avg_layer_thickness#{target_schema}',
+                selected=True,
+                label='Average layer thickness',
+                unit='nm',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'metadata.main_author#{target_schema}',
+                selected=True,
+                label='Main author',
+            )
+        ],
+        menu=Menu(
+        ),
+        filters_locked={
+            'entry_type': 'EDXMeasurement',
+        },
+    ),
+)
+
+
+analysis_schema = 'nomad_dtu_nanolab_plugin.schema_packages.analysis.DtuJupiterAnalysis'
+
+sputtering_targets = AppEntryPoint(
+    name='Analysis app',
+    description='App for searching the performed analysis.',
+    app=App(
+        label='Analysis',
+        path='analysis',
+        category='Activities',
+        description="""
+        Explore the different Jupyter Notebooks and analysis results.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{analysis_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{target_schema}',
+                selected=True,
+                label='Target ID',
+            ),
+            Column(
+                search_quantity=f'data.notebook#{analysis_schema}',
+                selected=True,
+                label='Notebook',
+            ),
+            Column(
+                search_quantity=f'data.datetime#{analysis_schema}',
+                selected=True,
+                label='Date and time',
+            ),
+            Column(
+                search_quantity=f'metadata.main_author#{analysis_schema}',
+                selected=True,
+                label='Main author',
+            )
+        ],
+        menu=Menu(
+        ),
+        filters_locked={
+            'entry_type': 'EDXMeasurement',
+        },
+    ),
+)
