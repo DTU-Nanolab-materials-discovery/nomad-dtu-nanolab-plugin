@@ -1818,7 +1818,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 and guns_plot is not None
             )
             if condition_for_plot:
-                platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
+                platen_rot = self.instruments[0].platen_rotation.copy()
+                platen_rot = platen_rot.to('degree').magnitude
                 sample_pos_plot = plot_plotly_chamber_config(
                     samples_plot, guns_plot, platen_rot
                 )
