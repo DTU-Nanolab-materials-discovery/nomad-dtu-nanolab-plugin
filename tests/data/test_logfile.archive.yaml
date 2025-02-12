@@ -1,29 +1,30 @@
 data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering
   log_file: eugbe_0014_Sb_Recording Set 2024.12.18-11.59.09.CSV
-  # lab_id: 'mittma_0007_Cu'
   substrates:
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DtuSubstrateMounting
-      relative_position: 'BR'
-      position_x: 0.025
-      position_y: 0.025
-    - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DtuSubstrateMounting
-      relative_position: 'FR'
-      position_x: -0.015
-      position_y: 0.025
-  # deposition_parameters:
-  #   m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters
-  #   Magkeeper3:
-  #     m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
-  #     target_material: 'Cu'
-  #   Magkeeper4:
-  #     m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
-  #     target_material: 'Zr'
-  #   Taurus:
-  #     m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
-  #     target_material: 'BaS'
-  #   SCracker:
-  #     m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
-  #instruments:
-  #  - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.InstrumentParameters
-  #    platen_rotation: 1.39626
+      relative_position: 'TEST'
+      position_x: 20
+      position_y: 20
+      substrate:
+      - m_def: nomad_dtu_nanolab_plugin.schema_packages.substrate.DTUSubstrate
+        geometry:
+          m_def: nomad_material_processing.general.Geometry
+          width: 40
+          height: 40
+  deposition_parameters:
+    m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters
+    Magkeeper3:
+      m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
+      target_material: 'Cu'
+    Magkeeper4:
+      m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
+      target_material: 'Zr'
+    Taurus:
+      m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
+      target_material: 'BaS'
+    SCracker:
+      m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
+  instruments:
+   - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.InstrumentParameters
+     platen_rotation: 1.39626
