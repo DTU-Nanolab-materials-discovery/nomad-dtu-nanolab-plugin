@@ -6865,8 +6865,8 @@ def plot_matplotlib_chamber_config(
     squares = [
         patches.Rectangle(
             (sample.pos_x_bl, sample.pos_y_bl),
-            sample.sub_size,
-            sample.sub_size,
+            sample.width,
+            sample.length,
             linewidth=DEFAULT_LINEWIDTH,
             edgecolor='g',
             facecolor='none',
@@ -6876,9 +6876,9 @@ def plot_matplotlib_chamber_config(
 
     arrowsX = [
         patches.FancyArrow(
-            sample.pos_x_bl + sample.sub_size / 10,
-            sample.pos_y_bl + sample.sub_size / 10,
-            sample.sub_size / 4,
+            sample.pos_x_bl + sample.width / 10,
+            sample.pos_y_bl + sample.length / 10,
+            (sample.width + sample.length) / 8,
             0,
             width=1,
             head_width=3,
@@ -6893,10 +6893,10 @@ def plot_matplotlib_chamber_config(
 
     arrowsY = [
         patches.FancyArrow(
-            sample.pos_x_bl + sample.sub_size / 10,
-            sample.pos_y_bl + sample.sub_size / 10,
+            sample.pos_x_bl + sample.width / 10,
+            sample.pos_y_bl + sample.length / 10,
             0,
-            sample.sub_size / 4,
+            (sample.width + sample.length) / 8,
             width=1,
             head_width=3,
             head_length=3,
@@ -6976,20 +6976,20 @@ def plot_matplotlib_chamber_config(
     for sample in samples:
         rotated_edge = rotation_transform.transform(
             (
-                sample.pos_x_bl + 0.8 * sample.sub_size,
-                sample.pos_y_bl + 0.8 * sample.sub_size,
+                sample.pos_x_bl + 0.8 * sample.width,
+                sample.pos_y_bl + 0.8 * sample.length,
             )
         )
         rotated_arrowX_end = rotation_transform.transform(
             (
-                sample.pos_x_bl + 0.55 * sample.sub_size,
-                sample.pos_y_bl + 0.15 * sample.sub_size,
+                sample.pos_x_bl + 0.55 * sample.width,
+                sample.pos_y_bl + 0.15 * sample.length,
             )
         )
         rotated_arrowY_end = rotation_transform.transform(
             (
-                sample.pos_x_bl + 0.15 * sample.sub_size,
-                sample.pos_y_bl + 0.55 * sample.sub_size,
+                sample.pos_x_bl + 0.15 * sample.width,
+                sample.pos_y_bl + 0.55 * sample.length,
             )
         )
         ax.text(
@@ -7124,7 +7124,7 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=Tr
             scaleratio=1,
         ),
         showlegend=False,
-        title=f'Platen Angle: {platen_angle}°' if plot_platen_angle else None,
+        title=f'Platen Angle: {platen_angle.round(1)}°' if plot_platen_angle else None,
     )
 
     # Rotation function
@@ -7453,7 +7453,7 @@ def main():
         # --------GRAPH THE DIFFERENT STEPS ON A TIME LINE------------
 
         # Create the figure
-        print('Generating the plotly plot')
+        print('Generating the plotly plots')
         plotly_timeline = generate_timeline(events_to_plot, logfiles['name'][i])
 
         if PRINT_FIGURES:
