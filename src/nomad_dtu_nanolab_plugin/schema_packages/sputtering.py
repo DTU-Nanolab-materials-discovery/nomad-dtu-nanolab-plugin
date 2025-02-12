@@ -1469,7 +1469,7 @@ class DepositionParameters(ArchiveSection):
             self.ph3_partial_pressure = ph3 * 0.1 / flow * p * self.sputter_pressure.u
 
         if self.deposition_temperature is not None:
-            temp = self.deposition_true_temperature.to('degC').magnitude
+            temp = self.deposition_temperature.to('degC').magnitude
             temp2 = self.deposition_temperature_2.to('degC').magnitude
             tru_temp = 0.905 * (0.5 * (temp + temp2)) + 12
             self.deposition_true_temperature = tru_temp * ureg('degC')
