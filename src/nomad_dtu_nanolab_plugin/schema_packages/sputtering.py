@@ -1801,7 +1801,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         # Plotting the sample positions on the platen
         try:
-            samples_plot = read_samples(self.samples)
+            samples_plot = read_samples(self.substrates)
             dep_params: DepositionParameters = self.deposition_parameters
             guns_plot = read_guns(
                 [
