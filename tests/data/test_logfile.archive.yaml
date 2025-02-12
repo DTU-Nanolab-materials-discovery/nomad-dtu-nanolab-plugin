@@ -6,14 +6,10 @@ data:
       relative_position: 'TEST'
       position_x: 20
       position_y: 20
-      substrate:
-        m_def: nomad_dtu_nanolab_plugin.schema_packages.substrate.DTUSubstrate
-        geometry:
-          m_def: nomad_material_processing.general.Geometry
-          width: 40
-          height: 40
   deposition_parameters:
     m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters
+    ph3_in_ar_flow: 10
+    h2s_in_ar_flow: 10
     Magkeeper3:
       m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
       target_material: 'Cu'
