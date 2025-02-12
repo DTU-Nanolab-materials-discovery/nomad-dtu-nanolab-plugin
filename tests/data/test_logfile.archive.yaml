@@ -13,18 +13,18 @@ data:
           width: 40
           height: 40
   deposition_parameters:
-    - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters
-      Magkeeper3:
-        m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
-        target_material: 'Cu'
-      Magkeeper4:
-        m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
-        target_material: 'Zr'
-      Taurus:
-        m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
-        target_material: 'BaS'
-      SCracker:
-        m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
+    m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters
+    Magkeeper3:
+      m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
+      target_material: 'Cu'
+    Magkeeper4:
+      m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
+      target_material: 'Zr'
+    Taurus:
+      m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.GunOverview
+      target_material: 'BaS'
+    SCracker:
+      m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
   instruments:
-    m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.InstrumentParameters
-    platen_rotation: 1.39626
+   - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.InstrumentParameters
+     platen_rotation: 1.39626
