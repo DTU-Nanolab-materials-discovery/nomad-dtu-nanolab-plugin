@@ -2,16 +2,16 @@ data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering
   log_file: eugbe_0014_Sb_Recording Set 2024.12.18-11.59.09.CSV
   substrates:
-    - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DtuSubstrateMounting
-      relative_position: 'TEST'
-      position_x: 20
-      position_y: 20
-      substrate:
-      - m_def: nomad_dtu_nanolab_plugin.schema_packages.substrate.DTUSubstrate
-        geometry:
-          - m_def: nomad_material_processing.general.Geometry
-            width: 40
-            height: 40
+    m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DtuSubstrateMounting
+    relative_position: 'TEST'
+    position_x: 20
+    position_y: 20
+    substrate:
+      m_def: nomad_dtu_nanolab_plugin.schema_packages.substrate.DTUSubstrate
+      geometry:
+        m_def: nomad_material_processing.general.Geometry
+        width: 40
+        height: 40
   deposition_parameters:
     m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters
     Magkeeper3:
@@ -26,5 +26,5 @@ data:
     SCracker:
       m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
   instruments:
-   - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.InstrumentParameters
-     platen_rotation: 1.39626
+    m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.InstrumentParameters
+    platen_rotation: 1.39626
