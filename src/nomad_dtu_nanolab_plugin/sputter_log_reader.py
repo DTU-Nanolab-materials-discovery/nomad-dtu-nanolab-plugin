@@ -6836,7 +6836,7 @@ def read_samples(sample_list: list):
         pos_y = sample_obj.position_y.to('mm').magnitude
         width = sample_obj.substrate.geometry.width
         length = sample_obj.obj.substrate.geometry.length
-        sample = Sample(label, pos_x, pos_y,[ width, length])
+        sample = Sample(label, pos_x, pos_y,[width, length])
         samples.append(sample)
     return samples
 
@@ -7106,7 +7106,7 @@ def plot_matplotlib_chamber_config(
     return fig
 
 
-def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=False):
+def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=True):
     # Create figure
     fig = go.Figure()
     fig.update_layout(
