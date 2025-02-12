@@ -1792,7 +1792,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 Sample('BL', -20, 35, [40, 40]),
                 Sample('FR', 20, -5, [40, 40]),
                 Sample('FL', -20, -5, [40, 40]),
-                Sample('G', 0, 38, [26, 76]),
+                Sample('G', 0, -38, [26, 76]),
             ]
             logger.warning(
                 f'Failed to read the sample positions. '
