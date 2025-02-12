@@ -9,9 +9,9 @@ data:
       substrate:
       - m_def: nomad_dtu_nanolab_plugin.schema_packages.substrate.DTUSubstrate
         geometry:
-          m_def: nomad_material_processing.general.Geometry
-          width: 40
-          height: 40
+          - m_def: nomad_material_processing.general.Geometry
+            width: 40
+            height: 40
   deposition_parameters:
     m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DepositionParameters
     Magkeeper3:
