@@ -1819,7 +1819,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
             if condition_for_plot:
                 platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
-                sample_pos_plot = plot_plotly_chamber_config(
+                sample_pos_plot, sample_mounting_plot = plot_plotly_chamber_config(
                     samples_plot, guns_plot, platen_rot
                 )
 
@@ -1829,8 +1829,19 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 )
                 self.figures.append(
                     PlotlyFigure(
-                        label='Sample positions',
+                        label='Sample positions during deposition',
                         figure=sample_pos_plot_json,
+                    )
+                )
+
+                sample_mounting_plot_json = json.loads(sample_mounting_plot.to_json())
+                sample_mounting_plot_json['config'] = dict(
+                    scrollZoom=False,
+                )
+                self.figures.append(
+                    PlotlyFigure(
+                        label='Sample positions during mounting',
+                        figure=sample_mounting_plot_json,
                     )
                 )
 
