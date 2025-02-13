@@ -34,7 +34,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = True
+TEST_SPECIFIC_LOGFILE = False
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 RENAME_CRACKER_COL = True
@@ -4069,6 +4069,7 @@ def generate_optix_cascade_plot(spectra, **kwargs):
             closest_idx = color_df.index.get_indexer([spectrum_time], method='nearest')[
                 0
             ]
+            # closest_idx = (color_df.index - spectrum_time).abs().argmin()
             color_value = color_df.iloc[closest_idx][color_column]
             colors.append(color_value)
 
@@ -4253,14 +4254,15 @@ def plot_logfile_chamber(main_params, logfile_name=''):
         samples,
         guns,
         platen_rot,
-        plot_title='DEPOSITION CONFIG:',
+        plot_title='DEPOSITION CONFIG :',
     )
 
     plotly_fig_mounting_angle = plot_plotly_chamber_config(
         samples,
         guns,
         90,
-        plot_title='MOUNTING CONFIG:',
+        in_chamber=False,
+        plot_title='MOUNTING CONFIG :',
     )
 
     # Return bot Plotly figures
