@@ -4249,10 +4249,18 @@ def plot_logfile_chamber(main_params, logfile_name=''):
     platen_rot = main_params['deposition']['platen_position']
 
     # Plotting
-    plotly_fig = plot_plotly_chamber_config(samples, guns, platen_rot)
+    plotly_fig = plot_plotly_chamber_config(
+        samples, guns, platen_rot,
+        plot_title='DEPOSITION CONFIG:',
+    )
 
-    # Return both the Matplotlib and Plotly figures
-    return plotly_fig
+    plotly_fig_mounting_angle = plot_plotly_chamber_config(
+        samples, guns, 90,
+        plot_title='MOUNTING CONFIG:',
+    )
+
+    # Return bot Plotly figures
+    return plotly_fig, plotly_fig_mounting_angle
 
 
 def quick_plot(df, Y, **kwargs):
@@ -7107,8 +7115,30 @@ def plot_matplotlib_chamber_config(
 
     return fig
 
+# Rotation function
+def rotate_point(x, y, angle_deg, platen_rot=True):
+    if platen_rot:
+        angle_rad = np.radians(angle_deg - 90)
+    else:
+        angle_rad = np.radians(angle_deg)
+    x_rotated = x * np.cos(angle_rad) - y * np.sin(angle_rad)
+    y_rotated = x * np.sin(angle_rad) + y * np.cos(angle_rad)
+    return x_rotated, y_rotated
 
-def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=True):
+def plot_plotly_chamber_config(
+        samples, guns, platen_angle,
+        plot_platen_angle=True,
+        plot_title=None,
+    ):
+
+    #define title
+    if plot_title is not None:
+        if plot_platen_angle:
+            plot_title += f'Platen Angle={platen_angle.round(1)}°'
+    elif plot_platen_angle:
+        plot_title = f'Platen Angle={platen_angle.round(1)}°'
+
+
     # Create figure
     fig = go.Figure()
     fig.update_layout(
@@ -7126,18 +7156,10 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, plot_platen_angle=Tr
             scaleratio=1,
         ),
         showlegend=False,
-        title=f'Platen Angle: {platen_angle.round(1)}°' if plot_platen_angle else None,
+        title=plot_title,
     )
 
-    # Rotation function
-    def rotate_point(x, y, angle_deg, platen_rot=True):
-        if platen_rot:
-            angle_rad = np.radians(angle_deg - 90)
-        else:
-            angle_rad = np.radians(angle_deg)
-        x_rotated = x * np.cos(angle_rad) - y * np.sin(angle_rad)
-        y_rotated = x * np.sin(angle_rad) + y * np.cos(angle_rad)
-        return x_rotated, y_rotated
+
 
     # XY_PLOTTED = False
 
