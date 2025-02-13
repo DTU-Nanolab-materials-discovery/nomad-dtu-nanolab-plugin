@@ -7131,14 +7131,12 @@ def rotate_point(x, y, angle_deg, platen_rot=True):
     return x_rotated, y_rotated
 
 
-def plot_plotly_chamber_config(
-    samples,
-    guns,
-    platen_angle,
-    plot_platen_angle=True,
-    plot_title=None,
-):
-    
+def plot_plotly_chamber_config(samples, guns, platen_angle, **kwargs):
+
+    plot_platen_angle = kwargs.get('plot_platen_angle', True)
+    plot_title = kwargs.get('plot_title', None)  # TODO add in_chamber
+    in_chamber = kwargs.get('in_chamber', True)
+
     # define title
     if plot_title is not None:
         if plot_platen_angle:
@@ -7294,32 +7292,6 @@ def plot_plotly_chamber_config(
             font=dict(color='black', size=DEFAULT_FONTSIZE + 4),
         )
 
-    # Add guns
-    for gun in guns:
-        if gun.pos_x is not None and gun.pos_y is not None:
-            fig.add_trace(
-                go.Scatter(
-                    x=[gun.pos_x],
-                    y=[gun.pos_y],
-                    mode='markers',
-                    marker=dict(
-                        color=gun.gcolor,
-                        size=4,
-                        line=dict(color='black', width=DEFAULT_LINEWIDTH),
-                    ),
-                )
-            )
-
-        # Gun label
-        gun_label_pos = cartesian(GUN_TO_PLATEN * PLATEN_DIAM, gun.location)
-        fig.add_annotation(
-            x=gun_label_pos[0],
-            y=gun_label_pos[1],
-            text=f'{SOURCE_LABEL[gun.name]}<br>({gun.mat})',
-            showarrow=False,
-            font=dict(color=gun.gcolor, size=DEFAULT_FONTSIZE + 4),
-        )
-
     # Platen and center
     platen_x, platen_y = rotate_point(PLATEN_POS[0], PLATEN_POS[1], platen_angle)
     fig.add_shape(
@@ -7340,46 +7312,18 @@ def plot_plotly_chamber_config(
         )
     )
 
-    # Middle screw
-    middle_screw_x, middle_screw_y = rotate_point(
-        MIDDLE_SCREW_POS[0], MIDDLE_SCREW_POS[1], platen_angle
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=[middle_screw_x],
-            y=[middle_screw_y],
-            mode='markers',
-            marker=dict(color='black', size=2 * MIDDLE_SCREW_DIAM),
-        )
-    )
-
-    # Additional text annotations
-    fig.add_annotation(
-        x=0,
-        y=Y_LIM[1] - 10,
-        text='Glovebox Door',
-        showarrow=False,
-        font=dict(color='black', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
-    )
-    fig.add_annotation(
-        x=0,
-        y=Y_LIM[0] + 10,
-        text='Service Door',
-        showarrow=False,
-        font=dict(color='black', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
-    )
-
-    # Toxic gas inlet
-    toxic_gas_pos = cartesian(
-        (GUN_TO_PLATEN + 0.2) * PLATEN_DIAM, TOXIC_GAS_INLET_ANGLE
-    )
-    fig.add_annotation(
-        x=toxic_gas_pos[0],
-        y=toxic_gas_pos[1],
-        text='Toxic<br>Gas',
-        showarrow=False,
-        font=dict(color='black', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
-    )
+    ## Middle screw
+    # middle_screw_x, middle_screw_y = rotate_point(
+    #    MIDDLE_SCREW_POS[0], MIDDLE_SCREW_POS[1], platen_angle
+    # )
+    # fig.add_trace(
+    #    go.Scatter(
+    #        x=[middle_screw_x],
+    #        y=[middle_screw_y],
+    #        mode='markers',
+    #        marker=dict(color='black', size=2 * MIDDLE_SCREW_DIAM),
+    #    )
+    # )
 
     # Scale bar in top right
     fig.add_shape(
@@ -7397,6 +7341,61 @@ def plot_plotly_chamber_config(
         showarrow=False,
         font=dict(color='black', size=DEFAULT_FONTSIZE + 4),
     )
+
+    if in_chamber:
+        # Add guns
+        for gun in guns:
+            if gun.pos_x is not None and gun.pos_y is not None:
+                fig.add_trace(
+                    go.Scatter(
+                        x=[gun.pos_x],
+                        y=[gun.pos_y],
+                        mode='markers',
+                        marker=dict(
+                            color=gun.gcolor,
+                            size=4,
+                            line=dict(color='black', width=DEFAULT_LINEWIDTH),
+                        ),
+                    )
+                )
+
+            # Gun label
+            gun_label_pos = cartesian(GUN_TO_PLATEN * PLATEN_DIAM, gun.location)
+            fig.add_annotation(
+                x=gun_label_pos[0],
+                y=gun_label_pos[1],
+                text=f'{SOURCE_LABEL[gun.name]}<br>({gun.mat})',
+                showarrow=False,
+                font=dict(color=gun.gcolor, size=DEFAULT_FONTSIZE + 4),
+            )
+
+        # Additional text annotations
+        fig.add_annotation(
+            x=0,
+            y=Y_LIM[1] - 10,
+            text='Glovebox Door',
+            showarrow=False,
+            font=dict(color='black', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
+        )
+        fig.add_annotation(
+            x=0,
+            y=Y_LIM[0] + 10,
+            text='Service Door',
+            showarrow=False,
+            font=dict(color='black', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
+        )
+
+        # Toxic gas inlet
+        toxic_gas_pos = cartesian(
+            (GUN_TO_PLATEN + 0.2) * PLATEN_DIAM, TOXIC_GAS_INLET_ANGLE
+        )
+        fig.add_annotation(
+            x=toxic_gas_pos[0],
+            y=toxic_gas_pos[1],
+            text='Toxic<br>Gas',
+            showarrow=False,
+            font=dict(color='black', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
+        )
 
     return fig
 

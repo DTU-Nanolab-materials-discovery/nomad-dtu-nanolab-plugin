@@ -1868,6 +1868,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     guns_plot,
                     90,
                     plot_title='MOUNTING CONFIG :',
+                    in_chamber=False,
                 )
 
                 sample_mounting_plot_json = json.loads(sample_mounting_plot.to_json())
