@@ -319,11 +319,6 @@ xrd = AppEntryPoint(
         ),
         columns=[
             Column(
-                search_quantity=f'data.lab_id#{target_schema}',
-                selected=True,
-                label='Target ID',
-            ),
-            Column(
                 search_quantity=f'data.xrd_settings.source.xray_tube_voltage#{xrd_schema}',
                 selected=True,
                 label='X-ray tube voltage',
