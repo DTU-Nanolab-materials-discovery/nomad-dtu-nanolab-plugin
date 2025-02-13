@@ -4250,12 +4250,16 @@ def plot_logfile_chamber(main_params, logfile_name=''):
 
     # Plotting
     plotly_fig = plot_plotly_chamber_config(
-        samples, guns, platen_rot,
+        samples,
+        guns,
+        platen_rot,
         plot_title='DEPOSITION CONFIG:',
     )
 
     plotly_fig_mounting_angle = plot_plotly_chamber_config(
-        samples, guns, 90,
+        samples,
+        guns,
+        90,
         plot_title='MOUNTING CONFIG:',
     )
 
@@ -7115,6 +7119,7 @@ def plot_matplotlib_chamber_config(
 
     return fig
 
+
 # Rotation function
 def rotate_point(x, y, angle_deg, platen_rot=True):
     if platen_rot:
@@ -7125,19 +7130,21 @@ def rotate_point(x, y, angle_deg, platen_rot=True):
     y_rotated = x * np.sin(angle_rad) + y * np.cos(angle_rad)
     return x_rotated, y_rotated
 
-def plot_plotly_chamber_config(
-        samples, guns, platen_angle,
-        plot_platen_angle=True,
-        plot_title=None,
-    ):
 
-    #define title
+def plot_plotly_chamber_config(
+    samples,
+    guns,
+    platen_angle,
+    plot_platen_angle=True,
+    plot_title=None,
+):
+    
+    # define title
     if plot_title is not None:
         if plot_platen_angle:
-            plot_title += f'Platen Angle={platen_angle.round(1)}°'
+            plot_title += f'Platen Angle={round(float(platen_angle), 1)}°'
     elif plot_platen_angle:
-        plot_title = f'Platen Angle={platen_angle.round(1)}°'
-
+        plot_title = f'Platen Angle={round(float(platen_angle), 1)}°'
 
     # Create figure
     fig = go.Figure()
@@ -7158,8 +7165,6 @@ def plot_plotly_chamber_config(
         showlegend=False,
         title=plot_title,
     )
-
-
 
     # XY_PLOTTED = False
 
@@ -7547,9 +7552,15 @@ def main():
         # -----GRAPH THE CHAMBER CONFIG---
 
         if 'platen_position' in main_params['deposition']:
-            plolty_chamber_plot = plot_logfile_chamber(main_params, logfiles['name'][i])
+            plolty_chamber_plot, plotly_moutning_plot = plot_logfile_chamber(
+                main_params, logfiles['name'][i]
+            )
 
             plolty_chamber_plot.write_html(chamber_file_path.replace('.png', '.html'))
+
+            plotly_moutning_plot.write_html(
+                chamber_file_path.replace('.png', '_moutning.html')
+            )
 
         # --------PRINT DERIVED QUANTITIES REPORTS-------------
 
