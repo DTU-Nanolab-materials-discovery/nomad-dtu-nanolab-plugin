@@ -32,13 +32,14 @@ sputtering = AppEntryPoint(
             selected=[
                 f'data.lab_id#{schema}',
                 f'data.datetime#{schema}',
-                f'data.deposition_parameters.deposition_temp#{schema}',
+                f'data.deposition_parameters.deposition_temperature#{schema}',
                 f'data.deposition_parameters.deposition_time#{schema}',
                 f'data.deposition_parameters.sputter_pressure#{schema}',
                 f'data.deposition_parameters.material_space#{schema}',
                 f'data.deposition_parameters.ar_flow#{schema}',
                 f'data.deposition_parameters.h2s_in_ar_flow#{schema}',
                 f'data.deposition_parameters.ph3_in_ar_flow#{schema}',
+                f'data.deposition_parameters.n2_flow#{schema}',
             ],
             options={
                 f'data.lab_id#{schema}': Column(
@@ -47,7 +48,7 @@ sputtering = AppEntryPoint(
                 f'data.datetime#{schema}': Column(
                     label='Date and time',
                 ),
-                f'data.deposition_parameters.deposition_temp#{schema}': Column(
+                f'data.deposition_parameters.deposition_temperature#{schema}': Column(
                     label='Deposition temperature',
                     unit='degC',
                 ),
@@ -74,6 +75,10 @@ sputtering = AppEntryPoint(
                     label='PH3 in Ar flow',
                     unit='cm^3/minute',
                 ),
+                f'data.deposition_parameters.n2_flow#{schema}': Column(
+                    label='N2 flow',
+                    unit='cm^3/minute',
+                ),
             },
         ),
         menu=Menu(
@@ -84,7 +89,7 @@ sputtering = AppEntryPoint(
                     quantity='results.material.elements',
                 ),
                 MenuItemHistogram(
-                    x=f'data.deposition_parameters.deposition_temp#{schema}',
+                    x=f'data.deposition_parameters.deposition_temperature#{schema}',
                 ),
             ],
         ),
