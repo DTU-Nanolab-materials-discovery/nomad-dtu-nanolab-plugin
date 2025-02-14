@@ -36,7 +36,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = False
+TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 RENAME_CRACKER_COL = True
@@ -50,7 +50,11 @@ SAMPLES_TO_REMOVE = [
     # 'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
 ]
 
-SAMPLES_TO_TEST = ['eugbe_0020_Zr_Recording Set 2025.02.05-09.07.05']
+SAMPLES_TO_TEST = [
+    # 'eugbe_0020_Zr_Recording Set 2025.02.05-09.07.05',
+    # 'eugbe_0021_Zr_Recording Set 2025.02.07-10.03.37',
+    'eugbe_0022_Zr_Recording Set 2025.02.10-09.49.44',
+]
 
 # -----USEFUL DICTIONARIES AND LISTS-----
 
@@ -430,7 +434,7 @@ DEPOSITION_CONTINUITY_LIMIT = 1000
 # Minimum size of a domain in terms of numbers of average timestep
 MIN_DOMAIN_SIZE = 10
 # Minimum size of a deposition in terms of numbers of average timestep
-MIN_DEPOSITION_SIZE = 60
+MIN_DEPOSITION_SIZE = 200
 # Minimum size for the temp ramp down events
 MIN_TEMP_RAMP_DOWN_SIZE = 100
 # Size of the temperature control domains above which we consider that the
@@ -4247,26 +4251,7 @@ def plot_logfile_chamber(main_params, logfile_name=''):
 
     # Plotting
     fig = plot_matplotlib_chamber_config(samples, guns, platen_rot)
-
-    # Save the Matplotlib figure to a BytesIO object
-    png = io.BytesIO()
-    fig.savefig(png, format='png', bbox_inches='tight', dpi=DPI)
-    png.seek(0)
-
-    # Convert the PNG to a NumPy array
-    image = np.array(Image.open(png))
-
-    # Create a Plotly figure with the image
-    plotly_fig = go.Figure(go.Image(z=image))
-
-    # Customize the layout (optional)
-    plotly_fig.update_layout(
-        title=f'Chamber Configuration:{logfile_name}',
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-        margin=dict(l=0, r=0, t=100, b=0),
-        width=WIDTH,
-    )
+    plotly_fig = plot_plotly_chamber_config(samples, guns, platen_rot)
 
     # Return both the Matplotlib and Plotly figures
     return fig, plotly_fig
@@ -6850,7 +6835,7 @@ def read_samples(sample_list: list):
         label = str(sample_obj.relative_position)
         pos_x = sample_obj.position_x.to('mm').magnitude
         pos_y = sample_obj.position_y.to('mm').magnitude
-        # size = sample_obj.reference.SIZE?
+        # size = sample_obj.reference.SIZE?#TODO get the size
         sample = Sample(label, pos_x, pos_y)
         samples.append(sample)
     return samples
@@ -7120,6 +7105,225 @@ def plot_matplotlib_chamber_config(
 
     return fig
 
+def plot_plotly_chamber_config(
+    samples, guns, platen_angle, plot_platen_angle=False
+):
+    # Create figure
+    fig = go.Figure()
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        width=800,
+        height=600,
+        xaxis=dict(
+            range=X_LIM,
+            showgrid=False,
+            zeroline=False,
+            showticklabels=False
+        ),
+        yaxis=dict(
+            range=Y_LIM,
+            showgrid=False,
+            zeroline=False,
+            showticklabels=False,
+            scaleanchor="x",
+            scaleratio=1
+        ),
+        showlegend=False,
+        title=f'Platen Angle: {platen_angle}°' if plot_platen_angle else None
+    )
+
+    # Rotation function
+    def rotate_point(x, y, angle_deg):
+        angle_rad = np.radians(angle_deg - 90)
+        x_rotated = x * np.cos(angle_rad) - y * np.sin(angle_rad)
+        y_rotated = x * np.sin(angle_rad) + y * np.cos(angle_rad)
+        return x_rotated, y_rotated
+
+    # Add sample squares and arrows
+    for sample in samples:
+        # Original rectangle coordinates
+        x0, y0 = sample.pos_x_bl, sample.pos_y_bl
+        sub_size = sample.sub_size
+
+        # Compute all four corners of the square
+        corners = [
+            (x0, y0),
+            (x0 + sub_size, y0),
+            (x0 + sub_size, y0 + sub_size),
+            (x0, y0 + sub_size)
+        ]
+
+        # Rotate all corners
+        rotated_corners = [rotate_point(x, y, platen_angle) for x, y in corners]
+
+        # Create polygon shape for rotated square
+        fig.add_shape(
+            type="path",
+            path=f"M{rotated_corners[0][0]},{rotated_corners[0][1]} " +
+                 f"L{rotated_corners[1][0]},{rotated_corners[1][1]} " +
+                 f"L{rotated_corners[2][0]},{rotated_corners[2][1]} " +
+                 f"L{rotated_corners[3][0]},{rotated_corners[3][1]} Z",
+            line=dict(color='green', width=DEFAULT_LINEWIDTH),
+            fillcolor=None
+        )
+
+        # X arrow (aligned with rotated square)
+        arrow_x_start = x0 + sub_size / 10
+        arrow_x_end = arrow_x_start + sub_size / 4
+        x_arrow_points = [
+            (arrow_x_start, y0 + sub_size / 10),
+            (arrow_x_end, y0 + sub_size / 10)
+        ]
+        rotated_x_arrow = [rotate_point(x, y, platen_angle) for x, y in x_arrow_points]
+
+        fig.add_trace(go.Scatter(
+            x=[p[0] for p in rotated_x_arrow],
+            y=[p[1] for p in rotated_x_arrow],
+            mode='lines',
+            line=dict(color='red', width=2),
+            showlegend=False
+        ))
+
+        # Y arrow (aligned with rotated square)
+        arrow_y_start = y0 + sub_size / 10
+        arrow_y_end = arrow_y_start + sub_size / 4
+        y_arrow_points = [
+            (x0 + sub_size / 10, arrow_y_start),
+            (x0 + sub_size / 10, arrow_y_end)
+        ]
+        rotated_y_arrow = [rotate_point(x, y, platen_angle) for x, y in y_arrow_points]
+
+        fig.add_trace(go.Scatter(
+            x=[p[0] for p in rotated_y_arrow],
+            y=[p[1] for p in rotated_y_arrow],
+            mode='lines',
+            line=dict(color='blue', width=2),
+            showlegend=False
+        ))
+
+        # Sample label
+        label_x, label_y = rotate_point(
+            sample.pos_x_bl + 0.8 * sample.sub_size,
+            sample.pos_y_bl + 0.8 * sample.sub_size,
+            platen_angle
+        )
+        fig.add_annotation(
+            x=label_x, y=label_y,
+            text=sample.label,
+            showarrow=False,
+            font=dict(color='black', size=DEFAULT_FONTSIZE+4)
+        )
+
+        # X and Y labels
+        arrowX_label_x, arrowX_label_y = rotate_point(
+            sample.pos_x_bl + 0.55 * sample.sub_size,
+            sample.pos_y_bl + 0.15 * sample.sub_size,
+            platen_angle
+        )
+        arrowY_label_x, arrowY_label_y = rotate_point(
+            sample.pos_x_bl + 0.15 * sample.sub_size,
+            sample.pos_y_bl + 0.55 * sample.sub_size,
+            platen_angle
+        )
+
+        fig.add_annotation(
+            x=arrowX_label_x, y=arrowX_label_y,
+            text='X',
+            showarrow=False,
+            font=dict(color='red', size=DEFAULT_FONTSIZE+4, family='Arial Black')
+        )
+        fig.add_annotation(
+            x=arrowY_label_x, y=arrowY_label_y,
+            text='Y',
+            showarrow=False,
+            font=dict(color='blue', size=DEFAULT_FONTSIZE+4, family='Arial Black')
+        )
+
+    # Add guns
+    for gun in guns:
+        if gun.pos_x is not None and gun.pos_y is not None:
+            fig.add_trace(go.Scatter(
+                x=[gun.pos_x], y=[gun.pos_y],
+                mode='markers',
+                marker=dict(
+                    color=gun.gcolor,
+                    size=4,
+                    line=dict(color='black', width=DEFAULT_LINEWIDTH)
+                )
+            ))
+
+        # Gun label
+        gun_label_pos = cartesian(GUN_TO_PLATEN * PLATEN_DIAM, gun.location)
+        fig.add_annotation(
+            x=gun_label_pos[0], y=gun_label_pos[1],
+            text=f'{SOURCE_LABEL[gun.name]}<br>({gun.mat})',
+            showarrow=False,
+            font=dict(color=gun.gcolor, size=DEFAULT_FONTSIZE+4)
+        )
+
+    # Platen and center
+    platen_x, platen_y = rotate_point(PLATEN_POS[0], PLATEN_POS[1], platen_angle)
+    fig.add_shape(
+        type="circle",
+        x0=platen_x - PLATEN_DIAM, y0=platen_y - PLATEN_DIAM,
+        x1=platen_x + PLATEN_DIAM, y1=platen_y + PLATEN_DIAM,
+        line=dict(color='black', width=DEFAULT_LINEWIDTH),
+        fillcolor=None
+    )
+    fig.add_trace(go.Scatter(
+        x=[platen_x], y=[platen_y],
+        mode='markers',
+        marker=dict(color='black', size=2*PLATEN_CENTER_DIAM)
+    ))
+
+    # Middle screw
+    middle_screw_x, middle_screw_y = rotate_point(MIDDLE_SCREW_POS[0], MIDDLE_SCREW_POS[1], platen_angle)
+    fig.add_trace(go.Scatter(
+        x=[middle_screw_x], y=[middle_screw_y],
+        mode='markers',
+        marker=dict(color='black', size=2*MIDDLE_SCREW_DIAM)
+    ))
+
+    # Additional text annotations
+    fig.add_annotation(
+        x=0, y=Y_LIM[1] - 10,
+        text='Glovebox Door',
+        showarrow=False,
+        font=dict(color='black', size=DEFAULT_FONTSIZE+4, family='Arial Black')
+    )
+    fig.add_annotation(
+        x=0, y=Y_LIM[0] + 10,
+        text='Service Door',
+        showarrow=False,
+        font=dict(color='black', size=DEFAULT_FONTSIZE+4, family='Arial Black')
+    )
+
+    # Toxic gas inlet
+    toxic_gas_pos = cartesian((GUN_TO_PLATEN + 0.2) * PLATEN_DIAM, TOXIC_GAS_INLET_ANGLE)
+    fig.add_annotation(
+        x=toxic_gas_pos[0], y=toxic_gas_pos[1],
+        text='Toxic<br>Gas',
+        showarrow=False,
+        font=dict(color='black', size=DEFAULT_FONTSIZE+4, family='Arial Black')
+    )
+
+    # Scale bar in top right
+    fig.add_shape(
+        type="line",
+        x0=X_LIM[1] - 60, y0=Y_LIM[1] - 10,
+        x1=X_LIM[1] - 10, y1=Y_LIM[1] - 10,
+        line=dict(color='black', width=2)
+    )
+    fig.add_annotation(
+        x=X_LIM[1] - 35, y=Y_LIM[1] - 15,
+        text='50 mm',
+        showarrow=False,
+        font=dict(color='black', size=DEFAULT_FONTSIZE+4)
+    )
+
+    return fig
+
 
 def explore_log_files(
     samples_dir,
@@ -7272,9 +7476,12 @@ def main():
         # -----GRAPH THE CHAMBER CONFIG---
 
         if 'platen_position' in main_params['deposition']:
-            chamber_plot, _ = plot_logfile_chamber(main_params, logfiles['name'][i])
+            chamber_plot, plolty_chamber_plot = plot_logfile_chamber(main_params, logfiles['name'][i])
             # export matplotlib plot as png
             chamber_plot.savefig(chamber_file_path, dpi=300)
+
+            plolty_chamber_plot.write_html(chamber_file_path.replace('.png', '.html'))
+
 
         # --------PRINT DERIVED QUANTITIES REPORTS-------------
 
