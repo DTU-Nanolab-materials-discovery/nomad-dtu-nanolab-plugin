@@ -2,11 +2,12 @@ from nomad.config.models.plugins import AppEntryPoint
 from nomad.config.models.ui import (
     App,
     Column,
-    Columns,
     Filters,
+    Format,
     Menu,
     MenuItemHistogram,
     MenuItemPeriodicTable,
+    MenuItemTerms,
     MenuSizeEnum,
     SearchQuantities,
 )
@@ -28,59 +29,74 @@ sputtering = AppEntryPoint(
                 f'*#{schema}',
             ],
         ),
-        columns=Columns(
-            selected=[
-                f'data.lab_id#{schema}',
-                f'data.datetime#{schema}',
-                f'data.deposition_parameters.deposition_temperature#{schema}',
-                f'data.deposition_parameters.deposition_time#{schema}',
-                f'data.deposition_parameters.sputter_pressure#{schema}',
-                f'data.deposition_parameters.material_space#{schema}',
-                f'data.deposition_parameters.ar_flow#{schema}',
-                f'data.deposition_parameters.h2s_in_ar_flow#{schema}',
-                f'data.deposition_parameters.ph3_in_ar_flow#{schema}',
-                f'data.deposition_parameters.n2_flow#{schema}',
-            ],
-            options={
-                f'data.lab_id#{schema}': Column(
-                    label='Sputtering ID',
-                ),
-                f'data.datetime#{schema}': Column(
-                    label='Date and time',
-                ),
-                f'data.deposition_parameters.deposition_temperature#{schema}': Column(
-                    label='Deposition temperature',
-                    unit='degC',
-                ),
-                f'data.deposition_parameters.deposition_time#{schema}': Column(
-                    label='Deposition time',
-                    unit='minute',
-                ),
-                f'data.deposition_parameters.sputter_pressure#{schema}': Column(
-                    label='Sputter pressure',
-                    unit='mtorr',
-                ),
-                f'data.deposition_parameters.material_space#{schema}': Column(
-                    label='Material space',
-                ),
-                f'data.deposition_parameters.ar_flow#{schema}': Column(
-                    label='Ar flow',
-                    unit='cm^3/minute',
-                ),
-                f'data.deposition_parameters.h2s_in_ar_flow#{schema}': Column(
-                    label='H2S in Ar flow',
-                    unit='cm^3/minute',
-                ),
-                f'data.deposition_parameters.ph3_in_ar_flow#{schema}': Column(
-                    label='PH3 in Ar flow',
-                    unit='cm^3/minute',
-                ),
-                f'data.deposition_parameters.n2_flow#{schema}': Column(
-                    label='N2 flow',
-                    unit='cm^3/minute',
-                ),
-            },
-        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{schema}',
+                selected=True,
+                label='Sputtering ID',
+            ),
+            Column(
+                search_quantity=f'data.datetime#{schema}',
+                selected=True,
+                label='Date and time',
+            ),
+            Column(
+                search_quantity=(
+                    f'data.deposition_parameters.deposition_temperature#{schema}'),
+                selected=True,
+                label='Deposition temperature',
+                unit='degC',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.deposition_time#{schema}',
+                selected=True,
+                label='Deposition time',
+                unit='minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.sputter_pressure#{schema}',
+                selected=True,
+                label='Sputter pressure',
+                unit='mtorr',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.material_space#{schema}',
+                selected=True,
+                label='Material space',
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.ar_flow#{schema}',
+                selected=True,
+                label='Ar flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.h2s_in_ar_flow#{schema}',
+                selected=True,
+                label='H2S in Ar flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.ph3_in_ar_flow#{schema}',
+                selected=True,
+                label='PH3 in Ar flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.deposition_parameters.n2_flow#{schema}',
+                selected=True,
+                label='N2 flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+
+        ],
         menu=Menu(
             title='Material',
             size=MenuSizeEnum.XL,
@@ -88,13 +104,136 @@ sputtering = AppEntryPoint(
                 MenuItemPeriodicTable(
                     quantity='results.material.elements',
                 ),
-                MenuItemHistogram(
-                    x=f'data.deposition_parameters.deposition_temperature#{schema}',
+                MenuItemTerms(
+                    search_quantity='authors.name',
+                    show_input=True,
                 ),
             ],
         ),
         filters_locked={
             'entry_type': 'DTUSputtering',
+        },
+        dashboard={
+            'widgets': [
+                {
+                    'type': 'histogram',
+                    'title': 'Deposition temperature',
+                    'show_input': False,
+                    'autorange': False,
+                    'nbins': 30,
+                    'y': {
+                        'scale': 'linear',
+                    },
+                    'x': {
+                        'search_quantity': (
+                            f'data.deposition_parameters.deposition_temp#{schema}'
+                        ),
+                        'unit': 'degree_Celsius',
+                        'title': 'Deposition temperature',
+                    },
+                    'layout': {
+                        'xxl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 4,
+                            'w': 18,
+                            'y': 0,
+                            'x': 0,
+                        },
+                        'xl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 15,
+                            'y': 0,
+                            'x': 0,
+                        },
+                        'lg': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 12,
+                            'y': 0,
+                            'x': 0,
+                        },
+                        'md': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 9,
+                            'y': 0,
+                            'x': 0,
+                        },
+                        'sm': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 6,
+                            'y': 0,
+                            'x': 0,
+                        },
+                    },
+                },
+                {
+                    'type': 'histogram',
+                    'title': 'Deposition time',
+                    'show_input': False,
+                    'autorange': False,
+                    'nbins': 30,
+                    'y': {
+                        'scale': 'linear',
+                    },
+                    'x': {
+                        'search_quantity': (
+                            f'data.deposition_parameters.deposition_time#{schema}'
+                        ),
+                        'unit': 'minute',
+                        'title': 'Deposition time',
+                    },
+                    'layout': {
+                        'xxl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 4,
+                            'w': 18,
+                            'y': 0,
+                            'x': 18,
+                        },
+                        'xl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 15,
+                            'y': 0,
+                            'x': 15,
+                        },
+                        'lg': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 12,
+                            'y': 0,
+                            'x': 12,
+                        },
+                        'md': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 9,
+                            'y': 0,
+                            'x': 9,
+                        },
+                        'sm': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 6,
+                            'y': 0,
+                            'x': 6,
+                        },
+                    },
+                },
+            ]
         },
     ),
 )
@@ -116,37 +255,41 @@ sputtering_targets = AppEntryPoint(
                 f'*#{target_schema}',
             ],
         ),
-        columns=Columns(
-            selected=[
-                f'data.lab_id#{target_schema}',
-                f'data.main_material#{target_schema}',
-                f'data.purity#{target_schema}',
-                f'data.supplier_id#{target_schema}',
-                f'data.refill_or_mounting_date#{target_schema}',
-                f'data.thickness#{target_schema}',
-            ],
-            options={
-                f'data.lab_id#{target_schema}': Column(
-                    label='Target ID',
-                ),
-                f'data.purity#{target_schema}': Column(
-                    label='Purity (%)',
-                ),
-                f'data.main_material#{target_schema}': Column(
-                    label='Material',
-                ),
-                f'data.supplier_id#{target_schema}': Column(
-                    label='Supplier',
-                ),
-                f'data.refill_or_mounting_date#{target_schema}': Column(
-                    label='Refill or mounting date',
-                ),
-                f'data.thickness#{target_schema}': Column(
-                    label='Thickness',
-                    unit='mm',
-                ),
-            },
-        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{target_schema}',
+                selected=True,
+                label='Target ID',
+            ),
+            Column(
+                search_quantity=f'data.purity#{target_schema}',
+                selected=True,
+                label='Purity (%)',
+                format=Format(decimals=5),
+            ),
+            Column(
+                search_quantity=f'data.main_material#{target_schema}',
+                selected=True,
+                label='Material',
+            ),
+            Column(
+                search_quantity=f'data.supplier_id#{target_schema}',
+                selected=True,
+                label='Supplier',
+            ),
+            Column(
+                search_quantity=f'data.refill_or_mounting_date#{target_schema}',
+                selected=True,
+                label='Refill or mounting date',
+            ),
+            Column(
+                search_quantity=f'data.thickness#{target_schema}',
+                selected=True,
+                label='Thickness',
+                unit='mm',
+                format=Format(decimals=1),
+            ),
+        ],
         menu=Menu(
             title='Material',
             size=MenuSizeEnum.XXL,
@@ -161,6 +304,160 @@ sputtering_targets = AppEntryPoint(
         ),
         filters_locked={
             'entry_type': 'DTUTarget',
+        },
+    ),
+)
+
+
+xrd_schema = 'nomad_dtu_nanolab_plugin.schema_packages.xrd.DTUXRDMeasurement'
+
+xrd = AppEntryPoint(
+    name='XRD app',
+    description='App for searching the XRD measurements.',
+    app=App(
+        label='XRD Measurements',
+        path='xrd-measurements',
+        category='Activities',
+        description="""
+        Explore the different measurements.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{xrd_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.xrd_settings.source.xray_tube_voltage#{xrd_schema}',
+                selected=True,
+                label='X-ray tube voltage',
+                unit='kV',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.xrd_settings.source.xray_tube_current#{xrd_schema}',
+                selected=True,
+                label='X-ray tube current',
+                unit='mA',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'metadata.main_author#{xrd_schema}',
+                selected=True,
+                label='Main author',
+            )
+        ],
+        menu=Menu(
+            size=MenuSizeEnum.MD,
+            items=[
+                MenuItemTerms(
+                    title='Sample ID',
+                    search_quantity=f'data.samples.lab_id#{xrd_schema}',
+                    show_input=True,
+                ),
+            ],
+        ),
+        filters_locked={
+            'entry_type': 'DTUXRDMeasurement',
+        },
+    ),
+)
+
+
+edx_schema = 'nomad_dtu_nanolab_plugin.schema_packages.edx.EDXMeasurement'
+
+edx = AppEntryPoint(
+    name='EDX app',
+    description='App for searching the EDX measurements.',
+    app=App(
+        label='EDX Measurements',
+        path='edx-measurements',
+        category='Activities',
+        description="""
+        Explore the different measurements.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{edx_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{edx_schema}',
+                selected=True,
+                label='Target ID',
+            ),
+            Column(
+                search_quantity=f'data.avg_layer_thickness#{edx_schema}',
+                selected=True,
+                label='Average layer thickness',
+                unit='nm',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'metadata.main_author#{edx_schema}',
+                selected=True,
+                label='Main author',
+            )
+        ],
+        menu=Menu(
+            size=MenuSizeEnum.MD,
+            items=[
+                MenuItemTerms(
+                    title='Sample ID',
+                    search_quantity=f'data.samples.lab_id#{edx_schema}',
+                    show_input=True,
+                ),
+            ],
+        ),
+        filters_locked={
+            'entry_type': 'EDXMeasurement',
+        },
+    ),
+)
+
+
+analysis_schema = 'nomad_dtu_nanolab_plugin.schema_packages.analysis.DtuJupyterAnalysis'
+
+analysis = AppEntryPoint(
+    name='Analysis app',
+    description='App for searching the performed analysis.',
+    app=App(
+        label='Analysis',
+        path='analysis',
+        category='Activities',
+        description="""
+        Explore the different Jupyter Notebooks and analysis results.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{analysis_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{analysis_schema}',
+                selected=True,
+                label='Analysis ID',
+            ),
+            Column(
+                search_quantity=f'data.notebook#{analysis_schema}',
+                selected=True,
+                label='Notebook',
+            ),
+            Column(
+                search_quantity=f'data.datetime#{analysis_schema}',
+                selected=True,
+                label='Date and time',
+            ),
+            Column(
+                search_quantity=f'metadata.main_author#{analysis_schema}',
+                selected=True,
+                label='Main author',
+            )
+        ],
+        filters_locked={
+            'entry_type': 'DtuJupyterAnalysis',
         },
     ),
 )

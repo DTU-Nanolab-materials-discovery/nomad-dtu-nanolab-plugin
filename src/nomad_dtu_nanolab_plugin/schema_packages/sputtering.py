@@ -22,7 +22,12 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from nomad.datamodel.metainfo.annotations import (
+    BrowserAdaptors,
+    BrowserAnnotation,
+    ELNAnnotation,
+    ELNComponentEnum,
+)
 from nomad.datamodel.metainfo.basesections import (
     Component,
     CompositeSystem,
@@ -1702,6 +1707,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             'component': 'FileEditQuantity',
             'label': 'Image of target before the deposition',
         },
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
     )
     target_image_after = Quantity(
         type=str,
@@ -1709,6 +1717,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             'component': 'FileEditQuantity',
             'label': 'Image of target after the deposition',
         },
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
     )
     plasma_image = Quantity(
         type=str,
@@ -1716,18 +1727,37 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             'component': 'FileEditQuantity',
             'label': 'Image of plasma during deposition',
         },
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
     )
     sample_image = Quantity(
         type=str,
-        a_eln={'component': 'FileEditQuantity', 'label': 'Image of sample'},
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+            label='Image of sample',
+        ),
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
     )
     optix_spectra = Quantity(
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Optix spectra'},
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
     )
     rga_file = Quantity(
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'RGA file'},
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
+    )
+    flags = SubSection(
+        section_def=DtuFlag,
+        repeats=True,
     )
     flags = SubSection(
         section_def=DtuFlag,

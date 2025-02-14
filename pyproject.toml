@@ -31,7 +31,7 @@ dependencies = [
     "nomad-measurements>=1.0.4",
     "fairmat-readers-xrd>=0.0.6",
     "httpx<0.28",
-    "nomad-analysis>=0.0.6"
+    "nomad-analysis>=0.0.7"
 ]
 
 [project.urls]
@@ -123,6 +123,9 @@ where = ["src"]
 myparser = "nomad_dtu_nanolab_plugin.parsers:myparser"
 sputtering_targets_app = "nomad_dtu_nanolab_plugin.apps:sputtering_targets"
 sputering_app = "nomad_dtu_nanolab_plugin.apps:sputtering"
+xrd_app = "nomad_dtu_nanolab_plugin.apps:xrd"
+edx_app = "nomad_dtu_nanolab_plugin.apps:edx"
+analysis_app = "nomad_dtu_nanolab_plugin.apps:analysis"
 sputtering = "nomad_dtu_nanolab_plugin.schema_packages:sputtering"
 gas = "nomad_dtu_nanolab_plugin.schema_packages:gas"
 instrument = "nomad_dtu_nanolab_plugin.schema_packages:instrument"
