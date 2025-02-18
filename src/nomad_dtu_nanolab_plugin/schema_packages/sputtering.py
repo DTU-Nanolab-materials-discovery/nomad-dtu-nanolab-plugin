@@ -161,6 +161,15 @@ class DtuSubstrateMounting(ArchiveSection):
         ),
         unit='m',
     )
+    rotation = Quantity(
+        type=np.float64,
+        description='The rotation of the substrate on the platen.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='degree',
+        ),
+        unit='rad',
+    )
     method_of_contact = Quantity(
         type=MEnum(['clamps', 'frame', 'other']),
         default='clamps',
@@ -1759,10 +1768,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         section_def=DtuFlag,
         repeats=True,
     )
-    flags = SubSection(
-        section_def=DtuFlag,
-        repeats=True,
-    )
     substrates = SubSection(
         section_def=DtuSubstrateMounting,
         repeats=True,
@@ -2582,9 +2587,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             # Merging the sputtering object with self
             merge_sections(self, sputtering, logger)
-
-            # Run the normalizer of the deposition.parameters subsection
-            self.deposition_parameters.normalize(archive, logger)
 
             # Run the nomalizer of the environment subsection
             for step in self.steps:
