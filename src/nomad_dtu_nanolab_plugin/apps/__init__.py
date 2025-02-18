@@ -41,7 +41,8 @@ sputtering = AppEntryPoint(
                 label='Date and time',
             ),
             Column(
-                search_quantity=f'data.deposition_parameters.deposition_temp#{schema}',
+                search_quantity=(
+                    f'data.deposition_parameters.deposition_temperature#{schema}'),
                 selected=True,
                 label='Deposition temperature',
                 unit='degC',
@@ -87,6 +88,14 @@ sputtering = AppEntryPoint(
                 unit='cm^3/minute',
                 format=Format(decimals=1),
             ),
+            Column(
+                search_quantity=f'data.deposition_parameters.n2_flow#{schema}',
+                selected=True,
+                label='N2 flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+
         ],
         menu=Menu(
             title='Material',
@@ -117,7 +126,7 @@ sputtering = AppEntryPoint(
                     },
                     'x': {
                         'search_quantity': (
-                            f'data.deposition_parameters.deposition_temp#{schema}'
+                            f'data.deposition_parameters.deposition_temperature#{schema}'
                         ),
                         'unit': 'degree_Celsius',
                         'title': 'Deposition temperature',
@@ -295,6 +304,160 @@ sputtering_targets = AppEntryPoint(
         ),
         filters_locked={
             'entry_type': 'DTUTarget',
+        },
+    ),
+)
+
+
+xrd_schema = 'nomad_dtu_nanolab_plugin.schema_packages.xrd.DTUXRDMeasurement'
+
+xrd = AppEntryPoint(
+    name='XRD app',
+    description='App for searching the XRD measurements.',
+    app=App(
+        label='XRD Measurements',
+        path='xrd-measurements',
+        category='Activities',
+        description="""
+        Explore the different measurements.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{xrd_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.xrd_settings.source.xray_tube_voltage#{xrd_schema}',
+                selected=True,
+                label='X-ray tube voltage',
+                unit='kV',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.xrd_settings.source.xray_tube_current#{xrd_schema}',
+                selected=True,
+                label='X-ray tube current',
+                unit='mA',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'metadata.main_author#{xrd_schema}',
+                selected=True,
+                label='Main author',
+            )
+        ],
+        menu=Menu(
+            size=MenuSizeEnum.MD,
+            items=[
+                MenuItemTerms(
+                    title='Sample ID',
+                    search_quantity=f'data.samples.lab_id#{xrd_schema}',
+                    show_input=True,
+                ),
+            ],
+        ),
+        filters_locked={
+            'entry_type': 'DTUXRDMeasurement',
+        },
+    ),
+)
+
+
+edx_schema = 'nomad_dtu_nanolab_plugin.schema_packages.edx.EDXMeasurement'
+
+edx = AppEntryPoint(
+    name='EDX app',
+    description='App for searching the EDX measurements.',
+    app=App(
+        label='EDX Measurements',
+        path='edx-measurements',
+        category='Activities',
+        description="""
+        Explore the different measurements.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{edx_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{edx_schema}',
+                selected=True,
+                label='Target ID',
+            ),
+            Column(
+                search_quantity=f'data.avg_layer_thickness#{edx_schema}',
+                selected=True,
+                label='Average layer thickness',
+                unit='nm',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'metadata.main_author#{edx_schema}',
+                selected=True,
+                label='Main author',
+            )
+        ],
+        menu=Menu(
+            size=MenuSizeEnum.MD,
+            items=[
+                MenuItemTerms(
+                    title='Sample ID',
+                    search_quantity=f'data.samples.lab_id#{edx_schema}',
+                    show_input=True,
+                ),
+            ],
+        ),
+        filters_locked={
+            'entry_type': 'EDXMeasurement',
+        },
+    ),
+)
+
+
+analysis_schema = 'nomad_dtu_nanolab_plugin.schema_packages.analysis.DtuJupyterAnalysis'
+
+analysis = AppEntryPoint(
+    name='Analysis app',
+    description='App for searching the performed analysis.',
+    app=App(
+        label='Analysis',
+        path='analysis',
+        category='Activities',
+        description="""
+        Explore the different Jupyter Notebooks and analysis results.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{analysis_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{analysis_schema}',
+                selected=True,
+                label='Analysis ID',
+            ),
+            Column(
+                search_quantity=f'data.notebook#{analysis_schema}',
+                selected=True,
+                label='Notebook',
+            ),
+            Column(
+                search_quantity=f'data.datetime#{analysis_schema}',
+                selected=True,
+                label='Date and time',
+            ),
+            Column(
+                search_quantity=f'metadata.main_author#{analysis_schema}',
+                selected=True,
+                label='Main author',
+            )
+        ],
+        filters_locked={
+            'entry_type': 'DtuJupyterAnalysis',
         },
     ),
 )

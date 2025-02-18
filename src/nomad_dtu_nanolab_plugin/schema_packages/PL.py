@@ -499,7 +499,7 @@ class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
         # make a dict for writing into the subsections
         data_dict = {}
         for index, row in data_df.iterrows():
-            key = f"{row['X']},{row['Y']}"
+            key = f'{row["X"]},{row["Y"]}'
             values = row.drop(['X', 'Y']).tolist()
             data_dict[key] = values
 

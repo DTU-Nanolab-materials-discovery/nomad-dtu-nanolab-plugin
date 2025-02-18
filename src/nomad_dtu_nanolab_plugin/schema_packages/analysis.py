@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import re
 from typing import TYPE_CHECKING
 
 import nbformat
@@ -46,11 +47,43 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
+
+FIRST_CODE_CELL = """from nomad.client import ArchiveQuery
+from nomad.config import client
+
+analysis_id = "%s"
+a_query = ArchiveQuery(
+    query={'entry_id:any': [analysis_id]},
+    required='*',
+    url=client.url,
+)
+entry_list = a_query.download()
+analysis = entry_list[0].data"""
+
+def replace_analysis_id(
+        notebook: nbformat.notebooknode.NotebookNode,
+        analysis_id: str) -> nbformat.notebooknode.NotebookNode|None:
+    first_cell_pattern = re.compile(
+        re.escape(FIRST_CODE_CELL.strip()).replace('%s', '(.*)')
+    )
+    for cell in notebook.cells:
+        if cell.cell_type == 'code':
+            match = first_cell_pattern.match(cell.source)
+            if match:
+                cell.source = FIRST_CODE_CELL % analysis_id
+                return notebook
+    return
+
+
 m_package = Package()
 
 
 class DtuJupyterAnalysisTemplate(Analysis, Schema):
-    notebook = Quantity(
+    m_def = Section(
+        categories=[DTUNanolabCategory],
+        label='Jupyter Analysis Template',
+    )
+    template_notebook = Quantity(
         type=str,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
@@ -66,7 +99,40 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
     generate_notebook = Quantity(
         type=bool,
         description='Generate a Jupyter notebook',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+        ),
     )
+
+    def copy_from_analysis(self, archive: 'EntryArchive', logger: 'BoundLogger') -> str:
+        context = self.from_analysis.m_context
+        with context.raw_file(self.from_analysis.notebook, 'r') as src_file:
+            source_notebook = nbformat.read(src_file, as_version=4)
+
+        template_notebook = replace_analysis_id(source_notebook, 'THE_ANALYSIS_ID')
+        if template_notebook is None:
+            logger.error('Standard Analysis query block is not found in the notebook.')
+            return
+        
+        new_notebook_path = archive.metadata.mainfile.split('.')[0] + '.ipynb'
+        if archive.m_context.raw_path_exists(new_notebook_path):
+            logger.error(f'Notebook {new_notebook_path} already exists.')
+            return
+        
+        with archive.m_context.raw_file(new_notebook_path, 'w') as dest_file:
+            nbformat.write(template_notebook, dest_file)
+
+        return new_notebook_path
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        if (
+            self.generate_notebook 
+            and self.from_analysis 
+            and self.from_analysis.notebook
+        ):
+            self.template_notebook = self.copy_from_analysis(archive, logger)
+            self.generate_notebook = False
 
 
 class DtuAnalysisStep(ActivityStep, PlotSection):
@@ -113,6 +179,9 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
 
     def create_notebook(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         filename = archive.metadata.mainfile.split('.')[0] + '.ipynb'
+        if archive.m_context.raw_path_exists(filename):
+            logger.error(f'Notebook {filename} already exists.')
+            return
         self.notebook = filename
         user = 'Unknown user'
         if archive.metadata.main_author:
@@ -149,17 +218,7 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
                     source='Query for the analysis entry associated with this notebook:'
                 ),
                 nbformat.v4.new_code_cell(
-                    source=f"""from nomad.client import ArchiveQuery
-
-analysis_id = "{archive.metadata.entry_id}"
-api_url = "http://nomad.nanolab.dtu.dk/nomad-oasis/api"
-a_query = ArchiveQuery(
-    query={{'entry_id:any': [analysis_id]}},
-    required='*',
-    url=api_url,
-)
-entry_list = a_query.download()
-analysis = entry_list[0].data"""
+                    source=FIRST_CODE_CELL % archive.metadata.entry_id
                 ),
                 nbformat.v4.new_markdown_cell(source='### Analysis'),
                 nbformat.v4.new_markdown_cell(
@@ -216,6 +275,27 @@ analysis.save()"""
             nbformat.write(nb, nb_file)
         archive.m_context.process_updated_raw_file(self.notebook, allow_modify=True)
 
+    def copy_from_template(self, archive: 'EntryArchive', logger: 'BoundLogger') -> str:
+        context = self.template.m_context
+        with context.raw_file(self.template.template_notebook, 'r') as src_file:
+            source_notebook = nbformat.read(src_file, as_version=4)
+
+        template_notebook = replace_analysis_id(
+            source_notebook, archive.metadata.entry_id)
+        if template_notebook is None:
+            logger.error('Standard Analysis query block is not found in the notebook.')
+            return
+        
+        new_notebook_path = archive.metadata.mainfile.split('.')[0] + '.ipynb'
+        if archive.m_context.raw_path_exists(new_notebook_path):
+            logger.error(f'Notebook {new_notebook_path} already exists.')
+            return
+        
+        with archive.m_context.raw_file(new_notebook_path, 'w') as dest_file:
+            nbformat.write(template_notebook, dest_file)
+
+        self.notebook = new_notebook_path
+
     def save(self):
         archive = self.m_parent
         create_entry_with_api(
@@ -228,5 +308,8 @@ analysis.save()"""
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
         if self.generate_notebook:
-            self.create_notebook(archive, logger)
+            if self.template and self.template.template_notebook:
+                self.copy_from_template(archive, logger)
+            else:
+                self.create_notebook(archive, logger)
             self.generate_notebook = False
