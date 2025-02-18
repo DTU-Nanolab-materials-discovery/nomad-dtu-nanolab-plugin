@@ -161,6 +161,15 @@ class DtuSubstrateMounting(ArchiveSection):
         ),
         unit='m',
     )
+    rotation = Quantity(
+        type=np.float64,
+        description='The rotation of the substrate on the platen.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='degree',
+        ),
+        unit='rad',
+    )
     method_of_contact = Quantity(
         type=MEnum(['clamps', 'frame', 'other']),
         default='clamps',
