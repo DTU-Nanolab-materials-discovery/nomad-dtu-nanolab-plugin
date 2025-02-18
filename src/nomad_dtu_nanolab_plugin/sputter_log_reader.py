@@ -4983,7 +4983,7 @@ def generate_overview_plot(data, logfile_name, events):
         plot_type='scatter',
         plot_title=(
             f'Overview Plot: {logfile_name} '
-            f'(downsampled to {BIAS_PLOT_RESAMPLING_TIME}s)'
+            f'(downsampled to {OVERVIEW_PLOT_RESAMPLING_TIME}s)'
         ),
         mode='stack',
         heigth=0.5 * HEIGHT,
