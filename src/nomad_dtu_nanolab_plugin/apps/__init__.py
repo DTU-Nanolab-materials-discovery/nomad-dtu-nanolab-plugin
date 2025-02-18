@@ -126,7 +126,7 @@ sputtering = AppEntryPoint(
                     },
                     'x': {
                         'search_quantity': (
-                            f'data.deposition_parameters.deposition_temp#{schema}'
+                            f'data.deposition_parameters.deposition_temperature#{schema}'
                         ),
                         'unit': 'degree_Celsius',
                         'title': 'Deposition temperature',
