@@ -546,7 +546,8 @@ STEP_COLORS = {
     'Cracker Pressure Meas': 'brown',
 }
 
-OVERVIEW_PLOT_RESAMPLING_TIME = 10  # seconds
+OVERVIEW_PLOT_RESAMPLING_TIME = 20  # seconds
+BIAS_PLOT_RESAMPLING_TIME = 10  # seconds
 OVERVIEW_PLOT_COLOR_MAP = {True: 'green', False: 'red'}
 OVERVIEW_PLOT_MARKER_MAP = {True: 'x', False: 'circle'}
 
@@ -4839,60 +4840,68 @@ def generate_bias_plot(
 
     deposition = event_list_to_dict(events_to_plot)['deposition']
 
-    for col in deposition.data.columns:
+    data = deposition.data.copy()
+
+    data_resampled = (
+        data.set_index('Time Stamp')  # Temporarily set 'Time Stamp' as index
+        .resample(f'{BIAS_PLOT_RESAMPLING_TIME}s')  # Resample data
+        .mean(numeric_only=True)  # Apply aggregation (mean in this case)
+        .reset_index()  # Reset index to turn 'Time Stamp' back into a column
+    )
+
+    data = data_resampled.copy()
+
+    for col in data.columns:
         if any(re.search(pattern, col) for pattern in patterns):
             # Add the original column to the list of columns to plot
             Y_plot.append(col)
 
-            # Add the smoothed column to the list of columns to plot
-            deposition.data[f'{col} Smoothed {rolling_num}pt'] = (
-                deposition.data[col].rolling(rolling_num, center=True).mean()
-            )
-            Y_plot.append(f'{col} Smoothed {rolling_num}pt')
+    #            # Add the smoothed column to the list of columns to plot
+    #            data[f'{col} Smoothed {rolling_num}pt'] = (
+    #                data[col].rolling(rolling_num, center=True).mean()
+    #            )
+    #            Y_plot.append(f'{col} Smoothed {rolling_num}pt')
 
-            # check if more than 10percent of the dc bias data is zero
-            if (
-                deposition.data[col].eq(0).sum() / len(deposition.data)
-                > DC_BIAS_SMOOTHING_THRESHOLD
-            ):
-                # if '_Sb_' in logfile_name:
-                rolling_num_max = int(rolling_num * rolling_frac_max)
-                # add the max instead of the mean after rolling
-                deposition.data[f'{col} Max {rolling_num_max}pt'] = (
-                    deposition.data[col]
-                    .rolling(int(rolling_num * rolling_frac_max), center=True)
-                    .max()
-                )
-                Y_plot.append(f'{col} Max {rolling_num_max}pt')
-                # smooth the max curve
-                deposition.data[
-                    f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt'
-                ] = (
-                    deposition.data[f'{col} Max {rolling_num_max}pt']
-                    .rolling(rolling_num, center=True)
-                    .mean()
-                )
-                Y_plot.append(f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt')
-                # iterate over the columns to plot and change zeros for NaN
-                deposition.data[f'{col} No Zero'] = deposition.data[col].replace(
-                    0, np.nan
-                )
-                Y_plot.append(f'{col} No Zero')
-                # smooth the no zero curve
-                deposition.data[f'{col} No Zero Smoothed {rolling_num}pt'] = (
-                    deposition.data[f'{col} No Zero']
-                    .rolling(rolling_num, min_periods=1, center=True)
-                    .mean()
-                )
-                Y_plot.append(f'{col} No Zero Smoothed {rolling_num}pt')
+    #            # check if more than 10percent of the dc bias data is zero
+    #            if data[col].eq(0).sum() / len(data) > DC_BIAS_SMOOTHING_THRESHOLD:
+    #                # if '_Sb_' in logfile_name:
+    #                rolling_num_max = int(rolling_num * rolling_frac_max)
+    #                # add the max instead of the mean after rolling
+    #                data[f'{col} Max {rolling_num_max}pt'] = (
+    #                    data[col]
+    #                    .rolling(int(rolling_num * rolling_frac_max), center=True)
+    #                    .max()
+    #                )
+    #                Y_plot.append(f'{col} Max {rolling_num_max}pt')
+    #                # smooth the max curve
+    #                data[f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt'] = (
+    #                    data[f'{col} Max {rolling_num_max}pt']
+    #                    .rolling(rolling_num, center=True)
+    #                    .mean()
+    #                )
+    #                Y_plot.append(
+    #                   f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt'
+    #                )
+    #                # iterate over the columns to plot and change zeros for NaN
+    #                data[f'{col} No Zero'] = data[col].replace(0, np.nan)
+    #                Y_plot.append(f'{col} No Zero')
+    #                # smooth the no zero curve
+    #                data[f'{col} No Zero Smoothed {rolling_num}pt'] = (
+    #                    data[f'{col} No Zero']
+    #                    .rolling(rolling_num, min_periods=1, center=True)
+    #                    .mean()
+    #                )
+    #                Y_plot.append(f'{col} No Zero Smoothed {rolling_num}pt')
 
     bias_plot = quick_plot(
-        deposition.data,
+        data,
         Y_plot,
         mode='default',
         plot_type='line',
         width=WIDTH,
-        plot_title=f'Bias Plot: {logfile_name}',
+        plot_title=(
+            f'Bias Plot: {logfile_name} (downsampled to {BIAS_PLOT_RESAMPLING_TIME}s)'
+        ),
     )
 
     return bias_plot
@@ -4972,7 +4981,10 @@ def generate_overview_plot(data, logfile_name, events):
         data,
         Y_plot,
         plot_type='scatter',
-        plot_title=f'Overview Plot: {logfile_name}',
+        plot_title=(
+            f'Overview Plot: {logfile_name} '
+            f'(downsampled to {BIAS_PLOT_RESAMPLING_TIME}s)'
+        ),
         mode='stack',
         heigth=0.5 * HEIGHT,
         width=WIDTH,
