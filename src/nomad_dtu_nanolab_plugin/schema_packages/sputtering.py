@@ -1768,10 +1768,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         section_def=DtuFlag,
         repeats=True,
     )
-    flags = SubSection(
-        section_def=DtuFlag,
-        repeats=True,
-    )
     substrates = SubSection(
         section_def=DtuSubstrateMounting,
         repeats=True,
