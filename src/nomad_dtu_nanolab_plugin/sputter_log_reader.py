@@ -8,7 +8,6 @@ Created on Fri Jun  7 10:46:17 2024
 
 # Core
 import copy
-import io
 import operator
 import os
 import re
@@ -26,7 +25,6 @@ import plotly.graph_objects as go
 from matplotlib import patches
 from matplotlib.transforms import Affine2D
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
-from PIL import Image
 from plotly.colors import sample_colorscale
 from plotly.subplots import make_subplots
 
@@ -36,7 +34,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = True
+TEST_SPECIFIC_LOGFILE = False
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 RENAME_CRACKER_COL = True
@@ -45,32 +43,24 @@ LOGFILES_EXTENSION = 'CSV'
 SPECTRA_EXTENSION = 'csv'
 
 SAMPLES_TO_REMOVE = [
-    'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
-    'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
-    'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
+    # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
+    # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
+    # 'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
 ]
 
 SAMPLES_TO_TEST = [
-    # 'mittma_0025_Cu_Recording Set 2024.11.05-10.13.29',
-    # 'mittma_0026_Cu_Recording Set 2024.11.06-09.44.32',
-    # 'eugbe_0007_Sb_Recording Set 2024.10.09-09.39.04',
-    # 'anait_0003_BaS_Zr_Recording Set 2024.09.09-08.38.24',
-    # 'mittma_0010_RT_Recording Set 2024.07.02-10.00.29',
-    # 'mittma_0009_Cu_H2S_and_PH3_RT_RecordingSet 2024.06.24-10.08.37 1',
-    # 'mittma_0007_Cu_Recording Set 2024.06.03-09.52.29',
-    # 'anait_0010_Ba_Recording Set 2024.11.12-09.20.00',
-    # 'mittma_0027_Cu_Recording Set 2024.11.19-11.33.19',
-    # 'mittma_0028_Cu_Recording Set 2024.11.22-07.19.41',
-    # 'anait_0012_Ba_Zr_Recording Set 2024.11.21-09.41.33',
-    'eugbe_0003_Sb_Recording Set 2024.09.04-14.54.11',
+    # 'eugbe_0020_Zr_Recording Set 2025.02.05-09.07.05',
+    # 'eugbe_0021_Zr_Recording Set 2025.02.07-10.03.37',
+    'eugbe_0022_Zr_Recording Set 2025.02.10-09.49.44',
 ]
-
 
 # -----USEFUL DICTIONARIES AND LISTS-----
 
-# column names dictionary
+# column names dictionary. Feel free to add more columns to this dictionary for easier
+# access to the data
 COL = {
     'time': 'Time Stamp',
+    'time_stamp': 'Time Stamp',
     'pressure_wrg': 'PC Wide Range Gauge',
     'pressure': 'PC Capman Pressure',
     'pressure_sp': 'PC Capman Pressure Setpoint',
@@ -109,12 +99,12 @@ COL = {
     'ar_sp': 'PC MFC 1 Setpoint',
     'mfc2_flow': 'PC MFC 2 Flow',
     'mfc2_sp': 'PC MFC 2 Setpoint',
-    # "n2_flow": "PC MFC 2 Flow",  # Need to check
-    # "n2_sp": "PC MFC 2 Setpoint",  # Need to check
+    'n2_flow': 'PC MFC 2 Flow',
+    'n2_sp': 'PC MFC 2 Setpoint',
     'mfc3_flow': 'PC MFC 3 Flow',
     'mfc3_sp': 'PC MFC 3 Setpoint',
-    # "o2_flow": "PC MFC 3 Flow",   # Need to check
-    # "o2_sp": "PC MFC 3 Setpoint",   # Need to check
+    'o2_flow': 'PC MFC 3 Flow',
+    'o2_sp': 'PC MFC 3 Setpoint',
     'mfc4_flow': 'PC MFC 4 Flow',
     'mfc4_sp': 'PC MFC 4 Setpoint',
     'ph3_flow': 'PC MFC 4 Flow',
@@ -131,6 +121,7 @@ COL = {
     'proc_phase': 'Process Phase',
     'proc_time_tracker': 'Process Time Tracker',
     'thk_rate': 'Thickness Rate',
+    'deprate': 'Thickness Rate',
     'thk': 'Thickness',
     'thk_tooling': 'Thickness Tooling',
     'thk_active_mat': 'Thickness Active Material',
@@ -144,24 +135,43 @@ COL = {
     'sub_temp2': 'Substrate Heater Temperature 2',
     'sub_curr': 'Substrate Heater Current',
     'sul_crk_zone1_temp': 'Sulfur Cracker Zone 1 Current Temperature',
+    'crk_z1_temp': 'Sulfur Cracker Zone 1 Current Temperature',
     'sul_crk_zone1_en': 'Sulfur Cracker Zone 1 Enabled',
+    'crk_z1_en': 'Sulfur Cracker Zone 1 Enabled',
     'sul_crk_zone1_sp': 'Sulfur Cracker Zone 1 Temperature Setpoint',
+    'crk_z1_sp': 'Sulfur Cracker Zone 1 Temperature Setpoint',
     'sul_crk_zone2_temp': 'Sulfur Cracker Zone 2 Current Temperature',
+    'crk_z2_temp': 'Sulfur Cracker Zone 2 Current Temperature',
     'sul_crk_zone2_en': 'Sulfur Cracker Zone 2 Enabled',
+    'crk_z2_en': 'Sulfur Cracker Zone 2 Enabled',
     'sul_crk_zone2_sp': 'Sulfur Cracker Zone 2 Temperature Setpoint',
+    'crk_z2_sp': 'Sulfur Cracker Zone 2 Temperature Setpoint',
     'sul_crk_zone3_temp': 'Sulfur Cracker Zone 3 Current Temperature',
+    'crk_z3_temp': 'Sulfur Cracker Zone 3 Current Temperature',
     'sul_crk_zone3_en': 'Sulfur Cracker Zone 3 Enabled',
+    'crk_z3_en': 'Sulfur Cracker Zone 3 Enabled',
     'sul_crk_zone3_sp': 'Sulfur Cracker Zone 3 Temperature Setpoint',
+    'crk_z3_sp': 'Sulfur Cracker Zone 3 Temperature Setpoint',
     'sul_crk_lambda': 'Sulfur Cracker Control Sensor Value',
+    'crk_lambda': 'Sulfur Cracker Control Sensor Value',
     'sul_crk_ctrl_en': 'Sulfur Cracker Control Enabled',
+    'crk_ctrl_en': 'Sulfur Cracker Control Enabled',
     'sul_crk_ctrl_mode': 'Sulfur Cracker Control Mode',
+    'crk_ctrl_mode': 'Sulfur Cracker Control Mode',
     'sul_crk_ctrl_sensor': 'Sulfur Cracker Control Sensor Value',
+    'crk_ctrl_sensor': 'Sulfur Cracker Control Sensor Value',
     'sul_crk_ctrl_sp': 'Sulfur Cracker Control Setpoint',
+    'crk_ctrl_sp': 'Sulfur Cracker Control Setpoint',
     'sul_crk_ctrl_fb': 'Sulfur Cracker Control Setpoint Feedback',
+    'crk_freq': 'Sulfur Cracker Control Setpoint Feedback',
     'sul_crk_valve_freq_sp': 'Sulfur Cracker Control Valve InitFrequency Setpoint',
+    'crk_valve_freq_sp': 'Sulfur Cracker Control Valve InitFrequency Setpoint',
     'sul_crk_valve_pw_sp': 'Sulfur Cracker Control Valve PulseWidth Setpoint',
+    'crk_valve_pw_sp': 'Sulfur Cracker Control Valve PulseWidth Setpoint',
     'sul_crk_valve_pw_fb': 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
+    'crk_valve_pw_fb': 'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'sul_crk_valve_sp': 'Sulfur Cracker Control Valve Setpoint',
+    'crk_valve_sp': 'Sulfur Cracker Control Valve Setpoint',
     'sul_crk_valve_val': 'Sulfur Cracker Control Valve Value',
     's1_load': 'PC Source 1 Loaded Target',
     's1_mat': 'PC Source 1 Material',
@@ -191,6 +201,8 @@ COL = {
     'sub_rot_pos_sp': 'Substrate Rotation_PositionSetpoint',
     'xtal1_shutter': 'Xtal 1 Shutter Open',
     'xtal2_shutter': 'Xtal 2 Shutter Open',
+    'xtal1_open': 'Xtal 1 Shutter Open',
+    'xtal2_open': 'Xtal 2 Shutter Open',
     'ps7_en': 'Power Supply 7 Enable',
     'ps7_ed': 'Power Supply 7 Enabled',
     'ps7_out_sp': 'Power Supply 7 Output Setpoint',
@@ -364,6 +376,15 @@ IONS = {
     'carbide': 'C',
     'hydride': 'H',
 }
+# volumne fraction in the respective gas mixture (the complementary gas is Ar)
+GAS_FRACTION = {
+    'ar': 1,
+    'n2': 1,
+    'o2': 0.2,
+    'ph3': 0.1,
+    'nh3': 0.1,
+    'h2s': 0.1,
+}
 
 # ----SPUTTER LOG READER METHODS----
 
@@ -376,6 +397,8 @@ TOLERANCE = 0.85
 # Propotion of values needed to be above the threshold to consider the
 # plasma to be one particular type or the other
 POWER_TYPE_TOLERANCE = 0.1
+# fraction of the zeros in the dc bias data above which extra smoothing is triggered
+DC_BIAS_SMOOTHING_THRESHOLD = 0.1
 # Eletrical current threshold above which a dc plasma is considered on
 CURRENT_THRESHOLD = 0.01  # miliamps
 # Bias threshold above which a rf plasma is considered on
@@ -409,7 +432,7 @@ DEPOSITION_CONTINUITY_LIMIT = 1000
 # Minimum size of a domain in terms of numbers of average timestep
 MIN_DOMAIN_SIZE = 10
 # Minimum size of a deposition in terms of numbers of average timestep
-MIN_DEPOSITION_SIZE = 60
+MIN_DEPOSITION_SIZE = 200
 # Minimum size for the temp ramp down events
 MIN_TEMP_RAMP_DOWN_SIZE = 100
 # Size of the temperature control domains above which we consider that the
@@ -460,7 +483,7 @@ SOURCE_NAME = {
     '1': 'taurus',
     '3': 'magkeeper3',
     '4': 'magkeeper4',
-    'all': 'All',
+    'all': 'all',
 }
 
 SOURCE_LABEL = {
@@ -468,11 +491,14 @@ SOURCE_LABEL = {
     'taurus': 'Taurus',
     'magkeeper3': 'Magkeeper3',
     'magkeeper4': 'Magkeeper4',
-    'all': 'All',
+    'all': 'all',
 }
 GAS_NUMBER = {
     'ar': 1,
+    'n2': 2,
+    'o2': 3,
     'ph3': 4,
+    'nh3': 5,
     'h2s': 6,
 }
 
@@ -528,12 +554,12 @@ OVERVIEW_PLOT_MARKER_MAP = {True: 'x', False: 'circle'}
 OVERVIEW_PLOT = [
     'PC Capman Pressure',
     'Substrate Heater Temperature',
-    # 'Sulfur Cracker Control Enabled',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'Sulfur Cracker Control Setpoint Feedback',
-    'Sulfur Cracker Control Sensor Value',
+    'Sulfur Cracker Zone 1 Current Temperature',
+    'Thickness Rate',
 ]
-for gas in ['ar', 'ph3', 'h2s']:
+for gas in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
     OVERVIEW_PLOT.append(f'PC MFC {GAS_NUMBER[gas]} Flow')
 
 for source_number in ['1', '3', '4']:
@@ -577,6 +603,8 @@ class Lf_Event:
         # consecutive timestamps in the raw_logfile. It is used as a reference
         # time to determine the continuity of the time domains
         self.avg_timestep = None
+        # we also enable storring of the original raw data, whenever it is passed
+        self.raw_data = pd.DataFrame()
         # the condition is a boolean pd.Series that indicates which rows of the
         # raw_data are part of the particular event
         self.cond = pd.DataFrame()
@@ -600,6 +628,12 @@ class Lf_Event:
         self.sep_name = ['']
         # the bounds of each subevent
         self.sep_bounds = []
+        # we also store the raw spectra data from the optix, and trigger the
+        # filtering of the spectra data when the raw_spectra is set,
+        # same of sep_evenets
+        self.raw_spectra = pd.DataFrame()
+        self.filtered_spectra = pd.DataFrame()
+        self.sep_spectra = [pd.DataFrame()]
 
         # here we create a unique identifier for the event
         # based on the name, category, source and step number
@@ -635,6 +669,9 @@ class Lf_Event:
         self.bounds = bounds
         # whenever the bounds are set, we also run the update_events_and_separated_data
         self.update_events_and_separated_data()
+        # whenever the bounds are set, we also filter the spectra data if applicable
+        if not self.raw_spectra:
+            self.filtered_spectra = filter_spectrum(self.raw_spectra, self.bounds)
 
     # helper method to update events, sep_data, sep_name, and sep_bounds after
     # bounds changes
@@ -643,6 +680,11 @@ class Lf_Event:
         self.sep_data = [event_filter(self.data, bound) for bound in self.bounds]
         self.sep_name = [f'{self.name}({i})' for i in range(self.events)]
         self.sep_bounds = [self.bounds[i] for i in range(self.events)]
+        if not self.raw_spectra.empty:
+            self.sep_spectra = [
+                filter_spectrum(self.raw_spectra, self.bounds[i])
+                for i in range(self.events)
+            ]
 
     # very important method to extract the bounds of the continuous time domains
     def extract_domains(
@@ -652,7 +694,7 @@ class Lf_Event:
         This function extracts the bounds of continuous time domains in a
         DataFrame based on the time continuity
         For example, if the time difference between two consecutive
-        timestamps of df1 is greater than the avg_timestep of df2,
+        timestamps of df1 is greater than the continuity limit,
         then the two timestamps are considered to be in
         different timedomains.
         """
@@ -703,8 +745,11 @@ class Lf_Event:
             return bounds
 
     # method to filter the data of the event based on a conditionnal boolean pd.Series
-    def filter_data(self, raw_data):
+    def filter_data(self, raw_data, cond=None):
+        if cond is not None:
+            self.cond = cond
         if not self.cond.empty:
+            self.raw_data = raw_data
             self.avg_timestep = cal_avg_timestep(raw_data)
             filtered_data = raw_data[self.cond]
             self.set_data(filtered_data, raw_data)
@@ -716,6 +761,11 @@ class Lf_Event:
 
     def set_source(self, source):
         self.source = source
+
+    def set_spectra(self, raw_spectra):
+        self.raw_spectra = raw_spectra
+        if not self.bounds:
+            self.filtered_spectra = filter_spectrum(raw_spectra, self.bounds)
 
     # simple method to exlude events that are too small
     def filter_out_small_events(self, min_domain_size):
@@ -838,7 +888,7 @@ class Lf_Event:
         # Get the strat time of the step
         start_time = self.data['Time Stamp'].iloc[0]
 
-        for gas_name in ['ar', 'ph3', 'h2s']:
+        for gas_name in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
             # initialize the gas_flow dictionary
             gas_flow = {}
 
@@ -869,15 +919,6 @@ class Lf_Event:
 
         if pressure_col is not None:
             # Extract the pressure parameters
-
-            # params[self.step_id]['environment']['pressure']['set_time'] = [
-            #     start_time.to_pydatetime()
-            # ]
-            # params[self.step_id]['environment']['pressure']['set_value'] = [
-            #     self.data[
-            #     pressure_col
-            # ].iloc[-1]
-            # ]
             params[self.step_id]['environment']['pressure']['time'] = (
                 (self.data['Time Stamp'] - start_time).dt.total_seconds().tolist()
             )
@@ -885,7 +926,157 @@ class Lf_Event:
                 pressure_col
             ].tolist()
 
-        # Extract the heater parameters
+        # Extract the platen bias parameters
+        if 'Power Supply 7 Output Setpoint' in self.data.columns:
+            params = self.get_platen_bias_params(params)
+
+        # Extract the substrate heater parameters
+        params = self.get_substrate_heater_params(params)
+
+        return params
+
+    def get_platen_bias_params(self, params):
+        # Initialize the source dictionary if it does not exist
+        if 'platen_bias' not in params[self.step_id]['environment']:
+            params[self.step_id]['environment']['platen_bias'] = {}
+            params[self.step_id]['environment']['platen_bias']['power_supply'] = {}
+            params[self.step_id]['environment']['platen_bias']['shutter_open'] = {}
+
+        # Extract the source source id
+        params[self.step_id]['environment']['platen_bias']['name'] = 'platen_bias'
+
+        # extract the state of the source shutter
+        params[self.step_id]['environment']['platen_bias']['shutter_open']['value'] = [
+            bool(x) for x in self.data['PC Substrate Shutter Open'].tolist()
+        ]
+        params[self.step_id]['environment']['platen_bias']['shutter_open']['time'] = (
+            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+            .dt.total_seconds()
+            .tolist()
+        )
+        # we check if the shutter is open during more than the TOLERANCE
+        params[self.step_id]['environment']['platen_bias']['shutter_open'][
+            'mode_value'  # most common value
+        ] = bool(self.data['PC Substrate Shutter Open'].value_counts().idxmax())
+
+        # extract the power supply parameters
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'power_type'
+        ] = 'RF'
+
+        # get the time series in seconds from the start of the step
+        time_series = (
+            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+            .dt.total_seconds()
+            .tolist()
+        )
+
+        # the platen power supply is the seven
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'avg_power_sp'
+        ] = self.data['Power Supply 7 Output Setpoint'].mean()
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'power_sp'
+        ] = {}
+        params[self.step_id]['environment']['platen_bias']['power_supply']['power_sp'][
+            'value'
+        ] = self.data['Power Supply 7 Output Setpoint'].tolist()
+        params[self.step_id]['environment']['platen_bias']['power_supply']['power_sp'][
+            'time'
+        ] = time_series
+
+        # Extract the source dc bias setpoint
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'avg_dc_bias'
+        ] = self.data['Power Supply 7 DC Bias'].mean()
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'dc_bias'
+        ] = {}
+        params[self.step_id]['environment']['platen_bias']['power_supply']['dc_bias'][
+            'value'
+        ] = self.data['Power Supply 7 DC Bias'].tolist()
+        params[self.step_id]['environment']['platen_bias']['power_supply']['dc_bias'][
+            'time'
+        ] = time_series
+
+        # Extract the fwd power
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'avg_fwd_power'
+        ] = self.data['Power Supply 7 Fwd Power'].mean()
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'fwd_power'
+        ] = {}
+        params[self.step_id]['environment']['platen_bias']['power_supply']['fwd_power'][
+            'value'
+        ] = self.data['Power Supply 7 Fwd Power'].tolist()
+        params[self.step_id]['environment']['platen_bias']['power_supply']['fwd_power'][
+            'time'
+        ] = time_series
+
+        # Extract the rfl power
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'avg_rfl_power'
+        ] = self.data['Power Supply 7 Rfl Power'].mean()
+        params[self.step_id]['environment']['platen_bias']['power_supply'][
+            'rfl_power'
+        ] = {}
+        params[self.step_id]['environment']['platen_bias']['power_supply']['rfl_power'][
+            'value'
+        ] = self.data['Power Supply 7 Rfl Power'].tolist()
+        params[self.step_id]['environment']['platen_bias']['power_supply']['rfl_power'][
+            'time'
+        ] = time_series
+
+        return params
+
+    def get_substrate_heater_params(self, params):
+        # Initialize the source dictionary if it does not exist
+        if 'substrate_heater' not in params[self.step_id]['environment']:
+            params[self.step_id]['environment']['heater'] = {}
+            params[self.step_id]['environment']['heater']['temp_1'] = {}
+            params[self.step_id]['environment']['heater']['temp_2'] = {}
+            params[self.step_id]['environment']['heater']['temp_sp'] = {}
+
+        # extract the substrate heater avg temperature 1 and 2 and the setpoint
+        params[self.step_id]['environment']['heater']['avg_temp_1'] = self.data[
+            'Substrate Heater Temperature'
+        ].mean()
+
+        params[self.step_id]['environment']['heater']['avg_temp_2'] = self.data[
+            'Substrate Heater Temperature 2'
+        ].mean()
+
+        params[self.step_id]['environment']['heater']['avg_temp_sp'] = self.data[
+            'Substrate Heater Temperature Setpoint'
+        ].mean()
+
+        # get the time series in seconds from the start of the step
+        time_series = (
+            (self.data['Time Stamp'] - self.data['Time Stamp'].iloc[0])
+            .dt.total_seconds()
+            .tolist()
+        )
+
+        # Extract the substrate heater temperature 1
+
+        params[self.step_id]['environment']['heater']['temp_1']['value'] = self.data[
+            'Substrate Heater Temperature'
+        ].tolist()
+        params[self.step_id]['environment']['heater']['temp_1']['time'] = time_series
+
+        # Extract the substrate heater temperature 2
+
+        params[self.step_id]['environment']['heater']['temp_2']['value'] = self.data[
+            'Substrate Heater Temperature 2'
+        ].tolist()
+        params[self.step_id]['environment']['heater']['temp_2']['time'] = time_series
+
+        # Extract the substrate heater temperature setpoint
+
+        params[self.step_id]['environment']['heater']['temp_sp']['value'] = self.data[
+            'Substrate Heater Temperature Setpoint'
+        ].tolist()
+        params[self.step_id]['environment']['heater']['temp_sp']['time'] = time_series
 
         return params
 
@@ -1426,11 +1617,14 @@ class Deposition_Event(Lf_Event):
         def add_partial_pressures(gas, params):
             params[self.category][f'avg_{gas}_partial_pressure'] = (
                 params[self.category]['avg_capman_pressure']
-                * 0.1
+                * GAS_FRACTION[gas]
                 * params[self.category][f'avg_{gas}_flow']
                 / (
                     params[self.category]['avg_ar_flow']
+                    + params[self.category]['avg_n2_flow']
+                    + params[self.category]['avg_o2_flow']
                     + params[self.category]['avg_ph3_flow']
+                    + params[self.category]['avg_nh3_flow']
                     + params[self.category]['avg_h2s_flow']
                 )
             )
@@ -1475,7 +1669,7 @@ class Deposition_Event(Lf_Event):
             'PC Capman Pressure'
         ].mean()
 
-        for gas in ['ar', 'ph3', 'h2s']:
+        for gas in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
             mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
             if mean_flow > MFC_FLOW_THRESHOLD:
                 params[self.category][f'avg_{gas}_flow'] = mean_flow
@@ -1483,7 +1677,7 @@ class Deposition_Event(Lf_Event):
                 params[self.category][f'avg_{gas}_flow'] = 0
 
         # calculate the partial pressure of the gases
-        for gas in ['ph3', 'h2s']:
+        for gas in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
             params = add_partial_pressures(gas, params)
 
         # calculate the ratio between the PH3 and H2S flow
@@ -1495,6 +1689,7 @@ class Deposition_Event(Lf_Event):
                 params[self.category]['avg_ph3_flow']
                 / params[self.category]['avg_h2s_flow']
             )
+        # TODO, add the ratio for other reactive gases ?
 
         return params
 
@@ -1528,7 +1723,18 @@ class Deposition_Event(Lf_Event):
             or (params[self.category]['s_cracker']['enabled'])
         ):
             elements += ['S']
-            # add the element as an hypen separated string
+        if (
+            'N' not in elements
+            and params[self.category]['avg_n2_flow'] > MFC_FLOW_THRESHOLD
+            or params[self.category]['avg_nh3_flow'] > MFC_FLOW_THRESHOLD
+        ):
+            elements += ['N']
+        if (
+            'O' not in elements
+            and params[self.category]['avg_o2_flow'] > MFC_FLOW_THRESHOLD
+        ):
+            elements += ['O']
+        # add the element as an hypen separated string
         params[self.category]['material_space'] = '-'.join(elements)
         return params
 
@@ -1635,6 +1841,10 @@ class Deposition_Event(Lf_Event):
 
     # method to deduce the source material and target of the source during deposition
     def get_source_material_and_target(self, params, source_number, elements):
+        params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_name'] = (
+            f'{SOURCE_NAME[str(source_number)]}'
+        )
+
         source_material = self.data[f'PC Source {source_number} Material'].iloc[0]
         elements, material = elements_from_string(source_material, elements)
 
@@ -1717,13 +1927,16 @@ class Source_Presput_Event(Lf_Event):
         if self.category not in params:
             params[self.category] = {}
 
+        target_name = f'{SOURCE_NAME[str(self.source)]}'
+
         source_number = self.source
-        if f'{SOURCE_NAME[str(source_number)]}' not in params[self.category]:
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'] = {}
+        if target_name not in params[self.category]:
+            params[self.category][target_name] = {}
 
         # We check if the source is enabled during deposition
-        if params['deposition'][f'{SOURCE_NAME[str(source_number)]}']['enabled']:
+        if params['deposition'][target_name]['enabled']:
             # ----source presputtering parameters-----
+            params[self.category][target_name]['target_name'] = target_name
             # Extract the presputtering duration
             presput_duration = 0
             for i in range(len(self.bounds)):
@@ -1731,26 +1944,22 @@ class Source_Presput_Event(Lf_Event):
                     self.bounds[i][1] - self.bounds[i][0]
                 ).total_seconds()
             presput_duration = pd.to_timedelta(presput_duration, unit='s')
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}']['duration'] = (
-                presput_duration
-            )
+            params[self.category][target_name]['duration'] = presput_duration
             # Extract the average output power during presputtering
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                'avg_output_power'
-            ] = self.data[f'Source {source_number} Output Setpoint'].mean()
+            params[self.category][target_name]['avg_output_power'] = self.data[
+                f'Source {source_number} Output Setpoint'
+            ].mean()
             # Extract the avg capman pressure during presputtering
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                'avg_capman_pressure'
-            ] = self.data['PC Capman Pressure'].mean()
+            params[self.category][target_name]['avg_capman_pressure'] = self.data[
+                'PC Capman Pressure'
+            ].mean()
             # Extract the gas flows during presputtering
             if self.data['PC MFC 1 Flow'].mean() > MFC_FLOW_THRESHOLD:
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                    'avg_ar_flow'
-                ] = self.data['PC MFC 1 Flow'].mean()
+                params[self.category][target_name]['avg_ar_flow'] = self.data[
+                    'PC MFC 1 Flow'
+                ].mean()
             else:
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                    'avg_ar_flow'
-                ] = 0
+                params[self.category][target_name]['avg_ar_flow'] = 0
         return params
 
 
@@ -1770,10 +1979,12 @@ class Source_Ramp_Up_Event(Lf_Event):
             params[self.category] = {}
 
         source_number = self.source
-        if f'{SOURCE_NAME[str(source_number)]}' not in params[self.category]:
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'] = {}
+        target_name = f'{SOURCE_NAME[str(source_number)]}'
+        if target_name not in params[self.category]:
+            params[self.category][target_name] = {}
         # We check if the source is enabled during deposition
-        if params['deposition'][f'{SOURCE_NAME[str(source_number)]}']['enabled']:
+        if params['deposition'][target_name]['enabled']:
+            params[self.category][target_name]['target_name'] = target_name
             # Extract the plasma ignition power as the power at which
             # the plasma really ignites
             # We first filter only the last [-1] source ramp up event with the
@@ -1803,23 +2014,17 @@ class Source_Ramp_Up_Event(Lf_Event):
             # not be empty
             if not data_ignition_time.empty:
                 ignition_time = data_ignition_time['Time Stamp'].iloc[0]
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                    'ignition'
-                ] = True
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                    'ignition_time'
-                ] = ignition_time
+                params[self.category][target_name]['ignition'] = True
+                params[self.category][target_name]['ignition_time'] = ignition_time
                 ignition_data = self.data[self.data['Time Stamp'] == ignition_time]
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                    'ignition_power'
-                ] = ignition_data[f'Source {source_number} Output Setpoint'].iloc[0]
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                    'ignition_pressure'
-                ] = ignition_data['PC Capman Pressure'].iloc[0]
+                params[self.category][target_name]['ignition_power'] = ignition_data[
+                    f'Source {source_number} Output Setpoint'
+                ].iloc[0]
+                params[self.category][target_name]['ignition_pressure'] = ignition_data[
+                    'PC Capman Pressure'
+                ].iloc[0]
             else:
-                params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                    'source_ignition'
-                ] = False
+                params[self.category][target_name]['source_ignition'] = False
 
         return params
 
@@ -1869,7 +2074,7 @@ class Sub_Ramp_Up_Event(Lf_Event):
             ].mean()
             # Extract the gas flows during the substrate ramp up
 
-            for gas in ['ar', 'ph3', 'h2s']:
+            for gas in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
                 mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
                 if mean_flow > MFC_FLOW_THRESHOLD:
                     params[self.category][f'avg_{gas}_flow'] = mean_flow
@@ -2024,7 +2229,7 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
         params[self.category]['temp_slope'] = temp_slope
 
         # Extract the gases used during the high substrate ramp down
-        for gas in ['ar', 'ph3', 'h2s']:
+        for gas in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
             mean_flow = self.data[f'PC MFC {GAS_NUMBER[gas]} Flow'].mean()
             if mean_flow > MFC_FLOW_THRESHOLD:
                 params[self.category][f'avg_{gas}_flow'] = mean_flow
@@ -2188,8 +2393,12 @@ class DepRate_Meas_Event(Lf_Event):
         elif self.source is not None:
             source_number = self.source
 
-        if SOURCE_NAME[str(source_number)] not in params[self.category]:
-            params[self.category][SOURCE_NAME[str(source_number)]] = {}
+        target_name = SOURCE_NAME[str(source_number)]
+
+        if target_name not in params[self.category]:
+            params[self.category][target_name] = {}
+
+        params[self.category][target_name]['target_name'] = target_name
 
         if self.source is not None and self.source != 0:
             source_number = self.source
@@ -2197,30 +2406,28 @@ class DepRate_Meas_Event(Lf_Event):
                 self.data[f'PC Source {source_number} Material'].iloc[0]
             )
             source_element = re.split(r'\s+', source_element)[0]
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                'target_material'
-            ] = ELEMENTS[source_element]
+            params[self.category][target_name]['target_material'] = ELEMENTS[
+                source_element
+            ]
         if self.source == 0:
             source_number = 0
             source_element = 'S'
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                'target_material'
-            ] = source_element
+            params[self.category][target_name]['target_material'] = source_element
 
-        params[self.category][f'{SOURCE_NAME[str(source_number)]}']['dep_rate'] = (
-            self.data['Thickness Rate'].mean()
-        )
-        params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-            'dep_rate_ref_mat'
-        ] = self.data['Thickness Active Material'].iloc[0]
+        params[self.category][target_name]['dep_rate'] = self.data[
+            'Thickness Rate'
+        ].mean()
+        params[self.category][target_name]['dep_rate_ref_mat'] = self.data[
+            'Thickness Active Material'
+        ].iloc[0]
         if 'Thickness Material Density' in self.data.columns:
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                'dep_rate_ref_density'
-            ] = self.data['Thickness Material Density'].mean()
+            params[self.category][target_name]['dep_rate_ref_density'] = self.data[
+                'Thickness Material Density'
+            ].mean()
         if 'Thickness Material Z' in self.data.columns:
-            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
-                'dep_rate_ref_z'
-            ] = self.data['Thickness Material Z'].mean()
+            params[self.category][target_name]['dep_rate_ref_z'] = self.data[
+                'Thickness Material Z'
+            ].mean()
 
         return params
 
@@ -2307,7 +2514,7 @@ def get_end_of_process(raw_data, params=None):
 
     if 'deposition' not in params:
         raise ValueError(
-            'Missing deposition info, ' 'run get_simple_deposition_params first'
+            'Missing deposition info, run get_simple_deposition_params first'
         )
     params['overview']['end_of_process_temp'] = raw_data[
         'Substrate Heater Temperature'
@@ -2614,6 +2821,7 @@ def make_timestamps_tz_naive(timestamps):
 
 # Function to calculate the true temperature
 def calculate_avg_true_temp(temp_1, temp_2):
+    # if temp_1 is a pint quantity, convert it to a float
     return 0.905 * (0.5 * (temp_1 + temp_2)) + 12
 
 
@@ -2956,14 +3164,23 @@ def filter_data_temp_ctrl(data):
 # by MFC_FLOW_THRESHOLD
 def filter_gas(data):
     ph3 = Lf_Event('PH3 On', category='ph3_on')
+    nh3 = Lf_Event('NH3 On', category='nh3_on')
     h2s = Lf_Event('H2S On', category='h2s_on')
     ar = Lf_Event('Ar On', category='ar_on')
+    n2 = Lf_Event('N2 On', category='n2_on')
+    o2 = Lf_Event('O2 On', category='o2_on')
 
     ph3_cond = (data['PC MFC 4 Setpoint'] > MFC_FLOW_THRESHOLD) & (
         data['PC MFC 4 Flow'] > MFC_FLOW_THRESHOLD
     )
     ph3.set_condition(ph3_cond)
     ph3.filter_data(data)
+
+    nh3_cond = (data['PC MFC 5 Setpoint'] > MFC_FLOW_THRESHOLD) & (
+        data['PC MFC 5 Flow'] > MFC_FLOW_THRESHOLD
+    )
+    nh3.set_condition(nh3_cond)
+    nh3.filter_data(data)
 
     h2s_cond = (data['PC MFC 6 Setpoint'] > MFC_FLOW_THRESHOLD) & (
         data['PC MFC 6 Flow'] > MFC_FLOW_THRESHOLD
@@ -2977,7 +3194,19 @@ def filter_gas(data):
     ar.set_condition(ar_cond)
     ar.filter_data(data)
 
-    return ph3, h2s, ar
+    n2_cond = (data['PC MFC 2 Setpoint'] > MFC_FLOW_THRESHOLD) & (
+        data['PC MFC 2 Flow'] > MFC_FLOW_THRESHOLD
+    )
+    n2.set_condition(n2_cond)
+    n2.filter_data(data)
+
+    o2_cond = (data['PC MFC 3 Setpoint'] > MFC_FLOW_THRESHOLD) & (
+        data['PC MFC 3 Flow'] > MFC_FLOW_THRESHOLD
+    )
+    o2.set_condition(o2_cond)
+    o2.filter_data(data)
+
+    return ph3, nh3, h2s, ar, n2, o2
 
 
 # We can also define composite conditions for different events by
@@ -3057,7 +3286,10 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
         'source_ramp_up',
         'cracker_on_open',
         'ph3',
+        'nh3',
         'h2s',
+        'n2',
+        'o2',
         'deposition',
     ]
 
@@ -3069,7 +3301,11 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
     source_ramp_up = kwargs.get('source_ramp_up')
     cracker_on_open = kwargs.get('cracker_on_open')
     ph3 = kwargs.get('ph3')
+    nh3 = kwargs.get('nh3')
     h2s = kwargs.get('h2s')
+    n2 = kwargs.get('n2')
+    o2 = kwargs.get('o2')
+
     deposition = kwargs.get('deposition')
 
     source_presput = {}
@@ -3089,7 +3325,14 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
                         )
                     )
                     & ~source_ramp_up[str(source_number)].cond
-                    & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
+                    & ~(
+                        ph3.cond
+                        | nh3.cond
+                        | h2s.cond
+                        | n2.cond
+                        | o2.cond
+                        | cracker_on_open.cond
+                    )
                 )
             except IndexError:
                 print(
@@ -3102,7 +3345,14 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
                         source_on[str(source_number)].cond
                         & (data['Time Stamp'] < deposition.bounds[0][0])
                         & ~source_ramp_up[str(source_number)].cond
-                        & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
+                        & ~(
+                            ph3.cond
+                            | nh3.cond
+                            | h2s.cond
+                            | n2.cond
+                            | o2.cond
+                            | cracker_on_open.cond
+                        )
                     )
                 except IndexError:
                     print(
@@ -3112,7 +3362,14 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
                     source_presput_cond = (
                         source_on[str(source_number)].cond
                         & ~source_ramp_up[str(source_number)].cond
-                        & ~(ph3.cond | h2s.cond | cracker_on_open.cond)
+                        & ~(
+                            ph3.cond
+                            | nh3.cond
+                            | h2s.cond
+                            | n2.cond
+                            | o2.cond
+                            | cracker_on_open.cond
+                        )
                     )
 
             source_presput[str(source_number)] = Source_Presput_Event(
@@ -3135,7 +3392,16 @@ def filter_data_plasma_presput(data, source_list, **kwargs):
 # are within WITHIN_RANGE_PARAM of the deposition conditions (for the cracker, and
 # and the pressure)
 def filter_data_cracker_pressure(data, **kwargs):
-    required_keys = ['cracker_on_open', 'ph3', 'h2s', 'ar', 'deposition']
+    required_keys = [
+        'cracker_on_open',
+        'ph3',
+        'nh3',
+        'h2s',
+        'ar',
+        'n2',
+        'o2',
+        'deposition',
+    ]
 
     for key in required_keys:
         if key not in kwargs:
@@ -3143,8 +3409,12 @@ def filter_data_cracker_pressure(data, **kwargs):
 
     cracker_on_open = kwargs.get('cracker_on_open')
     ph3 = kwargs.get('ph3')
+    nh3 = kwargs.get('nh3')
     h2s = kwargs.get('h2s')
     ar = kwargs.get('ar')
+    n2 = kwargs.get('n2')
+    o2 = kwargs.get('o2')
+
     deposition = kwargs.get('deposition')
 
     cracker_base_pressure = SCracker_Pressure_Event(
@@ -3196,8 +3466,11 @@ def filter_data_cracker_pressure(data, **kwargs):
                 cracker_on_open.cond
                 & (data['Time Stamp'] < deposition.bounds[0][0])
                 & ~h2s.cond
+                & ~nh3.cond
                 & ~ph3.cond
                 & ~ar.cond
+                & ~n2.cond
+                & ~o2.cond
                 & cracker_temp_cond
                 & valve_cond
                 & (data['Sulfur Cracker Control Enabled'] == 1)
@@ -3224,7 +3497,10 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
         'any_source_on_open',
         'cracker_on_open',
         'ph3',
+        'nh3',
         'h2s',
+        'n2',
+        'o2',
     ]
 
     for key in required_keys:
@@ -3236,7 +3512,10 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
     any_source_on_open = kwargs.get('any_source_on_open')
     cracker_on_open = kwargs.get('cracker_on_open')
     ph3 = kwargs.get('ph3')
+    nh3 = kwargs.get('nh3')
     h2s = kwargs.get('h2s')
+    n2 = kwargs.get('n2')
+    o2 = kwargs.get('o2')
 
     xtal2_open = Lf_Event('Xtal 2 Shutter Open', category='xtal2_shutter_open')
     deprate2_meas = Lf_Event('Deposition Rate Measurement', category='deprate2_meas')
@@ -3257,9 +3536,15 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
     # We also include that the condition of the plasma are within the
     # WITHIN_RANGE_PARAM of the deposition conditions
 
-    pressure_cond, ph3_dep_cond, h2s_dep_cond, cracker_dep_cond = (
-        define_deposition_conditions(data, deposition)
-    )
+    (
+        pressure_cond,
+        ph3_dep_cond,
+        nh3_dep_cond,
+        h2s_dep_cond,
+        n2_dep_cond,
+        o2_dep_cond,
+        cracker_dep_cond,
+    ) = define_deposition_conditions(data, deposition)
 
     deprate2_film_meas, deprate2_ternary_meas = define_film_meas_conditions(
         data,
@@ -3268,7 +3553,10 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
         source_on_open=source_on_open,
         cracker_dep_cond=cracker_dep_cond,
         h2s_dep_cond=h2s_dep_cond,
+        nh3_dep_cond=nh3_dep_cond,
         ph3_dep_cond=ph3_dep_cond,
+        n2_dep_cond=n2_dep_cond,
+        o2_dep_cond=o2_dep_cond,
         deposition=deposition,
         pressure_cond=pressure_cond,
         deprate2_film_meas=deprate2_film_meas,
@@ -3282,7 +3570,10 @@ def filter_data_film_dep_rate(data, source_list, **kwargs):
         any_source_on_open=any_source_on_open,
         cracker_on_open=cracker_on_open,
         ph3=ph3,
+        nh3=nh3,
         h2s=h2s,
+        n2=n2,
+        o2=o2,
     )
 
     return (
@@ -3338,9 +3629,27 @@ def define_deposition_conditions(data, deposition):
         WITHIN_RANGE_PARAM,
     )
 
+    nh3_dep_cond = within_range(
+        data['PC MFC 5 Setpoint'],
+        deposition.data['PC MFC 5 Setpoint'].mean(),
+        WITHIN_RANGE_PARAM,
+    )
+
     h2s_dep_cond = within_range(
         data['PC MFC 6 Setpoint'],
         deposition.data['PC MFC 6 Setpoint'].mean(),
+        WITHIN_RANGE_PARAM,
+    )
+
+    n2_dep_cond = within_range(
+        data['PC MFC 2 Setpoint'],
+        deposition.data['PC MFC 2 Setpoint'].mean(),
+        WITHIN_RANGE_PARAM,
+    )
+
+    o2_dep_cond = within_range(
+        data['PC MFC 3 Setpoint'],
+        deposition.data['PC MFC 3 Setpoint'].mean(),
         WITHIN_RANGE_PARAM,
     )
 
@@ -3387,7 +3696,15 @@ def define_deposition_conditions(data, deposition):
 
     else:
         cracker_dep_cond = pd.Series(False, index=data.index)
-    return pressure_cond, ph3_dep_cond, h2s_dep_cond, cracker_dep_cond
+    return (
+        pressure_cond,
+        ph3_dep_cond,
+        nh3_dep_cond,
+        h2s_dep_cond,
+        n2_dep_cond,
+        o2_dep_cond,
+        cracker_dep_cond,
+    )
 
 
 def define_film_meas_conditions(data, source_list, **kwargs):
@@ -3395,7 +3712,10 @@ def define_film_meas_conditions(data, source_list, **kwargs):
     source_on_open = kwargs.get('source_on_open')
     cracker_dep_cond = kwargs.get('cracker_dep_cond')
     h2s_dep_cond = kwargs.get('h2s_dep_cond')
+    nh3_dep_cond = kwargs.get('nh3_dep_cond')
     ph3_dep_cond = kwargs.get('ph3_dep_cond')
+    n2_dep_cond = kwargs.get('n2_dep_cond')
+    o2_dep_cond = kwargs.get('o2_dep_cond')
     deposition = kwargs.get('deposition')
     pressure_cond = kwargs.get('pressure_cond')
     deprate2_film_meas = kwargs.get('deprate2_film_meas')
@@ -3413,7 +3733,10 @@ def define_film_meas_conditions(data, source_list, **kwargs):
                 & source_on_open[str(source_number)].cond
                 & cracker_dep_cond
                 & h2s_dep_cond
+                & nh3_dep_cond
                 & ph3_dep_cond
+                & n2_dep_cond
+                & o2_dep_cond
                 & (data['Thickness Active Material'] != 'Sulfur')
                 & power_cond
                 & pressure_cond
@@ -3454,7 +3777,10 @@ def define_sulfur_meas_conditions(data, deprate2_meas, deprate2_sulfur_meas, **k
     any_source_on_open = kwargs.get('any_source_on_open')
     cracker_on_open = kwargs.get('cracker_on_open')
     ph3 = kwargs.get('ph3')
+    nh3 = kwargs.get('nh3')
     h2s = kwargs.get('h2s')
+    n2 = kwargs.get('n2')
+    o2 = kwargs.get('o2')
 
     # Define the condition for the onlt Sulfur film deposition rate measurement as:
     #  with the material used as refereced by the QCM
@@ -3511,7 +3837,7 @@ def define_sulfur_meas_conditions(data, deprate2_meas, deprate2_sulfur_meas, **k
             deprate2_meas.cond
             & ~any_source_on_open.cond
             & cracker_on_open.cond
-            & ~(ph3.cond | h2s.cond)
+            & ~(ph3.cond | nh3.cond | h2s.cond | n2.cond | o2.cond)
             & (data['Thickness Active Material'] == 'Sulfur')
             & ~deposition.cond
             & cracker_temp_cond
@@ -3532,7 +3858,16 @@ def define_sulfur_meas_conditions(data, deprate2_meas, deprate2_sulfur_meas, **k
 # - the temperature setpoint is increasing faster than the threshold
 # defined in the reference values
 def filter_data_temp_ramp_up_down(data, **kwargs):
-    required_keys = ['cracker_on_open', 'temp_ctrl', 'ph3', 'h2s', 'deposition']
+    required_keys = [
+        'cracker_on_open',
+        'temp_ctrl',
+        'ph3',
+        'nh3',
+        'h2s',
+        'n2',
+        'o2',
+        'deposition',
+    ]
 
     for key in required_keys:
         if key not in kwargs:
@@ -3541,7 +3876,10 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
     cracker_on_open = kwargs.get('cracker_on_open')
     temp_ctrl = kwargs.get('temp_ctrl')
     ph3 = kwargs.get('ph3')
+    nh3 = kwargs.get('nh3')
     h2s = kwargs.get('h2s')
+    n2 = kwargs.get('n2')
+    o2 = kwargs.get('o2')
     deposition = kwargs.get('deposition')
 
     ramp_up_temp = Sub_Ramp_Up_Event('Sub Temp Ramp Up', category='ramp_up_temp')
@@ -3597,7 +3935,14 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
         try:
             ramp_down_high_temp_cond = (
                 data['Time Stamp'] > ramp_down_temp.data['Time Stamp'].iloc[0]
-            ) & (h2s.cond | cracker_on_open.cond | ph3.cond)
+            ) & (
+                h2s.cond
+                | nh3.cond
+                | ph3.cond
+                | n2.cond
+                | o2.cond
+                | cracker_on_open.cond
+            )
         except Exception:
             ramp_down_high_temp_cond = pd.Series(False, index=data.index)
         ramp_down_high_temp.set_condition(ramp_down_high_temp_cond)
@@ -3610,7 +3955,14 @@ def filter_data_temp_ramp_up_down(data, **kwargs):
         try:
             ramp_down_low_temp_cond = (
                 data['Time Stamp'] > ramp_down_temp.data['Time Stamp'].iloc[0]
-            ) & ~(h2s.cond | cracker_on_open.cond | ph3.cond)
+            ) & ~(
+                h2s.cond
+                | nh3.cond
+                | ph3.cond
+                | n2.cond
+                | o2.cond
+                | cracker_on_open.cond
+            )
         except Exception:
             ramp_down_low_temp_cond = pd.Series(False, index=data.index)
         ramp_down_low_temp.set_condition(ramp_down_low_temp_cond)
@@ -3714,7 +4066,10 @@ def generate_optix_cascade_plot(spectra, **kwargs):
         # Match timestamps in timestamp_map to the closest time in color_df
         for col in cols:
             spectrum_time = timestamp_map[col]
-            closest_idx = color_df.index.get_loc(spectrum_time, method='nearest')
+            closest_idx = color_df.index.get_indexer([spectrum_time], method='nearest')[
+                0
+            ]
+            # closest_idx = (color_df.index - spectrum_time).abs().argmin()
             color_value = color_df.iloc[closest_idx][color_column]
             colors.append(color_value)
 
@@ -3806,9 +4161,9 @@ def create_3d_plot(**kwargs):
                 name=f'Trace {col}',
                 line=dict(color=color),
                 hovertemplate=(
-                    f"X: %{{x}}<br>"
-                    f"Intensity: %{{z}}<br>"
-                    f"Time: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}<extra></extra>"
+                    f'X: %{{x}}<br>'
+                    f'Intensity: %{{z}}<br>'
+                    f'Time: {timestamp.strftime("%Y-%m-%d %H:%M:%S")}<extra></extra>'
                 ),
             )
         )
@@ -3885,39 +4240,33 @@ def plot_logfile_chamber(main_params, logfile_name=''):
 
     # Assuming dummy samples for now
     samples = [
-        Sample('BR', 20, 35, 40),
-        Sample('BL', -20, 35, 40),
-        Sample('FR', 20, -5, 40),
-        Sample('FL', -20, -5, 40),
+        Sample('BR', [20, 35], 0, [40, 40]),
+        Sample('BL', [-20, 35], 0, [40, 40]),
+        Sample('FR', [20, -5], 0, [40, 40]),
+        Sample('FL', [-20, -5], 0, [40, 40]),
+        Sample('G', [0, -38], 90, [26, 76]),
     ]
 
     platen_rot = main_params['deposition']['platen_position']
 
     # Plotting
-    fig = plot_matplotlib_chamber_config(samples, guns, platen_rot)
-
-    # Save the Matplotlib figure to a BytesIO object
-    png = io.BytesIO()
-    fig.savefig(png, format='png', bbox_inches='tight', dpi=DPI)
-    png.seek(0)
-
-    # Convert the PNG to a NumPy array
-    image = np.array(Image.open(png))
-
-    # Create a Plotly figure with the image
-    plotly_fig = go.Figure(go.Image(z=image))
-
-    # Customize the layout (optional)
-    plotly_fig.update_layout(
-        title=f'Chamber Configuration:{logfile_name}',
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-        margin=dict(l=0, r=0, t=100, b=0),
-        width=WIDTH,
+    plotly_fig = plot_plotly_chamber_config(
+        samples,
+        guns,
+        platen_rot,
+        plot_title='DEPOSITION CONFIG :',
     )
 
-    # Return both the Matplotlib and Plotly figures
-    return fig, plotly_fig
+    plotly_fig_mounting_angle = plot_plotly_chamber_config(
+        samples,
+        guns,
+        90,
+        in_chamber=False,
+        plot_title='MOUNTING CONFIG :',
+    )
+
+    # Return bot Plotly figures
+    return plotly_fig, plotly_fig_mounting_angle
 
 
 def quick_plot(df, Y, **kwargs):
@@ -4501,8 +4850,12 @@ def generate_bias_plot(
             )
             Y_plot.append(f'{col} Smoothed {rolling_num}pt')
 
-            # check that the sample name contains Sb
-            if '_Sb_' in logfile_name:
+            # check if more than 10percent of the dc bias data is zero
+            if (
+                deposition.data[col].eq(0).sum() / len(deposition.data)
+                > DC_BIAS_SMOOTHING_THRESHOLD
+            ):
+                # if '_Sb_' in logfile_name:
                 rolling_num_max = int(rolling_num * rolling_frac_max)
                 # add the max instead of the mean after rolling
                 deposition.data[f'{col} Max {rolling_num_max}pt'] = (
@@ -4547,8 +4900,24 @@ def generate_bias_plot(
 
 def generate_overview_plot(data, logfile_name, events):
     Y_plot = OVERVIEW_PLOT
+
     # Check if the columns are in the data
     Y_plot = [col for col in Y_plot if col in data.columns]
+
+    if 'Thickness Rate' in OVERVIEW_PLOT:
+        if 'Xtal 2 Shutter Open' in data.columns:
+            data['Thickness Rate (0 if closed)'] = (
+                data['Thickness Rate'] * data['Xtal 2 Shutter Open']
+            )
+            Y_plot.append('Thickness Rate (0 if closed)')
+            Y_plot.remove('Thickness Rate')
+
+    # remove all the Y_col for which the data is constant throughout the data
+    new_Y_plot = []
+    for col in Y_plot:
+        if not data[col].nunique() == 1:
+            new_Y_plot.append(col)
+    Y_plot = new_Y_plot
 
     # Get the deposition event
     deposition = event_list_to_dict(events)['deposition']
@@ -4727,17 +5096,17 @@ def generate_plots(log_data, events_to_plot, main_params, sample_name=''):
     plotly_timeline = generate_timeline(events_to_plot, sample_name)
     plots['timeline'] = plotly_timeline
 
-    bias_plot = generate_bias_plot(
-        events_to_plot,
-        sample_name,
-        rolling_num=ROLLING_NUM,
-        rolling_frac_max=ROLLING_FRAC_MAX,
-    )
-    plots['bias_plot'] = bias_plot
-
     # Generate the overview plot
     overview_plot = generate_overview_plot(log_data, sample_name, events_to_plot)
     plots['overview_plot'] = overview_plot
+
+    bias_plot = generate_bias_plot(
+        events_to_plot,
+        sample_name,
+        # rolling_num=ROLLING_NUM,
+        # rolling_frac_max=ROLLING_FRAC_MAX,
+    )
+    plots['bias_plot'] = bias_plot
 
     # _, chamber_plotly_plot = plot_logfile_chamber(main_params, sample_name)
     # plots.append(chamber_plotly_plot)
@@ -4964,7 +5333,13 @@ def read_logfile(file_path):
 
 
 def read_rga(file_path):
-    rga_file = pd.read_csv(file_path, sep=',', header=0, parse_dates=['Time'])
+    rga_file = pd.read_csv(
+        file_path,
+        sep=',',
+        header=0,
+        parse_dates=['Time'],
+        date_format='%m/%d/%Y %I:%M:%S %p',
+    )
     # Rename the 'Time' column to 'Time Stamp'
     rga_file.rename(columns={'Time': 'Time Stamp'}, inplace=True)
 
@@ -5011,9 +5386,9 @@ def merge_logfile_rga(
     avg_time_diff_df1 = df1['Time Stamp'].diff().mean()
     avg_time_diff_df2 = df2['Time Stamp'].diff().mean()
 
-    # calculate the tolerance based on the df with the largest
+    # calculate the tolerance based on the df with the smallest
     # average time difference
-    tolerance = min(avg_time_diff_df1, avg_time_diff_df2) / 1.5
+    tolerance = max(avg_time_diff_df1, avg_time_diff_df2)
 
     # Perform asof merge
     merged_df = pd.merge_asof(
@@ -5079,7 +5454,7 @@ def read_spectrum(file_path):
 
     # Rename the columns appropriately
     result_df.columns.name = None
-    y_columns = [f'y{i+1}' for i in range(len(result_df.columns) - 1)]
+    y_columns = [f'y{i + 1}' for i in range(len(result_df.columns) - 1)]
     result_df.columns = ['x'] + y_columns
 
     # Step 8: Drop the first row if it is filled with NaNs
@@ -5088,7 +5463,7 @@ def read_spectrum(file_path):
 
     # Step 9: Create a timestamp map
     timestamp_map = {
-        f'y{i+1}': timestamp
+        f'y{i + 1}': timestamp
         for i, timestamp in enumerate(reshaped_data['Timestamp'].unique())
     }
 
@@ -5204,8 +5579,8 @@ def verify_deposition_unicity(events, raw_data):
                 print('Number of deposition events after filtering:', event.events)
                 for i in range(event.events):
                     print(
-                        f'Deposition({i+1}) start time: {event.bounds[i][0]}',
-                        f'Deposition({i+1}) end time: {event.bounds[i][1]}',
+                        f'Deposition({i + 1}) start time: {event.bounds[i][0]}',
+                        f'Deposition({i + 1}) end time: {event.bounds[i][1]}',
                     )
                 if event.events == 1:
                     print('A unique deposition event was succesfully filtered')
@@ -5284,9 +5659,9 @@ def read_events(data):
     add_event_to_events(temp_ctrl, events)
 
     # ----- 4/CONDITIONS FOR THE DIFFERENT GASES BEING FLOWN--------
-    ph3, h2s, ar = filter_gas(data)
+    ph3, nh3, h2s, ar, n2, o2 = filter_gas(data)
 
-    add_event_to_events([ph3, h2s, ar], events)
+    add_event_to_events([ph3, nh3, h2s, ar, n2, o2], events)
 
     # ---------5/CONDITIONS FOR THE DEPOSITION--------
     any_source_on, any_source_on_open, deposition, source_used_list = (
@@ -5303,7 +5678,10 @@ def read_events(data):
         source_ramp_up=source_ramp_up,
         cracker_on_open=cracker_on_open,
         ph3=ph3,
+        nh3=nh3,
         h2s=h2s,
+        n2=n2,
+        o2=o2,
         deposition=deposition,
     )
 
@@ -5315,8 +5693,11 @@ def read_events(data):
         data,
         cracker_on_open=cracker_on_open,
         ph3=ph3,
+        nh3=nh3,
         h2s=h2s,
         ar=ar,
+        n2=n2,
+        o2=o2,
         deposition=deposition,
     )
 
@@ -5338,7 +5719,10 @@ def read_events(data):
         any_source_on_open=any_source_on_open,
         cracker_on_open=cracker_on_open,
         ph3=ph3,
+        nh3=nh3,
         h2s=h2s,
+        n2=n2,
+        o2=o2,
     )
 
     add_event_to_events(
@@ -5360,7 +5744,11 @@ def read_events(data):
             cracker_on_open=cracker_on_open,
             temp_ctrl=temp_ctrl,
             ph3=ph3,
+            nh3=nh3,
             h2s=h2s,
+            ar=ar,
+            n2=n2,
+            o2=o2,
             deposition=deposition,
         )
     )
@@ -5495,22 +5883,22 @@ def map_params_to_nomad(params, gun_list):
         # Deposition parameters
         [
             ['deposition', 'avg_temp_1'],
-            ['deposition_parameters', 'deposition_temp'],
+            ['deposition_parameters', 'deposition_temperature'],
             'degC',
         ],
         [
             ['deposition', 'avg_temp_2'],
-            ['deposition_parameters', 'deposition_temp_2'],
+            ['deposition_parameters', 'deposition_temperature_2'],
             'degC',
         ],
         [
             ['deposition', 'avg_temp_setpoint'],
-            ['deposition_parameters', 'deposition_temp_sp'],
+            ['deposition_parameters', 'deposition_temperature_setpoint'],
             'degC',
         ],
         [
             ['deposition', 'avg_true_temp'],
-            ['deposition_parameters', 'deposition_true_temp'],
+            ['deposition_parameters', 'deposition_true_temperature'],
             'degC',
         ],
         [
@@ -5544,6 +5932,16 @@ def map_params_to_nomad(params, gun_list):
             'mtorr',
         ],
         [
+            ['deposition', 'avg_nh3_flow'],
+            ['deposition_parameters', 'nh3_in_ar_flow'],
+            'cm^3/minute',
+        ],
+        [
+            ['deposition', 'avg_nh3_partial_pressure'],
+            ['deposition_parameters', 'nh3_partial_pressure'],
+            'mtorr',
+        ],
+        [
             ['deposition', 'avg_ph3_flow'],
             ['deposition_parameters', 'ph3_in_ar_flow'],
             'cm^3/minute',
@@ -5551,6 +5949,26 @@ def map_params_to_nomad(params, gun_list):
         [
             ['deposition', 'avg_ph3_partial_pressure'],
             ['deposition_parameters', 'ph3_partial_pressure'],
+            'mtorr',
+        ],
+        [
+            ['deposition', 'avg_n2_flow'],
+            ['deposition_parameters', 'n2_flow'],
+            'cm^3/minute',
+        ],
+        [
+            ['deposition', 'avg_n2_partial_pressure'],
+            ['deposition_parameters', 'n2_partial_pressure'],
+            'mtorr',
+        ],
+        [
+            ['deposition', 'avg_o2_flow'],
+            ['deposition_parameters', 'o2_in_ar_flow'],
+            'cm^3/minute',
+        ],
+        [
+            ['deposition', 'avg_o2_partial_pressure'],
+            ['deposition_parameters', 'o2_partial_pressure'],
             'mtorr',
         ],
         # End of process parameters
@@ -5587,17 +6005,17 @@ def map_params_to_nomad(params, gun_list):
             [
                 [
                     ['deposition', 'SCracker', 'zone1_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone1_temp'],
+                    ['deposition_parameters', 'SCracker', 'zone1_temperature'],
                     'degC',
                 ],
                 [
                     ['deposition', 'SCracker', 'zone2_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone2_temp'],
+                    ['deposition_parameters', 'SCracker', 'zone2_temperature'],
                     'degC',
                 ],
                 [
                     ['deposition', 'SCracker', 'zone3_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone3_temp'],
+                    ['deposition_parameters', 'SCracker', 'zone3_temperature'],
                     'degC',
                 ],
                 [
@@ -5618,6 +6036,11 @@ def map_params_to_nomad(params, gun_list):
             param_nomad_map.extend(
                 [
                     [
+                        ['deposition', gun, 'target_name'],
+                        ['deposition_parameters', gun, 'target_name'],
+                        None,
+                    ],
+                    [
                         ['deposition', gun, 'target_material'],
                         ['deposition_parameters', gun, 'target_material'],
                         None,
@@ -5631,36 +6054,6 @@ def map_params_to_nomad(params, gun_list):
                         ['deposition', gun, 'avg_output_power'],
                         ['deposition_parameters', gun, 'applied_power'],
                         'W',
-                    ],
-                    [
-                        ['source_ramp_up', gun, 'ignition_power'],
-                        ['deposition_parameters', gun, 'plasma_ignition_power'],
-                        'W',
-                    ],
-                    [
-                        ['source_ramp_up', gun, 'ignition_pressure'],
-                        ['deposition_parameters', gun, 'plasma_ignition_pressure'],
-                        'mtorr',
-                    ],
-                    [
-                        ['source_presput', gun, 'duration'],
-                        ['deposition_parameters', gun, 'presput_time'],
-                        None,
-                    ],
-                    [
-                        ['source_presput', gun, 'avg_output_power'],
-                        ['deposition_parameters', gun, 'presput_power'],
-                        'W',
-                    ],
-                    [
-                        ['source_presput', gun, 'avg_capman_pressure'],
-                        ['deposition_parameters', gun, 'presput_pressure'],
-                        'mtorr',
-                    ],
-                    [
-                        ['source_presput', gun, 'avg_ar_flow'],
-                        ['deposition_parameters', gun, 'presput_ar_flow'],
-                        'cm^3/minute',
                     ],
                     [
                         ['deposition', gun, 'plasma_type'],
@@ -5682,40 +6075,30 @@ def map_params_to_nomad(params, gun_list):
                         ['deposition_parameters', gun, 'end_voltage'],
                         'V',
                     ],
-                    # [
-                    #     ['deposition', gun, 'start_minus_end_voltage'],
-                    #     ['deposition_parameters', gun, 'start_end_voltage'],
-                    #     'V',
-                    # ],
-                    # [
-                    #     ['deposition', gun, 'max_voltage'],
-                    #     ['deposition_parameters', gun, 'max_voltage'],
-                    #     'V',
-                    # ],
-                    # [
-                    #     ['deposition', gun, 'min_voltage'],
-                    #     ['deposition_parameters', gun, 'min_voltage'],
-                    #     'V',
-                    # ],
-                    # [
-                    #     ['deposition', gun, 'range_voltage'],
-                    #     ['deposition_parameters', gun, 'range_voltage'],
-                    #     'V',
-                    # ],
+                    [
+                        ['deposition', gun, 'start_minus_end_voltage'],
+                        ['deposition_parameters', gun, 'start_end_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'max_voltage'],
+                        ['deposition_parameters', gun, 'max_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'min_voltage'],
+                        ['deposition_parameters', gun, 'min_voltage'],
+                        'V',
+                    ],
+                    [
+                        ['deposition', gun, 'range_voltage'],
+                        ['deposition_parameters', gun, 'range_voltage'],
+                        'V',
+                    ],
                     [
                         ['deposition', gun, 'std_voltage'],
                         ['deposition_parameters', gun, 'std_voltage'],
                         'V',
-                    ],
-                    [
-                        ['source_deprate2_film_meas', gun, 'dep_rate'],
-                        ['deposition_parameters', gun, 'source_deprate'],
-                        'Å/s',  # check if it is in A/s
-                    ],
-                    [
-                        ['source_deprate2_film_meas', gun, 'dep_rate_ref_mat'],
-                        ['deposition_parameters', gun, 'source_deprate_ref_mat'],
-                        None,
                     ],
                 ]
             )
@@ -5725,12 +6108,12 @@ def map_params_to_nomad(params, gun_list):
                     [
                         [
                             ['ramp_up_temp', 'start_temp'],
-                            ['temperature_ramp_up', 'start_temp_sp'],
+                            ['temperature_ramp_up', 'start_temperature_setpoint'],
                             'degC',
                         ],
                         [
                             ['ramp_up_temp', 'end_temp'],
-                            ['temperature_ramp_up', 'end_temp_sp'],
+                            ['temperature_ramp_up', 'end_temperature_setpoint'],
                             'degC',
                         ],
                         [
@@ -5740,7 +6123,7 @@ def map_params_to_nomad(params, gun_list):
                         ],
                         [
                             ['ramp_up_temp', 'temp_slope'],
-                            ['temperature_ramp_up', 'temp_slope'],
+                            ['temperature_ramp_up', 'temperature_slope'],
                             'degC/minute',
                         ],
                         [
@@ -5759,8 +6142,23 @@ def map_params_to_nomad(params, gun_list):
                             'cm^3/minute',
                         ],
                         [
+                            ['ramp_up_temp', 'avg_nh3_flow'],
+                            ['temperature_ramp_up', 'avg_nh3_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
                             ['ramp_up_temp', 'avg_h2s_flow'],
                             ['temperature_ramp_up', 'avg_h2s_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_up_temp', 'avg_n2_flow'],
+                            ['temperature_ramp_up', 'avg_n2_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_up_temp', 'avg_o2_flow'],
+                            ['temperature_ramp_up', 'avg_o2_in_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
@@ -5771,12 +6169,12 @@ def map_params_to_nomad(params, gun_list):
                         # ramp down temperature
                         [
                             ['ramp_down_high_temp', 'start_temp'],
-                            ['temperature_ramp_down', 'start_temp'],
+                            ['temperature_ramp_down', 'start_temperature'],
                             'degC',
                         ],
                         [
                             ['ramp_down_high_temp', 'end_temp'],
-                            ['temperature_ramp_down', 'end_temp'],
+                            ['temperature_ramp_down', 'end_temperature'],
                             'degC',
                         ],
                         [
@@ -5786,7 +6184,7 @@ def map_params_to_nomad(params, gun_list):
                         ],
                         [
                             ['ramp_down_high_temp', 'temp_slope'],
-                            ['temperature_ramp_down', 'temp_slope'],
+                            ['temperature_ramp_down', 'temperature_slope'],
                             'degC/minute',
                         ],
                         [
@@ -5805,8 +6203,23 @@ def map_params_to_nomad(params, gun_list):
                             'cm^3/minute',
                         ],
                         [
+                            ['ramp_down_high_temp', 'avg_nh3_flow'],
+                            ['temperature_ramp_down', 'avg_nh3_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
                             ['ramp_down_high_temp', 'avg_h2s_flow'],
                             ['temperature_ramp_down', 'avg_h2s_in_ar_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_down_high_temp', 'avg_n2_flow'],
+                            ['temperature_ramp_down', 'avg_n2_flow'],
+                            'cm^3/minute',
+                        ],
+                        [
+                            ['ramp_down_high_temp', 'avg_o2_flow'],
+                            ['temperature_ramp_down', 'avg_o2_in_ar_flow'],
                             'cm^3/minute',
                         ],
                         [
@@ -5816,13 +6229,89 @@ def map_params_to_nomad(params, gun_list):
                         ],
                         [
                             ['ramp_down_high_temp', 'anion_input_cutoff_temp'],
-                            ['temperature_ramp_down', 'anion_input_cutoff_temp'],
+                            ['temperature_ramp_down', 'anion_input_cutoff_temperature'],
                             'degC',
                         ],
                     ]
                 )
 
     return param_nomad_map
+
+
+def map_source_up_params_to_nomad(target_name):
+    source_up_param_nomad_map = [
+        [
+            ['source_ramp_up', target_name, 'target_name'],
+            ['target_name'],
+            None,
+        ],
+        [
+            ['source_ramp_up', target_name, 'ignition_power'],
+            ['plasma_ignition_power'],
+            'W',
+        ],
+        [
+            ['source_ramp_up', target_name, 'ignition_pressure'],
+            ['plasma_ignition_pressure'],
+            'mtorr',
+        ],
+    ]
+
+    return source_up_param_nomad_map
+
+
+def map_source_presput_params_to_nomad(target_name):
+    source_presput_param_nomad_map = [
+        [
+            ['source_presput', target_name, 'target_name'],
+            ['target_name'],
+            None,
+        ],
+        [
+            ['source_presput', target_name, 'duration'],
+            ['presput_time'],
+            None,
+        ],
+        [
+            ['source_presput', target_name, 'avg_output_power'],
+            ['presput_power'],
+            'W',
+        ],
+        [
+            ['source_presput', target_name, 'avg_capman_pressure'],
+            ['presput_pressure'],
+            'mtorr',
+        ],
+        [
+            ['source_presput', target_name, 'avg_ar_flow'],
+            ['presput_ar_flow'],
+            'cm^3/minute',
+        ],
+    ]
+
+    return source_presput_param_nomad_map
+
+
+def map_source_deprate_params_to_nomad(target_name):
+    source_deprate_param_nomad_map = [
+        [
+            ['source_deprate2_film_meas', target_name, 'target_name'],
+            ['target_name'],
+            None,
+        ],
+        [
+            ['source_deprate2_film_meas', target_name, 'dep_rate'],
+            ['source_deprate'],
+            'Å/s',
+        ],
+        [
+            ['source_deprate2_film_meas', target_name, 'dep_rate_ref_mat'],
+            ['source_deprate_ref_mat'],
+            None,
+        ],
+    ]
+
+    return source_deprate_param_nomad_map
 
 
 def map_step_params_to_nomad(key):
@@ -5883,6 +6372,183 @@ def map_gas_flow_params_to_nomad(key, gas_name):
     return gas_flow_param_nomad_map
 
 
+def map_platen_bias_params_to_nomad(key, step_params):
+    platen_bias_param_nomad_map = []  # Initialize with default value
+
+    if 'platen_bias' in step_params[key]['environment']:
+        platen_bias_param_nomad_map = [
+            [
+                [key, 'environment', 'platen_bias', 'shutter_open', 'value'],
+                ['source_shutter_open', 'value'],
+                'V',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'shutter_open', 'time'],
+                ['source_shutter_open', 'time'],
+                'second',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'shutter_open', 'mode_value'],
+                ['source_shutter_open', 'mode_value'],
+                None,
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'power_type'],
+                ['vapor_source', 'power_type'],
+                None,
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'avg_power_sp'],
+                ['vapor_source', 'avg_power_sp'],
+                'W',
+            ],
+            [
+                [
+                    key,
+                    'environment',
+                    'platen_bias',
+                    'power_supply',
+                    'power_sp',
+                    'value',
+                ],
+                ['vapor_source', 'power_sp', 'value'],
+                'W',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'power_sp', 'time'],
+                ['vapor_source', 'power_sp', 'time'],
+                'second',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'avg_dc_bias'],
+                ['vapor_source', 'avg_dc_bias'],
+                'V',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'dc_bias', 'value'],
+                ['vapor_source', 'dc_bias', 'value'],
+                'V',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'dc_bias', 'time'],
+                ['vapor_source', 'dc_bias', 'time'],
+                'second',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'avg_fwd_power'],
+                ['vapor_source', 'avg_fwd_power'],
+                'W',
+            ],
+            [
+                [
+                    key,
+                    'environment',
+                    'platen_bias',
+                    'power_supply',
+                    'fwd_power',
+                    'value',
+                ],
+                ['vapor_source', 'fwd_power', 'value'],
+                'W',
+            ],
+            [
+                [
+                    key,
+                    'environment',
+                    'platen_bias',
+                    'power_supply',
+                    'fwd_power',
+                    'time',
+                ],
+                ['vapor_source', 'fwd_power', 'time'],
+                'second',
+            ],
+            [
+                [key, 'environment', 'platen_bias', 'power_supply', 'avg_rfl_power'],
+                ['vapor_source', 'avg_rfl_power'],
+                'W',
+            ],
+            [
+                [
+                    key,
+                    'environment',
+                    'platen_bias',
+                    'power_supply',
+                    'rfl_power',
+                    'value',
+                ],
+                ['vapor_source', 'rfl_power', 'value'],
+                'W',
+            ],
+            [
+                [
+                    key,
+                    'environment',
+                    'platen_bias',
+                    'power_supply',
+                    'rfl_power',
+                    'time',
+                ],
+                ['vapor_source', 'rfl_power', 'time'],
+                'second',
+            ],
+        ]
+
+    return platen_bias_param_nomad_map
+
+
+def map_heater_params_to_nomad(key):
+    heater_param_nomad_map = [
+        [
+            [key, 'environment', 'heater', 'avg_temp_1'],
+            ['avg_temperature_1'],
+            'degC',
+        ],
+        [
+            [key, 'environment', 'heater', 'avg_temp_2'],
+            ['avg_temperature_2'],
+            'degC',
+        ],
+        [
+            [key, 'environment', 'heater', 'avg_temp_sp'],
+            ['avg_temperature_setpoint'],
+            'degC',
+        ],
+        [
+            [key, 'environment', 'heater', 'temp_1', 'value'],
+            ['temperature_1', 'value'],
+            'degC',
+        ],
+        [
+            [key, 'environment', 'heater', 'temp_1', 'time'],
+            ['temperature_1', 'time'],
+            'second',
+        ],
+        [
+            [key, 'environment', 'heater', 'temp_2', 'value'],
+            ['temperature_2', 'value'],
+            'degC',
+        ],
+        [
+            [key, 'environment', 'heater', 'temp_2', 'time'],
+            ['temperature_2', 'time'],
+            'second',
+        ],
+        [
+            [key, 'environment', 'heater', 'temp_sp', 'value'],
+            ['temperature_setpoint', 'value'],
+            'degC',
+        ],
+        [
+            [key, 'environment', 'heater', 'temp_sp', 'time'],
+            ['temperature_setpoint', 'time'],
+            'second',
+        ],
+    ]
+
+    return heater_param_nomad_map
+
+
 def map_s_cracker_params_to_nomad(key):
     s_cracker_param_nomad_map = [
         [
@@ -5906,17 +6572,17 @@ def map_s_cracker_params_to_nomad(key):
             [
                 [
                     [key, 'sources', 's_cracker', f'avg_zone{zone_number}_temp'],
-                    ['vapor_source', f'avg_zone{zone_number}_temp'],
+                    ['vapor_source', f'avg_zone{zone_number}_temperature'],
                     'degC',
                 ],
                 [
                     [key, 'sources', 's_cracker', f'zone{zone_number}_temp', 'value'],
-                    ['vapor_source', f'zone{zone_number}_temp', 'value'],
+                    ['vapor_source', f'zone{zone_number}_temperature', 'value'],
                     'degC',
                 ],
                 [
                     [key, 'sources', 's_cracker', f'zone{zone_number}_temp', 'time'],
-                    ['vapor_source', f'zone{zone_number}_temp', 'time'],
+                    ['vapor_source', f'zone{zone_number}_temperature', 'time'],
                     'second',
                 ],
             ]
@@ -6136,13 +6802,15 @@ GUN_OVERVIEW_NAMES = [
 class Sample:
     # Note that sample positions are the position of the center of
     # the square samples. sub_size=40 is assumed by default.
-    def __init__(self, label, pos_x, pos_y, sub_size=40, mat='cSi'):
+    def __init__(self, label, pos: list, rotation, size: list, mat='cSi'):
         self.label = label
-        self.pos_x = pos_x
-        self.pos_y = pos_y
-        self.sub_size = sub_size
-        self.pos_x_bl = pos_x - sub_size / 2
-        self.pos_y_bl = pos_y - sub_size / 2
+        self.pos_x = pos[0]
+        self.pos_y = pos[1]
+        self.rotation = rotation
+        self.width = size[0]
+        self.length = size[1]
+        self.pos_x_bl = pos[0] - size[0] / 2
+        self.pos_y_bl = pos[1] - size[1] / 2
         self.mat = mat
 
 
@@ -6183,8 +6851,10 @@ def read_samples(sample_list: list):
         label = str(sample_obj.relative_position)
         pos_x = sample_obj.position_x.to('mm').magnitude
         pos_y = sample_obj.position_y.to('mm').magnitude
-        # size = sample_obj.reference.SIZE?
-        sample = Sample(label, pos_x, pos_y)
+        rotation = sample_obj.rotation.to('degree').magnitude
+        width = sample_obj.substrate.geometry.width
+        length = sample_obj.obj.substrate.geometry.length
+        sample = Sample(label, [pos_x, pos_y], rotation, [width, length])
         samples.append(sample)
     return samples
 
@@ -6213,8 +6883,8 @@ def plot_matplotlib_chamber_config(
     squares = [
         patches.Rectangle(
             (sample.pos_x_bl, sample.pos_y_bl),
-            sample.sub_size,
-            sample.sub_size,
+            sample.width,
+            sample.length,
             linewidth=DEFAULT_LINEWIDTH,
             edgecolor='g',
             facecolor='none',
@@ -6224,9 +6894,9 @@ def plot_matplotlib_chamber_config(
 
     arrowsX = [
         patches.FancyArrow(
-            sample.pos_x_bl + sample.sub_size / 10,
-            sample.pos_y_bl + sample.sub_size / 10,
-            sample.sub_size / 4,
+            sample.pos_x_bl + sample.width / 10,
+            sample.pos_y_bl + sample.length / 10,
+            (sample.width + sample.length) / 8,
             0,
             width=1,
             head_width=3,
@@ -6241,10 +6911,10 @@ def plot_matplotlib_chamber_config(
 
     arrowsY = [
         patches.FancyArrow(
-            sample.pos_x_bl + sample.sub_size / 10,
-            sample.pos_y_bl + sample.sub_size / 10,
+            sample.pos_x_bl + sample.width / 10,
+            sample.pos_y_bl + sample.length / 10,
             0,
-            sample.sub_size / 4,
+            (sample.width + sample.length) / 8,
             width=1,
             head_width=3,
             head_length=3,
@@ -6324,20 +6994,20 @@ def plot_matplotlib_chamber_config(
     for sample in samples:
         rotated_edge = rotation_transform.transform(
             (
-                sample.pos_x_bl + 0.8 * sample.sub_size,
-                sample.pos_y_bl + 0.8 * sample.sub_size,
+                sample.pos_x_bl + 0.8 * sample.width,
+                sample.pos_y_bl + 0.8 * sample.length,
             )
         )
         rotated_arrowX_end = rotation_transform.transform(
             (
-                sample.pos_x_bl + 0.55 * sample.sub_size,
-                sample.pos_y_bl + 0.15 * sample.sub_size,
+                sample.pos_x_bl + 0.55 * sample.width,
+                sample.pos_y_bl + 0.15 * sample.length,
             )
         )
         rotated_arrowY_end = rotation_transform.transform(
             (
-                sample.pos_x_bl + 0.15 * sample.sub_size,
-                sample.pos_y_bl + 0.55 * sample.sub_size,
+                sample.pos_x_bl + 0.15 * sample.width,
+                sample.pos_y_bl + 0.55 * sample.length,
             )
         )
         ax.text(
@@ -6454,6 +7124,285 @@ def plot_matplotlib_chamber_config(
     return fig
 
 
+# Rotation function
+def rotate_point(x, y, angle_deg, platen_rot=True):
+    if platen_rot:
+        angle_rad = np.radians(angle_deg - 90)
+    else:
+        angle_rad = np.radians(angle_deg)
+    x_rotated = x * np.cos(angle_rad) - y * np.sin(angle_rad)
+    y_rotated = x * np.sin(angle_rad) + y * np.cos(angle_rad)
+    return x_rotated, y_rotated
+
+
+def plot_plotly_chamber_config(samples, guns, platen_angle, **kwargs):
+    plot_platen_angle = kwargs.get('plot_platen_angle', True)
+    plot_title = kwargs.get('plot_title', None)  # TODO add in_chamber
+    in_chamber = kwargs.get('in_chamber', True)
+
+    # define title
+    if plot_title is not None:
+        if plot_platen_angle:
+            plot_title += f'Platen Angle={round(float(platen_angle), 1)}°'
+    elif plot_platen_angle:
+        plot_title = f'Platen Angle={round(float(platen_angle), 1)}°'
+
+    # Create figure
+    fig = go.Figure()
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        width=800,
+        height=600,
+        xaxis=dict(range=X_LIM, showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(
+            range=Y_LIM,
+            showgrid=False,
+            zeroline=False,
+            showticklabels=False,
+            scaleanchor='x',
+            scaleratio=1,
+        ),
+        showlegend=False,
+        title=plot_title,
+    )
+
+    # XY_PLOTTED = False
+
+    # Add sample squares and arrows
+    # Add sample rectangles and arrows
+    for sample in samples:
+        # Original rectangle coordinates
+        x0, y0 = sample.pos_x_bl, sample.pos_y_bl
+        width, length = sample.width, sample.length
+
+        # Compute all four corners of the rectangle
+        corners = [
+            (x0, y0),
+            (x0 + width, y0),
+            (x0 + width, y0 + length),
+            (x0, y0 + length),
+        ]
+
+        # rotate sample by sample.rotation around its center
+        if sample.rotation != 0:
+            center = [x0 + width / 2, y0 + length / 2]
+            corners = [
+                rotate_point(
+                    x - center[0], y - center[1], sample.rotation, platen_rot=False
+                )
+                for x, y in corners
+            ]
+            corners = [(x + center[0], y + center[1]) for x, y in corners]
+
+        # Rotate all corners
+        rotated_corners = [rotate_point(x, y, platen_angle) for x, y in corners]
+
+        # Create polygon shape for rotated rectangle
+        fig.add_shape(
+            type='path',
+            path=f'M{rotated_corners[0][0]},{rotated_corners[0][1]} '
+            + f'L{rotated_corners[1][0]},{rotated_corners[1][1]} '
+            + f'L{rotated_corners[2][0]},{rotated_corners[2][1]} '
+            + f'L{rotated_corners[3][0]},{rotated_corners[3][1]} Z',
+            line=dict(color='green', width=DEFAULT_LINEWIDTH),
+            fillcolor=None,
+        )
+        if sample.rotation == 0:
+            # XY_PLOTTED = True
+
+            # X arrow (aligned with rotated rectangle)
+            arrow_x_start = x0 + width / 10
+            arrow_x_end = arrow_x_start + width / 4
+            x_arrow_points = [
+                (arrow_x_start, y0 + length / 10),
+                (arrow_x_end, y0 + length / 10),
+            ]
+            rotated_x_arrow = [
+                rotate_point(x, y, platen_angle) for x, y in x_arrow_points
+            ]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=[p[0] for p in rotated_x_arrow],
+                    y=[p[1] for p in rotated_x_arrow],
+                    mode='lines',
+                    line=dict(color='red', width=2),
+                    showlegend=False,
+                )
+            )
+
+            # Y arrow (aligned with rotated rectangle)
+            arrow_y_start = y0 + length / 10
+            arrow_y_end = arrow_y_start + length / 4
+            y_arrow_points = [
+                (x0 + width / 10, arrow_y_start),
+                (x0 + width / 10, arrow_y_end),
+            ]
+            rotated_y_arrow = [
+                rotate_point(x, y, platen_angle) for x, y in y_arrow_points
+            ]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=[p[0] for p in rotated_y_arrow],
+                    y=[p[1] for p in rotated_y_arrow],
+                    mode='lines',
+                    line=dict(color='blue', width=2),
+                    showlegend=False,
+                )
+            )
+            # X and Y labels
+            arrowX_label_x, arrowX_label_y = rotate_point(
+                sample.pos_x_bl + 0.55 * width,
+                sample.pos_y_bl + 0.15 * length,
+                platen_angle,
+            )
+            arrowY_label_x, arrowY_label_y = rotate_point(
+                sample.pos_x_bl + 0.15 * width,
+                sample.pos_y_bl + 0.55 * length,
+                platen_angle,
+            )
+
+            fig.add_annotation(
+                x=arrowX_label_x,
+                y=arrowX_label_y,
+                text='X',
+                showarrow=False,
+                font=dict(color='red', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
+            )
+            fig.add_annotation(
+                x=arrowY_label_x,
+                y=arrowY_label_y,
+                text='Y',
+                showarrow=False,
+                font=dict(
+                    color='blue', size=DEFAULT_FONTSIZE + 4, family='Arial Black'
+                ),
+            )
+
+        # Sample label
+        label_x, label_y = rotate_point(
+            sample.pos_x_bl + 0.5 * width,
+            sample.pos_y_bl + 0.5 * length,
+            platen_angle,
+        )
+        fig.add_annotation(
+            x=label_x,
+            y=label_y,
+            text=sample.label,
+            showarrow=False,
+            font=dict(color='black', size=DEFAULT_FONTSIZE + 4),
+        )
+
+    # Platen and center
+    platen_x, platen_y = rotate_point(PLATEN_POS[0], PLATEN_POS[1], platen_angle)
+    fig.add_shape(
+        type='circle',
+        x0=platen_x - PLATEN_DIAM,
+        y0=platen_y - PLATEN_DIAM,
+        x1=platen_x + PLATEN_DIAM,
+        y1=platen_y + PLATEN_DIAM,
+        line=dict(color='black', width=DEFAULT_LINEWIDTH),
+        fillcolor=None,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[platen_x],
+            y=[platen_y],
+            mode='markers',
+            marker=dict(color='black', size=2 * PLATEN_CENTER_DIAM),
+        )
+    )
+
+    ## Middle screw
+    # middle_screw_x, middle_screw_y = rotate_point(
+    #    MIDDLE_SCREW_POS[0], MIDDLE_SCREW_POS[1], platen_angle
+    # )
+    # fig.add_trace(
+    #    go.Scatter(
+    #        x=[middle_screw_x],
+    #        y=[middle_screw_y],
+    #        mode='markers',
+    #        marker=dict(color='black', size=2 * MIDDLE_SCREW_DIAM),
+    #    )
+    # )
+
+    # Scale bar in top right
+    fig.add_shape(
+        type='line',
+        x0=X_LIM[1] - 60,
+        y0=Y_LIM[1] - 10,
+        x1=X_LIM[1] - 10,
+        y1=Y_LIM[1] - 10,
+        line=dict(color='black', width=2),
+    )
+    fig.add_annotation(
+        x=X_LIM[1] - 35,
+        y=Y_LIM[1] - 15,
+        text='50 mm',
+        showarrow=False,
+        font=dict(color='black', size=DEFAULT_FONTSIZE + 4),
+    )
+
+    if in_chamber:
+        # Add guns
+        for gun in guns:
+            if gun.pos_x is not None and gun.pos_y is not None:
+                fig.add_trace(
+                    go.Scatter(
+                        x=[gun.pos_x],
+                        y=[gun.pos_y],
+                        mode='markers',
+                        marker=dict(
+                            color=gun.gcolor,
+                            size=4,
+                            line=dict(color='black', width=DEFAULT_LINEWIDTH),
+                        ),
+                    )
+                )
+
+            # Gun label
+            gun_label_pos = cartesian(GUN_TO_PLATEN * PLATEN_DIAM, gun.location)
+            fig.add_annotation(
+                x=gun_label_pos[0],
+                y=gun_label_pos[1],
+                text=f'{SOURCE_LABEL[gun.name]}<br>({gun.mat})',
+                showarrow=False,
+                font=dict(color=gun.gcolor, size=DEFAULT_FONTSIZE + 4),
+            )
+
+        # Additional text annotations
+        fig.add_annotation(
+            x=0,
+            y=Y_LIM[1] - 10,
+            text='Glovebox Door',
+            showarrow=False,
+            font=dict(color='black', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
+        )
+        fig.add_annotation(
+            x=0,
+            y=Y_LIM[0] + 10,
+            text='Service Door',
+            showarrow=False,
+            font=dict(color='black', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
+        )
+
+        # Toxic gas inlet
+        toxic_gas_pos = cartesian(
+            (GUN_TO_PLATEN + 0.2) * PLATEN_DIAM, TOXIC_GAS_INLET_ANGLE
+        )
+        fig.add_annotation(
+            x=toxic_gas_pos[0],
+            y=toxic_gas_pos[1],
+            text='Toxic<br>Gas',
+            showarrow=False,
+            font=dict(color='black', size=DEFAULT_FONTSIZE + 4, family='Arial Black'),
+        )
+
+    return fig
+
+
 def explore_log_files(
     samples_dir,
     logfiles_extension=LOGFILES_EXTENSION,
@@ -6491,6 +7440,7 @@ def explore_log_files(
                             logfiles['name'].append(logfile_name)
                             logfiles['folder'].append(logfile_path)
                             logfiles['spectra'].append(spectra_file_path)
+    print(logfiles['name'])
     return logfiles
 
 
@@ -6557,7 +7507,7 @@ def main():
         # --------GRAPH THE DIFFERENT STEPS ON A TIME LINE------------
 
         # Create the figure
-        print('Generating the plotly plot')
+        print('Generating the plotly plots')
         plotly_timeline = generate_timeline(events_to_plot, logfiles['name'][i])
 
         if PRINT_FIGURES:
@@ -6604,9 +7554,15 @@ def main():
         # -----GRAPH THE CHAMBER CONFIG---
 
         if 'platen_position' in main_params['deposition']:
-            chamber_plot, _ = plot_logfile_chamber(main_params, logfiles['name'][i])
-            # export matplotlib plot as png
-            chamber_plot.savefig(chamber_file_path, dpi=300)
+            plolty_chamber_plot, plotly_moutning_plot = plot_logfile_chamber(
+                main_params, logfiles['name'][i]
+            )
+
+            plolty_chamber_plot.write_html(chamber_file_path.replace('.png', '.html'))
+
+            plotly_moutning_plot.write_html(
+                chamber_file_path.replace('.png', '_moutning.html')
+            )
 
         # --------PRINT DERIVED QUANTITIES REPORTS-------------
 

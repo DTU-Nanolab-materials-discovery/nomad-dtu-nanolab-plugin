@@ -41,7 +41,8 @@ sputtering = AppEntryPoint(
                 label='Date and time',
             ),
             Column(
-                search_quantity=f'data.deposition_parameters.deposition_temp#{schema}',
+                search_quantity=(
+                    f'data.deposition_parameters.deposition_temperature#{schema}'),
                 selected=True,
                 label='Deposition temperature',
                 unit='degC',
@@ -87,6 +88,14 @@ sputtering = AppEntryPoint(
                 unit='cm^3/minute',
                 format=Format(decimals=1),
             ),
+            Column(
+                search_quantity=f'data.deposition_parameters.n2_flow#{schema}',
+                selected=True,
+                label='N2 flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+
         ],
         menu=Menu(
             title='Material',
