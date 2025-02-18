@@ -6853,7 +6853,7 @@ def read_samples(sample_list: list):
         pos_y = sample_obj.position_y.to('mm').magnitude
         rotation = sample_obj.rotation.to('degree').magnitude
         width = sample_obj.substrate.geometry.width
-        length = sample_obj.obj.substrate.geometry.length
+        length = sample_obj.substrate.geometry.length
         sample = Sample(label, [pos_x, pos_y], rotation, [width, length])
         samples.append(sample)
     return samples
