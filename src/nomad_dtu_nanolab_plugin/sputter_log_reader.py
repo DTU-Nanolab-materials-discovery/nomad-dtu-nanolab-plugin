@@ -6373,6 +6373,8 @@ def map_gas_flow_params_to_nomad(key, gas_name):
 
 
 def map_platen_bias_params_to_nomad(key, step_params):
+    platen_bias_param_nomad_map = []  # Initialize with default value
+
     if 'platen_bias' in step_params[key]['environment']:
         platen_bias_param_nomad_map = [
             [
@@ -7134,7 +7136,6 @@ def rotate_point(x, y, angle_deg, platen_rot=True):
 
 
 def plot_plotly_chamber_config(samples, guns, platen_angle, **kwargs):
-
     plot_platen_angle = kwargs.get('plot_platen_angle', True)
     plot_title = kwargs.get('plot_title', None)  # TODO add in_chamber
     in_chamber = kwargs.get('in_chamber', True)
