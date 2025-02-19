@@ -5346,9 +5346,14 @@ def read_rga(file_path):
         file_path,
         sep=',',
         header=0,
-        parse_dates=['Time'],
-        date_format='%m/%d/%Y %I:%M:%S %p',
     )
+
+    # Eplicitly parse the Time column
+    rga_file['Time'] = pd.to_datetime(
+        rga_file['Time'],
+        format='%m/%d/%Y %I:%M:%S %p'
+    )
+
     # Rename the 'Time' column to 'Time Stamp'
     rga_file.rename(columns={'Time': 'Time Stamp'}, inplace=True)
 
