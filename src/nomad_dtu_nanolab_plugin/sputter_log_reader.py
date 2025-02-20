@@ -546,7 +546,7 @@ STEP_COLORS = {
     'Cracker Pressure Meas': 'brown',
 }
 
-OVERVIEW_PLOT_RESAMPLING_TIME = 20  # seconds
+OVERVIEW_PLOT_RESAMPLING_TIME = 30  # seconds
 BIAS_PLOT_RESAMPLING_TIME = 10  # seconds
 OVERVIEW_PLOT_COLOR_MAP = {True: 'green', False: 'red'}
 OVERVIEW_PLOT_MARKER_MAP = {True: 'x', False: 'circle'}
@@ -558,7 +558,6 @@ OVERVIEW_PLOT = [
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'Sulfur Cracker Control Setpoint Feedback',
     'Sulfur Cracker Zone 1 Current Temperature',
-    'Sulfur Cracker Control Enabled',
     'Thickness Rate',
 ]
 for gas in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
@@ -575,6 +574,12 @@ DICT_RENAME = {
     'Sulfur Cracker Control Enabled': 'Cracker Open',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback': 'Cracker Pulse Width',
     'Sulfur Cracker Control Setpoint Feedback': 'Cracker Frequency',
+    'PC MFC 1 Flow': 'Ar Flow',
+    'PC MFC 2 Flow': 'N2 Flow',
+    'PC MFC 3 Flow': 'O2 Flow',
+    'PC MFC 4 Flow': 'PH3 Flow',
+    'PC MFC 5 Flow': 'NH3 Flow',
+    'PC MFC 6 Flow': 'H2S Flow',
 }
 DPI = 300
 PLOTLY_CONFIG = {
@@ -4915,6 +4920,26 @@ def generate_overview_plot(data, logfile_name, events):
             Y_plot.append('Thickness Rate (0 if closed)')
             Y_plot.remove('Thickness Rate')
 
+    if (
+        'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in OVERVIEW_PLOT
+        and 'Sulfur Cracker Control Valve PulseWidth Feedback' in OVERVIEW_PLOT
+    ):
+        if 'Sulfur Cracker Control Enabled' in data.columns:
+            data['Sulfur Cracker Pulse Width (0 if closed)'] = (
+                data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback']
+                * data['Sulfur Cracker Control Enabled']
+            )
+            Y_plot.append('Sulfur Cracker Pulse Width (0 if closed)')
+            Y_plot.remove('Sulfur Cracker Control Valve PulseWidth Setpoint Feedback')
+
+            data['Sulfur Cracker Frequency (0 if closed)'] = (
+                data['Sulfur Cracker Control Setpoint Feedback']
+                * data['Sulfur Cracker Control Enabled']
+            )
+            Y_plot.append('Sulfur Cracker Frequency (0 if closed)')
+            Y_plot.remove('Sulfur Cracker Control Setpoint Feedback')
+
+    'Sulfur Cracker Control Enabled'
     # remove all the Y_col for which the data is constant throughout the data
     new_Y_plot = []
     for col in Y_plot:
