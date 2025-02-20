@@ -11,4 +11,4 @@ def test_schema():
 
     assert entry_archive.data.deposition_parameters.deposition_temperature.to(
         'K'
-    ).magnitude == pytest.approx(673.15299344542995641)
+    ).magnitude == pytest.approx(773.147981515572)

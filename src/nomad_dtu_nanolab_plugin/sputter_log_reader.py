@@ -546,7 +546,8 @@ STEP_COLORS = {
     'Cracker Pressure Meas': 'brown',
 }
 
-OVERVIEW_PLOT_RESAMPLING_TIME = 10  # seconds
+OVERVIEW_PLOT_RESAMPLING_TIME = 30  # seconds
+BIAS_PLOT_RESAMPLING_TIME = 10  # seconds
 OVERVIEW_PLOT_COLOR_MAP = {True: 'green', False: 'red'}
 OVERVIEW_PLOT_MARKER_MAP = {True: 'x', False: 'circle'}
 
@@ -573,6 +574,12 @@ DICT_RENAME = {
     'Sulfur Cracker Control Enabled': 'Cracker Open',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback': 'Cracker Pulse Width',
     'Sulfur Cracker Control Setpoint Feedback': 'Cracker Frequency',
+    'PC MFC 1 Flow': 'Ar Flow',
+    'PC MFC 2 Flow': 'N2 Flow',
+    'PC MFC 3 Flow': 'O2 Flow',
+    'PC MFC 4 Flow': 'PH3 Flow',
+    'PC MFC 5 Flow': 'NH3 Flow',
+    'PC MFC 6 Flow': 'H2S Flow',
 }
 DPI = 300
 PLOTLY_CONFIG = {
@@ -4066,10 +4073,7 @@ def generate_optix_cascade_plot(spectra, **kwargs):
         # Match timestamps in timestamp_map to the closest time in color_df
         for col in cols:
             spectrum_time = timestamp_map[col]
-            closest_idx = color_df.index.get_indexer([spectrum_time], method='nearest')[
-                0
-            ]
-            # closest_idx = (color_df.index - spectrum_time).abs().argmin()
+            closest_idx = (color_df.index - spectrum_time).abs().argmin()
             color_value = color_df.iloc[closest_idx][color_column]
             colors.append(color_value)
 
@@ -4839,60 +4843,64 @@ def generate_bias_plot(
 
     deposition = event_list_to_dict(events_to_plot)['deposition']
 
-    for col in deposition.data.columns:
+    data = deposition.data.copy()
+
+    # data_resampled = (
+    #    data.set_index('Time Stamp')  # Temporarily set 'Time Stamp' as index
+    #    .resample(f'{BIAS_PLOT_RESAMPLING_TIME}s')  # Resample data
+    #    .mean(numeric_only=True)  # Apply aggregation (mean in this case)
+    #    .reset_index()  # Reset index to turn 'Time Stamp' back into a column
+    # )
+
+    # data = data_resampled.copy()
+
+    for col in data.columns:
         if any(re.search(pattern, col) for pattern in patterns):
             # Add the original column to the list of columns to plot
             Y_plot.append(col)
 
             # Add the smoothed column to the list of columns to plot
-            deposition.data[f'{col} Smoothed {rolling_num}pt'] = (
-                deposition.data[col].rolling(rolling_num, center=True).mean()
+            data[f'{col} Smoothed {rolling_num}pt'] = (
+                data[col].rolling(rolling_num, center=True).mean()
             )
             Y_plot.append(f'{col} Smoothed {rolling_num}pt')
 
             # check if more than 10percent of the dc bias data is zero
-            if (
-                deposition.data[col].eq(0).sum() / len(deposition.data)
-                > DC_BIAS_SMOOTHING_THRESHOLD
-            ):
+            if data[col].eq(0).sum() / len(data) > DC_BIAS_SMOOTHING_THRESHOLD:
                 # if '_Sb_' in logfile_name:
                 rolling_num_max = int(rolling_num * rolling_frac_max)
                 # add the max instead of the mean after rolling
-                deposition.data[f'{col} Max {rolling_num_max}pt'] = (
-                    deposition.data[col]
+                data[f'{col} Max {rolling_num_max}pt'] = (
+                    data[col]
                     .rolling(int(rolling_num * rolling_frac_max), center=True)
                     .max()
                 )
                 Y_plot.append(f'{col} Max {rolling_num_max}pt')
                 # smooth the max curve
-                deposition.data[
-                    f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt'
-                ] = (
-                    deposition.data[f'{col} Max {rolling_num_max}pt']
+                data[f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt'] = (
+                    data[f'{col} Max {rolling_num_max}pt']
                     .rolling(rolling_num, center=True)
                     .mean()
                 )
                 Y_plot.append(f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt')
                 # iterate over the columns to plot and change zeros for NaN
-                deposition.data[f'{col} No Zero'] = deposition.data[col].replace(
-                    0, np.nan
-                )
+                data[f'{col} No Zero'] = data[col].replace(0, np.nan)
                 Y_plot.append(f'{col} No Zero')
                 # smooth the no zero curve
-                deposition.data[f'{col} No Zero Smoothed {rolling_num}pt'] = (
-                    deposition.data[f'{col} No Zero']
+                data[f'{col} No Zero Smoothed {rolling_num}pt'] = (
+                    data[f'{col} No Zero']
                     .rolling(rolling_num, min_periods=1, center=True)
                     .mean()
                 )
                 Y_plot.append(f'{col} No Zero Smoothed {rolling_num}pt')
 
     bias_plot = quick_plot(
-        deposition.data,
+        data,
         Y_plot,
         mode='default',
         plot_type='line',
         width=WIDTH,
-        plot_title=f'Bias Plot: {logfile_name}',
+        plot_title=(f'Bias Plot: {logfile_name}'),
     )
 
     return bias_plot
@@ -4912,12 +4920,34 @@ def generate_overview_plot(data, logfile_name, events):
             Y_plot.append('Thickness Rate (0 if closed)')
             Y_plot.remove('Thickness Rate')
 
+    if (
+        'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in OVERVIEW_PLOT
+        and 'Sulfur Cracker Control Setpoint Feedback' in OVERVIEW_PLOT
+    ):
+        if 'Sulfur Cracker Control Enabled' in data.columns:
+            data['Sulfur Cracker Pulse Width (0 if closed)'] = (
+                data['Sulfur Cracker Control Valve PulseWidth Setpoint Feedback']
+                * data['Sulfur Cracker Control Enabled']
+            )
+            Y_plot.append('Sulfur Cracker Pulse Width (0 if closed)')
+            Y_plot.remove('Sulfur Cracker Control Valve PulseWidth Setpoint Feedback')
+
+            data['Sulfur Cracker Frequency (0 if closed)'] = (
+                data['Sulfur Cracker Control Setpoint Feedback']
+                * data['Sulfur Cracker Control Enabled']
+            )
+            Y_plot.append('Sulfur Cracker Frequency (0 if closed)')
+            Y_plot.remove('Sulfur Cracker Control Setpoint Feedback')
+
     # remove all the Y_col for which the data is constant throughout the data
     new_Y_plot = []
     for col in Y_plot:
         if not data[col].nunique() == 1:
             new_Y_plot.append(col)
     Y_plot = new_Y_plot
+
+    # sort the Y_plot list to put everything that starts with 'Sulfur' at the end
+    Y_plot.sort(key=lambda x: x.startswith('Sulfur'))
 
     # Get the deposition event
     deposition = event_list_to_dict(events)['deposition']
@@ -4968,30 +4998,64 @@ def generate_overview_plot(data, logfile_name, events):
             bool
         )
 
+    # place a vertical line marker at the beginning and at the end of the deposition
+    dep_start, dep_end = deposition.bounds[0][0], deposition.bounds[0][1]
+
     overview_plot = quick_plot(
-        data,
+        data_resampled,
         Y_plot,
         plot_type='scatter',
-        plot_title=f'Overview Plot: {logfile_name}',
+        plot_title=(
+            f'Overview Plot: {logfile_name} '
+            f'(downsampled to {OVERVIEW_PLOT_RESAMPLING_TIME}s)'
+        ),
         mode='stack',
         heigth=0.5 * HEIGHT,
         width=WIDTH,
     )
 
-    update_scatter_colors(
-        overview_plot,
-        data,
-        'deposition_cond',
-        color_map=OVERVIEW_PLOT_COLOR_MAP,
+    # Add vertical lines at dep_start and dep_end
+    overview_plot.add_shape(
+        type='line',
+        x0=dep_start,
+        y0=0,
+        x1=dep_start,
+        y1=1,
+        xref='x',
+        yref='paper',
+        line=dict(color='Red', width=2, dash='dashdot'),
     )
 
-    if 'cracker_on_open' in event_list_to_dict(events):
-        update_scatter_colors(
-            overview_plot,
-            data,
-            'cracker_open_cond',
-            marker_map=OVERVIEW_PLOT_MARKER_MAP,
-        )
+    overview_plot.add_shape(
+        type='line',
+        x0=dep_end,
+        y0=0,
+        x1=dep_end,
+        y1=1,
+        xref='x',
+        yref='paper',
+        line=dict(color='Red', width=2, dash='dashdot'),
+    )
+
+    # Update layout to include the shapes
+    overview_plot.update_layout(
+        shapes=overview_plot.layout.shapes + tuple(overview_plot.layout.shapes)
+    )
+
+    # update_scatter_colors(
+    #    overview_plot,
+    #    data,
+    #    'deposition_cond',
+    #    color_map=OVERVIEW_PLOT_COLOR_MAP,
+    # )
+
+    # if 'cracker_on_open' in event_list_to_dict(events):
+    #    update_scatter_colors(
+    #        overview_plot,
+    #        data,
+    #        'cracker_open_cond',
+    #        marker_map=OVERVIEW_PLOT_MARKER_MAP,
+    #    )
 
     return overview_plot
 
@@ -5337,9 +5401,11 @@ def read_rga(file_path):
         file_path,
         sep=',',
         header=0,
-        parse_dates=['Time'],
-        date_format='%m/%d/%Y %I:%M:%S %p',
     )
+
+    # Eplicitly parse the Time column
+    rga_file['Time'] = pd.to_datetime(rga_file['Time'], format='%m/%d/%Y %I:%M:%S %p')
+
     # Rename the 'Time' column to 'Time Stamp'
     rga_file.rename(columns={'Time': 'Time Stamp'}, inplace=True)
 
@@ -6853,7 +6919,7 @@ def read_samples(sample_list: list):
         pos_y = sample_obj.position_y.to('mm').magnitude
         rotation = sample_obj.rotation.to('degree').magnitude
         width = sample_obj.substrate.geometry.width
-        length = sample_obj.obj.substrate.geometry.length
+        length = sample_obj.substrate.geometry.length
         sample = Sample(label, [pos_x, pos_y], rotation, [width, length])
         samples.append(sample)
     return samples
