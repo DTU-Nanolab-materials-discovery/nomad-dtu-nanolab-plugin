@@ -558,6 +558,7 @@ OVERVIEW_PLOT = [
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
     'Sulfur Cracker Control Setpoint Feedback',
     'Sulfur Cracker Zone 1 Current Temperature',
+    'Sulfur Cracker Control Enabled',
     'Thickness Rate',
 ]
 for gas in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
@@ -4839,14 +4840,14 @@ def generate_bias_plot(
 
     data = deposition.data.copy()
 
-    #data_resampled = (
+    # data_resampled = (
     #    data.set_index('Time Stamp')  # Temporarily set 'Time Stamp' as index
     #    .resample(f'{BIAS_PLOT_RESAMPLING_TIME}s')  # Resample data
     #    .mean(numeric_only=True)  # Apply aggregation (mean in this case)
     #    .reset_index()  # Reset index to turn 'Time Stamp' back into a column
-    #)
+    # )
 
-    #data = data_resampled.copy()
+    # data = data_resampled.copy()
 
     for col in data.columns:
         if any(re.search(pattern, col) for pattern in patterns):
@@ -4876,9 +4877,7 @@ def generate_bias_plot(
                     .rolling(rolling_num, center=True)
                     .mean()
                 )
-                Y_plot.append(
-                    f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt'
-                )
+                Y_plot.append(f'{col} Max {rolling_num_max}pt Smoothed {rolling_num}pt')
                 # iterate over the columns to plot and change zeros for NaN
                 data[f'{col} No Zero'] = data[col].replace(0, np.nan)
                 Y_plot.append(f'{col} No Zero')
@@ -4896,9 +4895,7 @@ def generate_bias_plot(
         mode='default',
         plot_type='line',
         width=WIDTH,
-        plot_title=(
-            f'Bias Plot: {logfile_name} (downsampled to {BIAS_PLOT_RESAMPLING_TIME}s)'
-        ),
+        plot_title=(f'Bias Plot: {logfile_name}'),
     )
 
     return bias_plot
@@ -4974,8 +4971,11 @@ def generate_overview_plot(data, logfile_name, events):
             bool
         )
 
+    # place a vertical line marker at the beginning and at the end of the deposition
+    dep_start, dep_end = deposition.bounds[0][0], deposition.bounds[0][1]
+
     overview_plot = quick_plot(
-        data,
+        data_resampled,
         Y_plot,
         plot_type='scatter',
         plot_title=(
@@ -4987,20 +4987,48 @@ def generate_overview_plot(data, logfile_name, events):
         width=WIDTH,
     )
 
-    update_scatter_colors(
-        overview_plot,
-        data,
-        'deposition_cond',
-        color_map=OVERVIEW_PLOT_COLOR_MAP,
+    # Add vertical lines at dep_start and dep_end
+    overview_plot.add_shape(
+        type='line',
+        x0=dep_start,
+        y0=0,
+        x1=dep_start,
+        y1=1,
+        xref='x',
+        yref='paper',
+        line=dict(color='Red', width=2, dash='dashdot'),
     )
 
-    if 'cracker_on_open' in event_list_to_dict(events):
-        update_scatter_colors(
-            overview_plot,
-            data,
-            'cracker_open_cond',
-            marker_map=OVERVIEW_PLOT_MARKER_MAP,
-        )
+    overview_plot.add_shape(
+        type='line',
+        x0=dep_end,
+        y0=0,
+        x1=dep_end,
+        y1=1,
+        xref='x',
+        yref='paper',
+        line=dict(color='Red', width=2, dash='dashdot'),
+    )
+
+    # Update layout to include the shapes
+    overview_plot.update_layout(
+        shapes=overview_plot.layout.shapes + tuple(overview_plot.layout.shapes)
+    )
+
+    # update_scatter_colors(
+    #    overview_plot,
+    #    data,
+    #    'deposition_cond',
+    #    color_map=OVERVIEW_PLOT_COLOR_MAP,
+    # )
+
+    # if 'cracker_on_open' in event_list_to_dict(events):
+    #    update_scatter_colors(
+    #        overview_plot,
+    #        data,
+    #        'cracker_open_cond',
+    #        marker_map=OVERVIEW_PLOT_MARKER_MAP,
+    #    )
 
     return overview_plot
 
