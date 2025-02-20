@@ -4922,7 +4922,7 @@ def generate_overview_plot(data, logfile_name, events):
 
     if (
         'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback' in OVERVIEW_PLOT
-        and 'Sulfur Cracker Control Valve PulseWidth Feedback' in OVERVIEW_PLOT
+        and 'Sulfur Cracker Control Setpoint Feedback' in OVERVIEW_PLOT
     ):
         if 'Sulfur Cracker Control Enabled' in data.columns:
             data['Sulfur Cracker Pulse Width (0 if closed)'] = (
@@ -4939,13 +4939,15 @@ def generate_overview_plot(data, logfile_name, events):
             Y_plot.append('Sulfur Cracker Frequency (0 if closed)')
             Y_plot.remove('Sulfur Cracker Control Setpoint Feedback')
 
-    'Sulfur Cracker Control Enabled'
     # remove all the Y_col for which the data is constant throughout the data
     new_Y_plot = []
     for col in Y_plot:
         if not data[col].nunique() == 1:
             new_Y_plot.append(col)
     Y_plot = new_Y_plot
+
+    # sort the Y_plot list to put everything that starts with 'Sulfur' at the end
+    Y_plot.sort(key=lambda x: x.startswith('Sulfur'))
 
     # Get the deposition event
     deposition = event_list_to_dict(events)['deposition']
