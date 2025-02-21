@@ -4900,8 +4900,11 @@ def generate_bias_plot(
         mode='default',
         plot_type='line',
         width=WIDTH,
-        plot_title=(f'Bias Plot: {logfile_name}'),
+        plot_title=(f'DC Bias Plot during deposition: {logfile_name}'),
     )
+
+    # set the Y axis title as 'DC Bias (V)'
+    bias_plot.update_layout(yaxis_title='DC Bias (V)')
 
     return bias_plot
 
@@ -5006,8 +5009,8 @@ def generate_overview_plot(data, logfile_name, events):
         Y_plot,
         plot_type='scatter',
         plot_title=(
-            f'Overview Plot: {logfile_name} '
-            f'(downsampled to {OVERVIEW_PLOT_RESAMPLING_TIME}s)'
+            f'Overview Plot: {logfile_name} \n'
+            f'({OVERVIEW_PLOT_RESAMPLING_TIME}s-downsampled)'
         ),
         mode='stack',
         heigth=0.5 * HEIGHT,
@@ -5036,10 +5039,32 @@ def generate_overview_plot(data, logfile_name, events):
         yref='paper',
         line=dict(color='Red', width=2, dash='dashdot'),
     )
+    # add to the legend that the markers mark the deposition step
 
     # Update layout to include the shapes
     overview_plot.update_layout(
         shapes=overview_plot.layout.shapes + tuple(overview_plot.layout.shapes)
+    )
+
+    # Add annotations to the legend
+    overview_plot.add_annotation(
+        x=dep_start,
+        y=-0.028,
+        xref='x',
+        yref='paper',
+        text='Deposition<br>Start',
+        showarrow=False,
+        font=dict(color='Red'),
+    )
+
+    overview_plot.add_annotation(
+        x=dep_end,
+        y=-0.028,
+        xref='x',
+        yref='paper',
+        text='Deposition<br>End',
+        showarrow=False,
+        font=dict(color='red'),
     )
 
     # update_scatter_colors(
@@ -6918,8 +6943,8 @@ def read_samples(sample_list: list):
         pos_x = sample_obj.position_x.to('mm').magnitude
         pos_y = sample_obj.position_y.to('mm').magnitude
         rotation = sample_obj.rotation.to('degree').magnitude
-        width = sample_obj.substrate.geometry.width
-        length = sample_obj.substrate.geometry.length
+        width = sample_obj.substrate.geometry.width.to('mm').magnitude
+        length = sample_obj.substrate.geometry.length.to('mm').magnitude
         sample = Sample(label, [pos_x, pos_y], rotation, [width, length])
         samples.append(sample)
     return samples

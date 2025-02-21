@@ -1635,10 +1635,16 @@ class DtuFlag(ArchiveSection):
     """
 
     m_def = Section()
-    flag = ELNAnnotation(
-        component=ELNComponentEnum.EnumEditQuantity,
-        props=dict(suggestions=['WRONG_TOXIC_GAS_FLOW', 'WRONG_CRACKER_SIGNAL']),
+
+    flag = Quantity(
+        type=str,
+        description='Flag name',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            props=dict(suggestions=['WRONG_TOXIC_GAS_FLOW', 'WRONG_CRACKER_SIGNAL']),
+        ),
     )
+
     flag_description = Quantity(
         type=str,
         a_eln={'component': 'RichTextEditQuantity', 'label': 'Flag description'},
