@@ -196,7 +196,7 @@ class DtuSubstrateMounting(ArchiveSection):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `DTUSubstrateMounting` class.
+        The normalizer for the `DtuSubstrateMounting` class.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
@@ -2517,6 +2517,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     lab_id=layer.lab_id,
                 )
             ]
+            # we write the position of the substrate mounting to the library
+            library.position_x = substrate_mounting.position_x
+            library.position_y = substrate_mounting.position_y
+            library.rotation = substrate_mounting.rotation
+
             library_ref = create_archive(
                 library, archive, f'{library.lab_id}.archive.json'
             )

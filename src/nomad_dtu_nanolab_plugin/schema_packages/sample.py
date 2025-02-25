@@ -31,6 +31,8 @@ from nomad_material_processing.general import ThinFilmStack
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
+import numpy as np
+
 if TYPE_CHECKING:
     from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
         DtuNanolabMeasurement,
@@ -51,6 +53,35 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Combinatorial Library',
+    )
+    # we store the position and rotation of the substrate on the platen
+    # in the combinatorial library entry
+    position_x = Quantity(
+        type=np.float64,
+        description='The x-coordinate of the substrate on the platen.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+        ),
+        unit='m',
+    )
+    position_y = Quantity(
+        type=np.float64,
+        description='The y-coordinate of the substrate on the platen.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+        ),
+        unit='m',
+    )
+    rotation = Quantity(
+        type=np.float64,
+        description='The rotation of the substrate on the platen.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='degree',
+        ),
+        unit='rad',
     )
 
     def get_references(self, entry_type: type[Schema] = None) -> list:
