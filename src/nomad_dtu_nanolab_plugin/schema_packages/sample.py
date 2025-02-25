@@ -18,6 +18,7 @@
 
 from typing import TYPE_CHECKING
 
+import numpy as np
 from nomad.datamodel.data import Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
@@ -30,8 +31,6 @@ from nomad_material_processing.combinatorial import (
 from nomad_material_processing.general import ThinFilmStack
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
-
-import numpy as np
 
 if TYPE_CHECKING:
     from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
