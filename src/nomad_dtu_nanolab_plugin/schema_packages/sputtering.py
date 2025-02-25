@@ -1709,6 +1709,19 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         description='Boolean to indicate if the log_file should be processed.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.BoolEditQuantity,
+            label='Process log file ?',
+        ),
+    )
+    overwrite = Quantity(
+        type=bool,
+        default=False,
+        description=(
+            'Boolean to indicate if the data present in the class should be '
+            'overwritten by data incoming from the log file.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+            label='Overwrite existing data ?',
         ),
     )
     cracker_warmup_log_file = Quantity(
@@ -2605,10 +2618,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 sputtering.steps.extend(steps)
 
             # Merging the sputtering object with self
-            merge_sections(
-                self, sputtering, logger
-            )  # one can swap self, and sputtering
-            # to favour incoming data over existing data
+            if self.overwrite:
+                merge_sections(sputtering, self, logger)
+            else:
+                merge_sections(self, sputtering, logger)
 
             # Run the nomalizer of the environment subsection
             for step in self.steps:
@@ -2630,8 +2643,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             if self.deposition_parameters is not None:
                 self.add_libraries(archive, logger)
-        elif not self.process_log_file:
-            logger.warning('Skipping log file processing')
 
         archive.workflow2 = None
         super().normalize(archive, logger)
