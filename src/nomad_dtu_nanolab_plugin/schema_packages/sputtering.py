@@ -1703,6 +1703,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Log file'},
     )
+    process_log_file = Quantity(
+        type=bool,
+        default=True,
+        description='Boolean to indicate if the log_file should be processed.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+        ),
+    )
     cracker_warmup_log_file = Quantity(
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Cracker warmup log file'},
@@ -2576,7 +2584,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             logger (BoundLogger): A structlog logger.
         """
         # Analysing log file
-        if self.log_file:
+        if self.log_file and self.process_log_file:
             # Extracting the sample name from the log file name
             log_name = os.path.basename(self.log_file)
             sample_id = '_'.join(log_name.split('_')[0:3])
@@ -2597,7 +2605,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 sputtering.steps.extend(steps)
 
             # Merging the sputtering object with self
-            merge_sections(self, sputtering, logger)
+            merge_sections(
+                self, sputtering, logger
+            )  # one can swap self, and sputtering
+            # to favour incoming data over existing data
 
             # Run the nomalizer of the environment subsection
             for step in self.steps:
@@ -2619,6 +2630,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             if self.deposition_parameters is not None:
                 self.add_libraries(archive, logger)
+        elif not self.process_log_file:
+            logger.warning('Skipping log file processing')
 
         archive.workflow2 = None
         super().normalize(archive, logger)
