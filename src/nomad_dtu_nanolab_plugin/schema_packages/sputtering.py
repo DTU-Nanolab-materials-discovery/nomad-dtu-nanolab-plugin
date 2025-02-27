@@ -1965,18 +1965,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         section_def=TempRampDown,
     )
 
-    def plot(self, plots, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        for plot_name, plot in plots.items():
-            plot_json = json.loads(plot.to_json())
-            plot_json['config'] = dict(
-                scrollZoom=False,
-            )
-            self.figures.append(
-                PlotlyFigure(
-                    label=plot_name,
-                    figure=plot_json,
-                )
-            )
+    def plot_plotly_chamber_config(self, logger: 'BoundLogger') -> dict:
+        plots = {}
         # Plotting the sample positions on the platen
         try:
             samples_plot = read_samples(self.substrates)
@@ -2004,49 +1994,39 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 ['magkeeper3', 'magkeeper4', 'taurus', 's_cracker'],
             )
 
-            condition_for_plot = (
-                self.instruments[0].platen_rotation is not None
-                and samples_plot is not None
-                and guns_plot is not None
+            platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
+            sample_pos_plot = plot_plotly_chamber_config(
+                samples_plot,
+                guns_plot,
+                platen_rot,
+                plot_title='DEPOSITION CONFIG :',
             )
-            if condition_for_plot:
-                platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
-                sample_pos_plot = plot_plotly_chamber_config(
-                    samples_plot,
-                    guns_plot,
-                    platen_rot,
-                    plot_title='DEPOSITION CONFIG :',
-                )
 
-                sample_pos_plot_json = json.loads(sample_pos_plot.to_json())
-                sample_pos_plot_json['config'] = dict(
-                    scrollZoom=False,
-                )
-                self.figures.append(
-                    PlotlyFigure(
-                        label='Sample positions during deposition',
-                        figure=sample_pos_plot_json,
-                    )
-                )
+            plots['Deposition sub. configuration'] = sample_pos_plot
 
-                sample_mounting_plot = plot_plotly_chamber_config(
-                    samples_plot,
-                    guns_plot,
-                    90,
-                    plot_title='MOUNTING CONFIG :',
-                    in_chamber=False,
-                )
+            sample_mounting_plot = plot_plotly_chamber_config(
+                samples_plot,
+                guns_plot,
+                90,
+                plot_title='MOUNTING CONFIG :',
+                in_chamber=False,
+            )
+            plots['Mounting sub. configuration'] = sample_mounting_plot
 
-                sample_mounting_plot_json = json.loads(sample_mounting_plot.to_json())
-                sample_mounting_plot_json['config'] = dict(
-                    scrollZoom=False,
+            return plots
+
+    def plot(self, plots, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        for plot_name, plot in plots.items():
+            plot_json = json.loads(plot.to_json())
+            plot_json['config'] = dict(
+                scrollZoom=False,
+            )
+            self.figures.append(
+                PlotlyFigure(
+                    label=plot_name,
+                    figure=plot_json,
                 )
-                self.figures.append(
-                    PlotlyFigure(
-                        label='Sample positions during mounting',
-                        figure=sample_mounting_plot_json,
-                    )
-                )
+            )
 
     # Helper method to write the data
     def write_data(self, config: dict):
@@ -2771,6 +2751,21 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 params,
                 self.lab_id,
             )
+            condition_for_plot = (
+                self.instruments[0].platen_rotation is not None
+                and self.substrates is not None
+                and any(
+                    gun is not None
+                    for gun in [
+                        self.deposition_parameters.magkeeper3,
+                        self.deposition_parameters.magkeeper4,
+                        self.deposition_parameters.taurus,
+                        self.deposition_parameters.s_cracker,
+                    ]
+                )
+            )
+            if condition_for_plot:
+                plots.update(self.plot_plotly_chamber_config(logger))
 
             self.plot(plots, archive, logger)
 
