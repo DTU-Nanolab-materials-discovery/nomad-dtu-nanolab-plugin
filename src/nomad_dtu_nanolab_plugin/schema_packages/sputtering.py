@@ -1968,6 +1968,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     def plot_plotly_chamber_config(self, logger: 'BoundLogger') -> dict:
         plots = {}
         # Plotting the sample positions on the platen
+        logger.warning(
+            self.substrates.position_x,
+            self.substrates.position_y,
+            self.substrates.rotation,
+            self.substrates.substrate.geometry.width,
+            self.substrates.substrate.geometry.length,
+        )
         try:
             samples_plot = read_samples(self.substrates)
         except Exception as e:
@@ -1979,8 +1986,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 Sample('G', [0, -38], 90, [26, 76]),
             ]
             logger.warning(
-                f'Failed to read the sample positions. '
-                f'Defaulting to BL, BR, FL, FR, and G:{e}'
+                'Failed to read the sample positions. '
+                f'Defaulting to BL, BR, FL, FR, and G: {e}'
             )
 
             dep_params: DepositionParameters = self.deposition_parameters
