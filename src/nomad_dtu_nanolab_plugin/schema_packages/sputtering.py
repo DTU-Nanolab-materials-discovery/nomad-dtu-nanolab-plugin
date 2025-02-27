@@ -96,7 +96,6 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     read_guns,
     read_logfile,
     read_samples,
-    write_params,
 )
 
 if TYPE_CHECKING:
@@ -163,7 +162,10 @@ class DtuSubstrateMounting(ArchiveSection):
     )
     rotation = Quantity(
         type=np.float64,
-        description='The rotation of the substrate on the platen.',
+        description=(
+            'The rotation of the substrate on the platen, relative to '
+            'the width (x-axis) and height (y-axis) of the substrate.'
+        ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='degree',
@@ -317,11 +319,13 @@ class DTUSputterRFPowerSupply(DTUSputterPowerSupply):
         type=MEnum(['RF']),
         default='RF',
         a_eln={'component': 'RadioEnumEditQuantity'},
+        description='The type of power supply.',
     )
     avg_dc_bias = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The average DC bias.',
     )
     dc_bias = SubSection(
         section_def=DtuDCBias,
@@ -330,6 +334,7 @@ class DTUSputterRFPowerSupply(DTUSputterPowerSupply):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
+        description='The average forward power.',
     )
     fwd_power = SubSection(
         section_def=DtuForwardPower,
@@ -338,6 +343,7 @@ class DTUSputterRFPowerSupply(DTUSputterPowerSupply):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
+        description='The average reflected power.',
     )
     rfl_power = SubSection(
         section_def=DtuReflectedPower,
@@ -355,7 +361,7 @@ class DtuVoltage(TimeSeries):
     value = Quantity(
         type=np.float64,
         unit='V',
-        description="""The voltage.""",
+        description="""The voltage of the power supply.""",
         shape=['*'],
     )
 
@@ -371,7 +377,7 @@ class DtuCurrent(TimeSeries):
     value = Quantity(
         type=np.float64,
         unit='A',
-        description="""The current.""",
+        description="""The current of the power supply.""",
         shape=['*'],
     )
 
@@ -381,6 +387,7 @@ class DTUSputterDCPowerSupply(DTUSputterPowerSupply):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The average voltage of the DC power supply.',
     )
     voltage = SubSection(
         section_def=DtuVoltage,
@@ -389,6 +396,7 @@ class DTUSputterDCPowerSupply(DTUSputterPowerSupply):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'A'},
         unit='A',
+        description='The average current of the DC power supply.',
     )
     current = SubSection(
         section_def=DtuCurrent,
@@ -406,7 +414,7 @@ class DtuPulseFrequency(TimeSeries):
     value = Quantity(
         type=np.float64,
         unit='Hz',
-        description="""The pulse frequency.""",
+        description="""The pulse frequency of the PDC power supply""",
         shape=['*'],
     )
 
@@ -422,7 +430,7 @@ class DtuDeadTime(TimeSeries):
     value = Quantity(
         type=np.float64,
         unit='s',
-        description="""The dead time.""",
+        description="""The dead time of the PDC power supply.""",
         shape=['*'],
     )
 
@@ -432,6 +440,7 @@ class DTUSputterPulsedDCPowerSupply(DTUSputterDCPowerSupply):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'kHz'},
         unit='1/s',
+        description='The average pulse frequency of the PDC power supply.',
     )
     pulse_frequency = SubSection(
         section_def=DtuPulseFrequency,
@@ -440,6 +449,7 @@ class DTUSputterPulsedDCPowerSupply(DTUSputterDCPowerSupply):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'ms'},
         unit='s',
+        description='The average dead time of the PDC power supply.',
     )
     dead_time = SubSection(
         section_def=DtuDeadTime,
@@ -492,26 +502,31 @@ class SCrackerOverview(ArchiveSection):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The temperature of sulfur cracker zone 1.""",
     )
     zone2_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The temperature of sulfur cracker zone 2.""",
     )
     zone3_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The temperature of sulfur cracker zone 3.""",
     )
     valve_on_time = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 's'},
         unit='s',
+        description="""The valve on time of the sulfur cracker zone 2.""",
     )
     valve_frequency = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'Hz'},
         unit='1/s',
+        description="""The valve frequency of the sulfur cracker zone 2.""",
     )
 
 
@@ -568,26 +583,31 @@ class SCracker(ArchiveSection):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The average temperature of sulfur cracker zone 1.""",
     )
     avg_zone2_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The average temperature of sulfur cracker zone 2.""",
     )
     avg_zone3_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The average temperature of sulfur cracker zone 3.""",
     )
     avg_valve_on_time = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 's'},
         unit='s',
+        description="""The average valve on time of the sulfur cracker zone 2.""",
     )
     avg_valve_frequency = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'Hz'},
         unit='1/s',
+        description="""The average valve frequency of the sulfur cracker zone 2.""",
     )
     zone1_temperature = SubSection(
         section_def=DtuZoneTemp,
@@ -616,20 +636,23 @@ class DTUShutter(TimeSeries):
 
     value = Quantity(
         type=bool,
-        description="""Position of the substrate shutter.""",
+        description="""Position of the substrate shutter (1: open, 0: closed).""",
         shape=['*'],
     )
 
     mode_value = Quantity(
         type=bool,
-        description="""Position of the general shutter.""",
+        description=(
+            """Most represented (mode value) shutter
+            state (1: mostly pen, 0: mostly closed)."""
+        ),
     )
 
 
 class DTUTargetReference(CompositeSystemReference):
     reference = Quantity(
         type=DTUTarget,
-        description='A reference to a NOMAD `CompositeSystem` entry.',
+        description='A reference to a NOMAD Target entry.',
         a_eln=ELNAnnotation(
             component='ReferenceEditQuantity',
             label='composite system reference',
@@ -746,7 +769,7 @@ class DTUSputteringSource(DtuPlasma):
 class DtuReactiveGasComponent(Component):
     system = Quantity(
         type=DTUGasSupply,
-        description='The gas supply.',
+        description='The reactive gas supply.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.ReferenceEditQuantity,
         ),
@@ -799,11 +822,13 @@ class DTUGasFlow(GasFlow, ArchiveSection):
     )
     gas_name = Quantity(
         type=str,
-        a_eln={'component': 'StringEditQuantity'},
+        a_eln={'component': 'StringEditQuantity', 'label': 'Gas name'},
+        description='The name of the gas.',
     )
     used_gas_supply = Quantity(
         type=CompositeSystem,
         a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
+        description='Reference to the gas supply used.',
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -841,7 +866,7 @@ class DtuTemperature(TimeSeries):
     value = Quantity(
         type=np.float64,
         unit='kelvin',
-        description="""The temperature of the first heater.""",
+        description="""The temperature of the heater.""",
         shape=['*'],
     )
 
@@ -857,16 +882,23 @@ class DtuSubstrateHeater(SubstrateHeater):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""
+        The average temperature of the heater as measured by thermocouple 1.
+        """,
     )
     avg_temperature_2 = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""
+        The average temperature of the heater as measured by thermocouple 2.
+        """,
     )
     avg_temperature_setpoint = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The average temperature setpoint of the heater.""",
     )
     temperature_1 = SubSection(
         section_def=DtuTemperature,
@@ -1005,67 +1037,87 @@ class SourceOverview(ArchiveSection):
     target_name = Quantity(
         type=str,
         a_eln={'component': 'StringEditQuantity'},
+        description='The name of the gun on which the target in mounted.',
     )
     target_material = Quantity(
         type=str,
-        a_eln={'component': 'StringEditQuantity'},
+        a_eln={'component': 'StringEditQuantity', 'label': 'Target material'},
+        description='The material of the target.',
     )
     target_id = SubSection(
         section_def=DTUTargetReference,
+        description='A reference to the target used.',
     )
     applied_power = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
+        a_eln={
+            'component': 'NumberEditQuantity',
+            'defaultDisplayUnit': 'W',
+            'label': 'Applied power',
+        },
         unit='(kg*m^2)/s^3',
+        description='The applied power.',
     )
     power_type = Quantity(
         type=MEnum(['DC', 'RF', 'pulsed_DC']),
         default='RF',
         a_eln={'component': 'RadioEnumEditQuantity'},
+        description='The type of power supply.',
     )
     average_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The average voltage (DC bias in RF) of the power supply.',
     )
     std_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description=(
+            'The standard deviation of the voltage (DC bias in RF) of the power supply.'
+        ),
     )
     start_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The voltage (DC bias in RF) at the start of the deposition.',
     )
     end_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The voltage (DC bias in RF) at the end of the deposition.',
     )
     start_end_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The difference between the start and end voltage (DC bias in RF).',
     )
     max_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The maximum voltage (DC bias in RF) during the deposition.',
     )
     min_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The minimum voltage (DC bias in RF) during the deposition.',
     )
     range_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The difference between min and max voltage (DC bias in RF).',
     )
     voltage_comments = Quantity(
         type=str,
         a_eln={'component': 'RichTextEditQuantity'},
+        description='Comments on the voltage (DC bias in RF) during the deposition.',
     )
 
 
@@ -1115,17 +1167,20 @@ class SourceRampUp(ArchiveSection):
     target_name = Quantity(
         type=str,
         a_eln={'component': 'StringEditQuantity'},
+        description='The name of the gun on which the target in mounted.',
     )
     # ignition related parameters
     plasma_ignition_power = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
+        description='The power at which plasma ignites.',
     )
     plasma_ignition_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
+        description='The pressure at which the plasma was ignited.',
     )
 
 
@@ -1138,27 +1193,32 @@ class SourcePresput(ArchiveSection):
     target_name = Quantity(
         type=str,
         a_eln={'component': 'StringEditQuantity'},
+        description='The name of the gun on which the target in mounted.',
     )
     # presput related parameters
     presput_time = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
+        description='The total presputtering time.',
     )
     presput_power = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
+        description='The average power during presputtering.',
     )
     presput_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
+        description='The average pressure during presputtering.',
     )
     presput_ar_flow = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm^3/minute'},
         unit='m^3/s',
+        description='The average Ar flow during presputtering.',
     )
 
 
@@ -1208,23 +1268,30 @@ class DepositionParameters(ArchiveSection):
         default=300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The temperature of the deposition as measured by thermocouple 1.',
     )
     deposition_temperature_2 = Quantity(
         type=np.float64,
         default=300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The temperature of the deposition as measured by thermocouple 2.',
     )
     deposition_temperature_setpoint = Quantity(
         type=np.float64,
         default=300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The temperature setpoint of the deposition.',
     )
     deposition_true_temperature = Quantity(
         type=np.float64,
         a_eln={'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description=(
+            'The corrected real temperature of the deposition as calculated with :'
+            '0.905 * (0.5 * (deposition_temperature + deposition_temperature_2)) + 12'
+        ),
     )
     deposition_time = Quantity(
         type=np.float64,
@@ -1641,7 +1708,13 @@ class DtuFlag(ArchiveSection):
         description='Flag name',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
-            props=dict(suggestions=['WRONG_TOXIC_GAS_FLOW', 'WRONG_CRACKER_SIGNAL']),
+            props=dict(
+                suggestions=[
+                    'WRONG_TOXIC_GAS_FLOW',
+                    'WRONG_CRACKER_SIGNAL',
+                    'INTERRUPTED_DEPOSITION',
+                ]
+            ),
         ),
     )
 
@@ -1673,6 +1746,12 @@ class DtuFlag(ArchiveSection):
                 'to the true signal as logged in the phosphosulfide_logbook for '
                 ' timestamps during deposition. Therefore, the signal values are only'
                 'correct for the timestamps corresponding to the deposition.'
+            ),
+            'INTERRUPTED_DEPOSITION': (
+                'The deposition was interrupted due to the target turning off  '
+                'spontenously. The deposition might have been resumed after the '
+                'target was turned on again. The deposition time in the logfile '
+                'might not be accurate.'
             ),
         }
 
@@ -2015,14 +2094,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.end_of_process = EndOfProcess()
 
         # Writing the params dict in the form of a report
-        def format_log_for_html(log):
-            # Replace spaces with non-breaking spaces
-            log = log.replace(' ', '&nbsp;')
-            # Replace newlines with <br> tags
-            log = log.replace('\n', '<br>')
-            return log
+        # def format_log_for_html(log):
+        #    # Replace spaces with non-breaking spaces
+        #    log = log.replace(' ', '&nbsp;')
+        #    # Replace newlines with <br> tags
+        #    log = log.replace('\n', '<br>')
+        #    return log
 
-        sputtering.log_file_report = format_log_for_html(write_params(params))
+        # sputtering.log_file_report = format_log_for_html(write_params(params))
 
         # Looping through the param_nomad_map
         for input_keys, output_keys, unit in param_nomad_map:
@@ -2054,6 +2133,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.source_presput.extend(targets_presput)
 
         sputtering.source_deprate.extend(targets_deprate)
+
+        if params['deposition']['interrupted']:
+            sputtering.flags.append(DtuFlag(flag='INTERRUPTED_DEPOSITION'))
 
         return sputtering
 
