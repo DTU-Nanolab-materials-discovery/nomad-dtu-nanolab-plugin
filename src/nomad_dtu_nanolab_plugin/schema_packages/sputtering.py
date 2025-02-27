@@ -1967,15 +1967,51 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     def plot_plotly_chamber_config(self, logger: 'BoundLogger') -> dict:
         plots = {}
-        # Plotting the sample positions on the platen
-        for substrate in self.substrates:
-            logger.warning(
-                substrate.position_x,
-                substrate.position_y,
-                substrate.rotation,
-                substrate.substrate.geometry.width,
-                substrate.substrate.geometry.length,
+
+        # checking if the data is available for plotting, else return empty plots
+        condition_for_plot = (
+            self.instruments[0].platen_rotation is not None
+            and self.substrates is not None
+            and any(
+                gun is not None
+                for gun in [
+                    self.deposition_parameters.magkeeper3,
+                    self.deposition_parameters.magkeeper4,
+                    self.deposition_parameters.taurus,
+                    self.deposition_parameters.s_cracker,
+                ]
             )
+        )
+        if not condition_for_plot:
+            return plots
+
+        # debbug logger warning
+        if self.substrates is not None:
+            for substrate in self.substrates:
+                pos_x = getattr(substrate, 'position_x', None)
+                pos_y = getattr(substrate, 'position_y', None)
+                rotation = getattr(substrate, 'rotation', None)
+                width = (
+                    getattr(substrate.substrate.geometry, 'width', None)
+                    if hasattr(substrate, 'substrate')
+                    and hasattr(substrate.substrate, 'geometry')
+                    else None
+                )
+                length = (
+                    getattr(substrate.substrate.geometry, 'length', None)
+                    if hasattr(substrate, 'substrate')
+                    and hasattr(substrate.substrate, 'geometry')
+                    else None
+                )
+                logger.warning(
+                    pos_x,
+                    pos_y,
+                    rotation,
+                    width,
+                    length,
+                )
+        # Plotting the sample positions on the platen
+        # trying to read the sample positions else default to the default positions
         try:
             samples_plot = read_samples(self.substrates)
         except Exception as e:
@@ -1991,37 +2027,37 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 f'Defaulting to BL, BR, FL, FR, and G: {e}'
             )
 
-            dep_params: DepositionParameters = self.deposition_parameters
-            guns_plot = read_guns(
-                [
-                    dep_params.magkeeper3,
-                    dep_params.magkeeper4,
-                    dep_params.taurus,
-                    dep_params.s_cracker,
-                ],
-                ['magkeeper3', 'magkeeper4', 'taurus', 's_cracker'],
-            )
+        dep_params: DepositionParameters = self.deposition_parameters
+        guns_plot = read_guns(
+            [
+                dep_params.magkeeper3,
+                dep_params.magkeeper4,
+                dep_params.taurus,
+                dep_params.s_cracker,
+            ],
+            ['magkeeper3', 'magkeeper4', 'taurus', 's_cracker'],
+        )
 
-            platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
-            sample_pos_plot = plot_plotly_chamber_config(
-                samples_plot,
-                guns_plot,
-                platen_rot,
-                plot_title='DEPOSITION CONFIG :',
-            )
+        platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
+        sample_pos_plot = plot_plotly_chamber_config(
+            samples_plot,
+            guns_plot,
+            platen_rot,
+            plot_title='DEPOSITION CONFIG :',
+        )
 
-            plots['Deposition sub. configuration'] = sample_pos_plot
+        plots['Deposition sub. configuration'] = sample_pos_plot
 
-            sample_mounting_plot = plot_plotly_chamber_config(
-                samples_plot,
-                guns_plot,
-                90,
-                plot_title='MOUNTING CONFIG :',
-                in_chamber=False,
-            )
-            plots['Mounting sub. configuration'] = sample_mounting_plot
+        sample_mounting_plot = plot_plotly_chamber_config(
+            samples_plot,
+            guns_plot,
+            90,
+            plot_title='MOUNTING CONFIG :',
+            in_chamber=False,
+        )
+        plots['Mounting sub. configuration'] = sample_mounting_plot
 
-            return plots
+        return plots
 
     def plot(self, plots, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         for plot_name, plot in plots.items():
@@ -2759,21 +2795,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 params,
                 self.lab_id,
             )
-            condition_for_plot = (
-                self.instruments[0].platen_rotation is not None
-                and self.substrates is not None
-                and any(
-                    gun is not None
-                    for gun in [
-                        self.deposition_parameters.magkeeper3,
-                        self.deposition_parameters.magkeeper4,
-                        self.deposition_parameters.taurus,
-                        self.deposition_parameters.s_cracker,
-                    ]
-                )
-            )
-            if condition_for_plot:
-                plots.update(self.plot_plotly_chamber_config(logger))
+
+            plots.update(self.plot_plotly_chamber_config(logger))
 
             self.plot(plots, archive, logger)
 
