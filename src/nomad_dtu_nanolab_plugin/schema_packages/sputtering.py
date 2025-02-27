@@ -1812,6 +1812,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     lab_id = Quantity(
         type=str,
         a_eln={'component': 'StringEditQuantity', 'label': 'Run ID'},
+        description='The ID of the run. Format: user_XXXX_ElemementSymbol',
     )
     location = Quantity(
         type=str,
@@ -1821,6 +1822,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     log_file = Quantity(
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Log file'},
+        description='Cell to upload the log file containing the deposition data.',
     )
     process_log_file = Quantity(
         type=bool,
@@ -1846,15 +1848,18 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     cracker_warmup_log_file = Quantity(
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Cracker warmup log file'},
+        description='Cell to upload the log file containing the cracker warmup data.',
     )
     platen_used = Quantity(
         type=MEnum(['A', 'B']),
         a_eln={'component': 'RadioEnumEditQuantity'},
+        description='The platen used for the deposition.',
     )
     base_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'torr'},
         unit='kg/(m*s^2)',
+        description='The base pressure of the chamber before deposition.',
     )
     target_image_before = Quantity(
         type=str,
@@ -1865,6 +1870,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
+        description='Cell to upload the image of the target before the deposition.',
     )
     target_image_after = Quantity(
         type=str,
@@ -1875,6 +1881,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
+        description='Cell to upload the image of the target after the deposition.',
     )
     plasma_image = Quantity(
         type=str,
@@ -1885,6 +1892,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
+        description='Cell to upload the image of the plasma during the deposition.',
     )
     sample_image = Quantity(
         type=str,
@@ -1895,6 +1903,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
+        description='Cell to upload the image of the sample.',
     )
     optix_spectra = Quantity(
         type=str,
@@ -1902,6 +1911,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
+        description='Cell to upload the Optix spectra data.',
     )
     rga_file = Quantity(
         type=str,
@@ -1909,6 +1919,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
+        description='Cell to upload the RGA data associated by the Optix spectra data.',
     )
     flags = SubSection(
         section_def=DtuFlag,

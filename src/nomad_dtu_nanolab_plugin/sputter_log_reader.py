@@ -5966,11 +5966,11 @@ def get_nested_value(dictionary, key_path):
 def map_params_to_nomad(params, gun_list):
     # Definiting the input, ouput and unit
     param_nomad_map = [
-        #[
+        # [
         #    ['deposition', 'interrupted'],
         #    ['deposition_parameters', 'interrupted_deposition'],
         #    None,
-        #],
+        # ],
         # Deposition parameters
         [
             ['deposition', 'avg_temp_1'],
