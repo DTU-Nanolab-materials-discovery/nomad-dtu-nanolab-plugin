@@ -1298,23 +1298,25 @@ class DepositionParameters(ArchiveSection):
         default=1800,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
+        description='The total deposition time.',
     )
-    interrupted_deposition = Quantity(
-        type=bool,
-        default=False,
-        a_eln={'component': 'BoolEditQuantity'},
-    )  # flag for if the deposition was interrupted (e.g. due to plasma turn off)
+    # interrupted_deposition = Quantity(
+    #    type=bool,
+    #    default=False,
+    #    a_eln={'component': 'BoolEditQuantity'},
+    # )  # flag for if the deposition was interrupted (e.g. due to plasma turn off)
 
     sputter_pressure = Quantity(
         type=np.float64,
         default=0.6666,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
+        description='The pressure during sputtering as measured by the capman gauge.',
     )
     material_space = Quantity(
         type=str,
-        default='-P-S',
         a_eln={'component': 'StringEditQuantity'},
+        description='The material space explored by the deposition.',
     )
     ar_flow = Quantity(
         type=np.float64,
@@ -1323,6 +1325,11 @@ class DepositionParameters(ArchiveSection):
             'defaultDisplayUnit': 'cm^3/minute',
             'label': 'Ar flow',
         },
+        description="""
+            Flow of 100% Ar in equivalent flow at standard conditions 0, i.e.
+            the equivalent rate at a temperature of 0 °C (273.15 K) and a pressure of
+            1 atm (101325 Pa).
+        """,
         unit='m^3/s',
     )
     ar_partial_pressure = Quantity(
@@ -1331,6 +1338,7 @@ class DepositionParameters(ArchiveSection):
             'defaultDisplayUnit': 'mtorr',
             'label': 'Ar partial pressure',
         },
+        description='The Ar partial pressure during the deposition.',
         unit='kg/(m*s^2)',
     )
     h2s_in_ar_flow = Quantity(
@@ -1354,6 +1362,7 @@ class DepositionParameters(ArchiveSection):
             'label': 'H2S partial pressure',
         },
         unit='kg/(m*s^2)',
+        description='The H2S partial pressure during the deposition.',
     )
     nh3_in_ar_flow = Quantity(
         type=np.float64,
@@ -1376,6 +1385,7 @@ class DepositionParameters(ArchiveSection):
             'label': 'NH3 partial pressure',
         },
         unit='kg/(m*s^2)',
+        description='The NH3 partial pressure during the deposition.',
     )
     ph3_in_ar_flow = Quantity(
         type=np.float64,
@@ -1398,6 +1408,7 @@ class DepositionParameters(ArchiveSection):
             'label': 'PH3 partial pressure',
         },
         unit='kg/(m*s^2)',
+        description='The PH3 partial pressure during the deposition',
     )
     n2_flow = Quantity(
         type=np.float64,
@@ -1420,6 +1431,7 @@ class DepositionParameters(ArchiveSection):
             'label': 'N2 partial pressure',
         },
         unit='kg/(m*s^2)',
+        description='The N2 partial pressure during the deposition.',
     )
     o2_in_ar_flow = Quantity(
         type=np.float64,
@@ -1442,10 +1454,12 @@ class DepositionParameters(ArchiveSection):
             'label': 'O2 partial pressure',
         },
         unit='kg/(m*s^2)',
+        description='The O2 partial pressure during the deposition.',
     )
     ph3_h2s_ratio = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity'},
+        description='The PH3/H2S ratio (if applicable).',
     )
     magkeeper3 = SubSection(
         section_def=SourceOverview,
@@ -1573,26 +1587,31 @@ class TempRampUp(ArchiveSection):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
+        description='The duration of the temperature ramp up.',
     )
     start_temperature_setpoint = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The start temperature setpoint.',
     )
     end_temperature_setpoint = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The end temperature setpoint.',
     )
     temperature_slope = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC/minute'},
         unit='kelvin/s',
+        description='The temperature slope.',
     )
     avg_capman_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
         unit='kg/(m*s^2)',
+        description='The average pressure during the temperature ramp up.',
     )
     avg_ar_flow = Quantity(
         type=np.float64,
@@ -1602,6 +1621,7 @@ class TempRampUp(ArchiveSection):
             'label': 'Ar flow',
         },
         unit='m^3/s',
+        description='The average Ar flow during the temperature ramp up.',
     )
     avg_h2s_in_ar_flow = Quantity(
         type=np.float64,
@@ -1611,6 +1631,7 @@ class TempRampUp(ArchiveSection):
             'label': 'H2S in Ar flow',
         },
         unit='m^3/s',
+        description='The average H2S flow during the temperature ramp up.',
     )
     avg_ph3_in_ar_flow = Quantity(
         type=np.float64,
@@ -1620,15 +1641,18 @@ class TempRampUp(ArchiveSection):
             'label': 'PH3 in Ar flow',
         },
         unit='m^3/s',
+        description='The average PH3 flow during the temperature ramp up.',
     )
     cracker_enabled = Quantity(
         type=bool,
         default=False,
         a_eln={'component': 'BoolEditQuantity'},
+        description='Boolean to indicate if the cracker was enabled.',
     )
     heating_procedure = Quantity(
         type=str,
         a_eln={'component': 'RichTextEditQuantity'},
+        description='Comment on the heating procedure.',
     )
 
 
@@ -1637,21 +1661,25 @@ class TempRampDown(ArchiveSection):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
+        description='The duration of the temperature ramp down.',
     )
     start_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The start temperature.',
     )
     end_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The end temperature.',
     )
     avg_capman_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
         unit='kg/(m*s^2)',
+        description='The average pressure during the temperature ramp down.',
     )
     avg_ar_flow = Quantity(
         type=np.float64,
@@ -1661,6 +1689,7 @@ class TempRampDown(ArchiveSection):
             'label': 'Ar flow',
         },
         unit='m^3/s',
+        description='The average Ar flow during the temperature ramp down.',
     )
     avg_h2s_in_ar_flow = Quantity(
         type=np.float64,
@@ -1670,6 +1699,7 @@ class TempRampDown(ArchiveSection):
             'label': 'H2S in Ar flow',
         },
         unit='m^3/s',
+        description='The average H2S flow during the temperature ramp down.',
     )
     avg_ph3_in_ar_flow = Quantity(
         type=np.float64,
@@ -1679,20 +1709,27 @@ class TempRampDown(ArchiveSection):
             'label': 'PH3 in Ar flow',
         },
         unit='m^3/s',
+        description='The average PH3 flow during the temperature ramp down.',
     )
     cracker_enabled = Quantity(
         type=bool,
         default=False,
         a_eln={'component': 'BoolEditQuantity'},
+        description='Boolean to indicate if the cracker was enabled.',
     )
     anion_input_cutoff_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description=(
+            'The temperature at which the anion input (H2S, S-cracker, PH3, NH3, O2 '
+            'or N2) was cut off.',
+        ),
     )
     cooling_procedure = Quantity(
         type=str,
         a_eln={'component': 'RichTextEditQuantity'},
+        description='Comment on the cooling procedure.',
     )
 
 
@@ -1705,7 +1742,10 @@ class DtuFlag(ArchiveSection):
 
     flag = Quantity(
         type=str,
-        description='Flag name',
+        description=(
+            'Flag name associated with the deposition. Flags are used to '
+            'indicate issues that occurred during the deposition (see description).'
+        ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
             props=dict(
