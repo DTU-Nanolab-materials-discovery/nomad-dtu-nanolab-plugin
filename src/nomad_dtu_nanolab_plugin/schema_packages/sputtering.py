@@ -162,10 +162,10 @@ class DtuSubstrateMounting(ArchiveSection):
     )
     rotation = Quantity(
         type=np.float64,
-        description=(
-            'The rotation of the substrate on the platen, relative to '
-            'the width (x-axis) and height (y-axis) of the substrate.'
-        ),
+        description="""
+            The rotation of the substrate on the platen, relative to
+            the width (x-axis) and height (y-axis) of the substrate.
+        """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='degree',
@@ -642,10 +642,10 @@ class DTUShutter(TimeSeries):
 
     mode_value = Quantity(
         type=bool,
-        description=(
-            """Most represented (mode value) shutter
-            state (1: mostly pen, 0: mostly closed)."""
-        ),
+        description="""
+            Most represented (mode value) shutter
+            state (1: mostly pen, 0: mostly closed).
+        """,
     )
 
 
@@ -1074,9 +1074,9 @@ class SourceOverview(ArchiveSection):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
-        description=(
+        description="""
             'The standard deviation of the voltage (DC bias in RF) of the power supply.'
-        ),
+        """,
     )
     start_voltage = Quantity(
         type=np.float64,
@@ -1288,10 +1288,10 @@ class DepositionParameters(ArchiveSection):
         type=np.float64,
         a_eln={'defaultDisplayUnit': 'degC'},
         unit='kelvin',
-        description=(
-            'The corrected real temperature of the deposition as calculated with :'
-            '0.905 * (0.5 * (deposition_temperature + deposition_temperature_2)) + 12'
-        ),
+        description="""
+            The corrected real temperature of the deposition as calculated with :
+            0.905 * (0.5 * (deposition_temperature + deposition_temperature_2)) + 12
+        """,
     )
     deposition_time = Quantity(
         type=np.float64,
@@ -1721,10 +1721,10 @@ class TempRampDown(ArchiveSection):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
-        description=(
-            'The temperature at which the anion input (H2S, S-cracker, PH3, NH3, O2 '
-            'or N2) was cut off.',
-        ),
+        description="""
+            The temperature at which the anion input (H2S, S-cracker, PH3, NH3, O2
+            or N2) was cut off.'
+        """,
     )
     cooling_procedure = Quantity(
         type=str,
@@ -1742,10 +1742,10 @@ class DtuFlag(ArchiveSection):
 
     flag = Quantity(
         type=str,
-        description=(
-            'Flag name associated with the deposition. Flags are used to '
-            'indicate issues that occurred during the deposition (see description).'
-        ),
+        description="""
+            Flag name associated with the deposition. Flags are used to
+            indicate issues that occurred during the deposition (see description).
+        """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
             props=dict(
@@ -1836,10 +1836,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     overwrite = Quantity(
         type=bool,
         default=False,
-        description=(
-            'Boolean to indicate if the data present in the class should be '
-            'overwritten by data incoming from the log file.'
-        ),
+        description="""
+            Boolean to indicate if the data present in the class should be
+            overwritten by data incoming from the log file.
+        """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.BoolEditQuantity,
             label='Overwrite existing data ?',
