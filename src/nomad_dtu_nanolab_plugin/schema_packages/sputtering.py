@@ -1968,13 +1968,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     def plot_plotly_chamber_config(self, logger: 'BoundLogger') -> dict:
         plots = {}
         # Plotting the sample positions on the platen
-        logger.warning(
-            self.substrates.position_x,
-            self.substrates.position_y,
-            self.substrates.rotation,
-            self.substrates.substrate.geometry.width,
-            self.substrates.substrate.geometry.length,
-        )
+        for substrate in self.substrates:
+            logger.warning(
+                substrate.position_x,
+                substrate.position_y,
+                substrate.rotation,
+                substrate.substrate.geometry.width,
+                substrate.substrate.geometry.length,
+            )
         try:
             samples_plot = read_samples(self.substrates)
         except Exception as e:
