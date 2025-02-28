@@ -460,7 +460,7 @@ class DTUXpsMeasurement(MappingMeasurement, PlotSection, Schema):
             # Combine scatter plot and heatmap
             fig = go.Figure(data=[heatmap, scatter])
 
-            # Update layout 
+            # Update layout
             fig.update_layout(
                 title=f'{q} Atomic Fraction Colormap',
                 xaxis_title=x_title,
