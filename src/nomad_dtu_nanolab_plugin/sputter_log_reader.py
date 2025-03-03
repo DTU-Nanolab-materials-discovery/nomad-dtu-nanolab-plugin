@@ -34,7 +34,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = False
+TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 RENAME_CRACKER_COL = True
@@ -51,7 +51,7 @@ SAMPLES_TO_REMOVE = [
 SAMPLES_TO_TEST = [
     # 'eugbe_0020_Zr_Recording Set 2025.02.05-09.07.05',
     # 'eugbe_0021_Zr_Recording Set 2025.02.07-10.03.37',
-    'eugbe_0022_Zr_Recording Set 2025.02.10-09.49.44',
+    'mittma_0029_Cu_Recording Set 2024.12.02-10.49.07',
 ]
 
 # -----USEFUL DICTIONARIES AND LISTS-----
@@ -6010,33 +6010,33 @@ def map_params_to_nomad(params, gun_list):
                 'torr',
             ]
         )
-    if params['deposition'].get('SCracker', {}).get('enabled', False):
+    if params['deposition'].get('s_cracker', {}).get('enabled', False):
         # SCracker parameters
         param_nomad_map.extend(
             [
                 [
-                    ['deposition', 'SCracker', 'zone1_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone1_temperature'],
+                    ['deposition', 's_cracker', 'zone1_temp'],
+                    ['deposition_parameters', 's_cracker', 'zone1_temperature'],
                     'degC',
                 ],
                 [
-                    ['deposition', 'SCracker', 'zone2_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone2_temperature'],
+                    ['deposition', 's_cracker', 'zone2_temp'],
+                    ['deposition_parameters', 's_cracker', 'zone2_temperature'],
                     'degC',
                 ],
                 [
-                    ['deposition', 'SCracker', 'zone3_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone3_temperature'],
+                    ['deposition', 's_cracker', 'zone3_temp'],
+                    ['deposition_parameters', 's_cracker', 'zone3_temperature'],
                     'degC',
                 ],
                 [
-                    ['deposition', 'SCracker', 'pulse_width'],
-                    ['deposition_parameters', 'SCracker', 'valve_on_time'],
+                    ['deposition', 's_cracker', 'pulse_width'],
+                    ['deposition_parameters', 's_cracker', 'valve_on_time'],
                     'millisecond',
                 ],
                 [
-                    ['deposition', 'SCracker', 'pulse_freq'],
-                    ['deposition_parameters', 'SCracker', 'valve_frequency'],
+                    ['deposition', 's_cracker', 'pulse_freq'],
+                    ['deposition_parameters', 's_cracker', 'valve_frequency'],
                     'mHz',
                 ],
             ]
