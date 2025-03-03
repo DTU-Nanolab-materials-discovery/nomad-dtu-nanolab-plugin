@@ -6090,33 +6090,33 @@ def map_params_to_nomad(params, gun_list):
                 'torr',
             ]
         )
-    if params['deposition'].get('SCracker', {}).get('enabled', False):
-        # SCracker parameters
+    if params['deposition'].get('s_cracker', {}).get('enabled', False):
+        #s_cracker parameters
         param_nomad_map.extend(
             [
                 [
-                    ['deposition', 'SCracker', 'zone1_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone1_temperature'],
+                    ['deposition', 's_cracker', 'zone1_temp'],
+                    ['deposition_parameters', 's_cracker', 'zone1_temperature'],
                     'degC',
                 ],
                 [
-                    ['deposition', 'SCracker', 'zone2_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone2_temperature'],
+                    ['deposition', 's_cracker', 'zone2_temp'],
+                    ['deposition_parameters', 's_cracker', 'zone2_temperature'],
                     'degC',
                 ],
                 [
-                    ['deposition', 'SCracker', 'zone3_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone3_temperature'],
+                    ['deposition', 's_cracker', 'zone3_temp'],
+                    ['deposition_parameters', 's_cracker', 'zone3_temperature'],
                     'degC',
                 ],
                 [
-                    ['deposition', 'SCracker', 'pulse_width'],
-                    ['deposition_parameters', 'SCracker', 'valve_on_time'],
+                    ['deposition', 's_cracker', 'pulse_width'],
+                    ['deposition_parameters', 's_cracker', 'valve_on_time'],
                     'millisecond',
                 ],
                 [
-                    ['deposition', 'SCracker', 'pulse_freq'],
-                    ['deposition_parameters', 'SCracker', 'valve_frequency'],
+                    ['deposition', 's_cracker', 'pulse_freq'],
+                    ['deposition_parameters', 's_cracker', 'valve_frequency'],
                     'mHz',
                 ],
             ]
