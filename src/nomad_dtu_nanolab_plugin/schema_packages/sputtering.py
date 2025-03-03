@@ -504,6 +504,12 @@ class SCrackerOverview(ArchiveSection):
         unit='kelvin',
         description="""The temperature of sulfur cracker zone 1.""",
     )
+    zone1_temperature_setpoint = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
+        unit='kelvin',
+        description="""The temperature setpoint of sulfur cracker zone 1.""",
+    )
     zone2_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},

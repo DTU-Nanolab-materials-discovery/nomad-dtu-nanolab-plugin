@@ -1128,6 +1128,7 @@ class Lf_Event:
         if 's_cracker' not in params[self.step_id]['sources']:
             params[self.step_id]['sources']['s_cracker'] = {}
             params[self.step_id]['sources']['s_cracker']['zone1_temp'] = {}
+            params[self.step_id]['sources']['s_cracker']['zone1_temp_sp'] = {}
             params[self.step_id]['sources']['s_cracker']['zone2_temp'] = {}
             params[self.step_id]['sources']['s_cracker']['zone3_temp'] = {}
             params[self.step_id]['sources']['s_cracker']['valve_on_time'] = {}
@@ -1537,6 +1538,9 @@ class Deposition_Event(Lf_Event):
         params[self.category]['s_cracker']['enabled'] = True
         params[self.category]['s_cracker']['zone1_temp'] = self.data[
             'Sulfur Cracker Zone 1 Current Temperature'
+        ].mean()
+        params[self.category]['s_cracker']['zone1_temp_sp'] = self.data[
+            'Sulfur Cracker Zone 1 Temperature Setpoint'
         ].mean()
         params[self.category]['s_cracker']['zone2_temp'] = self.data[
             'Sulfur Cracker Zone 2 Current Temperature'
@@ -2113,6 +2117,9 @@ class Sub_Ramp_Up_Event(Lf_Event):
                     params[self.category]['s_cracker']['zone1_temp'] = self.data[
                         'Sulfur Cracker Zone 1 Current Temperature'
                     ].mean()
+                    params[self.category]['s_cracker']['zone1_temp_sp'] = self.data[
+                        'Sulfur Cracker Zone 1 Temperature Setpoint'
+                    ].mean()
                     params[self.category]['s_cracker']['zone2_temp'] = self.data[
                         'Sulfur Cracker Zone 2 Current Temperature'
                     ].mean()
@@ -2328,6 +2335,9 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
             cracker_params['enabled'] = True
             cracker_params['zone1_temp'] = self.data[
                 'Sulfur Cracker Zone 1 Current Temperature'
+            ].mean()
+            cracker_params['zone1_temp_sp'] = self.data[
+                'Sulfur Cracker Zone 1 Temperature Setpoint'
             ].mean()
             cracker_params['zone2_temp'] = self.data[
                 'Sulfur Cracker Zone 2 Current Temperature'
@@ -6091,12 +6101,21 @@ def map_params_to_nomad(params, gun_list):
             ]
         )
     if params['deposition'].get('s_cracker', {}).get('enabled', False):
-        #s_cracker parameters
+        # s_cracker parameters
         param_nomad_map.extend(
             [
                 [
                     ['deposition', 's_cracker', 'zone1_temp'],
                     ['deposition_parameters', 's_cracker', 'zone1_temperature'],
+                    'degC',
+                ],
+                [
+                    ['deposition', 's_cracker', 'zone1_temp_sp'],
+                    [
+                        'deposition_parameters',
+                        's_cracker',
+                        'zone1_temperature_setpoint',
+                    ],
                     'degC',
                 ],
                 [
