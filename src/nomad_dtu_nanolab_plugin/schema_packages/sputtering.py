@@ -1306,12 +1306,6 @@ class DepositionParameters(ArchiveSection):
         unit='s',
         description='The total deposition time.',
     )
-    # interrupted_deposition = Quantity(
-    #    type=bool,
-    #    default=False,
-    #    a_eln={'component': 'BoolEditQuantity'},
-    # )  # flag for if the deposition was interrupted (e.g. due to plasma turn off)
-
     sputter_pressure = Quantity(
         type=np.float64,
         default=0.6666,
@@ -1802,7 +1796,7 @@ class DtuFlag(ArchiveSection):
         }
 
         super().normalize(archive, logger)
-        if self.flag is not None:
+        if self.flag is not None and self.flag_description is None:
             self.flag_description = FLAG_DICT.get(self.flag)
 
 
@@ -1836,7 +1830,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         description='Boolean to indicate if the log_file should be processed.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.BoolEditQuantity,
-            label='Process log file ?',
+            label='Process log file',
         ),
     )
     overwrite = Quantity(
@@ -1989,6 +1983,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         )
         if not condition_for_plot:
+            #if the conditions is not met, we return an empty dict of plots
             return plots
 
         # debbug logger warning
@@ -2017,7 +2012,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     length,
                 )
         # Plotting the sample positions on the platen
-        # trying to read the sample positions else default to the default positions
+        # trying to read the sample positions else default
+        # to the default positions
         try:
             samples_plot = read_samples(self.substrates)
         except Exception as e:
@@ -2173,16 +2169,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             sputtering.deposition_parameters.s_cracker = SCrackerOverview()
 
         sputtering.end_of_process = EndOfProcess()
-
-        # Writing the params dict in the form of a report
-        # def format_log_for_html(log):
-        #    # Replace spaces with non-breaking spaces
-        #    log = log.replace(' ', '&nbsp;')
-        #    # Replace newlines with <br> tags
-        #    log = log.replace('\n', '<br>')
-        #    return log
-
-        # sputtering.log_file_report = format_log_for_html(write_params(params))
 
         # Looping through the param_nomad_map
         for input_keys, output_keys, unit in param_nomad_map:

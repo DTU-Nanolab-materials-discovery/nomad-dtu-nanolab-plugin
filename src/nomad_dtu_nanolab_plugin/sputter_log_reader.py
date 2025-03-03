@@ -51,7 +51,7 @@ SAMPLES_TO_REMOVE = [
 SAMPLES_TO_TEST = [
     # 'eugbe_0020_Zr_Recording Set 2025.02.05-09.07.05',
     # 'eugbe_0021_Zr_Recording Set 2025.02.07-10.03.37',
-    'eugbe_0022_Zr_Recording Set 2025.02.10-09.49.44',
+    'mittma_0029_Cu_Recording Set 2024.12.02-10.49.07',
 ]
 
 # -----USEFUL DICTIONARIES AND LISTS-----
@@ -5976,12 +5976,6 @@ def get_nested_value(dictionary, key_path):
 def map_params_to_nomad(params, gun_list):
     # Definiting the input, ouput and unit
     param_nomad_map = [
-        # [
-        #    ['deposition', 'interrupted'],
-        #    ['deposition_parameters', 'interrupted_deposition'],
-        #    None,
-        # ],
-        # Deposition parameters
         [
             ['deposition', 'avg_temp_1'],
             ['deposition_parameters', 'deposition_temperature'],
