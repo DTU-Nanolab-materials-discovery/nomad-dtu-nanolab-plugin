@@ -1797,7 +1797,7 @@ class DtuFlag(ArchiveSection):
 
         super().normalize(archive, logger)
         if self.flag is not None and self.flag_description is None:
-            self.flag_description = FLAG_DICT.get(self.flag)
+            self.flag_description = FLAG_DICT.get(self.flag, None)
 
 
 class DTUSputtering(SputterDeposition, PlotSection, Schema):
@@ -1835,7 +1835,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     )
     overwrite = Quantity(
         type=bool,
-        default=False,
+        default=True,
         description="""
             Boolean to indicate if the data present in the class should be
             overwritten by data incoming from the log file.
@@ -2004,13 +2004,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     and hasattr(substrate.substrate, 'geometry')
                     else None
                 )
-                logger.warning(
-                    pos_x,
-                    pos_y,
-                    rotation,
-                    width,
-                    length,
-                )
+                logger.debug(
+                    f"Substrate: {substrate.name} - "
+                    f"pos_x: {pos_x}, pos_y: {pos_y}, rotation: {rotation}, "
+                    f"width: {width}, length: {length}"
+                ) #can be removed in the future if the position plot is fixed
+
         # Plotting the sample positions on the platen
         # trying to read the sample positions else default
         # to the default positions
@@ -2121,7 +2120,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             for attr in output_keys[:-1]:
                 obj = getattr(obj, attr)
             setattr(obj, output_keys[-1], value)
-            logger.info(f'Set {params_str} to {subsection_str}')
         except Exception as e:
             logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
 
