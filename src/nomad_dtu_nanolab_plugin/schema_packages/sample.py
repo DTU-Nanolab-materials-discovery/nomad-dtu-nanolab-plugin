@@ -48,19 +48,18 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
     )
 
 
-class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
+class ProcessParameterOverview(Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
-        label='Combinatorial Library',
+        label='Process Parameter Overview',
     )
-    # we store the position and rotation of the substrate on the platen
-    # in the combinatorial library entry
+
     position_x = Quantity(
         type=np.float64,
         description='The x-coordinate of the substrate on the platen.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='cm',
+            defaultDisplayUnit='mm',
         ),
         unit='m',
     )
@@ -69,7 +68,7 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         description='The y-coordinate of the substrate on the platen.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='cm',
+            defaultDisplayUnit='mm',
         ),
         unit='m',
     )
@@ -81,6 +80,36 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
             defaultDisplayUnit='degree',
         ),
         unit='rad',
+    )
+    width = Quantity(
+        type=np.float64,
+        description='The width of the substrate.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+        unit='m',
+    )
+    length = Quantity(
+        type=np.float64,
+        description='The length of the substrate.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+        unit='m',
+    )
+
+
+class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
+    m_def = Section(
+        categories=[DTUNanolabCategory],
+        label='Combinatorial Library',
+    )
+
+    process_parameter_overview = Quantity(
+        type=ProcessParameterOverview,
+        description='An overview of the process parameters used to create the library.',
     )
 
     def get_references(self, entry_type: type[Schema] = None) -> list:

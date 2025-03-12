@@ -67,7 +67,10 @@ from nomad_measurements.utils import create_archive, merge_sections
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
-from nomad_dtu_nanolab_plugin.schema_packages.sample import DTUCombinatorialLibrary
+from nomad_dtu_nanolab_plugin.schema_packages.sample import (
+    DTUCombinatorialLibrary,
+    ProcessParameterOverview,
+)
 from nomad_dtu_nanolab_plugin.schema_packages.substrate import (
     DTUSubstrate,
     DTUSubstrateBatch,
@@ -1835,7 +1838,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     )
     overwrite = Quantity(
         type=bool,
-        default=True,
+        default=False,
         description="""
             Boolean to indicate if the data present in the class should be
             overwritten by data incoming from the log file.
@@ -1983,7 +1986,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         )
         if not condition_for_plot:
-            #if the conditions is not met, we return an empty dict of plots
+            # if the conditions is not met, we return an empty dict of plots
             return plots
 
         # debbug logger warning
@@ -2005,10 +2008,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     else None
                 )
                 logger.debug(
-                    f"Substrate: {substrate.name} - "
-                    f"pos_x: {pos_x}, pos_y: {pos_y}, rotation: {rotation}, "
-                    f"width: {width}, length: {length}"
-                ) #can be removed in the future if the position plot is fixed
+                    f'Substrate: {substrate.name} - '
+                    f'pos_x: {pos_x}, pos_y: {pos_y}, rotation: {rotation}, '
+                    f'width: {width}, length: {length}'
+                )  # can be removed in the future if the position plot is fixed
 
         # Plotting the sample positions on the platen
         # trying to read the sample positions else default
@@ -2685,10 +2688,23 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     lab_id=layer.lab_id,
                 )
             ]
-            # we write the position of the substrate mounting to the library
-            library.position_x = substrate_mounting.position_x
-            library.position_y = substrate_mounting.position_y
-            library.rotation = substrate_mounting.rotation
+
+            library.process_parameter_overview = ProcessParameterOverview()
+            # we write some important process parameters to the library
+            library.process_parameter_overview.position_x = (
+                substrate_mounting.position_x
+            )
+            library.process_parameter_overview.position_y = (
+                substrate_mounting.position_y
+            )
+            library.process_parameter_overview.rotation = substrate_mounting.rotation
+            library.process_parameter_overview.width = (
+                substrate_mounting.substrate.geometry.width
+            )
+            library.process_parameter_overview.length = (
+                substrate_mounting.substrate.geometry.length
+            )
+            # TODO add more process parameters
 
             library_ref = create_archive(
                 library, archive, f'{library.lab_id}.archive.json'
