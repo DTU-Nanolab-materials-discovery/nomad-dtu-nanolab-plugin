@@ -1926,10 +1926,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     )
     optix_power_type = Quantity(
         type=MEnum(['DC', 'PDC']),
+        a_eln={'component': 'RadioEnumEditQuantity'},
         description='The type of power used for the Optix. DC (default) or PDC.',
-        a_eln={'component': 'StringEditQuantity'},
     )
-    opti_current = Quantity(
+    optix_current = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'uA'},
         unit='A',
