@@ -1924,6 +1924,17 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         ),
         description='Cell to upload the RGA data associated by the Optix spectra data.',
     )
+    optix_power_type = Quantity(
+        type=MEnum(['DC', 'PDC']),
+        description='The type of power used for the Optix. DC (default) or PDC.',
+        a_eln={'component': 'StringEditQuantity'},
+    )
+    opti_current = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'uA'},
+        unit='A',
+        description='The current used for the Optix.',
+    )
     flags = SubSection(
         section_def=DtuFlag,
         repeats=True,
