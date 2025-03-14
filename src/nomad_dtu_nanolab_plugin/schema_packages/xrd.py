@@ -61,6 +61,14 @@ class XRDMappingResult(MappingResult, XRDResult1D):
         super().normalize(archive, logger)
 
 
+# new, added class to define the system used for XRD measurements, anait
+class XRDSystemClassification(Section):
+    system_type = Quantity(
+        type=str,
+        description='The XRD system used',
+    )
+
+
 class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
@@ -78,6 +86,11 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
         section_def=XRDMappingResult,
         description='The XRD results.',
         repeats=True,
+    )
+    # new, added the XRDSystemClassification class to the DTUXRDMeasurement class anait
+    xrd_system_classification = SubSection(
+        section_def=XRDSystemClassification,
+        description='Classification of the XRD system used for measuring',
     )
 
     def plot(self) -> None:
@@ -206,6 +219,18 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
 
         self.figures = []
         self.plot()
+
+        # new, Classify the XRD system based on the current, anait
+        if self.xrd_settings.source.xray_tube_current > 100:
+            system_type = 'Rotating anode XRD'
+        elif self.xrd_settings.source.xray_tube_current < 50:
+            system_type = 'Clean room XRD'
+        else:
+            system_type = 'Unknown XRD system'
+
+        self.xrd_system_classification = XRDSystemClassification(
+            system_type=system_type
+        )
 
 
 m_package.__init_metainfo__()
