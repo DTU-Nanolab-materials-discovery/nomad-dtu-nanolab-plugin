@@ -2761,12 +2761,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                         )
                         return
 
-
     def parse_log_file(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         Method for parsing the log file and writing the data to the respective sections.
         Args:
-            archive (EntryArchive): The archive containing the section that is being 
+            archive (EntryArchive): The archive containing the section that is being
             written.
             logger (BoundLogger): A structlog logger.
         """
