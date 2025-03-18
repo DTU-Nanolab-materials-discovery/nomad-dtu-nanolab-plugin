@@ -22,4 +22,5 @@ data:
       m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.SCracker
   instruments:
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.InstrumentParameters
+  overwrite: True
 

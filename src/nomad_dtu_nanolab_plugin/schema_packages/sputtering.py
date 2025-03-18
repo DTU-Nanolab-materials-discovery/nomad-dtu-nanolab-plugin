@@ -1838,7 +1838,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     )
     overwrite = Quantity(
         type=bool,
-        default=False,
+        default=True,
         description="""
             Boolean to indicate if the data present in the class should be
             overwritten by data incoming from the log file.
@@ -2761,6 +2761,66 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                         )
                         return
 
+
+    def parse_log_file(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        Method for parsing the log file and writing the data to the respective sections.
+        Args:
+            archive (EntryArchive): The archive containing the section that is being 
+            written.
+            logger (BoundLogger): A structlog logger.
+        """
+        # Extracting the sample name from the log file name
+        log_name = os.path.basename(self.log_file)
+        sample_id = '_'.join(log_name.split('_')[0:3])
+        # If lab_id is empty, assign the sample name to lab_id
+        if self.lab_id is None:
+            self.lab_id = sample_id
+        # Openning the log file
+        with archive.m_context.raw_file(self.log_file, 'r') as log:
+            log_df = read_logfile(log.name)
+            formated_log_df, _ = format_logfile(log_df)
+            events_plot, params, step_params = read_events(log_df)
+        if params is not None:
+            # Writing logfile data to the respective sections
+            sputtering = self.generate_general_log_data(params, logger)
+
+        if step_params is not None and sputtering is not None:
+            steps = self.generate_step_log_data(step_params, archive, logger)
+            sputtering.steps.extend(steps)
+
+        # Merging the sputtering object with self
+        if self.overwrite:
+            merge_sections(sputtering, self, logger)
+            for _, prop in self.m_def.all_properties.items():
+                if sputtering.m_is_set(prop):
+                    self.m_set(prop, sputtering.m_get(prop))
+        else:
+            merge_sections(self, sputtering, logger)
+
+        # Run the nomalizer of the environment subsection
+        for step in self.steps:
+            for gas_flow in step.environment.gas_flow:
+                gas_flow.normalize(archive, logger)
+                gas_flow.gas.normalize(archive, logger)
+
+        # Triggering the plotting of multiple plots
+        self.figures = []
+
+        plots = generate_plots(
+            formated_log_df,
+            events_plot,
+            params,
+            self.lab_id,
+        )
+
+        plots.update(self.plot_plotly_chamber_config(logger))
+
+        self.plot(plots, archive, logger)
+
+        if self.deposition_parameters is not None:
+            self.add_libraries(archive, logger)
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUSputtering` class.
@@ -2772,53 +2832,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         """
         # Analysing log file
         if self.log_file and self.process_log_file:
-            # Extracting the sample name from the log file name
-            log_name = os.path.basename(self.log_file)
-            sample_id = '_'.join(log_name.split('_')[0:3])
-            # If lab_id is empty, assign the sample name to lab_id
-            if self.lab_id is None:
-                self.lab_id = sample_id
-            # Openning the log file
-            with archive.m_context.raw_file(self.log_file, 'r') as log:
-                log_df = read_logfile(log.name)
-                formated_log_df, _ = format_logfile(log_df)
-                events_plot, params, step_params = read_events(log_df)
-            if params is not None:
-                # Writing logfile data to the respective sections
-                sputtering = self.generate_general_log_data(params, logger)
-
-            if step_params is not None and sputtering is not None:
-                steps = self.generate_step_log_data(step_params, archive, logger)
-                sputtering.steps.extend(steps)
-
-            # Merging the sputtering object with self
-            if self.overwrite:
-                merge_sections(sputtering, self, logger)
-            else:
-                merge_sections(self, sputtering, logger)
-
-            # Run the nomalizer of the environment subsection
-            for step in self.steps:
-                for gas_flow in step.environment.gas_flow:
-                    gas_flow.normalize(archive, logger)
-                    gas_flow.gas.normalize(archive, logger)
-
-            # Triggering the plotting of multiple plots
-            self.figures = []
-
-            plots = generate_plots(
-                formated_log_df,
-                events_plot,
-                params,
-                self.lab_id,
-            )
-
-            plots.update(self.plot_plotly_chamber_config(logger))
-
-            self.plot(plots, archive, logger)
-
-            if self.deposition_parameters is not None:
-                self.add_libraries(archive, logger)
+            self.parse_log_file(archive, logger)
 
         archive.workflow2 = None
         super().normalize(archive, logger)
