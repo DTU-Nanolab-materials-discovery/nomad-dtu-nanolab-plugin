@@ -42,7 +42,8 @@ sputtering = AppEntryPoint(
             ),
             Column(
                 search_quantity=(
-                    f'data.deposition_parameters.deposition_temperature#{schema}'),
+                    f'data.deposition_parameters.deposition_temperature#{schema}'
+                ),
                 selected=True,
                 label='Deposition temperature',
                 unit='degC',
@@ -95,7 +96,6 @@ sputtering = AppEntryPoint(
                 unit='cm^3/minute',
                 format=Format(decimals=1),
             ),
-
         ],
         menu=Menu(
             title='Material',
@@ -345,7 +345,7 @@ xrd = AppEntryPoint(
                 search_quantity=f'metadata.main_author#{xrd_schema}',
                 selected=True,
                 label='Main author',
-            )
+            ),
         ],
         menu=Menu(
             size=MenuSizeEnum.MD,
@@ -398,7 +398,7 @@ edx = AppEntryPoint(
                 search_quantity=f'metadata.main_author#{edx_schema}',
                 selected=True,
                 label='Main author',
-            )
+            ),
         ],
         menu=Menu(
             size=MenuSizeEnum.MD,
@@ -454,7 +454,7 @@ analysis = AppEntryPoint(
                 search_quantity=f'metadata.main_author#{analysis_schema}',
                 selected=True,
                 label='Main author',
-            )
+            ),
         ],
         filters_locked={
             'entry_type': 'DtuJupyterAnalysis',

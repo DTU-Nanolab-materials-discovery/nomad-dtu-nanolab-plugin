@@ -60,9 +60,10 @@ a_query = ArchiveQuery(
 entry_list = a_query.download()
 analysis = entry_list[0].data"""
 
+
 def replace_analysis_id(
-        notebook: nbformat.notebooknode.NotebookNode,
-        analysis_id: str) -> nbformat.notebooknode.NotebookNode|None:
+    notebook: nbformat.notebooknode.NotebookNode, analysis_id: str
+) -> nbformat.notebooknode.NotebookNode | None:
     first_cell_pattern = re.compile(
         re.escape(FIRST_CODE_CELL.strip()).replace('%s', '(.*)')
     )
@@ -113,12 +114,12 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
         if template_notebook is None:
             logger.error('Standard Analysis query block is not found in the notebook.')
             return self.template_notebook
-        
+
         new_notebook_path = archive.metadata.mainfile.split('.')[0] + '.ipynb'
         if archive.m_context.raw_path_exists(new_notebook_path):
             logger.error(f'Notebook {new_notebook_path} already exists.')
             return self.template_notebook
-        
+
         with archive.m_context.raw_file(new_notebook_path, 'w') as dest_file:
             nbformat.write(template_notebook, dest_file)
 
@@ -127,8 +128,8 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
         if (
-            self.generate_notebook 
-            and self.from_analysis 
+            self.generate_notebook
+            and self.from_analysis
             and self.from_analysis.notebook
         ):
             self.template_notebook = self.copy_from_analysis(archive, logger)
@@ -281,16 +282,17 @@ analysis.save()"""
             source_notebook = nbformat.read(src_file, as_version=4)
 
         template_notebook = replace_analysis_id(
-            source_notebook, archive.metadata.entry_id)
+            source_notebook, archive.metadata.entry_id
+        )
         if template_notebook is None:
             logger.error('Standard Analysis query block is not found in the notebook.')
             return
-        
+
         new_notebook_path = archive.metadata.mainfile.split('.')[0] + '.ipynb'
         if archive.m_context.raw_path_exists(new_notebook_path):
             logger.error(f'Notebook {new_notebook_path} already exists.')
             return
-        
+
         with archive.m_context.raw_file(new_notebook_path, 'w') as dest_file:
             nbformat.write(template_notebook, dest_file)
 

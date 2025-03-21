@@ -10,8 +10,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-#from lmfit import Parameters
-from lmfit.models import LinearModel, PseudoVoigtModel  #, SplineModel, GaussianModel,
+# from lmfit import Parameters
+from lmfit.models import LinearModel, PseudoVoigtModel  # , SplineModel, GaussianModel,
 from openpyxl import load_workbook
 from plotly.subplots import make_subplots
 from scipy.interpolate import griddata
@@ -20,6 +20,7 @@ from scipy.signal import find_peaks, savgol_filter
 ##########################
 # Functions related to loading data
 ##########################
+
 
 def convert_to_eV(data):
     """Convert ellipsometry data in wavelength to eV."""
@@ -35,14 +36,13 @@ def convert_to_eV(data):
     data = data.round(3)
     return data
 
+
 ##########################
 # Functions related to constructing a grid and inserting data into it
 ##########################
 
 
-def measurement_grid(
-    ncolumns, nrows, gridlength, gridheight, startposition= [0,0]
-):
+def measurement_grid(ncolumns, nrows, gridlength, gridheight, startposition=[0, 0]):
     """Define a grid based on number of columns and rows, length and height of grid in
     mm, and the first coordinate (lower left corner) in the column and row."""
     startcolumn = startposition[0]
@@ -144,6 +144,7 @@ def interpolate_grid(data, grid):
     interpolated_frame = pd.DataFrame(interpolated_frame.values, columns=header)
     return interpolated_frame
 
+
 def extract_coordinates(data):
     coords = data.columns.get_level_values(0).unique().values
     x_values = []
@@ -155,6 +156,7 @@ def extract_coordinates(data):
         y_values.append(float(y))
 
     return x_values, y_values
+
 
 def snake_grid(x, y):  # x and y are lists of coordinates you should take note of
     X_snake = []
@@ -171,6 +173,7 @@ def snake_grid(x, y):  # x and y are lists of coordinates you should take note o
     grid_snake = pd.DataFrame({'x': X_snake, 'y': Y_snake})
     return grid_snake
 
+
 def select_points(data, x_min=-40, x_max=40, y_min=-40, y_max=40):
     """get coordinates of the points within the defined range, you can call them with
     get_data, or plot_data, or interactive_XRD_shift"""
@@ -184,6 +187,7 @@ def select_points(data, x_min=-40, x_max=40, y_min=-40, y_max=40):
     new_x = grid4['x'].values
     new_y = grid4['y'].values
     return new_x, new_y
+
 
 def rotate_coordinates(data_df, how='clockwise'):
     """Rotate the coordinates of the data by 90 degrees clockwise, counterclockwise or
@@ -220,6 +224,7 @@ def rotate_coordinates(data_df, how='clockwise'):
 # Functions related to combining, saving, and loading data and helper functions
 ##########################
 
+
 def add_info(data, info_dict):
     """Function to add information to a dataset for each point."""
     info_type = list(info_dict.keys())[0]
@@ -247,6 +252,7 @@ def add_info(data, info_dict):
 
     return new_frame
 
+
 def closest_coord(grid, x, y):
     """Find closest x and y coordinate for a grid."""
     xminindex = np.abs(grid - x).idxmin().iloc[0]
@@ -261,6 +267,7 @@ def combine_data(datalist):
     dataframe = pd.concat(datalist, axis=1)
     return dataframe
 
+
 def math_on_columns(data, type1, type2, operation='/'):
     """Perform an operation on two columns in a provided dataframe. Usage:
     math_on_columns(data, datatype1, datatype2, operation), where "operation" can be
@@ -274,7 +281,7 @@ def math_on_columns(data, type1, type2, operation='/'):
         val1 = data.iloc[:, data.columns.get_level_values(1) == type1].iloc[:, i]
         if isinstance(type2, str):
             val2 = data.iloc[:, data.columns.get_level_values(1) == type2].iloc[:, i]
-        if isinstance(type2, (int, float)):
+        if isinstance(type2, int | float):
             val2 = type2
         if operation == '+':
             resultval = val1 + val2
@@ -355,6 +362,7 @@ def translate_data(data, x, y):
     data = pd.DataFrame(data.values, columns=header)
     return data, coords
 
+
 def save_data(dataframe, filename, separator='\t'):
     """Save dataframe to tab seperated txt file."""
     dataframe.to_csv(filename, separator, index=False, encoding='utf-8')
@@ -366,15 +374,18 @@ def load_data(filepath, separator='\t'):
     dataframe.columns.rename(['Coordinate', 'Data type'], level=[0, 1], inplace=True)
     return dataframe
 
+
 def export_specific(data, type, x, y, path):
-    'export a specific point in XY format in a .txt file'
+    """export a specific point in XY format in a .txt file"""
     data_exp = get_data(data, type=type, x=x, y=y)
     data_exp.to_csv(path, sep='\t', index=False, header=False)
     print(data_exp)
 
+
 #########################
 # Functions related to EDX analysis, layerprobe
 #########################
+
 
 def EDX_stage_coords(folder, filename):
     """Calculate EDX coordinates for a given file. Requires .xlsx file with columns as
@@ -609,10 +620,11 @@ def lp_translate_excel(folder, filename):
     workbook.save(newpath)
     workbook.close()
 
+
 def find_composition(
     data,
-    element_list, #shape element_list = ['Si', 'Ge', 'O']
-    range_array, #shape range_array = [[0, 3], [4, 7], [8, 11]]
+    element_list,  # shape element_list = ['Si', 'Ge', 'O']
+    range_array,  # shape range_array = [[0, 3], [4, 7], [8, 11]]
     stoichiometry=None,
     sample='sample',
 ):
@@ -624,8 +636,7 @@ def find_composition(
     range1 = [range_array[0][0], range_array[0][1]]
     range2 = [range_array[1][0], range_array[1][1]]
     range3 = [range_array[2][0], range_array[2][1]]
-    tolerance=3
-
+    tolerance = 3
 
     if stoichiometry:
         tot = sum(stoichiometry)
@@ -726,14 +737,15 @@ def calculate_el_thickness(df, el):
     )
     return df
 
+
 def stats(data_all, type):
-    data = get_data(data_all, type = type)
-    data = data.sort_values(by = 0, axis=1 )
-    min_= data.iloc[0,0]
-    max_ = data.iloc[0,-1]
+    data = get_data(data_all, type=type)
+    data = data.sort_values(by=0, axis=1)
+    min_ = data.iloc[0, 0]
+    max_ = data.iloc[0, -1]
     mean_ = data.mean(axis=1)[0]
 
-    data = pd.DataFrame([min_, max_, mean_], index = ["min","max", "mean"])
+    data = pd.DataFrame([min_, max_, mean_], index=['min', 'max', 'mean'])
     return data
 
 
@@ -748,7 +760,6 @@ def initial_peaks(
     filterstrength,
     peakprominence,
     peakwidth,
-
 ):
     """finds peaks using scipy find_peaks on filtered data to construct a model for
     fitting, filter strength is based on filtervalue and
@@ -756,10 +767,10 @@ def initial_peaks(
     toggling plots on/off and picking scale.
     Output: dataframe with peak locations and intensity, to be used for raman_fit or
     xrd_fit, and data limited by the dataRangemin/max, in index"""
-    plotscale='log'
+    plotscale = 'log'
     dataRangeMin = dataRange[0]
     dataRangeMax = dataRange[1]
-    peakheight=0 # not sure if good here butgood enough for now!!!
+    peakheight = 0  # not sure if good here butgood enough for now!!!
     # setup data
     column_headers = data.columns.values
     col_theta = column_headers[::2]
@@ -813,10 +824,8 @@ def initial_peaks(
     return thePeaks, dataCorrected
 
 
-def XRD_background(
-    data, peaks, cut_range=2, order=4, window_length=10
-):
-    Si_cut=True #foe now always disregard Si peak
+def XRD_background(data, peaks, cut_range=2, order=4, window_length=10):
+    Si_cut = True  # foe now always disregard Si peak
     data_out = data.copy()
     headerlength = len(data.columns.get_level_values(1).unique())
     col_theta = data.columns.values[::2]
@@ -824,8 +833,8 @@ def XRD_background(
     peaks_theta = peaks.columns.values[::2]
 
     k = 0
-    #variables for Si cut
-    Si_start= 60
+    # variables for Si cut
+    Si_start = 60
     Si_end = 70
 
     for i in range(0, len(col_theta)):
@@ -884,7 +893,6 @@ def XRD_background(
         data_out.rename(columns={'': 'Corrected Intensity'}, inplace=True)
         k = k + 2
 
-
         plt.figure()
         coord = data_out.columns.get_level_values(0).unique()[i]
         plt.plot(two_theta, intensity, label='Original Data')
@@ -903,13 +911,13 @@ def XRD_background(
 
     return data_out
 
+
 def plot_XRD_shift_subplots(
     data,
     x,
     y_list,
-    input_numbers, # nrows, ncols, shift!
-    input_str, #datatype_x, datatype_y, title, material_guess
-
+    input_numbers,  # nrows, ncols, shift!
+    input_str,  # datatype_x, datatype_y, title, material_guess
 ):
     """
     Plots XRD shift for multiple y-coordinates in subplots.
@@ -931,8 +939,8 @@ def plot_XRD_shift_subplots(
     Returns:
     - plots the XRD data for multiple y-coordinates in subplots
     """
-    figsize=(12, 10) #fix figure size
-    nrows, ncols, shift= input_numbers
+    figsize = (12, 10)  # fix figure size
+    nrows, ncols, shift = input_numbers
     datatype_x, datatype_y, title, material_guess = input_str
 
     with open(os.path.join('XRD', 'reflections', 'reflections.pkl'), 'rb') as file:
@@ -970,7 +978,6 @@ def plot_XRD_shift_subplots(
     plt.suptitle(title)
     plt.tight_layout(rect=[0, 0, 1, 0.97])
 
-
     plt.savefig(f'{title}_XRD_shift_subplots.png', dpi=120, bbox_inches='tight')
 
     plt.show()
@@ -980,8 +987,8 @@ def plot_XRD_shift(
     data,
     datatype_x_y,
     shift,
-    x_y, # f.e x_y = [[1, 2], [3, 4]]
-    title=None
+    x_y,  # f.e x_y = [[1, 2], [3, 4]]
+    title=None,
 ):  # x, y = list of points to plot]
     datatype_x, datatype_y = datatype_x_y
     x, y = x_y
@@ -1024,9 +1031,7 @@ def fit_two_related_peaks(x, y):
 
     # Set constraints for the second peak based on the provided relations
     # xpeak2 = 2 * np.arcsin((0.154439 / 0.1540562) * np.sin(center1 / 2))
-    (360 / np.pi) * np.arcsin(
-        (0.154439 / 0.1540562) * np.sin(center1 * np.pi / 360)
-    )
+    (360 / np.pi) * np.arcsin((0.154439 / 0.1540562) * np.sin(center1 * np.pi / 360))
 
     params.add(
         'p2_center',
@@ -1168,8 +1173,7 @@ def interactive_XRD_shift(
 
     datatype_x, datatype_y = datatype_x_y
     x, y = x_y
-    colors='rows'
-
+    colors = 'rows'
 
     fig = make_subplots(
         rows=2,
@@ -1326,7 +1330,7 @@ def interactive_XRD_shift(
             }
         ],
         template='plotly_white',  # Choose a template (e.g., 'plotly_dark')
-        #title=title,
+        # title=title,
         height=600,  # Adjust the height of the figure (e.g., 700)
         width=900,  # Adjust the width of the figure (e.g., 900)
         legend=dict(x=1.05, y=1),
@@ -1337,10 +1341,12 @@ def interactive_XRD_shift(
     fig.show()
     return fig
 
+
 def rgba_to_hex(rgba):
     """Convert an RGBA tuple to a hex color string."""
     r, g, b, a = (int(c * 255) for c in rgba)
     return f'#{r:02x}{g:02x}{b:02x}'
+
 
 def assign_phases_labels(data):
     """Function to assign phases to specific points in a dataset.
@@ -1492,7 +1498,7 @@ def assign_phases_numbers(data):
 # Functions related to UPS analysis
 ##########################
 
-#redo this function with more time and care!!!! Too many assumptions and wierd fits
+# redo this function with more time and care!!!! Too many assumptions and wierd fits
 # def UPS_fit(
 #     data,
 #     startvalue,
@@ -1623,7 +1629,6 @@ def assign_phases_numbers(data):
 #                 out_valence = None
 
 
-
 #             plt.plot(x,y, label = 'data')
 #             try:
 #                 plt.plot(x_valence,out_valence.best_fit, label = 'valence fit')
@@ -1695,6 +1700,7 @@ def assign_phases_numbers(data):
 #         UPS_outframe = pd.concat([UPS_outframe, UPS_output], axis = 1)
 #     return UPS_outframe
 
+
 def adjust_BE_values(data):
     """
     Adjusts the BE values in the DataFrame.
@@ -1710,9 +1716,8 @@ def adjust_BE_values(data):
     if 'BE (eV)' in data.columns.get_level_values(1):
         # Apply the adjustment to the 'BE' column
         data.loc[:, (slice(None), 'BE (eV)')] = data.loc[
-            :,
-            (slice(None), 'BE (eV)')
-            ].map(lambda x: x / 10**5 if x > 10**4 else x)
+            :, (slice(None), 'BE (eV)')
+        ].map(lambda x: x / 10**5 if x > 10**4 else x)
     else:
         print("The DataFrame does not contain a 'BE (eV)' column at level 1.")
 
@@ -1757,7 +1762,7 @@ def REELS_fit(data, plotscale='linear'):
         # locates the onset of the energy loss.
         j = False
         k = 0
-        v=100
+        v = 100
         slope_cutof = 1400
         while j is not True:
             slope = yselect1[k + 1] - yselect1[k]
@@ -1785,7 +1790,7 @@ def REELS_fit(data, plotscale='linear'):
         plt.show()
 
         # print output peak positions, intensity, and FWHM
-        print(f"Onset:\n{onset}\nPeak:\n{peak}\nBand gap:\n{BG}")
+        print(f'Onset:\n{onset}\nPeak:\n{peak}\nBand gap:\n{BG}')
 
         # constructs output dataframe of band gap, onset and Peak values.
         BGS = np.vstack((BG, xselect1[idx2], x[peaks])).T
@@ -1826,18 +1831,18 @@ def plot_grid(coords, grid):
 def plot_data(
     data,
     datatype_x_y,
-    x_y=['all','all'],
-    select=[None,None, False],
-    #scatter_plot=False,
+    x_y=['all', 'all'],
+    select=[None, None, False],
+    # scatter_plot=False,
     title='auto',
 ):
     """Creates a XY plot/scatter plot based on datatype from a dataframe"""
 
     # x and y to list if only 1 value specified
     datatype_x, datatype_y = datatype_x_y
-    x , y = x_y
+    x, y = x_y
     datatype_select, datatype_select_value, scatter_plot = select
-    plotscale='linear',
+    plotscale = ('linear',)
 
     x = [x] if not isinstance(x, list) else x
     y = [y] if not isinstance(y, list) else y
@@ -1892,7 +1897,7 @@ def plot_data(
     # Determine the data to use based on the condition
     x_values = x_data.values.T if x[0] == 'all' else x_data.T
     y_values = y_data.values.T if y[0] == 'all' else y_data.T
-    #now plot check that this change works
+    # now plot check that this change works
     for idx, (x_val, y_val) in enumerate(zip(x_values, y_values)):
         if scatter_plot:
             plt.plot(x_val, y_val, 'o', color=colors[idx], label=labels[idx])
@@ -1920,7 +1925,6 @@ def new_heatmap(
     plot heatmaps with interpolated background, like in Nomad, if savepath ends with
     .png, it will save as png, if it ends with .html, it will save as html (interactive)
     """
-
 
     if data is not None:
         if exclude is not None:
@@ -1969,7 +1973,7 @@ def new_heatmap(
     elif datatype.startswith('Layer 1 ') and datatype.endswith(' Atomic %'):
         element = datatype.split()[2]
         cbar_title = f'{element} Atomic %'
-        #hope this works (simplifies the code but not tested)
+        # hope this works (simplifies the code but not tested)
     else:
         cbar_title = datatype
     if cbar is not None:
@@ -1986,7 +1990,6 @@ def new_heatmap(
 
     fig = go.Figure(data=[heatmap, scatter])
 
-
     title = datatype
 
     fig.update_layout(
@@ -1999,32 +2002,31 @@ def new_heatmap(
         height=500,
     )
 
-
     fig.show()
 
 
 def plot_scatter_colormap(
     data,
     datatype_x_y_z,
-    x_y=['all','all'],
-    select=[None, None,None], #datatype_select, datatype_select_value, colormap_label
-    limits=[None,None],
+    x_y=['all', 'all'],
+    select=[None, None, None],  # datatype_select, datatype_select_value, colormap_label
+    limits=[None, None],
 ):
     """Creates a XY plot/scatter plot based on datatype"""
     datatype_x, datatype_y, datatype_z = datatype_x_y_z
     x, y = x_y
     min_limit, max_limit = limits
-    plotscale='linear'
-    title='auto'
+    plotscale = 'linear'
+    title = 'auto'
     datatype_select, datatype_select_value, colormap_label = select
     # x and y to list if only 1 value specified
-    #if not isinstance(x, list):
+    # if not isinstance(x, list):
     #    x = [x]
-    #if not isinstance(y, list):
+    # if not isinstance(y, list):
     #    y = [y]
-    #x_data = []
-    #y_data = []
-    #z_data = []
+    # x_data = []
+    # y_data = []
+    # z_data = []
 
     # new copilot code. Test!!!!
     x = [x] if not isinstance(x, list) else x
@@ -2035,13 +2037,12 @@ def plot_scatter_colormap(
     y_data = [get_data(data, datatype_y, xi, yi, False, False) for xi, yi in zip(x, y)]
     z_data = [get_data(data, datatype_z, xi, yi, False, False) for xi, yi in zip(x, y)]
 
-
     labels = []
     # extracts the specified data point by point
     for i in range(len(x)):
-        #x_data.append(get_data(data, datatype_x, x[i], y[i], False, False))
-        #y_data.append(get_data(data, datatype_y, x[i], y[i], False, False))
-        #z_data.append(get_data(data, datatype_z, x[i], y[i], False, False))
+        # x_data.append(get_data(data, datatype_x, x[i], y[i], False, False))
+        # y_data.append(get_data(data, datatype_y, x[i], y[i], False, False))
+        # z_data.append(get_data(data, datatype_z, x[i], y[i], False, False))
         if x[0] == 'all' and y[0] == 'all':
             labels = data.columns.get_level_values(0).unique().values
 
@@ -2101,12 +2102,13 @@ def plot_scatter_colormap(
     else:
         plt.title(title)
 
+
 def ternary_plot(df, element_list, datatype, title):
     """make a ternary plot of the data in df, with el1, el2, el3 as the corners, and
     colorscale based on datatype"""
-    el1=element_list[0]
-    el2=element_list[1]
-    el3=element_list[2]
+    el1 = element_list[0]
+    el2 = element_list[1]
+    el3 = element_list[2]
 
     A = f'Layer 1 {el1} Atomic %'
     B = f'Layer 1 {el2} Atomic %'
@@ -2180,8 +2182,6 @@ def ternary_plot(df, element_list, datatype, title):
 
     # Show the plot
     fig.show()
-
-
 
 
 def ternary_discrete(
@@ -2352,7 +2352,8 @@ def ternary_discrete(
 # Functions for CRAIC
 #########################
 
-#remove later (too many errors if done now)
+
+# remove later (too many errors if done now)
 def read_CRAIC(file_path, header_lines=10, print_header=True):
     header = []
     with open(file_path) as file:
@@ -2373,6 +2374,7 @@ def read_CRAIC(file_path, header_lines=10, print_header=True):
             print(line)
     return data
 
+
 def CRAIC_map(
     folder,
     background,
@@ -2381,7 +2383,7 @@ def CRAIC_map(
     unit='nm',
 ):
     # x axis is taken from the background file, maybe check that it is always the same
-    #redo!!!! it relies on folder structure!!!
+    # redo!!!! it relies on folder structure!!!
     reflection_name, transmission_name = reflection_transmission_list
     data = pd.DataFrame()
     npoints = len(grid)
@@ -2411,7 +2413,6 @@ def CRAIC_map(
         # calculate absorption coefficient
         data_A = -(np.log(data_T['Intensity'] / (100 - data_R['Intensity']))) * 10**5
 
-
         ax[0].plot(x_axis, data_R['Intensity'], label=f' {i}')
         ax[1].plot(x_axis, data_T['Intensity'], label=f' {i}')
         ax[2].plot(x_axis, data_A, label=f' {i}')
@@ -2428,7 +2429,6 @@ def CRAIC_map(
             ax_.set_xlabel(x_label)
 
         plt.tight_layout()
-
 
         # save data in a multiindex dataframe
 
@@ -2449,7 +2449,6 @@ def CRAIC_map(
     data_MI = pd.DataFrame(data.values, columns=df_header)
 
     return data_MI
-
 
 
 ###########################

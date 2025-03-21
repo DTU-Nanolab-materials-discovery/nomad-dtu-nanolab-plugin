@@ -17,7 +17,7 @@
 #
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 import pandas as pd
@@ -67,7 +67,10 @@ from nomad_measurements.utils import create_archive, merge_sections
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
-from nomad_dtu_nanolab_plugin.schema_packages.sample import DTUCombinatorialLibrary
+from nomad_dtu_nanolab_plugin.schema_packages.sample import (
+    DTUCombinatorialLibrary,
+    ProcessParameterOverview,
+)
 from nomad_dtu_nanolab_plugin.schema_packages.substrate import (
     DTUSubstrate,
     DTUSubstrateBatch,
@@ -96,7 +99,6 @@ from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     read_guns,
     read_logfile,
     read_samples,
-    write_params,
 )
 
 if TYPE_CHECKING:
@@ -163,7 +165,10 @@ class DtuSubstrateMounting(ArchiveSection):
     )
     rotation = Quantity(
         type=np.float64,
-        description='The rotation of the substrate on the platen.',
+        description="""
+            The rotation of the substrate on the platen, relative to
+            the width (x-axis) and height (y-axis) of the substrate.
+        """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='degree',
@@ -196,7 +201,7 @@ class DtuSubstrateMounting(ArchiveSection):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `DTUSubstrateMounting` class.
+        The normalizer for the `DtuSubstrateMounting` class.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
@@ -317,11 +322,13 @@ class DTUSputterRFPowerSupply(DTUSputterPowerSupply):
         type=MEnum(['RF']),
         default='RF',
         a_eln={'component': 'RadioEnumEditQuantity'},
+        description='The type of power supply.',
     )
     avg_dc_bias = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The average DC bias.',
     )
     dc_bias = SubSection(
         section_def=DtuDCBias,
@@ -330,6 +337,7 @@ class DTUSputterRFPowerSupply(DTUSputterPowerSupply):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
+        description='The average forward power.',
     )
     fwd_power = SubSection(
         section_def=DtuForwardPower,
@@ -338,6 +346,7 @@ class DTUSputterRFPowerSupply(DTUSputterPowerSupply):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
+        description='The average reflected power.',
     )
     rfl_power = SubSection(
         section_def=DtuReflectedPower,
@@ -355,7 +364,7 @@ class DtuVoltage(TimeSeries):
     value = Quantity(
         type=np.float64,
         unit='V',
-        description="""The voltage.""",
+        description="""The voltage of the power supply.""",
         shape=['*'],
     )
 
@@ -371,7 +380,7 @@ class DtuCurrent(TimeSeries):
     value = Quantity(
         type=np.float64,
         unit='A',
-        description="""The current.""",
+        description="""The current of the power supply.""",
         shape=['*'],
     )
 
@@ -381,6 +390,7 @@ class DTUSputterDCPowerSupply(DTUSputterPowerSupply):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The average voltage of the DC power supply.',
     )
     voltage = SubSection(
         section_def=DtuVoltage,
@@ -389,6 +399,7 @@ class DTUSputterDCPowerSupply(DTUSputterPowerSupply):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'A'},
         unit='A',
+        description='The average current of the DC power supply.',
     )
     current = SubSection(
         section_def=DtuCurrent,
@@ -406,7 +417,7 @@ class DtuPulseFrequency(TimeSeries):
     value = Quantity(
         type=np.float64,
         unit='Hz',
-        description="""The pulse frequency.""",
+        description="""The pulse frequency of the PDC power supply""",
         shape=['*'],
     )
 
@@ -422,7 +433,7 @@ class DtuDeadTime(TimeSeries):
     value = Quantity(
         type=np.float64,
         unit='s',
-        description="""The dead time.""",
+        description="""The dead time of the PDC power supply.""",
         shape=['*'],
     )
 
@@ -432,6 +443,7 @@ class DTUSputterPulsedDCPowerSupply(DTUSputterDCPowerSupply):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'kHz'},
         unit='1/s',
+        description='The average pulse frequency of the PDC power supply.',
     )
     pulse_frequency = SubSection(
         section_def=DtuPulseFrequency,
@@ -440,6 +452,7 @@ class DTUSputterPulsedDCPowerSupply(DTUSputterDCPowerSupply):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'ms'},
         unit='s',
+        description='The average dead time of the PDC power supply.',
     )
     dead_time = SubSection(
         section_def=DtuDeadTime,
@@ -492,26 +505,37 @@ class SCrackerOverview(ArchiveSection):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The temperature of sulfur cracker zone 1.""",
+    )
+    zone1_temperature_setpoint = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
+        unit='kelvin',
+        description="""The temperature setpoint of sulfur cracker zone 1.""",
     )
     zone2_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The temperature of sulfur cracker zone 2.""",
     )
     zone3_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The temperature of sulfur cracker zone 3.""",
     )
     valve_on_time = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 's'},
         unit='s',
+        description="""The valve on time of the sulfur cracker zone 2.""",
     )
     valve_frequency = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'Hz'},
         unit='1/s',
+        description="""The valve frequency of the sulfur cracker zone 2.""",
     )
 
 
@@ -568,26 +592,31 @@ class SCracker(ArchiveSection):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The average temperature of sulfur cracker zone 1.""",
     )
     avg_zone2_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The average temperature of sulfur cracker zone 2.""",
     )
     avg_zone3_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The average temperature of sulfur cracker zone 3.""",
     )
     avg_valve_on_time = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 's'},
         unit='s',
+        description="""The average valve on time of the sulfur cracker zone 2.""",
     )
     avg_valve_frequency = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'Hz'},
         unit='1/s',
+        description="""The average valve frequency of the sulfur cracker zone 2.""",
     )
     zone1_temperature = SubSection(
         section_def=DtuZoneTemp,
@@ -616,20 +645,23 @@ class DTUShutter(TimeSeries):
 
     value = Quantity(
         type=bool,
-        description="""Position of the substrate shutter.""",
+        description="""Position of the substrate shutter (1: open, 0: closed).""",
         shape=['*'],
     )
 
     mode_value = Quantity(
         type=bool,
-        description="""Position of the general shutter.""",
+        description="""
+            Most represented (mode value) shutter
+            state (1: mostly pen, 0: mostly closed).
+        """,
     )
 
 
 class DTUTargetReference(CompositeSystemReference):
     reference = Quantity(
         type=DTUTarget,
-        description='A reference to a NOMAD `CompositeSystem` entry.',
+        description='A reference to a NOMAD Target entry.',
         a_eln=ELNAnnotation(
             component='ReferenceEditQuantity',
             label='composite system reference',
@@ -746,7 +778,7 @@ class DTUSputteringSource(DtuPlasma):
 class DtuReactiveGasComponent(Component):
     system = Quantity(
         type=DTUGasSupply,
-        description='The gas supply.',
+        description='The reactive gas supply.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.ReferenceEditQuantity,
         ),
@@ -799,11 +831,13 @@ class DTUGasFlow(GasFlow, ArchiveSection):
     )
     gas_name = Quantity(
         type=str,
-        a_eln={'component': 'StringEditQuantity'},
+        a_eln={'component': 'StringEditQuantity', 'label': 'Gas name'},
+        description='The name of the gas.',
     )
     used_gas_supply = Quantity(
         type=CompositeSystem,
         a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
+        description='Reference to the gas supply used.',
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -841,7 +875,7 @@ class DtuTemperature(TimeSeries):
     value = Quantity(
         type=np.float64,
         unit='kelvin',
-        description="""The temperature of the first heater.""",
+        description="""The temperature of the heater.""",
         shape=['*'],
     )
 
@@ -857,16 +891,23 @@ class DtuSubstrateHeater(SubstrateHeater):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""
+        The average temperature of the heater as measured by thermocouple 1.
+        """,
     )
     avg_temperature_2 = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""
+        The average temperature of the heater as measured by thermocouple 2.
+        """,
     )
     avg_temperature_setpoint = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""The average temperature setpoint of the heater.""",
     )
     temperature_1 = SubSection(
         section_def=DtuTemperature,
@@ -1005,67 +1046,87 @@ class SourceOverview(ArchiveSection):
     target_name = Quantity(
         type=str,
         a_eln={'component': 'StringEditQuantity'},
+        description='The name of the gun on which the target in mounted.',
     )
     target_material = Quantity(
         type=str,
-        a_eln={'component': 'StringEditQuantity'},
+        a_eln={'component': 'StringEditQuantity', 'label': 'Target material'},
+        description='The material of the target.',
     )
     target_id = SubSection(
         section_def=DTUTargetReference,
+        description='A reference to the target used.',
     )
     applied_power = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
+        a_eln={
+            'component': 'NumberEditQuantity',
+            'defaultDisplayUnit': 'W',
+            'label': 'Applied power',
+        },
         unit='(kg*m^2)/s^3',
+        description='The applied power.',
     )
     power_type = Quantity(
         type=MEnum(['DC', 'RF', 'pulsed_DC']),
         default='RF',
         a_eln={'component': 'RadioEnumEditQuantity'},
+        description='The type of power supply.',
     )
     average_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The average voltage (DC bias in RF) of the power supply.',
     )
     std_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description="""
+            'The standard deviation of the voltage (DC bias in RF) of the power supply.'
+        """,
     )
     start_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The voltage (DC bias in RF) at the start of the deposition.',
     )
     end_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The voltage (DC bias in RF) at the end of the deposition.',
     )
     start_end_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The difference between the start and end voltage (DC bias in RF).',
     )
     max_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The maximum voltage (DC bias in RF) during the deposition.',
     )
     min_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The minimum voltage (DC bias in RF) during the deposition.',
     )
     range_voltage = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'V'},
         unit='V',
+        description='The difference between min and max voltage (DC bias in RF).',
     )
     voltage_comments = Quantity(
         type=str,
         a_eln={'component': 'RichTextEditQuantity'},
+        description='Comments on the voltage (DC bias in RF) during the deposition.',
     )
 
 
@@ -1115,17 +1176,20 @@ class SourceRampUp(ArchiveSection):
     target_name = Quantity(
         type=str,
         a_eln={'component': 'StringEditQuantity'},
+        description='The name of the gun on which the target in mounted.',
     )
     # ignition related parameters
     plasma_ignition_power = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
+        description='The power at which plasma ignites.',
     )
     plasma_ignition_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
+        description='The pressure at which the plasma was ignited.',
     )
 
 
@@ -1138,27 +1202,32 @@ class SourcePresput(ArchiveSection):
     target_name = Quantity(
         type=str,
         a_eln={'component': 'StringEditQuantity'},
+        description='The name of the gun on which the target in mounted.',
     )
     # presput related parameters
     presput_time = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
+        description='The total presputtering time.',
     )
     presput_power = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'W'},
         unit='(kg*m^2)/s^3',
+        description='The average power during presputtering.',
     )
     presput_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
+        description='The average pressure during presputtering.',
     )
     presput_ar_flow = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm^3/minute'},
         unit='m^3/s',
+        description='The average Ar flow during presputtering.',
     )
 
 
@@ -1208,46 +1277,49 @@ class DepositionParameters(ArchiveSection):
         default=300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The temperature of the deposition as measured by thermocouple 1.',
     )
     deposition_temperature_2 = Quantity(
         type=np.float64,
         default=300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The temperature of the deposition as measured by thermocouple 2.',
     )
     deposition_temperature_setpoint = Quantity(
         type=np.float64,
         default=300,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The temperature setpoint of the deposition.',
     )
     deposition_true_temperature = Quantity(
         type=np.float64,
         a_eln={'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""
+            The corrected real temperature of the deposition as calculated with :
+            0.905 * (0.5 * (deposition_temperature + deposition_temperature_2)) + 12
+        """,
     )
     deposition_time = Quantity(
         type=np.float64,
         default=1800,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
+        description='The total deposition time.',
     )
-    interrupted_deposition = Quantity(
-        type=bool,
-        default=False,
-        a_eln={'component': 'BoolEditQuantity'},
-    )  # flag for if the deposition was interrupted (e.g. due to plasma turn off)
-
     sputter_pressure = Quantity(
         type=np.float64,
         default=0.6666,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mtorr'},
         unit='kg/(m*s^2)',
+        description='The pressure during sputtering as measured by the capman gauge.',
     )
     material_space = Quantity(
         type=str,
-        default='-P-S',
         a_eln={'component': 'StringEditQuantity'},
+        description='The material space explored by the deposition.',
     )
     ar_flow = Quantity(
         type=np.float64,
@@ -1256,6 +1328,11 @@ class DepositionParameters(ArchiveSection):
             'defaultDisplayUnit': 'cm^3/minute',
             'label': 'Ar flow',
         },
+        description="""
+            Flow of 100% Ar in equivalent flow at standard conditions 0, i.e.
+            the equivalent rate at a temperature of 0 °C (273.15 K) and a pressure of
+            1 atm (101325 Pa).
+        """,
         unit='m^3/s',
     )
     ar_partial_pressure = Quantity(
@@ -1264,6 +1341,7 @@ class DepositionParameters(ArchiveSection):
             'defaultDisplayUnit': 'mtorr',
             'label': 'Ar partial pressure',
         },
+        description='The Ar partial pressure during the deposition.',
         unit='kg/(m*s^2)',
     )
     h2s_in_ar_flow = Quantity(
@@ -1287,6 +1365,7 @@ class DepositionParameters(ArchiveSection):
             'label': 'H2S partial pressure',
         },
         unit='kg/(m*s^2)',
+        description='The H2S partial pressure during the deposition.',
     )
     nh3_in_ar_flow = Quantity(
         type=np.float64,
@@ -1309,6 +1388,7 @@ class DepositionParameters(ArchiveSection):
             'label': 'NH3 partial pressure',
         },
         unit='kg/(m*s^2)',
+        description='The NH3 partial pressure during the deposition.',
     )
     ph3_in_ar_flow = Quantity(
         type=np.float64,
@@ -1331,6 +1411,7 @@ class DepositionParameters(ArchiveSection):
             'label': 'PH3 partial pressure',
         },
         unit='kg/(m*s^2)',
+        description='The PH3 partial pressure during the deposition',
     )
     n2_flow = Quantity(
         type=np.float64,
@@ -1353,6 +1434,7 @@ class DepositionParameters(ArchiveSection):
             'label': 'N2 partial pressure',
         },
         unit='kg/(m*s^2)',
+        description='The N2 partial pressure during the deposition.',
     )
     o2_in_ar_flow = Quantity(
         type=np.float64,
@@ -1375,10 +1457,12 @@ class DepositionParameters(ArchiveSection):
             'label': 'O2 partial pressure',
         },
         unit='kg/(m*s^2)',
+        description='The O2 partial pressure during the deposition.',
     )
     ph3_h2s_ratio = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity'},
+        description='The PH3/H2S ratio (if applicable).',
     )
     magkeeper3 = SubSection(
         section_def=SourceOverview,
@@ -1506,26 +1590,31 @@ class TempRampUp(ArchiveSection):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
+        description='The duration of the temperature ramp up.',
     )
     start_temperature_setpoint = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The start temperature setpoint.',
     )
     end_temperature_setpoint = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The end temperature setpoint.',
     )
     temperature_slope = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC/minute'},
         unit='kelvin/s',
+        description='The temperature slope.',
     )
     avg_capman_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
         unit='kg/(m*s^2)',
+        description='The average pressure during the temperature ramp up.',
     )
     avg_ar_flow = Quantity(
         type=np.float64,
@@ -1535,6 +1624,7 @@ class TempRampUp(ArchiveSection):
             'label': 'Ar flow',
         },
         unit='m^3/s',
+        description='The average Ar flow during the temperature ramp up.',
     )
     avg_h2s_in_ar_flow = Quantity(
         type=np.float64,
@@ -1544,6 +1634,7 @@ class TempRampUp(ArchiveSection):
             'label': 'H2S in Ar flow',
         },
         unit='m^3/s',
+        description='The average H2S flow during the temperature ramp up.',
     )
     avg_ph3_in_ar_flow = Quantity(
         type=np.float64,
@@ -1553,15 +1644,18 @@ class TempRampUp(ArchiveSection):
             'label': 'PH3 in Ar flow',
         },
         unit='m^3/s',
+        description='The average PH3 flow during the temperature ramp up.',
     )
     cracker_enabled = Quantity(
         type=bool,
         default=False,
         a_eln={'component': 'BoolEditQuantity'},
+        description='Boolean to indicate if the cracker was enabled.',
     )
     heating_procedure = Quantity(
         type=str,
         a_eln={'component': 'RichTextEditQuantity'},
+        description='Comment on the heating procedure.',
     )
 
 
@@ -1570,21 +1664,25 @@ class TempRampDown(ArchiveSection):
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
+        description='The duration of the temperature ramp down.',
     )
     start_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The start temperature.',
     )
     end_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description='The end temperature.',
     )
     avg_capman_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
         unit='kg/(m*s^2)',
+        description='The average pressure during the temperature ramp down.',
     )
     avg_ar_flow = Quantity(
         type=np.float64,
@@ -1594,6 +1692,7 @@ class TempRampDown(ArchiveSection):
             'label': 'Ar flow',
         },
         unit='m^3/s',
+        description='The average Ar flow during the temperature ramp down.',
     )
     avg_h2s_in_ar_flow = Quantity(
         type=np.float64,
@@ -1603,6 +1702,7 @@ class TempRampDown(ArchiveSection):
             'label': 'H2S in Ar flow',
         },
         unit='m^3/s',
+        description='The average H2S flow during the temperature ramp down.',
     )
     avg_ph3_in_ar_flow = Quantity(
         type=np.float64,
@@ -1612,20 +1712,27 @@ class TempRampDown(ArchiveSection):
             'label': 'PH3 in Ar flow',
         },
         unit='m^3/s',
+        description='The average PH3 flow during the temperature ramp down.',
     )
     cracker_enabled = Quantity(
         type=bool,
         default=False,
         a_eln={'component': 'BoolEditQuantity'},
+        description='Boolean to indicate if the cracker was enabled.',
     )
     anion_input_cutoff_temperature = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degC'},
         unit='kelvin',
+        description="""
+            The temperature at which the anion input (H2S, S-cracker, PH3, NH3, O2
+            or N2) was cut off.'
+        """,
     )
     cooling_procedure = Quantity(
         type=str,
         a_eln={'component': 'RichTextEditQuantity'},
+        description='Comment on the cooling procedure.',
     )
 
 
@@ -1635,10 +1742,25 @@ class DtuFlag(ArchiveSection):
     """
 
     m_def = Section()
-    flag = ELNAnnotation(
-        component=ELNComponentEnum.EnumEditQuantity,
-        props=dict(suggestions=['WRONG_TOXIC_GAS_FLOW', 'WRONG_CRACKER_SIGNAL']),
+
+    flag = Quantity(
+        type=str,
+        description="""
+            Flag name associated with the deposition. Flags are used to
+            indicate issues that occurred during the deposition (see description).
+        """,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            props=dict(
+                suggestions=[
+                    'WRONG_TOXIC_GAS_FLOW',
+                    'WRONG_CRACKER_SIGNAL',
+                    'INTERRUPTED_DEPOSITION',
+                ]
+            ),
+        ),
     )
+
     flag_description = Quantity(
         type=str,
         a_eln={'component': 'RichTextEditQuantity', 'label': 'Flag description'},
@@ -1668,11 +1790,17 @@ class DtuFlag(ArchiveSection):
                 ' timestamps during deposition. Therefore, the signal values are only'
                 'correct for the timestamps corresponding to the deposition.'
             ),
+            'INTERRUPTED_DEPOSITION': (
+                'The deposition was interrupted due to the target turning off  '
+                'spontenously. The deposition might have been resumed after the '
+                'target was turned on again. The deposition time in the logfile '
+                'might not be accurate.'
+            ),
         }
 
         super().normalize(archive, logger)
-        if self.flag is not None:
-            self.flag_description = FLAG_DICT.get(self.flag)
+        if self.flag is not None and self.flag_description is None:
+            self.flag_description = FLAG_DICT.get(self.flag, None)
 
 
 class DTUSputtering(SputterDeposition, PlotSection, Schema):
@@ -1687,6 +1815,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     lab_id = Quantity(
         type=str,
         a_eln={'component': 'StringEditQuantity', 'label': 'Run ID'},
+        description='The ID of the run. Format: user_XXXX_ElemementSymbol',
     )
     location = Quantity(
         type=str,
@@ -1696,19 +1825,44 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     log_file = Quantity(
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Log file'},
+        description='Cell to upload the log file containing the deposition data.',
+    )
+    process_log_file = Quantity(
+        type=bool,
+        default=True,
+        description='Boolean to indicate if the log_file should be processed.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+            label='Process log file',
+        ),
+    )
+    overwrite = Quantity(
+        type=bool,
+        default=True,
+        description="""
+            Boolean to indicate if the data present in the class should be
+            overwritten by data incoming from the log file.
+        """,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+            label='Overwrite existing data ?',
+        ),
     )
     cracker_warmup_log_file = Quantity(
         type=str,
         a_eln={'component': 'FileEditQuantity', 'label': 'Cracker warmup log file'},
+        description='Cell to upload the log file containing the cracker warmup data.',
     )
     platen_used = Quantity(
         type=MEnum(['A', 'B']),
         a_eln={'component': 'RadioEnumEditQuantity'},
+        description='The platen used for the deposition.',
     )
     base_pressure = Quantity(
         type=np.float64,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'torr'},
         unit='kg/(m*s^2)',
+        description='The base pressure of the chamber before deposition.',
     )
     target_image_before = Quantity(
         type=str,
@@ -1719,6 +1873,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
+        description='Cell to upload the image of the target before the deposition.',
     )
     target_image_after = Quantity(
         type=str,
@@ -1729,6 +1884,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
+        description='Cell to upload the image of the target after the deposition.',
     )
     plasma_image = Quantity(
         type=str,
@@ -1739,6 +1895,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
+        description='Cell to upload the image of the plasma during the deposition.',
     )
     sample_image = Quantity(
         type=str,
@@ -1749,6 +1906,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
+        description='Cell to upload the image of the sample.',
     )
     optix_spectra = Quantity(
         type=str,
@@ -1756,6 +1914,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
+        description='Cell to upload the Optix spectra data.',
     )
     rga_file = Quantity(
         type=str,
@@ -1763,6 +1922,18 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
+        description='Cell to upload the RGA data associated by the Optix spectra data.',
+    )
+    optix_power_type = Quantity(
+        type=MEnum(['DC', 'PDC']),
+        a_eln={'component': 'RadioEnumEditQuantity'},
+        description='The type of power used for the Optix. DC (default) or PDC.',
+    )
+    optix_current = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'uA'},
+        unit='A',
+        description='The current used for the Optix.',
     )
     flags = SubSection(
         section_def=DtuFlag,
@@ -1808,6 +1979,101 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         section_def=TempRampDown,
     )
 
+    def plot_plotly_chamber_config(self, logger: 'BoundLogger') -> dict:
+        plots = {}
+
+        # checking if the data is available for plotting, else return empty plots
+        condition_for_plot = (
+            self.instruments[0].platen_rotation is not None
+            and self.substrates is not None
+            and any(
+                gun is not None
+                for gun in [
+                    self.deposition_parameters.magkeeper3,
+                    self.deposition_parameters.magkeeper4,
+                    self.deposition_parameters.taurus,
+                    self.deposition_parameters.s_cracker,
+                ]
+            )
+        )
+        if not condition_for_plot:
+            # if the conditions is not met, we return an empty dict of plots
+            return plots
+
+        # debbug logger warning
+        if self.substrates is not None:
+            for substrate in self.substrates:
+                pos_x = getattr(substrate, 'position_x', None)
+                pos_y = getattr(substrate, 'position_y', None)
+                rotation = getattr(substrate, 'rotation', None)
+                width = (
+                    getattr(substrate.substrate.geometry, 'width', None)
+                    if hasattr(substrate, 'substrate')
+                    and hasattr(substrate.substrate, 'geometry')
+                    else None
+                )
+                length = (
+                    getattr(substrate.substrate.geometry, 'length', None)
+                    if hasattr(substrate, 'substrate')
+                    and hasattr(substrate.substrate, 'geometry')
+                    else None
+                )
+                logger.debug(
+                    f'Substrate: {substrate.name} - '
+                    f'pos_x: {pos_x}, pos_y: {pos_y}, rotation: {rotation}, '
+                    f'width: {width}, length: {length}'
+                )  # can be removed in the future if the position plot is fixed
+
+        # Plotting the sample positions on the platen
+        # trying to read the sample positions else default
+        # to the default positions
+        try:
+            samples_plot = read_samples(self.substrates)
+        except Exception as e:
+            samples_plot = [
+                Sample('BR', [20, 35], 0, [40, 40]),
+                Sample('BL', [-20, 35], 0, [40, 40]),
+                Sample('FR', [20, -5], 0, [40, 40]),
+                Sample('FL', [-20, -5], 0, [40, 40]),
+                Sample('G', [0, -38], 90, [26, 76]),
+            ]
+            logger.warning(
+                'Failed to read the sample positions. '
+                f'Defaulting to BL, BR, FL, FR, and G: {e}'
+            )
+
+        dep_params: DepositionParameters = self.deposition_parameters
+        guns_plot = read_guns(
+            [
+                dep_params.magkeeper3,
+                dep_params.magkeeper4,
+                dep_params.taurus,
+                dep_params.s_cracker,
+            ],
+            ['magkeeper3', 'magkeeper4', 'taurus', 's_cracker'],
+        )
+
+        platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
+        sample_pos_plot = plot_plotly_chamber_config(
+            samples_plot,
+            guns_plot,
+            platen_rot,
+            plot_title='DEPOSITION CONFIG :',
+        )
+
+        plots['Deposition sub. configuration'] = sample_pos_plot
+
+        sample_mounting_plot = plot_plotly_chamber_config(
+            samples_plot,
+            guns_plot,
+            90,
+            plot_title='MOUNTING CONFIG :',
+            in_chamber=False,
+        )
+        plots['Mounting sub. configuration'] = sample_mounting_plot
+
+        return plots
+
     def plot(self, plots, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         for plot_name, plot in plots.items():
             plot_json = json.loads(plot.to_json())
@@ -1820,76 +2086,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     figure=plot_json,
                 )
             )
-        # Plotting the sample positions on the platen
-        try:
-            samples_plot = read_samples(self.substrates)
-        except Exception as e:
-            samples_plot = [
-                Sample('BR', [20, 35], 0, [40, 40]),
-                Sample('BL', [-20, 35], 0, [40, 40]),
-                Sample('FR', [20, -5], 0, [40, 40]),
-                Sample('FL', [-20, -5], 0, [40, 40]),
-                Sample('G', [0, -38], 90, [26, 76]),
-            ]
-            logger.warning(
-                f'Failed to read the sample positions. '
-                f'Defaulting to BL, BR, FL, FR, and G:{e}'
-            )
-
-            dep_params: DepositionParameters = self.deposition_parameters
-            guns_plot = read_guns(
-                [
-                    dep_params.magkeeper3,
-                    dep_params.magkeeper4,
-                    dep_params.taurus,
-                    dep_params.s_cracker,
-                ],
-                ['magkeeper3', 'magkeeper4', 'taurus', 's_cracker'],
-            )
-
-            condition_for_plot = (
-                self.instruments[0].platen_rotation is not None
-                and samples_plot is not None
-                and guns_plot is not None
-            )
-            if condition_for_plot:
-                platen_rot = self.instruments[0].platen_rotation.to('degree').magnitude
-                sample_pos_plot = plot_plotly_chamber_config(
-                    samples_plot,
-                    guns_plot,
-                    platen_rot,
-                    plot_title='DEPOSITION CONFIG :',
-                )
-
-                sample_pos_plot_json = json.loads(sample_pos_plot.to_json())
-                sample_pos_plot_json['config'] = dict(
-                    scrollZoom=False,
-                )
-                self.figures.append(
-                    PlotlyFigure(
-                        label='Sample positions during deposition',
-                        figure=sample_pos_plot_json,
-                    )
-                )
-
-                sample_mounting_plot = plot_plotly_chamber_config(
-                    samples_plot,
-                    guns_plot,
-                    90,
-                    plot_title='MOUNTING CONFIG :',
-                    in_chamber=False,
-                )
-
-                sample_mounting_plot_json = json.loads(sample_mounting_plot.to_json())
-                sample_mounting_plot_json['config'] = dict(
-                    scrollZoom=False,
-                )
-                self.figures.append(
-                    PlotlyFigure(
-                        label='Sample positions during mounting',
-                        figure=sample_mounting_plot_json,
-                    )
-                )
 
     # Helper method to write the data
     def write_data(self, config: dict):
@@ -1938,11 +2134,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             for attr in output_keys[:-1]:
                 obj = getattr(obj, attr)
             setattr(obj, output_keys[-1], value)
-            logger.info(f'Set {params_str} to {subsection_str}')
         except Exception as e:
             logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
 
-    def generate_general_log_data(self, params: dict, logger: 'BoundLogger') -> None:
+    def generate_general_log_data(self, params: dict, logger: 'BoundLogger') -> Self:
         """
         Method for writing the log data to the respective sections.
         Args:
@@ -1987,16 +2182,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         sputtering.end_of_process = EndOfProcess()
 
-        # Writing the params dict in the form of a report
-        def format_log_for_html(log):
-            # Replace spaces with non-breaking spaces
-            log = log.replace(' ', '&nbsp;')
-            # Replace newlines with <br> tags
-            log = log.replace('\n', '<br>')
-            return log
-
-        sputtering.log_file_report = format_log_for_html(write_params(params))
-
         # Looping through the param_nomad_map
         for input_keys, output_keys, unit in param_nomad_map:
             config = {
@@ -2027,6 +2212,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.source_presput.extend(targets_presput)
 
         sputtering.source_deprate.extend(targets_deprate)
+
+        if params['deposition']['interrupted']:
+            sputtering.flags.append(DtuFlag(flag='INTERRUPTED_DEPOSITION'))
 
         return sputtering
 
@@ -2511,6 +2699,24 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     lab_id=layer.lab_id,
                 )
             ]
+
+            library.process_parameter_overview = ProcessParameterOverview()
+            # we write some important process parameters to the library
+            library.process_parameter_overview.position_x = (
+                substrate_mounting.position_x
+            )
+            library.process_parameter_overview.position_y = (
+                substrate_mounting.position_y
+            )
+            library.process_parameter_overview.rotation = substrate_mounting.rotation
+            library.process_parameter_overview.width = (
+                substrate_mounting.substrate.geometry.width
+            )
+            library.process_parameter_overview.length = (
+                substrate_mounting.substrate.geometry.length
+            )
+            # TODO add more process parameters
+
             library_ref = create_archive(
                 library, archive, f'{library.lab_id}.archive.json'
             )
@@ -2555,6 +2761,66 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                         )
                         return
 
+    def parse_log_file(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        Method for parsing the log file and writing the data to the respective sections.
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            written.
+            logger (BoundLogger): A structlog logger.
+        """
+        # Extracting the sample name from the log file name
+        log_name = os.path.basename(self.log_file)
+        sample_id = '_'.join(log_name.split('_')[0:3])
+        # If lab_id is empty, assign the sample name to lab_id
+        if self.lab_id is None:
+            self.lab_id = sample_id
+        # Openning the log file
+        with archive.m_context.raw_file(self.log_file, 'r') as log:
+            log_df = read_logfile(log.name)
+            formated_log_df, _ = format_logfile(log_df)
+            events_plot, params, step_params = read_events(log_df)
+        if params is not None:
+            # Writing logfile data to the respective sections
+            sputtering = self.generate_general_log_data(params, logger)
+
+        if step_params is not None and sputtering is not None:
+            steps = self.generate_step_log_data(step_params, archive, logger)
+            sputtering.steps.extend(steps)
+
+        # Merging the sputtering object with self
+        if self.overwrite:
+            merge_sections(sputtering, self, logger)
+            for _, prop in self.m_def.all_properties.items():
+                if sputtering.m_is_set(prop):
+                    self.m_set(prop, None)
+                    self.m_set(prop, sputtering.m_get(prop))
+        else:
+            merge_sections(self, sputtering, logger)
+
+        # Run the nomalizer of the environment subsection
+        for step in self.steps:
+            for gas_flow in step.environment.gas_flow:
+                gas_flow.normalize(archive, logger)
+                gas_flow.gas.normalize(archive, logger)
+
+        # Triggering the plotting of multiple plots
+        self.figures = []
+
+        plots = generate_plots(
+            formated_log_df,
+            events_plot,
+            params,
+            self.lab_id,
+        )
+
+        plots.update(self.plot_plotly_chamber_config(logger))
+
+        self.plot(plots, archive, logger)
+
+        if self.deposition_parameters is not None:
+            self.add_libraries(archive, logger)
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUSputtering` class.
@@ -2565,49 +2831,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             logger (BoundLogger): A structlog logger.
         """
         # Analysing log file
-        if self.log_file:
-            # Extracting the sample name from the log file name
-            log_name = os.path.basename(self.log_file)
-            sample_id = '_'.join(log_name.split('_')[0:3])
-            # If lab_id is empty, assign the sample name to lab_id
-            if self.lab_id is None:
-                self.lab_id = sample_id
-            # Openning the log file
-            with archive.m_context.raw_file(self.log_file, 'r') as log:
-                log_df = read_logfile(log.name)
-                formated_log_df, _ = format_logfile(log_df)
-                events_plot, params, step_params = read_events(log_df)
-            if params is not None:
-                # Writing logfile data to the respective sections
-                sputtering = self.generate_general_log_data(params, logger)
-
-            if step_params is not None and sputtering is not None:
-                steps = self.generate_step_log_data(step_params, archive, logger)
-                sputtering.steps.extend(steps)
-
-            # Merging the sputtering object with self
-            merge_sections(self, sputtering, logger)
-
-            # Run the nomalizer of the environment subsection
-            for step in self.steps:
-                for gas_flow in step.environment.gas_flow:
-                    gas_flow.normalize(archive, logger)
-                    gas_flow.gas.normalize(archive, logger)
-
-            # Triggering the plotting of multiple plots
-            self.figures = []
-
-            plots = generate_plots(
-                formated_log_df,
-                events_plot,
-                params,
-                self.lab_id,
-            )
-
-            self.plot(plots, archive, logger)
-
-            if self.deposition_parameters is not None:
-                self.add_libraries(archive, logger)
+        if self.log_file and self.process_log_file:
+            self.parse_log_file(archive, logger)
 
         archive.workflow2 = None
         super().normalize(archive, logger)

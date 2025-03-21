@@ -51,7 +51,7 @@ SAMPLES_TO_REMOVE = [
 SAMPLES_TO_TEST = [
     # 'eugbe_0020_Zr_Recording Set 2025.02.05-09.07.05',
     # 'eugbe_0021_Zr_Recording Set 2025.02.07-10.03.37',
-    'eugbe_0022_Zr_Recording Set 2025.02.10-09.49.44',
+    'mittma_0029_Cu_Recording Set 2024.12.02-10.49.07',
 ]
 
 # -----USEFUL DICTIONARIES AND LISTS-----
@@ -1128,6 +1128,7 @@ class Lf_Event:
         if 's_cracker' not in params[self.step_id]['sources']:
             params[self.step_id]['sources']['s_cracker'] = {}
             params[self.step_id]['sources']['s_cracker']['zone1_temp'] = {}
+            params[self.step_id]['sources']['s_cracker']['zone1_temp_sp'] = {}
             params[self.step_id]['sources']['s_cracker']['zone2_temp'] = {}
             params[self.step_id]['sources']['s_cracker']['zone3_temp'] = {}
             params[self.step_id]['sources']['s_cracker']['valve_on_time'] = {}
@@ -1537,6 +1538,9 @@ class Deposition_Event(Lf_Event):
         params[self.category]['s_cracker']['enabled'] = True
         params[self.category]['s_cracker']['zone1_temp'] = self.data[
             'Sulfur Cracker Zone 1 Current Temperature'
+        ].mean()
+        params[self.category]['s_cracker']['zone1_temp_sp'] = self.data[
+            'Sulfur Cracker Zone 1 Temperature Setpoint'
         ].mean()
         params[self.category]['s_cracker']['zone2_temp'] = self.data[
             'Sulfur Cracker Zone 2 Current Temperature'
@@ -2113,6 +2117,9 @@ class Sub_Ramp_Up_Event(Lf_Event):
                     params[self.category]['s_cracker']['zone1_temp'] = self.data[
                         'Sulfur Cracker Zone 1 Current Temperature'
                     ].mean()
+                    params[self.category]['s_cracker']['zone1_temp_sp'] = self.data[
+                        'Sulfur Cracker Zone 1 Temperature Setpoint'
+                    ].mean()
                     params[self.category]['s_cracker']['zone2_temp'] = self.data[
                         'Sulfur Cracker Zone 2 Current Temperature'
                     ].mean()
@@ -2328,6 +2335,9 @@ class Sub_Ramp_Down_High_Temp_Event(Lf_Event):
             cracker_params['enabled'] = True
             cracker_params['zone1_temp'] = self.data[
                 'Sulfur Cracker Zone 1 Current Temperature'
+            ].mean()
+            cracker_params['zone1_temp_sp'] = self.data[
+                'Sulfur Cracker Zone 1 Temperature Setpoint'
             ].mean()
             cracker_params['zone2_temp'] = self.data[
                 'Sulfur Cracker Zone 2 Current Temperature'
@@ -4900,8 +4910,11 @@ def generate_bias_plot(
         mode='default',
         plot_type='line',
         width=WIDTH,
-        plot_title=(f'Bias Plot: {logfile_name}'),
+        plot_title=(f'DC Bias Plot during deposition: {logfile_name}'),
     )
+
+    # set the Y axis title as 'DC Bias (V)'
+    bias_plot.update_layout(yaxis_title='DC Bias (V)')
 
     return bias_plot
 
@@ -5006,8 +5019,8 @@ def generate_overview_plot(data, logfile_name, events):
         Y_plot,
         plot_type='scatter',
         plot_title=(
-            f'Overview Plot: {logfile_name} '
-            f'(downsampled to {OVERVIEW_PLOT_RESAMPLING_TIME}s)'
+            f'Overview Plot: {logfile_name} \n'
+            f'({OVERVIEW_PLOT_RESAMPLING_TIME}s-downsampled)'
         ),
         mode='stack',
         heigth=0.5 * HEIGHT,
@@ -5036,10 +5049,32 @@ def generate_overview_plot(data, logfile_name, events):
         yref='paper',
         line=dict(color='Red', width=2, dash='dashdot'),
     )
+    # add to the legend that the markers mark the deposition step
 
     # Update layout to include the shapes
     overview_plot.update_layout(
         shapes=overview_plot.layout.shapes + tuple(overview_plot.layout.shapes)
+    )
+
+    # Add annotations to the legend
+    overview_plot.add_annotation(
+        x=dep_start,
+        y=-0.028,
+        xref='x',
+        yref='paper',
+        text='Deposition<br>Start',
+        showarrow=False,
+        font=dict(color='Red'),
+    )
+
+    overview_plot.add_annotation(
+        x=dep_end,
+        y=-0.028,
+        xref='x',
+        yref='paper',
+        text='Deposition<br>End',
+        showarrow=False,
+        font=dict(color='red'),
     )
 
     # update_scatter_colors(
@@ -5351,7 +5386,7 @@ def follow_peak(spectra, peak_pos=[656.1, 341.76, 311.9, 750.4]):
     }
 
     # Ensure peak_pos is iterable
-    peak_pos = [peak_pos] if isinstance(peak_pos, (int, float)) else peak_pos
+    peak_pos = [peak_pos] if isinstance(peak_pos, int | float) else peak_pos
     peak_names = {pos: PEAK_NAME.get(pos, None) for pos in peak_pos}
 
     # Prepare results
@@ -5942,12 +5977,6 @@ def map_params_to_nomad(params, gun_list):
     # Definiting the input, ouput and unit
     param_nomad_map = [
         [
-            ['deposition', 'interrupted'],
-            ['deposition_parameters', 'interrupted_deposition'],
-            None,
-        ],
-        # Deposition parameters
-        [
             ['deposition', 'avg_temp_1'],
             ['deposition_parameters', 'deposition_temperature'],
             'degC',
@@ -6065,33 +6094,42 @@ def map_params_to_nomad(params, gun_list):
                 'torr',
             ]
         )
-    if params['deposition'].get('SCracker', {}).get('enabled', False):
-        # SCracker parameters
+    if params['deposition'].get('s_cracker', {}).get('enabled', False):
+        # s_cracker parameters
         param_nomad_map.extend(
             [
                 [
-                    ['deposition', 'SCracker', 'zone1_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone1_temperature'],
+                    ['deposition', 's_cracker', 'zone1_temp'],
+                    ['deposition_parameters', 's_cracker', 'zone1_temperature'],
                     'degC',
                 ],
                 [
-                    ['deposition', 'SCracker', 'zone2_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone2_temperature'],
+                    ['deposition', 's_cracker', 'zone1_temp_sp'],
+                    [
+                        'deposition_parameters',
+                        's_cracker',
+                        'zone1_temperature_setpoint',
+                    ],
                     'degC',
                 ],
                 [
-                    ['deposition', 'SCracker', 'zone3_temp'],
-                    ['deposition_parameters', 'SCracker', 'zone3_temperature'],
+                    ['deposition', 's_cracker', 'zone2_temp'],
+                    ['deposition_parameters', 's_cracker', 'zone2_temperature'],
                     'degC',
                 ],
                 [
-                    ['deposition', 'SCracker', 'pulse_width'],
-                    ['deposition_parameters', 'SCracker', 'valve_on_time'],
+                    ['deposition', 's_cracker', 'zone3_temp'],
+                    ['deposition_parameters', 's_cracker', 'zone3_temperature'],
+                    'degC',
+                ],
+                [
+                    ['deposition', 's_cracker', 'pulse_width'],
+                    ['deposition_parameters', 's_cracker', 'valve_on_time'],
                     'millisecond',
                 ],
                 [
-                    ['deposition', 'SCracker', 'pulse_freq'],
-                    ['deposition_parameters', 'SCracker', 'valve_frequency'],
+                    ['deposition', 's_cracker', 'pulse_freq'],
+                    ['deposition_parameters', 's_cracker', 'valve_frequency'],
                     'mHz',
                 ],
             ]
@@ -6918,8 +6956,8 @@ def read_samples(sample_list: list):
         pos_x = sample_obj.position_x.to('mm').magnitude
         pos_y = sample_obj.position_y.to('mm').magnitude
         rotation = sample_obj.rotation.to('degree').magnitude
-        width = sample_obj.substrate.geometry.width
-        length = sample_obj.substrate.geometry.length
+        width = sample_obj.substrate.geometry.width.to('mm').magnitude
+        length = sample_obj.substrate.geometry.length.to('mm').magnitude
         sample = Sample(label, [pos_x, pos_y], rotation, [width, length])
         samples.append(sample)
     return samples
