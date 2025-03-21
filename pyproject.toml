@@ -7,8 +7,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
@@ -17,7 +15,7 @@ name = "nomad-dtu-nanolab-plugin"
 description = "A plugin for the schemas, parsers,"
 dynamic = ["version"]
 readme = "README.rst"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 authors = [
     { name = "Lena Mittman" },
 ]

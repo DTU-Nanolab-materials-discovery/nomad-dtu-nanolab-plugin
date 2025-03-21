@@ -17,7 +17,7 @@
 #
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 import pandas as pd
@@ -2137,7 +2137,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         except Exception as e:
             logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
 
-    def generate_general_log_data(self, params: dict, logger: 'BoundLogger') -> None:
+    def generate_general_log_data(self, params: dict, logger: 'BoundLogger') -> Self:
         """
         Method for writing the log data to the respective sections.
         Args:
@@ -2793,6 +2793,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             merge_sections(sputtering, self, logger)
             for _, prop in self.m_def.all_properties.items():
                 if sputtering.m_is_set(prop):
+                    self.m_set(prop, None)
                     self.m_set(prop, sputtering.m_get(prop))
         else:
             merge_sections(self, sputtering, logger)
