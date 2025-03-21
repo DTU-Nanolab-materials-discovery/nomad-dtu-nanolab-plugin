@@ -281,7 +281,7 @@ def math_on_columns(data, type1, type2, operation='/'):
         val1 = data.iloc[:, data.columns.get_level_values(1) == type1].iloc[:, i]
         if isinstance(type2, str):
             val2 = data.iloc[:, data.columns.get_level_values(1) == type2].iloc[:, i]
-        if isinstance(type2, (int, float)):
+        if isinstance(type2, int | float):
             val2 = type2
         if operation == '+':
             resultval = val1 + val2

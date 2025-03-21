@@ -5386,7 +5386,7 @@ def follow_peak(spectra, peak_pos=[656.1, 341.76, 311.9, 750.4]):
     }
 
     # Ensure peak_pos is iterable
-    peak_pos = [peak_pos] if isinstance(peak_pos, (int, float)) else peak_pos
+    peak_pos = [peak_pos] if isinstance(peak_pos, int | float) else peak_pos
     peak_names = {pos: PEAK_NAME.get(pos, None) for pos in peak_pos}
 
     # Prepare results
