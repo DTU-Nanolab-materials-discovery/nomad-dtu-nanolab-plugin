@@ -1,0 +1,36 @@
+import os
+import pandas as pd
+import tkinter as tk
+from tkinter import filedialog
+from .sputter_log_reader import #Add the function from the sputter_log_reader.py file
+from .PC1_sputter_log_reader import PC1_sputter_log_reader_code
+
+# Function to select the file
+def select_file():
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window
+    path_to_github = filedialog.askopenfilename()
+    print(f"Selected file: {path_to_github}")
+    return path_to_github
+
+# Function to process the file based on the content
+def process_file(path_to_github):
+     # Read the entire file as a string
+        with open(path_to_github, 'r') as file:
+            file_content = file.read()
+
+        # Check if "PC1" is present in the file content
+        if "PC1" in file_content:
+            print("Selected file is from PC1 in cleanroom.")
+            PC1_sputter_log_reader_code()
+            # Add PC1-specific code here
+        else:
+            print("Selected file is from IDOL lab.")
+            # Add Eugéne's code here
+            sputter_log_reader_code()
+
+# Select the file
+path_to_github = select_file()
+
+# Process the file
+process_file(path_to_github)
