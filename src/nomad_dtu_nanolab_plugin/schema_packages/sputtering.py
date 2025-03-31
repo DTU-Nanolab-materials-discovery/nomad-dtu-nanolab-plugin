@@ -2177,7 +2177,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 target_reference = DTUTargetReference()
                 setattr(source_overview, 'target_id', target_reference)
 
-        if params.get('s_cracker', {}).get('enabled', False):
+        if params['deposition'].get('s_cracker', {}).get('enabled', False):
             sputtering.deposition_parameters.s_cracker = SCrackerOverview()
 
         sputtering.end_of_process = EndOfProcess()

@@ -34,7 +34,7 @@ from plotly.subplots import make_subplots
 PRINT_MAIN_PARAMS = False
 PRINT_STEP_PARAMS = False
 PRINT_FIGURES = False
-TEST_SPECIFIC_LOGFILE = False
+TEST_SPECIFIC_LOGFILE = True
 REMOVE_SAMPLES = True
 SAVE_STEP_PARAMS = False
 RENAME_CRACKER_COL = True
@@ -51,7 +51,8 @@ SAMPLES_TO_REMOVE = [
 SAMPLES_TO_TEST = [
     # 'eugbe_0020_Zr_Recording Set 2025.02.05-09.07.05',
     # 'eugbe_0021_Zr_Recording Set 2025.02.07-10.03.37',
-    'mittma_0029_Cu_Recording Set 2024.12.02-10.49.07',
+    # 'mittma_0029_Cu_Recording Set 2024.12.02-10.49.07',
+    'eugbe_0026_Ag_Recording Set 2025.03.07-10.09.23',
 ]
 
 # -----USEFUL DICTIONARIES AND LISTS-----
