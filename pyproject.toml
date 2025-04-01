@@ -108,6 +108,7 @@ line-ending = "auto"
 
 [tool.uv]
 extra-index-url = ["https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple"]
+constraint-dependencies = ["pydantic<2.11"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
