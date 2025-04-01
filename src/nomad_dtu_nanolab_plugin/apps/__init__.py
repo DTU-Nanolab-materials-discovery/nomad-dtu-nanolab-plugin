@@ -328,6 +328,11 @@ xrd = AppEntryPoint(
         ),
         columns=[
             Column(
+                search_quantity=f'data.lab_id#{xrd_schema}',
+                selected=True,
+                label='XRD ID',
+            ),
+            Column(
                 search_quantity=f'data.xrd_settings.source.xray_tube_voltage#{xrd_schema}',
                 selected=True,
                 label='X-ray tube voltage',
@@ -342,7 +347,7 @@ xrd = AppEntryPoint(
                 format=Format(decimals=1),
             ),
             Column(
-                search_quantity=f'metadata.main_author#{xrd_schema}',
+                search_quantity='main_author.name',
                 selected=True,
                 label='Main author',
             ),
@@ -353,6 +358,10 @@ xrd = AppEntryPoint(
                 MenuItemTerms(
                     title='Sample ID',
                     search_quantity=f'data.samples.lab_id#{xrd_schema}',
+                    show_input=True,
+                ),
+                MenuItemTerms(
+                    search_quantity='authors.name',
                     show_input=True,
                 ),
             ],
@@ -385,7 +394,7 @@ edx = AppEntryPoint(
             Column(
                 search_quantity=f'data.lab_id#{edx_schema}',
                 selected=True,
-                label='Target ID',
+                label='EDX ID',
             ),
             Column(
                 search_quantity=f'data.avg_layer_thickness#{edx_schema}',
@@ -395,17 +404,29 @@ edx = AppEntryPoint(
                 format=Format(decimals=1),
             ),
             Column(
-                search_quantity=f'metadata.main_author#{edx_schema}',
+                search_quantity='main_author.name',
                 selected=True,
                 label='Main author',
             ),
         ],
         menu=Menu(
-            size=MenuSizeEnum.MD,
+            size=MenuSizeEnum.XXL,
             items=[
+                MenuItemPeriodicTable(
+                    quantity=f'data.results.quantifications.element#{edx_schema}',
+                ),
                 MenuItemTerms(
                     title='Sample ID',
                     search_quantity=f'data.samples.lab_id#{edx_schema}',
+                    show_input=True,
+                ),
+                MenuItemHistogram(
+                    title='Average layer thickness',
+                    x=f'data.avg_layer_thickness#{edx_schema}',
+                    unit='nm',
+                ),
+                MenuItemTerms(
+                    search_quantity='authors.name',
                     show_input=True,
                 ),
             ],
@@ -451,7 +472,7 @@ analysis = AppEntryPoint(
                 label='Date and time',
             ),
             Column(
-                search_quantity=f'metadata.main_author#{analysis_schema}',
+                search_quantity='main_author.name',
                 selected=True,
                 label='Main author',
             ),
