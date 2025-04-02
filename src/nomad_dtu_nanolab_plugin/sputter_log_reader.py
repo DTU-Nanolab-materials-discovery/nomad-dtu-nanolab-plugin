@@ -5423,7 +5423,17 @@ def read_logfile(file_path):
     All the logged values are stored in the DataFrame
     as they are in the logfile.
     """
-    df = pd.read_csv(file_path, header=[1], skiprows=[0])
+    for i in range(5):
+        df = pd.read_csv(file_path, header=[i+1], skiprows=[i], low_memory=False)
+
+        # Check if the 'Time Stamp' column exists in the DataFrame
+        if 'Time Stamp' in df.columns:
+            break
+    else:
+        raise ValueError(
+            "No 'Time Stamp' column found in the first 5 rows of the file."
+        )
+
     df['Time Stamp'] = pd.to_datetime(
         df['Time Stamp'], format='%b-%d-%Y %I:%M:%S.%f %p'
     )
