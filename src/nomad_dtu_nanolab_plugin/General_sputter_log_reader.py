@@ -2,8 +2,8 @@ import os
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog
-from .sputter_log_reader import #Add the function from the sputter_log_reader.py file
-from .PC1_sputter_log_reader import PC1_sputter_log_reader_code
+from sputter_log_reader import #Add the function from the sputter_log_reader.py file
+from PC1_sputter_log_reader import # Add the function from the PC1_sputter_log_reader.py file
 
 # Function to select the file
 def select_file():
