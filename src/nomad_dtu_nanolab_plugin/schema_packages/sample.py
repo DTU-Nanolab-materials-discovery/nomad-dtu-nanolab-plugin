@@ -23,8 +23,9 @@ from ase.data import chemical_symbols
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
+from nomad.datamodel.metainfo.basesections.v1 import Activity
 from nomad.metainfo import Package, Section
-from nomad.metainfo.metainfo import Quantity, SubSection
+from nomad.metainfo.metainfo import MEnum, Quantity, SubSection
 from nomad_material_processing.combinatorial import (
     CombinatorialLibrary,
     CombinatorialSample,
@@ -42,7 +43,19 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU customised Substrate scheme')
 
 
-class Composition(ArchiveSection):
+class SampleProperty(ArchiveSection):
+    source = Quantity(
+        type=Activity,
+        description='The source of the sample property.',
+    )
+    interpolation = Quantity(
+        type=MEnum(['None', 'Nearest', 'Linear', 'Cubic']),
+        description='The interpolation method used to obtain the sample property.',
+        default='None',
+    )
+
+
+class Composition(SampleProperty):
     for element in chemical_symbols:
         locals()[f'{element}'] = Quantity(
             type=np.float64,
@@ -50,7 +63,7 @@ class Composition(ArchiveSection):
         )
 
 
-class Deposition(ArchiveSection):
+class Deposition(SampleProperty):
     temperature = Quantity(
         type=np.float64,
         description='The (mean) temperature of the substrate during deposition.',
@@ -73,10 +86,6 @@ class Deposition(ArchiveSection):
     operator = Quantity(
         type=str,
         description='The name of the operator who created the sample.',
-    )
-    sputtering = Quantity(
-        type=DTUSputtering,
-        description='The sputtering process where the sample was created.',
     )
 
 
@@ -114,24 +123,50 @@ class XpsPeak(ArchiveSection):
     )
 
 
+class BandGap(SampleProperty):
+    value = Quantity(
+        type=np.float64,
+        description='The band gap of the sample.',
+        unit='eV',
+    )
+
+
+class Thickness(SampleProperty):
+    value = Quantity(
+        type=np.float64,
+        description='The thickness of the sample.',
+        unit='nm',
+    )
+
+
+class XrdData(SampleProperty):
+    xrd_peaks = SubSection(
+        section_def=XrdPeak,
+        repeats=True,
+        description='The x-ray diffraction peaks of the sample.',
+    )
+
+
+class XpsData(SampleProperty):
+    xps_peaks = SubSection(
+        section_def=XpsPeak,
+        repeats=True,
+        description='The x-ray photoelectron spectroscopy peaks of the sample.',
+    )
+
+
 class DTUCombinatorialSample(CombinatorialSample, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Combinatorial Sample',
     )
-    band_gap = Quantity(
-        type=np.float64,
-        description='The band gap of the sample.',
-        unit='eV',
-    )
-    thickness = Quantity(
-        type=np.float64,
-        description='The thickness of the sample.',
-        unit='nm',
-    )
+    band_gap = SubSection(section_def=BandGap)
+    thickness = SubSection(section_def=Thickness)
     composition = SubSection(section_def=Composition)
     surface_composition = SubSection(section_def=Composition)
     deposition = SubSection(section_def=Deposition)
+    xrd_data = SubSection(section_def=XrdData)
+    xps_data = SubSection(section_def=XpsData)
 
 
 class ProcessParameterOverview(Schema):
