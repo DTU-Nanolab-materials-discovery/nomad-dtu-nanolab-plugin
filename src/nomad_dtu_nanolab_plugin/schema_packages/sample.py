@@ -19,11 +19,12 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
-from nomad.datamodel.data import Schema
+from ase.data import chemical_symbols
+from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.metainfo import Package, Section
-from nomad.metainfo.metainfo import Quantity
+from nomad.metainfo.metainfo import Quantity, SubSection
 from nomad_material_processing.combinatorial import (
     CombinatorialLibrary,
     CombinatorialSample,
@@ -41,11 +42,96 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU customised Substrate scheme')
 
 
+class Composition(ArchiveSection):
+    for element in chemical_symbols:
+        locals()[f'{element}'] = Quantity(
+            type=np.float64,
+            description=f'Atomic fraction of {element} in the sample.',
+        )
+
+
+class Deposition(ArchiveSection):
+    temperature = Quantity(
+        type=np.float64,
+        description='The (mean) temperature of the substrate during deposition.',
+        unit='K',
+    )
+    pressure = Quantity(
+        type=np.float64,
+        description='The (mean) pressure of the deposition chamber during deposition.',
+        unit='Pa',
+    )
+    time = Quantity(
+        type=np.float64,
+        description='The duration of the deposition.',
+        unit='s',
+    )
+    material_space = Quantity(
+        type=str,
+        description='The material space of the sample.',
+    )
+    operator = Quantity(
+        type=str,
+        description='The name of the operator who created the sample.',
+    )
+    sputtering = Quantity(
+        type=DTUSputtering,
+        description='The sputtering process where the sample was created.',
+    )
+
+
+class XrdPeak(ArchiveSection):
+    position = Quantity(
+        type=np.float64,
+        description='The position of the peak.',
+        unit='nm^-1',
+    )
+    intensity = Quantity(
+        type=np.float64,
+        description='The intensity of the peak.',
+    )
+    fwhm = Quantity(
+        type=np.float64,
+        description='The full width at half maximum of the peak.',
+        unit='nm^-1',
+    )
+
+
+class XpsPeak(ArchiveSection):
+    position = Quantity(
+        type=np.float64,
+        description='The position of the peak.',
+        unit='eV',
+    )
+    intensity = Quantity(
+        type=np.float64,
+        description='The intensity of the peak.',
+    )
+    fwhm = Quantity(
+        type=np.float64,
+        description='The full width at half maximum of the peak.',
+        unit='eV',
+    )
+
+
 class DTUCombinatorialSample(CombinatorialSample, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Combinatorial Sample',
     )
+    band_gap = Quantity(
+        type=np.float64,
+        description='The band gap of the sample.',
+        unit='eV',
+    )
+    thickness = Quantity(
+        type=np.float64,
+        description='The thickness of the sample.',
+        unit='nm',
+    )
+    composition = SubSection(section_def=Composition)
+    surface_composition = SubSection(section_def=Composition)
+    deposition = SubSection(section_def=Deposition)
 
 
 class ProcessParameterOverview(Schema):
