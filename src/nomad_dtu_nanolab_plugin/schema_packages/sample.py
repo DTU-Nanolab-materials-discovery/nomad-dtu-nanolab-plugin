@@ -131,6 +131,32 @@ class BandGap(SampleProperty):
     )
 
 
+class AbsorptionCoefficient(SampleProperty):
+    value = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The absorption coefficient of the sample.',
+        unit='cm^-1',
+    )
+    energy = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The corresponding energies for the absorption coefficient values.',
+        unit='nm',
+    )
+    absorption_edge = Quantity(
+        type=np.float64,
+        description='The inflection point of the absorption spectrum.',
+        unit='eV',
+    )
+    mean_absorption_above_edge = Quantity(
+        type=np.float64,
+        description='The mean absorption coefficient above the absorption edge.',
+        unit='cm^-1',
+    )
+
+
+
 class Thickness(SampleProperty):
     value = Quantity(
         type=np.float64,
@@ -140,6 +166,18 @@ class Thickness(SampleProperty):
 
 
 class XrdData(SampleProperty):
+    diffraction_intensity = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The intensity of the x-ray diffraction peaks.',
+        unit='dimensionless',
+    )
+    scattering_vector = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The scattering vector of the x-ray diffraction peaks.',
+        unit='nm^-1',
+    )
     xrd_peaks = SubSection(
         section_def=XrdPeak,
         repeats=True,
@@ -148,10 +186,64 @@ class XrdData(SampleProperty):
 
 
 class XpsData(SampleProperty):
+    intensity = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The intensity of the x-ray photoelectron spectroscopy peaks.',
+        unit='dimensionless',
+    )
+    binding_energy = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The binding energy of the x-ray photoelectron spectroscopy peaks.',
+        unit='eV',
+    )
     xps_peaks = SubSection(
         section_def=XpsPeak,
         repeats=True,
         description='The x-ray photoelectron spectroscopy peaks of the sample.',
+    )
+
+
+class EllipsometryData(SampleProperty):
+    refractive_index = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The refractive index of the sample.',
+        unit='dimensionless',
+    )
+    extinction_coefficient = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The extinction coefficient of the sample.',
+        unit='dimensionless',
+    )
+    wavelength = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The wavelength of the light used for ellipsometry.',
+        unit='nm',
+    )
+
+
+class UvVisData(SampleProperty):
+    reflectance = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The reflectance of the sample.',
+        unit='dimensionless',
+    )
+    transmittance = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The transmittance of the sample.',
+        unit='dimensionless',
+    )
+    wavelength = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The wavelength of the light used for UV-Vis spectroscopy.',
+        unit='nm',
     )
 
 
@@ -161,12 +253,15 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
         label='Combinatorial Sample',
     )
     band_gap = SubSection(section_def=BandGap)
+    absorption_coefficient = SubSection(section_def=AbsorptionCoefficient)
     thickness = SubSection(section_def=Thickness)
     composition = SubSection(section_def=Composition)
     surface_composition = SubSection(section_def=Composition)
     deposition = SubSection(section_def=Deposition)
     xrd_data = SubSection(section_def=XrdData)
     xps_data = SubSection(section_def=XpsData)
+    ellipsometry_data = SubSection(section_def=EllipsometryData)
+    uv_vis_data = SubSection(section_def=UvVisData)
 
 
 class ProcessParameterOverview(Schema):
