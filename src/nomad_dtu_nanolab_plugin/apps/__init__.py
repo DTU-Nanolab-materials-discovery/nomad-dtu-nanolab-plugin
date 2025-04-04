@@ -482,3 +482,71 @@ analysis = AppEntryPoint(
         },
     ),
 )
+
+combi_samples_schema = (
+    'nomad_dtu_nanolab_plugin.schema_packages.sample.DTUCombinatorialSample'
+)
+
+samples = AppEntryPoint(
+    name='Combinatorial sample app',
+    description='App for searching the combinatorial samples.',
+    app=App(
+        label='Combinatorial Samples',
+        path='combinatorial-samples',
+        category='Samples',
+        description="""
+        Explore all the combinatorial samples with their aggregated properties.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{combi_samples_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{combi_samples_schema}',
+                selected=True,
+                label='Analysis ID',
+            ),
+            Column(
+                search_quantity=f'data.deposition.material_space#{combi_samples_schema}',
+                selected=True,
+                label='Material space',
+            ),
+            Column(
+                search_quantity=f'data.band_gap.value#{combi_samples_schema}',
+                selected=True,
+                label='Band gap',
+                unit='eV',
+                format=Format(decimals=2),
+            ),
+            Column(
+                search_quantity=f'data.thickness.value#{combi_samples_schema}',
+                selected=True,
+                label='Thickness',
+                unit='nm',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.absorption_coefficient.mean_absorption_above_edge#{combi_samples_schema}',
+                selected=True,
+                label='Absorption coefficient',
+                unit='cm^-1',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.datetime#{combi_samples_schema}',
+                selected=False,
+                label='Date and time',
+            ),
+            Column(
+                search_quantity='main_author.name',
+                selected=False,
+                label='Main author',
+            ),
+        ],
+        filters_locked={
+            'entry_type': 'DTUCombinatorialSample',
+        },
+    ),
+)

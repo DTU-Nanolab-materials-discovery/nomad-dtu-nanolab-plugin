@@ -21,9 +21,14 @@ from typing import TYPE_CHECKING
 import numpy as np
 from ase.data import chemical_symbols
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from nomad.datamodel.metainfo.annotations import (
+    ELNAnnotation,
+    ELNComponentEnum,
+    Filter,
+    SectionProperties,
+)
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
-from nomad.datamodel.metainfo.basesections.v1 import Activity
+from nomad.datamodel.metainfo.basesections.v1 import Activity, ElementalComposition
 from nomad.metainfo import Package, Section
 from nomad.metainfo.metainfo import MEnum, Quantity, SubSection
 from nomad_material_processing.combinatorial import (
@@ -40,7 +45,7 @@ if TYPE_CHECKING:
     )
     from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
 
-m_package = Package(name='DTU customised Substrate scheme')
+m_package = Package()
 
 
 class SampleProperty(ArchiveSection):
@@ -251,6 +256,12 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Combinatorial Sample',
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                visible=Filter(exclude=['elemental_composition', 'components']),
+                editable=Filter(include=[])
+            ),
+        )
     )
     band_gap = SubSection(section_def=BandGap)
     absorption_coefficient = SubSection(section_def=AbsorptionCoefficient)
@@ -262,6 +273,20 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
     xps_data = SubSection(section_def=XpsData)
     ellipsometry_data = SubSection(section_def=EllipsometryData)
     uv_vis_data = SubSection(section_def=UvVisData)
+
+    def normalize(self, archive, logger):
+        composition = {}
+        if self.composition:
+            composition = self.composition.m_to_dict()
+        if len(composition) == 0 and self.surface_composition:
+            composition = self.surface_composition.m_to_dict()
+
+        self.elemental_composition = [
+            ElementalComposition(element=e, atomic_fraction=v) 
+            for e,v in composition.items() if v
+        ]
+        
+        super().normalize(archive, logger)
 
 
 class ProcessParameterOverview(Schema):
