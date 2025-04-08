@@ -33,10 +33,10 @@ from nomad.datamodel.metainfo.basesections import (
 from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
 from nomad_material_processing.general import (
     CrystallineSubstrate,
+    Cylinder,
     Dopant,
     ElectronicProperties,
     RectangleCuboid,
-    Cylinder,
 )
 from nomad_material_processing.utils import create_archive
 from structlog.stdlib import BoundLogger
