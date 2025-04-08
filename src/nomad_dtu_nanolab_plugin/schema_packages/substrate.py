@@ -36,6 +36,7 @@ from nomad_material_processing.general import (
     Dopant,
     ElectronicProperties,
     RectangleCuboid,
+    Cylinder,
 )
 from nomad_material_processing.utils import create_archive
 from structlog.stdlib import BoundLogger
@@ -132,17 +133,46 @@ class DTUSubstrateBatch(Collection, Schema):
         default=['P'],
         a_eln={'component': 'StringEditQuantity'},
     )
+    shape = Quantity(
+        type=str,
+        description=(
+            'The shape of the substrate. Circular (wafer) or rectangular. '
+            'If the shape is circular, the diameter is used to define the size '
+            'of the substrate. If the shape is rectangular, the length and '
+            'width are used to define the size of the substrate.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            props=dict(suggestions=['Rectangular', 'Circular']),
+        ),
+        default='Rectangular',
+    )
+    diameter = Quantity(
+        type=np.float64,
+        default=0.1524, #6 inch
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'inch'},
+        unit='m',
+        description=(
+            'Only used if the shape is circular. The diameter of the substrate.'
+        )
+    )
     length = Quantity(
         type=np.float64,
         default=0.04,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
         unit='m',
+        description=(
+            'Only used if the shape is rectangular. The length of the substrate.'
+        )
     )
     width = Quantity(
         type=np.float64,
         default=0.04,
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mm'},
         unit='m',
+        description=(
+            'Only used if the shape is rectangular. The width of the substrate.'
+        )
     )
     thickness = Quantity(
         type=np.float64,
@@ -200,6 +230,26 @@ class DTUSubstrateBatch(Collection, Schema):
     def next_not_used_in(self, entry_type: type[Schema]) -> DTUSubstrate:
         return self.next_used_in(entry_type, negate=True)
 
+    def generate_geometry(self) -> object:
+        """
+        Generate the geometry of the substrate based on its shape.
+
+        Returns:
+            object: The geometry of the substrate.
+        """
+        if self.shape == 'Rectangular':
+            geometry = RectangleCuboid()
+            geometry.length = self.length
+            geometry.width = self.width
+        elif self.shape == 'Circular':
+            geometry = Cylinder()
+            geometry.radius = self.diameter/2
+        else:
+            raise ValueError(f'Unknown shape: {self.shape}')
+
+        geometry.height = self.thickness
+        return geometry
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUSubstrateBatch` class.
@@ -214,11 +264,7 @@ class DTUSubstrateBatch(Collection, Schema):
             self.entities = []
             substrate = DTUSubstrate()
 
-            geometry = RectangleCuboid()
-            geometry.length = self.length
-            geometry.width = self.width
-            geometry.height = self.thickness
-            substrate.geometry = geometry
+            substrate.geometry = self.generate_geometry()
 
             component = PureSubstanceComponent()
             substance_section = PubChemPureSubstanceSection()
