@@ -19,11 +19,24 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
-from nomad.datamodel.data import Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from ase.data import chemical_symbols
+from ase.spacegroup import Spacegroup
+from nomad.datamodel.data import ArchiveSection, Schema
+from nomad.datamodel.metainfo.annotations import (
+    ELNAnnotation,
+    ELNComponentEnum,
+    Filter,
+    SectionProperties,
+)
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
+from nomad.datamodel.metainfo.basesections.v1 import (
+    Activity,
+    ElementalComposition,
+    Entity,
+    EntityReference,
+)
 from nomad.metainfo import Package, Section
-from nomad.metainfo.metainfo import Quantity
+from nomad.metainfo.metainfo import MEnum, Quantity, SubSection
 from nomad_material_processing.combinatorial import (
     CombinatorialLibrary,
     CombinatorialSample,
@@ -38,13 +51,325 @@ if TYPE_CHECKING:
     )
     from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
 
-m_package = Package(name='DTU customised Substrate scheme')
+m_package = Package()
+
+
+class SampleProperty(ArchiveSection):
+    source = Quantity(
+        type=Activity,
+        description='The source of the sample property.',
+    )
+    interpolation = Quantity(
+        type=MEnum(['None', 'Nearest', 'Linear', 'Cubic']),
+        description='The interpolation method used to obtain the sample property.',
+        default='None',
+    )
+
+
+class Composition(SampleProperty):
+    for element in chemical_symbols:
+        locals()[f'{element}'] = Quantity(
+            type=np.float64,
+            description=f'Atomic fraction of {element} in the sample.',
+        )
+
+
+class Deposition(SampleProperty):
+    temperature = Quantity(
+        type=np.float64,
+        description='The (mean) temperature of the substrate during deposition.',
+        unit='K',
+    )
+    pressure = Quantity(
+        type=np.float64,
+        description='The (mean) pressure of the deposition chamber during deposition.',
+        unit='Pa',
+    )
+    time = Quantity(
+        type=np.float64,
+        description='The duration of the deposition.',
+        unit='s',
+    )
+    material_space = Quantity(
+        type=str,
+        description='The material space of the sample.',
+    )
+    operator = Quantity(
+        type=str,
+        description='The name of the operator who created the sample.',
+    )
+
+
+class XrdPeak(ArchiveSection):
+    position = Quantity(
+        type=np.float64,
+        description='The position of the peak.',
+        unit='nm^-1',
+    )
+    intensity = Quantity(
+        type=np.float64,
+        description='The intensity of the peak.',
+    )
+    fwhm = Quantity(
+        type=np.float64,
+        description='The full width at half maximum of the peak.',
+        unit='nm^-1',
+    )
+
+
+class XpsPeak(ArchiveSection):
+    position = Quantity(
+        type=np.float64,
+        description='The position of the peak.',
+        unit='eV',
+    )
+    intensity = Quantity(
+        type=np.float64,
+        description='The intensity of the peak.',
+    )
+    fwhm = Quantity(
+        type=np.float64,
+        description='The full width at half maximum of the peak.',
+        unit='eV',
+    )
+
+
+class BandGap(SampleProperty):
+    value = Quantity(
+        type=np.float64,
+        description='The band gap of the sample.',
+        unit='eV',
+    )
+
+
+class AbsorptionCoefficient(SampleProperty):
+    value = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The absorption coefficient of the sample.',
+        unit='cm^-1',
+    )
+    energy = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The corresponding energies for the absorption coefficient values.',
+        unit='nm',
+    )
+    absorption_edge = Quantity(
+        type=np.float64,
+        description='The inflection point of the absorption spectrum.',
+        unit='eV',
+    )
+    mean_absorption_above_edge = Quantity(
+        type=np.float64,
+        description='The mean absorption coefficient above the absorption edge.',
+        unit='cm^-1',
+    )
+
+
+
+class Thickness(SampleProperty):
+    value = Quantity(
+        type=np.float64,
+        description='The thickness of the sample.',
+        unit='nm',
+    )
+
+
+class CrystalStructure(SampleProperty):
+    space_group = Quantity(
+        type=MEnum([Spacegroup(no).symbol for no in range(1, 231)]),
+    )
+    a = Quantity(
+        type=np.float64,
+        description='The lattice parameter a of the crystal structure.',
+        unit='nm',
+    )
+    b = Quantity(
+        type=np.float64,
+        description='The lattice parameter b of the crystal structure.',
+        unit='nm',
+    )
+    c = Quantity(
+        type=np.float64,
+        description='The lattice parameter c of the crystal structure.',
+        unit='nm',
+    )
+    alpha = Quantity(
+        type=np.float64,
+        description='The angle alpha of the crystal structure.',
+        unit='degree',
+    )
+    beta = Quantity(
+        type=np.float64,
+        description='The angle beta of the crystal structure.',
+        unit='degree',
+    )
+    gamma = Quantity(
+        type=np.float64,
+        description='The angle gamma of the crystal structure.',
+        unit='degree',
+    )
+
+
+class XrdData(SampleProperty):
+    diffraction_intensity = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The intensity of the x-ray diffraction peaks.',
+        unit='dimensionless',
+    )
+    scattering_vector = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The scattering vector of the x-ray diffraction peaks.',
+        unit='nm^-1',
+    )
+    xrd_peaks = SubSection(
+        section_def=XrdPeak,
+        repeats=True,
+        description='The x-ray diffraction peaks of the sample.',
+    )
+    unique_peak_sets = SubSection(
+        section_def='UniqueXrdPeaksReference',
+        repeats=True,
+        description='The sets of unique x-ray diffraction peaks of the sample.',
+    )
+
+
+class XpsData(SampleProperty):
+    intensity = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The intensity of the x-ray photoelectron spectroscopy peaks.',
+        unit='dimensionless',
+    )
+    binding_energy = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The binding energy of the x-ray photoelectron spectroscopy peaks.',
+        unit='eV',
+    )
+    xps_peaks = SubSection(
+        section_def=XpsPeak,
+        repeats=True,
+        description='The x-ray photoelectron spectroscopy peaks of the sample.',
+    )
+
+
+class EllipsometryData(SampleProperty):
+    refractive_index = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The refractive index of the sample.',
+        unit='dimensionless',
+    )
+    extinction_coefficient = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The extinction coefficient of the sample.',
+        unit='dimensionless',
+    )
+    wavelength = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The wavelength of the light used for ellipsometry.',
+        unit='nm',
+    )
+
+
+class UvVisData(SampleProperty):
+    reflectance = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The reflectance of the sample.',
+        unit='dimensionless',
+    )
+    transmittance = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The transmittance of the sample.',
+        unit='dimensionless',
+    )
+    wavelength = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The wavelength of the light used for UV-Vis spectroscopy.',
+        unit='nm',
+    )
 
 
 class DTUCombinatorialSample(CombinatorialSample, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Combinatorial Sample',
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                visible=Filter(exclude=['elemental_composition', 'components']),
+                editable=Filter(include=[])
+            ),
+        )
+    )
+    band_gap = SubSection(section_def=BandGap)
+    absorption_coefficient = SubSection(section_def=AbsorptionCoefficient)
+    thickness = SubSection(section_def=Thickness)
+    composition = SubSection(section_def=Composition)
+    surface_composition = SubSection(section_def=Composition)
+    deposition = SubSection(section_def=Deposition)
+    main_phase = SubSection(section_def=CrystalStructure)
+    secondary_phases = SubSection(section_def=CrystalStructure, repeats=True)
+    xrd_data = SubSection(section_def=XrdData)
+    xps_data = SubSection(section_def=XpsData)
+    ellipsometry_data = SubSection(section_def=EllipsometryData)
+    uv_vis_data = SubSection(section_def=UvVisData)
+
+    def normalize(self, archive, logger):
+        composition = {}
+        if self.composition:
+            composition = self.composition.m_to_dict()
+        if len(composition) == 0 and self.surface_composition:
+            composition = self.surface_composition.m_to_dict()
+
+        self.elemental_composition = [
+            ElementalComposition(element=e, atomic_fraction=v) 
+            for e,v in composition.items() if v
+        ]
+        
+        super().normalize(archive, logger)
+
+
+class UniqueXrdPeaks(Entity):
+    peak_positions = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The positions of the unique x-ray diffraction peaks.',
+    )
+    max_q = Quantity(
+        type=np.float64,
+        description='The maximum scattering vector of the pattern.',
+        unit='nm^-1',
+    )
+    min_q = Quantity(
+        type=np.float64,
+        description='The minimum scattering vector of the pattern.',
+        unit='nm^-1',
+    )
+    crystal_structure = SubSection(
+        section_def=CrystalStructure,
+    )
+    sub_sets = SubSection(
+        section_def='UniqueXrdPeaksReference',
+        repeats=True,
+    )
+
+
+class UniqueXrdPeaksReference(EntityReference):
+    reference = Quantity(
+        type=UniqueXrdPeaks,
+        description='A reference to a unique set of x-ray diffraction peaks.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.ReferenceEditQuantity,
+        ),
     )
 
 
