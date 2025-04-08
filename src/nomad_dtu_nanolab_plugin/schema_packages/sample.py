@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from ase.data import chemical_symbols
+from ase.spacegroup import Spacegroup
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
@@ -28,7 +29,12 @@ from nomad.datamodel.metainfo.annotations import (
     SectionProperties,
 )
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
-from nomad.datamodel.metainfo.basesections.v1 import Activity, ElementalComposition
+from nomad.datamodel.metainfo.basesections.v1 import (
+    Activity,
+    ElementalComposition,
+    Entity,
+    EntityReference,
+)
 from nomad.metainfo import Package, Section
 from nomad.metainfo.metainfo import MEnum, Quantity, SubSection
 from nomad_material_processing.combinatorial import (
@@ -170,6 +176,42 @@ class Thickness(SampleProperty):
     )
 
 
+class CrystalStructure(SampleProperty):
+    space_group = Quantity(
+        type=MEnum([Spacegroup(no).symbol for no in range(1, 231)]),
+    )
+    a = Quantity(
+        type=np.float64,
+        description='The lattice parameter a of the crystal structure.',
+        unit='nm',
+    )
+    b = Quantity(
+        type=np.float64,
+        description='The lattice parameter b of the crystal structure.',
+        unit='nm',
+    )
+    c = Quantity(
+        type=np.float64,
+        description='The lattice parameter c of the crystal structure.',
+        unit='nm',
+    )
+    alpha = Quantity(
+        type=np.float64,
+        description='The angle alpha of the crystal structure.',
+        unit='degree',
+    )
+    beta = Quantity(
+        type=np.float64,
+        description='The angle beta of the crystal structure.',
+        unit='degree',
+    )
+    gamma = Quantity(
+        type=np.float64,
+        description='The angle gamma of the crystal structure.',
+        unit='degree',
+    )
+
+
 class XrdData(SampleProperty):
     diffraction_intensity = Quantity(
         type=np.float64,
@@ -187,6 +229,11 @@ class XrdData(SampleProperty):
         section_def=XrdPeak,
         repeats=True,
         description='The x-ray diffraction peaks of the sample.',
+    )
+    unique_peak_sets = SubSection(
+        section_def='UniqueXrdPeaksReference',
+        repeats=True,
+        description='The sets of unique x-ray diffraction peaks of the sample.',
     )
 
 
@@ -269,6 +316,8 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
     composition = SubSection(section_def=Composition)
     surface_composition = SubSection(section_def=Composition)
     deposition = SubSection(section_def=Deposition)
+    main_phase = SubSection(section_def=CrystalStructure)
+    secondary_phases = SubSection(section_def=CrystalStructure, repeats=True)
     xrd_data = SubSection(section_def=XrdData)
     xps_data = SubSection(section_def=XpsData)
     ellipsometry_data = SubSection(section_def=EllipsometryData)
@@ -287,6 +336,41 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
         ]
         
         super().normalize(archive, logger)
+
+
+class UniqueXrdPeaks(Entity):
+    peak_positions = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='The positions of the unique x-ray diffraction peaks.',
+    )
+    max_q = Quantity(
+        type=np.float64,
+        description='The maximum scattering vector of the pattern.',
+        unit='nm^-1',
+    )
+    min_q = Quantity(
+        type=np.float64,
+        description='The minimum scattering vector of the pattern.',
+        unit='nm^-1',
+    )
+    crystal_structure = SubSection(
+        section_def=CrystalStructure,
+    )
+    sub_sets = SubSection(
+        section_def='UniqueXrdPeaksReference',
+        repeats=True,
+    )
+
+
+class UniqueXrdPeaksReference(EntityReference):
+    reference = Quantity(
+        type=UniqueXrdPeaks,
+        description='A reference to a unique set of x-ray diffraction peaks.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.ReferenceEditQuantity,
+        ),
+    )
 
 
 class ProcessParameterOverview(Schema):
