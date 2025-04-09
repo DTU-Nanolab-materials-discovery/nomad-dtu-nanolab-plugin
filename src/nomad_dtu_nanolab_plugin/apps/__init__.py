@@ -1,6 +1,7 @@
 from nomad.config.models.plugins import AppEntryPoint
 from nomad.config.models.ui import (
     App,
+    Axis,
     Column,
     Filters,
     Format,
@@ -422,8 +423,11 @@ edx = AppEntryPoint(
                 ),
                 MenuItemHistogram(
                     title='Average layer thickness',
-                    x=f'data.avg_layer_thickness#{edx_schema}',
-                    unit='nm',
+                    x=Axis(
+                        search_quantity=f'data.avg_layer_thickness#{edx_schema}',
+                        scale='linear',
+                        unit='nm',
+                    ),
                 ),
                 MenuItemTerms(
                     search_quantity='authors.name',
