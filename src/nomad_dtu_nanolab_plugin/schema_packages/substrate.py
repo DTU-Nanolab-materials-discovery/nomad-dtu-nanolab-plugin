@@ -229,7 +229,7 @@ class DTUSubstrateBatch(Collection, Schema):
     def next_not_used_in(self, entry_type: type[Schema]) -> DTUSubstrate:
         return self.next_used_in(entry_type, negate=True)
 
-    def generate_geometry(self) -> object:
+    def generate_geometry(self) -> Geometry:
         """
         Generate the geometry of the substrate based on its shape.
 
