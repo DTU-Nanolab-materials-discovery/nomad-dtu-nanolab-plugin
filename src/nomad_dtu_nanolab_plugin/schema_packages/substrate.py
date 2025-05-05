@@ -143,7 +143,6 @@ class DTUSubstrateBatch(Collection, Schema):
         ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
-            props=dict(suggestions=['Rectangular', 'Circular']),
         ),
         default='Rectangular',
     )
