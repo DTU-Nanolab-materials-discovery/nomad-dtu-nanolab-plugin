@@ -142,7 +142,7 @@ class DTUSubstrateBatch(Collection, Schema):
             'width are used to define the size of the substrate.'
         ),
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.EnumEditQuantity,
+            component=ELNComponentEnum.RadioEnumEditQuantity,
         ),
         default='Rectangular',
     )
