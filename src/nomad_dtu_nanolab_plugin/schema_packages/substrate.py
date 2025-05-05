@@ -37,6 +37,7 @@ from nomad_material_processing.general import (
     Dopant,
     ElectronicProperties,
     RectangleCuboid,
+    Geometry,
 )
 from nomad_material_processing.utils import create_archive
 from structlog.stdlib import BoundLogger
