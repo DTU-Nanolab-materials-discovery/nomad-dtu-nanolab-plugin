@@ -134,7 +134,7 @@ class DTUSubstrateBatch(Collection, Schema):
         a_eln={'component': 'StringEditQuantity'},
     )
     shape = Quantity(
-        type=str,
+        type=MEnum(['Rectangular', 'Circular']),
         description=(
             'The shape of the substrate. Circular (wafer) or rectangular. '
             'If the shape is circular, the diameter is used to define the size '
