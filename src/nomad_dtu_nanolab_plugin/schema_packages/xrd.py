@@ -75,6 +75,13 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             component=ELNComponentEnum.FileEditQuantity,
         ),
     )
+    location = Quantity(
+        type=str,
+        default='DTU; IDOL Lab',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.TextEditQuantity,
+        ),
+    )
     results = SubSection(
         section_def=XRDMappingResult,
         description='The XRD results.',
@@ -122,6 +129,50 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
                 figure=plot_json,
             )
         )
+
+        fig2 = go.Figure()
+        offset_step = 0.5
+        result: XRDMappingResult
+        for i, result in enumerate(self.results):
+            fig.add_trace(
+                go.Scatter(
+                    x=result.two_theta.to('deg').magnitude,
+                    y=result.intensity.magnitude+i * offset_step,
+                    mode='lines',
+                    name=result.name,
+                    hoverlabel=dict(namelength=-1),
+                )
+            )
+
+        # Update layout
+        fig2.update_layout(
+            title='XRD Patterns stacked',
+            xaxis_title='2<i>θ</i> / °',
+            yaxis_title='Intensity',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                type='log',
+            ),
+        )
+
+        plot_json2 = fig2.to_plotly_json()
+        plot_json2['config'] = dict(
+            scrollZoom=False,
+        )
+        self.figures.append(
+            PlotlyFigure(
+                label='Patterns',
+                figure=plot_json2,
+            )
+        )
+
+
 
     def write_xrd_data(
         self,
