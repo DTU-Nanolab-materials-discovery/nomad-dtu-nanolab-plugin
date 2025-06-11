@@ -17,6 +17,7 @@
 #
 
 import json
+from datetime import datetime
 from typing import TYPE_CHECKING, Self
 
 import numpy as np
@@ -2763,6 +2764,23 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                         )
                         return
 
+
+    def correct_platen_angle(
+            self, archive: 'EntryArchive', logger: 'BoundLogger'
+            ) -> None:
+        """ Method to correct the platen angle if the datetime is after 2025-05-08.
+        This is a temporary fix to correct the angle of the platen after the
+        8th of May 2025, where the angles are shifted by 120 degrees relative
+        to the old angle.
+        """
+        if self.datetime is not None and self.datetime >= datetime(2025, 5, 8):
+            if self.instrument[0].platen_rotation is not None:
+                new_angle = (
+                    (self.instrument[0].platen_rotation - 120 * ureg('degree'))
+                    % (360 * ureg('degree'))
+                )
+                self.instrument[0].platen_rotation = new_angle.to('degree')
+
     def parse_log_file(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         Method for parsing the log file and writing the data to the respective sections.
@@ -2790,6 +2808,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             steps = self.generate_step_log_data(step_params, archive, logger)
             sputtering.steps.extend(steps)
 
+
         # Merging the sputtering object with self
         if self.overwrite:
             merge_sections(sputtering, self, logger)
@@ -2805,6 +2824,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             for gas_flow in step.environment.gas_flow:
                 gas_flow.normalize(archive, logger)
                 gas_flow.gas.normalize(archive, logger)
+
+        # correct the angle of the platen if necessary (after the 8th of may 2025,
+        # the angle are all shited by 120 degrees relative to the old angle)
+        self.correct_platen_angle(archive, logger)
 
         # Triggering the plotting of multiple plots
         self.figures = []
