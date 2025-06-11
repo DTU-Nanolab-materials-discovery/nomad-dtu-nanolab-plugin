@@ -1,6 +1,6 @@
 data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DTUSputtering
-  log_file: mittma_0015_Cu_Recording Set 2024.08.02-10.52.28.CSV
+  log_file: anait_0030_Ba-Zr_RecordingSet 2025.06.06-10.35.09.CSV
   substrates:
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.sputtering.DtuSubstrateMounting
       relative_position: 'TEST'
