@@ -2,33 +2,26 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
-from nomad.datamodel.metainfo.basesections import (
-    Collection,
-    CompositeSystemReference,
-    Process,
-    ProcessStep,
-    PubChemPureSubstanceSection,
-    PureSubstanceComponent,
-    ReadableIdentifiers,
-)
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.basesections import (Collection,
+                                                   CompositeSystemReference,
+                                                   Process, ProcessStep,
+                                                   PubChemPureSubstanceSection,
+                                                   PureSubstanceComponent,
+                                                   ReadableIdentifiers)
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
-from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
-from nomad_material_processing.general import (
-    CrystallineSubstrate,
-    Dopant,
-    ElectronicProperties,
-    Geometry,
-    RectangleCuboid,
-)
+from nomad.metainfo import (MEnum, MProxy, Package, Quantity, Section,
+                            SubSection)
+from nomad_material_processing.general import (CrystallineSubstrate, Dopant,
+                                               ElectronicProperties, Geometry,
+                                               RectangleCuboid)
 from nomad_material_processing.utils import create_archive
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
-    DTUCombinatorialLibrary,
-    DtuLibraryReference,
-)
+    DTUCombinatorialLibrary, DtuLibraryReference)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -556,18 +549,19 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     piece.library_name = (
                         f'{self.combinatorial_Library.name}_S{number}-{total_nr}'
                     )
+                    piece.name = f'Square {number} of {total_nr}'
+                    piece.lab_id = piece.library_name.replace(' ', '_')
                     piece.upper_left_x = start_x + i * size
                     piece.upper_left_y = start_y - (j) * size
                     piece.lower_right_x = start_x + (i + 1) * size
                     piece.lower_right_y = start_y - (j + 1) * size
                     piece.part_size = (size, size)
-                    piece.geometry = Geometry(
-                        geometry=RectangleCuboid(
+                    piece.geometry = RectangleCuboid(
                             length=size,
                             width=size,
                             height=heig,
                         )
-                    )
+
                     self.new_pieces.append(piece)
         elif self.pattern == 'horizontal stripes':
             size = self.library_size[1] / self.number_of_pieces
@@ -578,6 +572,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 piece.library_name = (
                     f'{self.combinatorial_Library.name}_H{number}-{self.number_of_pieces}'
                 )
+                piece.name = f'Horizontal stripe {number} of {self.number_of_pieces}'
+                piece.lab_id = piece.library_name.replace(' ', '_')
                 piece.upper_left_x = start_x
                 piece.upper_left_y = start_y - i * size
                 piece.lower_right_x = start_x + self.library_size[0]
@@ -600,6 +596,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 piece.library_name = (
                     f'{self.combinatorial_Library.name}_V{number}-{self.number_of_pieces}'
                 )
+                piece.name = f'Vertical stripe {number} of {self.number_of_pieces}'
+                piece.lab_id = piece.library_name.replace(' ', '_')
                 piece.upper_left_x = start_x + i * size
                 piece.upper_left_y = start_y
                 piece.lower_right_x = start_x + (i + 1) * size
@@ -614,31 +612,38 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 )
                 self.new_pieces.append(piece)
         elif self.pattern == 'custom':
+            self.handle_custom_pattern()
 
-            for i in range(self.number_of_pieces):
-                piece = DTULibraryParts()
-                piece.library_name = (
-                    f'{self.combinatorial_Library.name}_C{i+1}-{self.number_of_pieces}'
-                )
-                piece.part_size = None  # Will be set later
-                self.new_pieces.append(piece)
-        else:
-            logger.error(f'Unknown pattern {self.pattern}.')
+    def handle_custom_pattern(self) -> None:
+        """
+        Handles the filling of custom pattern for the library pieces.
+        """
+        for i in range(self.number_of_pieces):
+            piece = DTULibraryParts()
+            piece.library_name = (
+                f'{self.combinatorial_Library.name}_C{i+1}-{self.number_of_pieces}'
+            )
+            piece.name = f'Custom piece {i+1} of {self.number_of_pieces}'
+            piece.lab_id = piece.library_name.replace(' ', '_')
+            piece.part_size = None  # Will be set later
+            self.new_pieces.append(piece)
+
 
     def plot(self) -> None:
         """
         Plots the positions of the new pieces in the library.
         """
+
         import plotly.graph_objects as go
         if self.new_pieces is None or len(self.new_pieces) == 0:
             return
         fig = go.Figure()
         #add the original library to the plot
         if self.combinatorial_Library is not None:
-            x0 = self.library_size[0] / 2 * (-1)
-            y0 = self.library_size[1] / 2
-            x1 = self.library_size[0] / 2
-            y1 = -self.library_size[1] / 2
+            x0 = self.library_size[0].to('mm').magnitude / 2 * (-1)
+            y0 = self.library_size[1].to('mm').magnitude / 2
+            x1 = self.library_size[0].to('mm').magnitude / 2
+            y1 = -self.library_size[1].to('mm').magnitude / 2
             fig.add_shape(
                 type='rect',
                 x0=x0,
@@ -646,7 +651,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 x1=x1,
                 y1=y1,
                 line=dict(color='red', width = 3),
-                fillcolor='white ',
+                fillcolor='white',
                 opacity=0.5,
             )
             fig.add_annotation(
@@ -656,7 +661,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 showarrow=False,
             )
 
-        #add the new pieces
         if self.pattern != 'custom':
             for piece in self.new_pieces:
                 if piece.part_size is None:
@@ -664,19 +668,37 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
                 fig.add_shape(
                     type='rect',
-                    x0=piece.upper_left_x+(0.01*piece.part_size[0]),
-                    y0=piece.upper_left_y-(0.01*piece.part_size[1]),
-                    x1=piece.lower_right_x-(0.01*piece.part_size[0]),
-                    y1=piece.lower_right_y+(0.01*piece.part_size[1]),
+                    x0=(
+                        piece.upper_left_x.to('mm').magnitude+
+                        (0.01*piece.part_size[0].to('mm').magnitude)
+                    ),
+                    y0=(
+                        piece.upper_left_y.to('mm').magnitude-
+                        (0.01*piece.part_size[1].to('mm').magnitude)
+                    ),
+                    x1=(
+                        piece.lower_right_x.to('mm').magnitude-
+                        (0.01*piece.part_size[0].to('mm').magnitude)
+                    ),
+                    y1=(
+                        piece.lower_right_y.to('mm').magnitude+
+                        (0.01*piece.part_size[1].to('mm').magnitude)
+                    ),
                     name=piece.library_name,
                     line=dict(color='green'),
                     fillcolor='lightgreen',
                     opacity=0.4,
                 )
                 fig.add_annotation(
-                    x=(piece.upper_left_x + piece.lower_right_x) / 2,
-                    y=(piece.upper_left_y + piece.lower_right_y) / 2,
-                    text=piece.new_name,
+                    x=(
+                        (piece.upper_left_x.to('mm').magnitude +
+                         piece.lower_right_x.to('mm').magnitude) / 2
+                    ),
+                    y=(
+                        (piece.upper_left_y.to('mm').magnitude +
+                          piece.lower_right_y.to('mm').magnitude) / 2
+                    ),
+                    text=piece.library_name,
                     showarrow=False,
                 )
         fig.update_layout(
@@ -686,10 +708,16 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             width=800,
             height=700,
             xaxis=dict(
-                range=[-self.library_size[0]*1.1/2, self.library_size[0]*1.1/2],
+                range=[
+                    -self.library_size[0].to('mm').magnitude*1.1/2,
+                    self.library_size[0].to('mm').magnitude*1.1/2,
+                    ],
             ),
             yaxis=dict(
-                range=[-self.library_size[1]*1.1/2, self.library_size[1]*1.1/2],
+                range=[
+                    -self.library_size[1].to('mm').magnitude*1.1/2,
+                    self.library_size[1].to('mm').magnitude*1.1/2,
+                ],
             ),
         )
 
@@ -704,140 +732,39 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 figure=plot_json,
             )
         )
-    def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-            pieces = []
-            for idx, piece in enumerate(self.new_pieces):
-                if piece.part_size is None:
-                    continue
 
-        if self.pattern == 'squares':
-            total_nr = self.number_of_pieces ** 2
-            size = self.library_size[0] / self.number_of_pieces
-            for j in range(self.number_of_pieces):
-                for 1 in range(self.number_of_pieces):
-                    piece = DTULibraryParts()
-                    number = 1+j * self.number_of_pieces + i
-                    piece.library_name = (
-                        f'{self.combinatorial_Library.name}_S{number}-{total_nr}'
+    def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        origin= self.combinatorial_Library
+        children = []
+
+        if self.pattern != 'custom':
+            for piece in self.new_pieces:
+                if piece.part_size is not None:
+                    library = DTUCombinatorialLibrary(
+                        name=piece.library_name.replace(' ', '-'),
+                        datetime=self.datetime,
+                        lab_id=piece.library_name,
+                        geometry=piece.geometry,
+                        description=f'Part of {origin.name} library',
+                        process_parameter_overview=origin.process_parameter_overview,
+                        elemental_composition=origin.elemental_composition,
+                        components=origin.components,
+                        layers=origin.layers,
+                        substrate=origin.substrate,
                     )
-                    piece.upper_left_x = start_x + i * size
-                    piece.upper_left_y = start_y - (j) * size
-                    piece.lower_right_x = start_x + (i + 1) * size
-                    piece.lower_right_y = start_y - (j + 1) * size
-                    piece.part_size = (size, size)
-                    piece.geometry = Geometry(
-                        geometry=RectangleCuboid(
-                            length=size,
-                            width=size,
-                            height=heig,
+
+                    library.normalize(archive, logger)
+                    file_name = f'{library.lab_id}.archive.json'
+                    child_archive = create_archive(library, archive, file_name)
+
+                    children.append(
+                        CompositeSystemReference(
+                        reference=child_archive,
+                        name=library.name,
+                        lab_id=library.lab_id,
                         )
                     )
-                    self.new_pieces.append(piece)
-        elif self.pattern == 'horizontal stripes':
-            size = self.library_size[1] / self.number_of_pieces
-
-            for i in range(self.number_of_pieces):
-                piece = DTULibraryParts()
-                number = i + 1
-                piece.library_name = (
-                    f'{self.combinatorial_Library.name}_H{number}-{self.number_of_pieces}'
-                )
-                piece.upper_left_x = start_x
-                piece.upper_left_y = start_y - i * size
-                piece.lower_right_x = start_x + self.library_size[0]
-                piece.lower_right_y = start_y - (i + 1) * size
-                piece.part_size = (self.library_size[0], size)
-                piece.geometry = Geometry(
-                    geometry=RectangleCuboid(
-                        length=self.library_size[0],
-                        width=size,
-                        height=heig,
-                    )
-                )
-                self.new_pieces.append(piece)
-        elif self.pattern == 'vertical stripes':
-            size = self.library_size[0] / self.number_of_pieces
-
-            for i in range(self.number_of_pieces):
-                piece = DTULibraryParts()
-                number = i + 1
-                piece.library_name = (
-                    f'{self.combinatorial_Library.name}_V{number}-{self.number_of_pieces}'
-                )
-                piece.upper_left_x = start_x + i * size
-                piece.upper_left_y = start_y
-                piece.lower_right_x = start_x + (i + 1) * size
-                piece.lower_right_y = start_y - self.library_size[1]
-                piece.part_size = (size, self.library_size[1])
-                piece.geometry = Geometry(
-                    geometry=RectangleCuboid(
-                        length=size,
-                        width=self.library_size[1],
-                        height=heig,
-                    )
-                )
-                self.new_pieces.append(piece)
-        elif self.pattern == 'custom':
-
-            for i in range(self.number_of_pieces):
-                piece = DTULibraryParts()
-                piece.library_name = (
-                    f'{self.combinatorial_Library.name}_C{i+1}-{self.number_of_pieces}'
-                )
-                piece.part_size = None  # Will be set later
-                self.new_pieces.append(piece)
-        else:
-            logger.error(f'Unknown pattern {self.pattern}.')
-
-
-        #add the new pieces
-        if self.pattern != 'custom':
-            for piece in self.new_pieces:
-                if piece.part_size is None:
-                    continue
-
-                fig.add_shape(
-                    type='rect',
-                    x0=piece.upper_left_x+(0.01*piece.part_size[0]),
-                    y0=piece.upper_left_y-(0.01*piece.part_size[1]),
-                    x1=piece.lower_right_x-(0.01*piece.part_size[0]),
-                    y1=piece.lower_right_y+(0.01*piece.part_size[1]),
-                    name=piece.library_name,
-                    line=dict(color='green'),
-                    fillcolor='lightgreen',
-                    opacity=0.4,
-                )
-                fig.add_annotation(
-                    x=(piece.upper_left_x + piece.lower_right_x) / 2,
-                    y=(piece.upper_left_y + piece.lower_right_y) / 2,
-                    text=piece.new_name,
-                    showarrow=False,
-                )
-        fig.update_layout(
-            title='Positions of the new pieces in the library',
-            xaxis_title='X (mm)',
-            yaxis_title='Y (mm)',
-            width=800,
-            height=700,
-            xaxis=dict(
-                range=[-self.library_size[0]*1.1/2, self.library_size[0]*1.1/2],
-            ),
-            yaxis=dict(
-                range=[-self.library_size[1]*1.1/2, self.library_size[1]*1.1/2],
-            ),
-        )
-
-        plot_json = fig.to_plotly_json()
-        plot_json['config'] = dict(
-            scrollZoom=False,
-        )
-
-        self.figures.append(
-            PlotlyFigure(
-                label='Positions of the new pieces in the library',
-                figure=plot_json,
-            )
-        )
+            self.child_libraries = children
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -848,6 +775,11 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+
+        if self.combinatorial_Library is not None and self.library_size is None:
+            self.library_size = self.combinatorial_Library.geometry.length, \
+                self.combinatorial_Library.geometry.width
+
         if self.create_from_pattern:
             if self.number_of_pieces is None or self.number_of_pieces <=1:
                 logger.error(
@@ -867,6 +799,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 self.create_from_pattern = False
 
         if self.new_pieces is not None and len(self.new_pieces) > 0:
+            self.figures = []
+            self.plot()
             if self.create_child_libraries:
                 origin= self.combinatorial_Library
                 if origin is None:
@@ -875,32 +809,12 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     )
                     return
                 else :
-                    for piece in self.new_pieces:
-                        library = DTUCombinatorialLibrary(
-                            name=piece.library_name,
-                            datetime=self.datetime,
-                            lab_id=piece.library_name,
-                            geometry=piece.geometry,
-                            description=f'Part of {origin.name} library',
-                            process_parameter_overview=origin.process_parameter_overview,
-                            elemental_composition=origin.elemental_composition,
-                            components=origin.components,
-                            layers=origin.layers,
-                            substrate=origin.substrate,
-                        )
-
-                        library.normalize(archive, logger)
-                        file_name = f'{library.lab_id}.archive.json'
-                        substrate_archive = create_archive(library, archive, file_name)
-
-                        self.child_libraries.append(
-                            CompositeSystemReference(
-                            reference=substrate_archive,
-                            name=library.name,
-                            lab_id=library.lab_id,
-                            )
-                        )
+                    self.add_libraries(archive, logger)
+                    self.create_child_libraries = False
 
 
 
         return super().normalize(archive, logger)
+
+
+m_package.__init_metainfo__()
