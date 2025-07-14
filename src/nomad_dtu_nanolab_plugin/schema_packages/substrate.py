@@ -13,9 +13,9 @@ from nomad.datamodel.metainfo.basesections import (Collection,
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import (MEnum, MProxy, Package, Quantity, Section,
                             SubSection)
-from nomad_material_processing.general import (CrystallineSubstrate, Dopant,
-                                               ElectronicProperties, Geometry,
-                                               RectangleCuboid)
+from nomad_material_processing.general import (CrystallineSubstrate, Cylinder,
+                                               Dopant, ElectronicProperties,
+                                               Geometry, RectangleCuboid)
 from nomad_material_processing.utils import create_archive
 from structlog.stdlib import BoundLogger
 
@@ -395,14 +395,10 @@ class DTUSubstrateCutting(Process, Schema):
         return super().normalize(archive, logger)
 
 
-m_package.__init_metainfo__()
-
 class DTULibraryParts(Collection, Schema):
     """
     Schema for parts of a DTU combinatorial library.
     """
-
-    m_def = Section(    )
 
     library_name = Quantity(
         type=str,
@@ -447,10 +443,11 @@ class DTULibraryParts(Collection, Schema):
         unit='m',
     )
     part_size = Quantity(
-        type = tuple[np.float64, np.float64],
+        type = np.float64,
+        shape=[2],
         description='The size of the library in the x and y direction.',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.TupleEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm'
             ),
         unit='m',
@@ -460,7 +457,6 @@ class DTULibraryParts(Collection, Schema):
         description='The geometries of the samples in the library.',
     )
 
-     #add a section that creates a new DTUCombinatorialLibrary from these information
 
 
 class DTULibraryCleaving(Process, Schema, PlotSection):
@@ -478,10 +474,11 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
     )
     library_size = Quantity(
-        type = tuple[np.float64, np.float64],
+        type =  np.float64,
+        shape=[2],
         description='The size of the library in the x and y direction.',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.TupleEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm'
             ),
         unit='m',
@@ -765,6 +762,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                         )
                     )
             self.child_libraries = children
+
+
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
