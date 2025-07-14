@@ -2,34 +2,26 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
-from nomad.datamodel.metainfo.basesections import (
-    Collection,
-    CompositeSystemReference,
-    Process,
-    ProcessStep,
-    PubChemPureSubstanceSection,
-    PureSubstanceComponent,
-    ReadableIdentifiers,
-)
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.basesections import (Collection,
+                                                   CompositeSystemReference,
+                                                   Process, ProcessStep,
+                                                   PubChemPureSubstanceSection,
+                                                   PureSubstanceComponent,
+                                                   ReadableIdentifiers)
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
-from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
-from nomad_material_processing.general import (
-    CrystallineSubstrate,
-    Cylinder,
-    Dopant,
-    ElectronicProperties,
-    Geometry,
-    RectangleCuboid,
-)
+from nomad.metainfo import (MEnum, MProxy, Package, Quantity, Section,
+                            SubSection)
+from nomad_material_processing.general import (CrystallineSubstrate, Cylinder,
+                                               Dopant, ElectronicProperties,
+                                               Geometry, RectangleCuboid)
 from nomad_material_processing.utils import create_archive
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
-    DTUCombinatorialLibrary,
-    DtuLibraryReference,
-)
+    DTUCombinatorialLibrary, DtuLibraryReference)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -533,7 +525,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         repeats=True,
     )
     child_libraries = SubSection(
-        section_def=DtuLibraryReference,
+        section_def=DTUCombinatorialLibrary,
         repeats=True,
         description='The child libraries created from the combinatorial library.',
     )
@@ -704,6 +696,48 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 figure=plot_json,
             )
         )
+    def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+            pieces = []
+            for idx, piece in enumerate(self.new_pieces):
+                if piece.part_size is None:
+                    continue
+
+                new_lib = DTUCombinatorialLibrary()
+                new_comment = (
+                    f"Piece {idx} of the combinatorial library "
+                    f"{self.combinatorial_Library.name}. This piece is located from "
+                    f"({piece.upper_left_x}, {piece.upper_left_y}) to "
+                    f"({piece.lower_right_x}, {piece.lower_right_y}) "
+                    f" on the old library. "
+                    f"Overall it is {piece.part_size[0]} mm wide and"
+                    f" {piece.part_size[1]} mm high."
+                )
+                old_lib = self.combinatorial_Library
+
+                new_lib.name = piece.library_name
+                new_lib.datetime = old_lib.datetime
+                new_lib.lab_id = f'{old_lib.lab_id}-{idx}'
+                new_lib.deposition_parameters = old_lib.deposition_parameters
+                new_lib.elemental_compositions = old_lib.elemental_compositions
+                new_lib.composition = old_lib.composition
+                new_lib.layers = old_lib.layers
+                new_lib.figures = old_lib.figures
+                new_lib.substrate = old_lib.substrate
+                new_lib.description = new_comment
+                new_lib.process_parameter_overview = old_lib.process_parameter_overview
+
+                library_ref = create_archive(
+                    new_lib, archive, f'{new_lib.lab_id}.archive.json'
+                )
+
+                pieces.append(
+                    CompositeSystemReference(
+                        name=f'Sample {new_lib.lab_id}',
+                        reference=library_ref,
+                        lab_id=new_lib.lab_id,
+                    )
+                )
+            self.child_libraries = pieces
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
