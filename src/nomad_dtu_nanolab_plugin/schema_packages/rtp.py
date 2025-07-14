@@ -6,6 +6,7 @@ from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
 )
+
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section
 from nomad_material_processing.vapor_deposition.cvd.general import (
@@ -208,7 +209,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         type=np.float64,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='minute'
+            defaultDisplayUnit='minute',
             label= 'Duration',
         ),
         unit='s',
