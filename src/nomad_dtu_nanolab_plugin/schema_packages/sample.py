@@ -331,10 +331,10 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
             composition = self.surface_composition.m_to_dict()
 
         self.elemental_composition = [
-            ElementalComposition(element=e, atomic_fraction=v) 
+            ElementalComposition(element=e, atomic_fraction=v)
             for e,v in composition.items() if v
         ]
-        
+
         super().normalize(archive, logger)
 
 
@@ -430,6 +430,16 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Combinatorial Library',
+    )
+
+    library_size = Quantity(
+        type = tuple[np.float64, np.float64],
+        description='The size of the library in the x and y direction.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.TupleEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
     )
 
     process_parameter_overview = Quantity(
