@@ -41,6 +41,9 @@ from nomad_material_processing.utils import create_archive
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.sample import (
+    DTUCombinatorialLibrary,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -373,3 +376,153 @@ class DTUSubstrateCutting(Process, Schema):
 
 
 m_package.__init_metainfo__()
+
+class DTULibraryParts(Collection, Schema):
+    """
+    Schema for parts of a DTU combinatorial library.
+    """
+
+    m_def = Section(    )
+
+    library_name = Quantity(
+        type=str,
+        description='The name of the library.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
+    )
+    upper_left_x = Quantity(
+        type=np.float64,
+        description='The x-coordinate of the upper left corner of the library.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
+    )
+
+    upper_left_y = Quantity(
+        type=np.float64,
+        description='The y-coordinate of the upper left corner of the library.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
+    )
+    lower_right_x = Quantity(
+        type=np.float64,
+        description='The x-coordinate of the lower right corner of the library.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
+    )
+    lower_right_y = Quantity(
+        type=np.float64,
+        description='The y-coordinate of the lower right corner of the library.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
+    )
+    part_size = Quantity(
+        type = tuple[np.float64, np.float64],
+        description='The size of the library in the x and y direction.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.TupleEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
+    )
+
+     #add a section that creates a new DTUCombinatorialLibrary from these information
+
+
+class DTULibraryCleaving(Process, Schema):
+    """
+    Schema for substrate cleaning at the DTU Nanolab.
+    """
+
+    m_def = Section(
+        categories=[DTUNanolabCategory],
+        label='Substrate Cleaning',
+    )
+    combinatorial_Library = Quantity(
+        type=DTUCombinatorialLibrary,
+        description='The combinatorial sample that is broken into pieces .',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
+    )
+    library_size = Quantity(
+        type = tuple[np.float64, np.float64],
+        description='The size of the library in the x and y direction.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.TupleEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
+    )
+    new_pieces = SubSection(
+        section_def= DTULibraryParts,
+        repeats=True,
+    )
+    child_libraries = SubSection(
+        section_def=DTUCombinatorialLibrary,
+        repeats=True,
+        description='The child libraries created from the combinatorial library.',
+    )
+
+    def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+            pieces = []
+            for idx, piece in enumerate(self.new_pieces):
+                if piece.part_size is None:
+                    continue
+
+                new_lib = DTUCombinatorialLibrary()
+                new_comment = (
+                    f"Piece {idx} of the combinatorial library "
+                    f"{self.combinatorial_Library.name}. This piece is located from "
+                    f"({piece.upper_left_x}, {piece.upper_left_y}) to "
+                    f"({piece.lower_right_x}, {piece.lower_right_y}) "
+                    f" on the old library. "
+                    f"Overall it is {piece.part_size[0]} mm wide and"
+                    f" {piece.part_size[1]} mm high."
+                )
+                old_lib = self.combinatorial_Library
+
+                new_lib.name = piece.library_name
+                new_lib.datetime = old_lib.datetime
+                new_lib.lab_id = f'{old_lib.lab_id}-{idx}'
+                new_lib.deposition_parameters = old_lib.deposition_parameters
+                new_lib.elemental_compositions = old_lib.elemental_compositions
+                new_lib.composition = old_lib.composition
+                new_lib.layers = old_lib.layers
+                new_lib.figures = old_lib.figures
+                new_lib.substrate = old_lib.substrate
+                new_lib.description = new_comment
+                new_lib.process_parameter_overview = old_lib.process_parameter_overview
+
+                library_ref = create_archive(
+                    new_lib, archive, f'{new_lib.lab_id}.archive.json'
+                )
+
+                pieces.append(
+                    CompositeSystemReference(
+                        name=f'Sample {new_lib.lab_id}',
+                        reference=library_ref,
+                        lab_id=new_lib.lab_id,
+                    )
+                )
+            self.child_libraries = pieces
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `DTUSubstrateCleaning` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+
+        return super().normalize(archive, logger)
