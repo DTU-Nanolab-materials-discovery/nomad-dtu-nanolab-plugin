@@ -442,7 +442,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             df_data['Layer 1 Thickness (nm)'].mean(), 'nm'
         )
         avg_density = ureg.Quantity(
-            df_data['Layer 1 Density (g/cm^3)'].mean(), 'g/(cm**3)'
+            df_data['Layer 1 Density (g/cm³)'].mean(), 'g/(cm**3)'
         )
 
         pattern = r'Layer 1 [A-Z][a-z]? Atomic %'
@@ -464,7 +464,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                 y_absolute=ureg.Quantity(row['Y (mm)'], 'mm'),
                 layer_thickness=ureg.Quantity(row['Layer 1 Thickness (nm)'], 'nm'),
                 assumed_material_density=ureg.Quantity(
-                    row['Layer 1 Density (g/cm^3)'], 'g/(cm**3)'
+                    row['Layer 1 Density (g/cm³)'], 'g/(cm**3)'
                 ),
                 quantifications=quantifications,
             )
