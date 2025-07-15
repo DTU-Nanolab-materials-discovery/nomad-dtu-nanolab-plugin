@@ -29,9 +29,6 @@ from nomad_dtu_nanolab_plugin.schema_packages.sample import (
     DTUCombinatorialLibrary,
 )
 
-
-
-
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger

@@ -7,11 +7,9 @@ import pandas as pd
 import plotly.graph_objects as go
 from ase.data import chemical_symbols
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import (
-    BrowserAnnotation,
-    ELNAnnotation,
-    ELNComponentEnum,
-)
+from nomad.datamodel.metainfo.annotations import (BrowserAnnotation,
+                                                  ELNAnnotation,
+                                                  ELNComponentEnum)
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
@@ -20,10 +18,7 @@ from scipy.interpolate import griddata
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    MappingMeasurement,
-    MappingResult,
-    RectangularSampleAlignment,
-)
+    MappingMeasurement, MappingResult, RectangularSampleAlignment)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -473,6 +468,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         edx = EDXMeasurement(
             results=results,
             avg_layer_thickness=avg_layer_thickness,
+            avg_density=avg_density,
             sample_alignment=sample_alignment,
         )
         merge_sections(self, edx, logger)
