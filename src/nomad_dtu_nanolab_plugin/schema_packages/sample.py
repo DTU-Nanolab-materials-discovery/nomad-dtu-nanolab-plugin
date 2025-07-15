@@ -41,7 +41,7 @@ from nomad_material_processing.combinatorial import (
     CombinatorialLibrary,
     CombinatorialSample,
 )
-from nomad_material_processing.general import ThinFilmStack
+from nomad_material_processing.general import ThinFilmStack, Geometry
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
@@ -432,19 +432,14 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         label='Combinatorial Library',
     )
 
-    library_size = Quantity(
-        type = tuple[np.float64, np.float64],
-        description='The size of the library in the x and y direction.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.TupleEditQuantity,
-            defaultDisplayUnit='mm'
-            ),
-        unit='m',
-    )
-
     process_parameter_overview = Quantity(
         type=ProcessParameterOverview,
         description='An overview of the process parameters used to create the library.',
+    )
+
+    geometry = SubSection(
+        section_def=Geometry,
+        description='The geometries of the samples in the library.',
     )
 
     def get_references(self, entry_type: type[Schema] = None) -> list:
@@ -479,6 +474,13 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         if len(results) > 1:
             print('Warning: More than one sputtering reference found.')
         return results[0] if results else None
+
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+
+        # Ensure that the geometry is set to the default if not provided
+        if not self.geometry:
+            self.geometry = self.substrate
 
 
 class DtuLibraryReference(CompositeSystemReference):
