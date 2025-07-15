@@ -41,7 +41,7 @@ from nomad_material_processing.combinatorial import (
     CombinatorialLibrary,
     CombinatorialSample,
 )
-from nomad_material_processing.general import ThinFilmStack, Geometry
+from nomad_material_processing.general import Geometry, ThinFilmStack
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
