@@ -38,6 +38,19 @@ rtp = RTPEntryPoint(
 )
 
 
+class ThermalEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.thermal import m_package
+
+        return m_package
+
+
+thermal = ThermalEntryPoint(
+    name='Thermal',
+    description='Schema package defined for thermal evaporation.',
+)
+
+
 class GasEntryPoint(SchemaPackageEntryPoint):
     def load(self):
         from nomad_dtu_nanolab_plugin.schema_packages.gas import m_package
