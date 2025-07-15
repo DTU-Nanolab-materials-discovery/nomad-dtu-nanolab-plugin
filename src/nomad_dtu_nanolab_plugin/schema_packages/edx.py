@@ -488,6 +488,10 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+
+        if self.location is None:
+            self.location = 'DTU Nanolab EDX Measurement'
+
         if self.edx_data_file is not None:
             self.add_sample_reference(self.edx_data_file, 'EDX', archive, logger)
             with archive.m_context.raw_file(self.edx_data_file, 'rb') as edx:
