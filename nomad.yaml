@@ -1,11 +1,18 @@
 plugins:
   include:
     - "nomad_dtu_nanolab_plugin.schema_packages:sputtering"
+    - "nomad_dtu_nanolab_plugin.schema_packages:rtp"
+    - "nomad_dtu_nanolab_plugin.schema_packages:thermal"
     - "nomad_dtu_nanolab_plugin.schema_packages:gas"
     - "nomad_dtu_nanolab_plugin.schema_packages:instrument"
     - "nomad_dtu_nanolab_plugin.schema_packages:target"
     - "nomad_dtu_nanolab_plugin.schema_packages:substrate"
     - "nomad_dtu_nanolab_plugin.schema_packages:edx"
     - "nomad_dtu_nanolab_plugin.schema_packages:xrd"
+    - "nomad_dtu_nanolab_plugin.schema_packages:ellipsometry"
+    - "nomad_dtu_nanolab_plugin.schema_packages:xps"
+    - "nomad_dtu_nanolab_plugin.schema_packages:PL"
+    - "nomad_dtu_nanolab_plugin.schema_packages:substrate"
     - "nomad_dtu_nanolab_plugin.schema_packages:sample"
+    - "nomad_dtu_nanolab_plugin.schema_packages:analysis"
     - "nomad_dtu_nanolab_plugin.schema_packages:basesections"
