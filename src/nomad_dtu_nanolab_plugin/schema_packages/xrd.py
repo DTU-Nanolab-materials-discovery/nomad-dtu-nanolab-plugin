@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU XRD measurement schema')
 
 
-class XRDMappingResult(MappingResult, XRDResult1D, PlotSection):
+class XRDMappingResult(MappingResult, XRDResult1D): #, PlotSection
     m_def = Section()
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -217,35 +217,35 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             )
 
             # Update layout
-            fig3.update_layout(
-                title='XRD Patterns stacked',
-                xaxis_title='2<i>θ</i> / °',
-                yaxis_title='Intensity',
-                template='plotly_white',
-                hovermode='closest',
-                dragmode='zoom',
-                xaxis=dict(
-                    fixedrange=False,
-                ),
-                yaxis=dict(
-                    fixedrange=False,
-                    type='log',
-                ),
-            )
+            #fig3.update_layout(
+            #    title='XRD Patterns stacked',
+            #    xaxis_title='2<i>θ</i> / °',
+            #    yaxis_title='Intensity',
+            #    template='plotly_white',
+            #    hovermode='closest',
+            #    dragmode='zoom',
+            #    xaxis=dict(
+            #        fixedrange=False,
+            #    ),
+            #    yaxis=dict(
+            #        fixedrange=False,
+            #        type='log',
+            #    ),
+            #)
 
-            plot_json3 = fig3.to_plotly_json()
-            plot_json3['config'] = dict(
-                scrollZoom=False,
-            )
+            #plot_json3 = fig3.to_plotly_json()
+            #plot_json3['config'] = dict(
+            #    scrollZoom=False,
+            #)
 
             # there is some problem here but what is the solution?
-            result.figures = []
-            result.figures.append(
-            PlotlyFigure(
-                label='Patterns',
-                figure=plot_json3,
-                )
-            )
+            #result.figures = []
+            #result.figures.append(
+            #PlotlyFigure(
+            #    label='Patterns',
+            #    figure=plot_json3,
+            #    )
+            #)
             result.normalize(archive, logger)
             results.append(result)
 
