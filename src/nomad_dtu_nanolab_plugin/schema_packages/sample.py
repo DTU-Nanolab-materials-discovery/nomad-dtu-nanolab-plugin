@@ -424,16 +424,6 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         label='Combinatorial Library',
     )
 
-    library_size = Quantity(
-        type = tuple[np.float64, np.float64],
-        description='The size of the library in the x and y direction.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.TupleEditQuantity,
-            defaultDisplayUnit='mm'
-            ),
-        unit='m',
-    )
-
     process_parameter_overview = Quantity(
         type=ProcessParameterOverview,
         description='An overview of the process parameters used to create the library.',
