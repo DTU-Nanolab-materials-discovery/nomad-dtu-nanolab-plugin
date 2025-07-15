@@ -128,6 +128,14 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
         a_eln={'component': 'FileEditQuantity', 'label': 'EDX file'},
     )
+    location = Quantity(
+        type=str,
+        default='DTU',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.TextEditQuantity,
+            label='Location',
+        ),
+    )
     avg_layer_thickness = Quantity(
         type=np.float64,
         description="""

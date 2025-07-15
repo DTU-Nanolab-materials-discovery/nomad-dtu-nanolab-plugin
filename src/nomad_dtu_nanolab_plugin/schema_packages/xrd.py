@@ -75,6 +75,14 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             component=ELNComponentEnum.FileEditQuantity,
         ),
     )
+    location = Quantity(
+        type=str,
+        default='DTU',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.TextEditQuantity,
+            label='Location',
+        ),
+    )
     results = SubSection(
         section_def=XRDMappingResult,
         description='The XRD results.',
