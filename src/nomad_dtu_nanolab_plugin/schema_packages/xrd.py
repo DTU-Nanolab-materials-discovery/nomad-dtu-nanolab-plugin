@@ -205,16 +205,16 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
                 y_absolute=xrd_dict.get('Y', None)[0],
             )
 
-            fig3 = go.Figure()
+            #fig3 = go.Figure()
 
-            fig3.add_trace(
-                go.Scatter(
-                    x=xrd_dict.get('2Theta', None),
-                    y=xrd_dict.get('intensity', None),
-                    mode='lines',
-                    name=result.name,
-                )
-            )
+            #fig3.add_trace(
+            #    go.Scatter(
+            #        x=xrd_dict.get('2Theta', None),
+            #        y=xrd_dict.get('intensity', None),
+            #        mode='lines',
+            #        name=result.name,
+            #    )
+            #)
 
             # Update layout
             #fig3.update_layout(
