@@ -29,7 +29,8 @@ dependencies = [
     "nomad-measurements>=1.0.4",
     "fairmat-readers-xrd>=0.0.6",
     "httpx<0.28",
-    "nomad-analysis>=0.0.7"
+    "nomad-analysis>=0.0.7",
+    "openpyxl>3",
 ]
 
 [project.urls]
@@ -85,6 +86,7 @@ select = [
 
 ignore = [
     "F403", # 'from module import *' used; unable to detect undefined names
+    "PLC0415", # `import` should be at the top-level of a file
 ]
 
 fixable = ["ALL"]
