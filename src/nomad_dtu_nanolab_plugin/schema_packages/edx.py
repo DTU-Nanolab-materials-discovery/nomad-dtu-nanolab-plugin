@@ -468,7 +468,6 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         edx = EDXMeasurement(
             results=results,
             avg_layer_thickness=avg_layer_thickness,
-            avg_density=avg_density,
             sample_alignment=sample_alignment,
         )
         merge_sections(self, edx, logger)
