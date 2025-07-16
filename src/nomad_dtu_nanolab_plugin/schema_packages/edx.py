@@ -65,6 +65,17 @@ class EDXResult(MappingResult):
         ),
         unit='m',
     )
+    assumed_material_density = Quantity(
+        type=np.float64,
+        description="""
+        The assumed material density for the thickness determination.
+        """,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='g/(cm**3)',
+        ),
+        unit='kg/(m**3)',
+    )
     quantifications = SubSection(
         section_def=EDXQuantification,
         repeats=True,
@@ -127,6 +138,17 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             defaultDisplayUnit='nm',
         ),
         unit='m',
+    )
+    avg_density = Quantity(
+        type=np.float64,
+        description="""
+            The assumed material density for the thickness determination
+                            """,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='g/(cm**3)',
+        ),
+        unit='kg/(m**3)',
     )
     results = SubSection(
         section_def=EDXResult,
@@ -419,6 +441,9 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         avg_layer_thickness = ureg.Quantity(
             df_data['Layer 1 Thickness (nm)'].mean(), 'nm'
         )
+        avg_density = ureg.Quantity(
+            df_data['Layer 1 Density (g/cm³)'].mean(), 'g/(cm**3)'
+        )
 
         pattern = r'Layer 1 [A-Z][a-z]? Atomic %'
         percentage_labels = [
@@ -438,6 +463,9 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                 x_absolute=ureg.Quantity(row['X (mm)'], 'mm'),
                 y_absolute=ureg.Quantity(row['Y (mm)'], 'mm'),
                 layer_thickness=ureg.Quantity(row['Layer 1 Thickness (nm)'], 'nm'),
+                assumed_material_density=ureg.Quantity(
+                    row['Layer 1 Density (g/cm³)'], 'g/(cm**3)'
+                ),
                 quantifications=quantifications,
             )
             result.normalize(archive, logger)
@@ -445,6 +473,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         edx = EDXMeasurement(
             results=results,
             avg_layer_thickness=avg_layer_thickness,
+            avg_density=avg_density,
             sample_alignment=sample_alignment,
         )
         merge_sections(self, edx, logger)
@@ -459,6 +488,10 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+
+        if self.location is None:
+            self.location = 'DTU Nanolab EDX Measurement'
+
         if self.edx_data_file is not None:
             self.add_sample_reference(self.edx_data_file, 'EDX', archive, logger)
             with archive.m_context.raw_file(self.edx_data_file, 'rb') as edx:
