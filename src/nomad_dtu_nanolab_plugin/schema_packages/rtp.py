@@ -167,7 +167,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             label='PH3 Flow',
             visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
         ),
-        unit='m³/s',
+        unit='m**3/s',
         description='Phosphine flow rate used during the RTP process.',
     )
     H2S_flow = Quantity(
@@ -178,7 +178,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             label='H2S Flow',
             visibleIf={'uses_toxic_gases': True}  # <- Only vis if toxic gases used
         ),
-        unit='m³/s',
+        unit='m**3/s',
         description='H2S flow rate used during the RTP process.',
     )
     heating_up_rate = Quantity(
