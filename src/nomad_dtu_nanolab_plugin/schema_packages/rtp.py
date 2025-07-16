@@ -1,12 +1,11 @@
-import numpy as np
 from typing import TYPE_CHECKING
 
+import numpy as np
 from nomad.datamodel.data import Schema
 from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
 )
-
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section
 from nomad_material_processing.vapor_deposition.cvd.general import (
@@ -143,9 +142,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='sccm',
             label='Ar Flow',
-            visibleIf={'uses_toxic_gases': False}  # <- Only visible if tox gases not used
+            visibleIf={'uses_toxic_gases': False}
+            # <- Only visible if tox gases not used
         ),
-        unit='m³/s',
+        unit='m**3/s',
         description='Argon flow rate used during the RTP process.',
     )
     N2_flow = Quantity(
@@ -154,9 +154,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='sccm',
             label='N2 Flow',
-            visibleIf={'uses_toxic_gases': False}  # <- Only visible if tox gases not used
+            visibleIf={'uses_toxic_gases': False}
+            # <- Only visible if tox gases not used
         ),
-        unit='m³/s',
+        unit='m**3/s',
         description='Nitrogen flow rate used during the RTP process.',
     )
     PH3_flow = Quantity(
