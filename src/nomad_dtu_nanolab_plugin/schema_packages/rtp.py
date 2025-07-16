@@ -6,6 +6,9 @@ from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
 )
+from nomad.datamodel.metainfo.basesections import (
+    ChemicalVaporDeposition
+)
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section
 from nomad_material_processing.vapor_deposition.cvd.general import (
@@ -24,6 +27,7 @@ m_package = Package(name='DTU RTP Schemas')
 
 class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     """
+
     A synthesis method where a rapidly heated substrate is exposed to one or more
     volatile precursors, which react or decompose on the surface to produce a deposit.
     [database_cross_reference: https://orcid.org/0000-0002-0640-0422]
@@ -202,13 +206,13 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     ' RTP process.',
     )
 
-################### ANNEALING PLATEAU ######################
+    ################### ANNEALING PLATEAU ######################
 
     duration = Quantity(
         type=np.float64,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='minute'
+            defaultDisplayUnit='minute',
             label= 'Duration',
         ),
         unit='s',
@@ -218,7 +222,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         type=float,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='degree_Celsius',
+            defaultDisplayUnit='celsius',
         ),
         unit='K',
         description='Temperature of the process.',
