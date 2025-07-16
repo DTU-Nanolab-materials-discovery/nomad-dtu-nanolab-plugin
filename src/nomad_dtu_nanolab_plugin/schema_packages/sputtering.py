@@ -2764,11 +2764,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                         )
                         return
 
-
     def correct_platen_angle(
-            self, archive: 'EntryArchive', logger: 'BoundLogger'
-        ) -> None:
-        """ Method to correct the platen angle if the datetime is after 2025-05-08.
+        self, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
+        """Method to correct the platen angle if the datetime is after 2025-05-08.
         This is a temporary fix to correct the angle of the platen after the
         8th of May 2025, where the angles are shifted by 120 degrees relative
         to the old angle.
@@ -2779,11 +2778,20 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 dt = dt.replace(tzinfo=None)
             if dt >= datetime(2025, 5, 8):
                 if self.instruments[0].platen_rotation is not None:
-                    new_angle = (
-                        (self.instruments[0].platen_rotation - 120 * ureg('degree'))
-                        % (360 * ureg('degree'))
+                    # add a debug logger warning that the angle is being corrected
+                    logger.warning(
+                        'Correcting the platen angle by +120 degrees due to the new '
+                        'angle shift after the 8th of May 2025.'
                     )
+                    new_angle = (
+                        self.instruments[0].platen_rotation + 120 * ureg('degree')
+                    ) % (360 * ureg('degree'))
                     self.instruments[0].platen_rotation = new_angle.to('degree')
+            else:
+                logger.warning(
+                    'No angle correction is done since the data is before the 8th'
+                    'of May 2025.'
+                )
 
     def parse_log_file(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -2811,7 +2819,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         if step_params is not None and sputtering is not None:
             steps = self.generate_step_log_data(step_params, archive, logger)
             sputtering.steps.extend(steps)
-
 
         # Merging the sputtering object with self
         if self.overwrite:
