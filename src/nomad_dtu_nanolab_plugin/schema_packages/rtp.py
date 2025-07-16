@@ -8,7 +8,7 @@ from nomad.datamodel.metainfo.annotations import (
     ELNComponentEnum,
 )
 from nomad.datamodel.metainfo.basesections import (
-    Process
+    ChemicalVaporDeposition
 )
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section
@@ -42,7 +42,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         categories=[DTUNanolabCategory],
         label='RTP',
         links=['http://purl.obolibrary.org/obo/CHMO_0001328'],
+        links=['http://purl.obolibrary.org/obo/CHMO_0001328'],
     )
+
 
     lab_id = Quantity(
         type=str,
