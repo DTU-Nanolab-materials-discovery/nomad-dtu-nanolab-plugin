@@ -2767,19 +2767,23 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     def correct_platen_angle(
             self, archive: 'EntryArchive', logger: 'BoundLogger'
-            ) -> None:
+        ) -> None:
         """ Method to correct the platen angle if the datetime is after 2025-05-08.
         This is a temporary fix to correct the angle of the platen after the
         8th of May 2025, where the angles are shifted by 120 degrees relative
         to the old angle.
         """
-        if self.datetime is not None and self.datetime >= datetime(2025, 5, 8):
-            if self.instrument[0].platen_rotation is not None:
-                new_angle = (
-                    (self.instrument[0].platen_rotation - 120 * ureg('degree'))
-                    % (360 * ureg('degree'))
-                )
-                self.instrument[0].platen_rotation = new_angle.to('degree')
+        if self.datetime is not None:
+            dt = self.datetime
+            if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
+                dt = dt.replace(tzinfo=None)
+            if dt >= datetime(2025, 5, 8):
+                if self.instrument[0].platen_rotation is not None:
+                    new_angle = (
+                        (self.instrument[0].platen_rotation - 120 * ureg('degree'))
+                        % (360 * ureg('degree'))
+                    )
+                    self.instrument[0].platen_rotation = new_angle.to('degree')
 
     def parse_log_file(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
