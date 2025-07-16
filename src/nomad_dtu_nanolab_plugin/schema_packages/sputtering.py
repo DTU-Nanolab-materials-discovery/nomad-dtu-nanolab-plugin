@@ -2778,12 +2778,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
                 dt = dt.replace(tzinfo=None)
             if dt >= datetime(2025, 5, 8):
-                if self.instrument[0].platen_rotation is not None:
+                if self.instruments[0].platen_rotation is not None:
                     new_angle = (
-                        (self.instrument[0].platen_rotation - 120 * ureg('degree'))
+                        (self.instruments[0].platen_rotation - 120 * ureg('degree'))
                         % (360 * ureg('degree'))
                     )
-                    self.instrument[0].platen_rotation = new_angle.to('degree')
+                    self.instruments[0].platen_rotation = new_angle.to('degree')
 
     def parse_log_file(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
