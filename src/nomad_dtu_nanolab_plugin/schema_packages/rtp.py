@@ -7,6 +7,7 @@ from nomad.datamodel.metainfo.annotations import (
     ELNComponentEnum,
 )
 
+
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section
 from nomad_material_processing.vapor_deposition.cvd.general import (
