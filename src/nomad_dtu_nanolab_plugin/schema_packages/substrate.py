@@ -20,11 +20,13 @@ from nomad_material_processing.general import (
     RectangleCuboid,
 )
 from nomad_material_processing.utils import create_archive
+from nomad_material_processing.general import Geometry, ThinFilmStack
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
     DTUCombinatorialLibrary,
+    DtuLibraryReference,
 )
 
 if TYPE_CHECKING:
@@ -417,6 +419,10 @@ class DTULibraryParts(Collection, Schema):
             ),
         unit='m',
     )
+    geometry = SubSection(
+        section_def=Geometry,
+        description='The geometries of the samples in the library.',
+    )
 
      #add a section that creates a new DTUCombinatorialLibrary from these information
 
@@ -444,58 +450,132 @@ class DTULibraryCleaving(Process, Schema):
             ),
         unit='m',
     )
+
+    pattern= Quantity(
+        type = MEnum(
+            'squares',
+            'horizontal stripes',
+            'vertical stripes',
+            'custom',
+        ),
+        description='The pattern according to which the original library is broken.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.RadioEnumEditQuantity),
+        default='custom',
+    )
+
+    number_of_pieces = Quantity(
+        type=int,
+        description='The number of pieces the original library is broken into ' \
+        'for horizontal, vertical and custom. ' \
+        'For squares it is the number of squares in one direction.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
+    )
+
+    create_from_pattern = Quantity(
+        type=bool,
+        description='Whether to create the new pieces from the pattern.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+        default=False,
+    )
+
+    create_child_libraries = Quantity(
+        type=bool,
+        description='Whether to create child libraries from the new pieces.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+        default=False,
+    )
+
     new_pieces = SubSection(
         section_def= DTULibraryParts,
         repeats=True,
     )
     child_libraries = SubSection(
-        section_def=DTUCombinatorialLibrary,
+        section_def=DtuLibraryReference,
         repeats=True,
         description='The child libraries created from the combinatorial library.',
     )
 
-    def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-            pieces = []
-            for idx, piece in enumerate(self.new_pieces):
-                if piece.part_size is None:
-                    continue
+    def recognize_pattern(self, logger: 'BoundLogger') -> None:
+        """
+        Recognizes the pattern of the library and creates the new pieces accordingly.
+        """
+        heig = self.combinatorial_Library.geometry.height
+        start_x = (self.library_size[0]/2) *(-1)
+        start_y = self.library_size[1]/2
 
-                new_lib = DTUCombinatorialLibrary()
-                new_comment = (
-                    f"Piece {idx} of the combinatorial library "
-                    f"{self.combinatorial_Library.name}. This piece is located from "
-                    f"({piece.upper_left_x}, {piece.upper_left_y}) to "
-                    f"({piece.lower_right_x}, {piece.lower_right_y}) "
-                    f" on the old library. "
-                    f"Overall it is {piece.part_size[0]} mm wide and"
-                    f" {piece.part_size[1]} mm high."
-                )
-                old_lib = self.combinatorial_Library
+        if self.pattern == 'squares':
+            total_nr = self.number_of_pieces ** 2
+            size = self.library_size[0] / self.number_of_pieces
+            for j in range(self.number_of_pieces):
+                for 1 in range(self.number_of_pieces):
+                    piece = DTULibraryParts()
+                    number = 1+j * self.number_of_pieces + i
+                    piece.library_name = f'{self.combinatorial_Library.name}_S{number}-{total_nr}'
+                    piece.upper_left_x = start_x + i * size
+                    piece.upper_left_y = start_y - (j) * size
+                    piece.lower_right_x = start_x + (i + 1) * size
+                    piece.lower_right_y = start_y - (j + 1) * size
+                    piece.part_size = (size, size)
+                    piece.geometry = Geometry(
+                        geometry=RectangleCuboid(
+                            length=size,
+                            width=size,
+                            height=heig,
+                        )
+                    )
+                    self.new_pieces.append(piece)
+        elif self.pattern == 'horizontal stripes':
+            size = self.library_size[1] / self.number_of_pieces
 
-                new_lib.name = piece.library_name
-                new_lib.datetime = old_lib.datetime
-                new_lib.lab_id = f'{old_lib.lab_id}-{idx}'
-                new_lib.deposition_parameters = old_lib.deposition_parameters
-                new_lib.elemental_compositions = old_lib.elemental_compositions
-                new_lib.composition = old_lib.composition
-                new_lib.layers = old_lib.layers
-                new_lib.figures = old_lib.figures
-                new_lib.substrate = old_lib.substrate
-                new_lib.description = new_comment
-                new_lib.process_parameter_overview = old_lib.process_parameter_overview
-
-                library_ref = create_archive(
-                    new_lib, archive, f'{new_lib.lab_id}.archive.json'
-                )
-
-                pieces.append(
-                    CompositeSystemReference(
-                        name=f'Sample {new_lib.lab_id}',
-                        reference=library_ref,
-                        lab_id=new_lib.lab_id,
+            for i in range(self.number_of_pieces):
+                piece = DTULibraryParts()
+                number = i + 1
+                piece.library_name = f'{self.combinatorial_Library.name}_H{number}-{self.number_of_pieces}'
+                piece.upper_left_x = start_x
+                piece.upper_left_y = start_y - i * size
+                piece.lower_right_x = start_x + self.library_size[0]
+                piece.lower_right_y = start_y - (i + 1) * size
+                piece.part_size = (self.library_size[0], size)
+                piece.geometry = Geometry(
+                    geometry=RectangleCuboid(
+                        length=self.library_size[0],
+                        width=size,
+                        height=heig,
                     )
                 )
-            self.child_libraries = pieces
+                self.new_pieces.append(piece)
+        elif self.pattern == 'vertical stripes':
+            size = self.library_size[0] / self.number_of_pieces
+
+            for i in range(self.number_of_pieces):
+                piece = DTULibraryParts()
+                number = i + 1
+                piece.library_name = f'{self.combinatorial_Library.name}_V{number}-{self.number_of_pieces}'
+                piece.upper_left_x = start_x + i * size
+                piece.upper_left_y = start_y
+                piece.lower_right_x = start_x + (i + 1) * size
+                piece.lower_right_y = start_y - self.library_size[1]
+                piece.part_size = (size, self.library_size[1])
+                piece.geometry = Geometry(
+                    geometry=RectangleCuboid(
+                        length=size,
+                        width=self.library_size[1],
+                        height=heig,
+                    )
+                )
+                self.new_pieces.append(piece)
+        elif self.pattern == 'custom':
+            if len(self.new_pieces) == 0:
+
+                for i in range(self.number_of_pieces):
+                    piece = DTULibraryParts()
+                    piece.library_name = f'{self.combinatorial_Library.name}_C{i+1}-{self.number_of_pieces}'
+                    piece.part_size = None  # Will be set later
+                    self.new_pieces.append(piece)
+        else:
+            logger.error(f'Unknown pattern {self.pattern}.')
+
+
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -506,5 +586,38 @@ class DTULibraryCleaving(Process, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+        if self.create_from_pattern:
+            self.recognize_pattern(logger)
+            self.create_from_pattern = False
+
+        if self.new_pieces is not None and len(self.new_pieces) > 0:
+            if self.create_child_libraries:
+                for piece in self.new_pieces:
+                    library = DTUCombinatorialLibrary(
+                        name=piece.library_name,
+                        datetime=self.datetime,
+                        lab_id=piece.library_name,
+                        geometry=piece.geometry,
+                        description=f'Part of {self.combinatorial_Library.name} library',
+                        process_parameter_overview= self.combinatorial_Library.process_parameter_overview,
+                        elemental_composition=self.combinatorial_Library.elemental_composition,
+                        components=self.combinatorial_Library.components,
+                        layers=self.combinatorial_Library.layers,
+                        substrate=self.combinatorial_Library.substrate,
+                    )
+
+                    library.normalize(archive, logger)
+                    file_name = f'{library.lab_id}.archive.json'
+                    substrate_archive = create_archive(library, archive, file_name)
+
+                    self.child_libraries.append(
+                        CompositeSystemReference(
+                        reference=substrate_archive,
+                        name=library.name,
+                        lab_id=library.lab_id,
+                        )
+                    )
+
+
 
         return super().normalize(archive, logger)
