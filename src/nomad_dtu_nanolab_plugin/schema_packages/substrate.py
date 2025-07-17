@@ -17,10 +17,10 @@ from nomad_material_processing.general import (
     CrystallineSubstrate,
     Dopant,
     ElectronicProperties,
+    Geometry,
     RectangleCuboid,
 )
 from nomad_material_processing.utils import create_archive
-from nomad_material_processing.general import Geometry, ThinFilmStack
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -154,10 +154,7 @@ class DTUSubstrateBatch(Collection, Schema):
     def next_used_in(
         self, entry_type: type[Schema], negate: bool = False
     ) -> DTUSubstrate:
-        from nomad.search import (
-            MetadataPagination,
-            search,
-        )
+        from nomad.search import MetadataPagination, search
 
         ref: DTUSubstrateReference
         for ref in self.entities:
@@ -507,10 +504,12 @@ class DTULibraryCleaving(Process, Schema):
             total_nr = self.number_of_pieces ** 2
             size = self.library_size[0] / self.number_of_pieces
             for j in range(self.number_of_pieces):
-                for 1 in range(self.number_of_pieces):
+                for i in range(self.number_of_pieces):
                     piece = DTULibraryParts()
                     number = 1+j * self.number_of_pieces + i
-                    piece.library_name = f'{self.combinatorial_Library.name}_S{number}-{total_nr}'
+                    piece.library_name = (
+                        f'{self.combinatorial_Library.name}_S{number}-{total_nr}'
+                    )
                     piece.upper_left_x = start_x + i * size
                     piece.upper_left_y = start_y - (j) * size
                     piece.lower_right_x = start_x + (i + 1) * size
@@ -530,7 +529,9 @@ class DTULibraryCleaving(Process, Schema):
             for i in range(self.number_of_pieces):
                 piece = DTULibraryParts()
                 number = i + 1
-                piece.library_name = f'{self.combinatorial_Library.name}_H{number}-{self.number_of_pieces}'
+                piece.library_name = (
+                    f'{self.combinatorial_Library.name}_H{number}-{self.number_of_pieces}'
+                )
                 piece.upper_left_x = start_x
                 piece.upper_left_y = start_y - i * size
                 piece.lower_right_x = start_x + self.library_size[0]
@@ -550,7 +551,9 @@ class DTULibraryCleaving(Process, Schema):
             for i in range(self.number_of_pieces):
                 piece = DTULibraryParts()
                 number = i + 1
-                piece.library_name = f'{self.combinatorial_Library.name}_V{number}-{self.number_of_pieces}'
+                piece.library_name = (
+                    f'{self.combinatorial_Library.name}_V{number}-{self.number_of_pieces}'
+                )
                 piece.upper_left_x = start_x + i * size
                 piece.upper_left_y = start_y
                 piece.lower_right_x = start_x + (i + 1) * size
@@ -565,13 +568,14 @@ class DTULibraryCleaving(Process, Schema):
                 )
                 self.new_pieces.append(piece)
         elif self.pattern == 'custom':
-            if len(self.new_pieces) == 0:
 
-                for i in range(self.number_of_pieces):
-                    piece = DTULibraryParts()
-                    piece.library_name = f'{self.combinatorial_Library.name}_C{i+1}-{self.number_of_pieces}'
-                    piece.part_size = None  # Will be set later
-                    self.new_pieces.append(piece)
+            for i in range(self.number_of_pieces):
+                piece = DTULibraryParts()
+                piece.library_name = (
+                    f'{self.combinatorial_Library.name}_C{i+1}-{self.number_of_pieces}'
+                )
+                piece.part_size = None  # Will be set later
+                self.new_pieces.append(piece)
         else:
             logger.error(f'Unknown pattern {self.pattern}.')
 
@@ -587,36 +591,57 @@ class DTULibraryCleaving(Process, Schema):
             logger (BoundLogger): A structlog logger.
         """
         if self.create_from_pattern:
-            self.recognize_pattern(logger)
-            self.create_from_pattern = False
+            if self.number_of_pieces is None or self.number_of_pieces <=1:
+                logger.error(
+                    'The number of pieces must be at least 2 to create a pattern.'
+                )
+                return
+            elif self.pattern not in [
+                'squares',
+                'horizontal stripes',
+                'vertical stripes',
+                'custom',
+            ]:
+                logger.error(f'Unknown pattern {self.pattern}.')
+                return
+            else:
+                self.recognize_pattern(logger)
+                self.create_from_pattern = False
 
         if self.new_pieces is not None and len(self.new_pieces) > 0:
             if self.create_child_libraries:
-                for piece in self.new_pieces:
-                    library = DTUCombinatorialLibrary(
-                        name=piece.library_name,
-                        datetime=self.datetime,
-                        lab_id=piece.library_name,
-                        geometry=piece.geometry,
-                        description=f'Part of {self.combinatorial_Library.name} library',
-                        process_parameter_overview= self.combinatorial_Library.process_parameter_overview,
-                        elemental_composition=self.combinatorial_Library.elemental_composition,
-                        components=self.combinatorial_Library.components,
-                        layers=self.combinatorial_Library.layers,
-                        substrate=self.combinatorial_Library.substrate,
+                origin= self.combinatorial_Library
+                if origin is None:
+                    logger.error(
+                        'A combinatorial library must be set to create child libraries.'
                     )
-
-                    library.normalize(archive, logger)
-                    file_name = f'{library.lab_id}.archive.json'
-                    substrate_archive = create_archive(library, archive, file_name)
-
-                    self.child_libraries.append(
-                        CompositeSystemReference(
-                        reference=substrate_archive,
-                        name=library.name,
-                        lab_id=library.lab_id,
+                    return
+                else :
+                    for piece in self.new_pieces:
+                        library = DTUCombinatorialLibrary(
+                            name=piece.library_name,
+                            datetime=self.datetime,
+                            lab_id=piece.library_name,
+                            geometry=piece.geometry,
+                            description=f'Part of {origin.name} library',
+                            process_parameter_overview=origin.process_parameter_overview,
+                            elemental_composition=origin.elemental_composition,
+                            components=origin.components,
+                            layers=origin.layers,
+                            substrate=origin.substrate,
                         )
-                    )
+
+                        library.normalize(archive, logger)
+                        file_name = f'{library.lab_id}.archive.json'
+                        substrate_archive = create_archive(library, archive, file_name)
+
+                        self.child_libraries.append(
+                            CompositeSystemReference(
+                            reference=substrate_archive,
+                            name=library.name,
+                            lab_id=library.lab_id,
+                            )
+                        )
 
 
 
