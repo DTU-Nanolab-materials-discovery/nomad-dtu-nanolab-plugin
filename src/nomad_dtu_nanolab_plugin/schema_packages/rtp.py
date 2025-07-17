@@ -1,18 +1,22 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
-from nomad.datamodel.data import Schema
+from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
+    BrowserAdaptors,
+    BrowserAnnotation,
     ELNAnnotation,
     ELNComponentEnum,
 )
 from nomad.datamodel.metainfo.plot import PlotSection
-from nomad.metainfo import Package, Quantity, Section
+from nomad.metainfo import MProxy, Package, Quantity, Section, SubSection
+from nomad.units import ureg
 from nomad_material_processing.vapor_deposition.cvd.general import (
     ChemicalVaporDeposition,
 )
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.sample import DTUCombinatorialLibrary
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -21,6 +25,381 @@ if TYPE_CHECKING:
 
 m_package = Package(name='DTU RTP Schemas')
 
+# volumne fraction in the respective gas mixture (the complementary gas is Ar)
+ANNEALING_GAS_FRACTION = {
+    'ar': 1,
+    'n2': 1,
+    'ph3': 0.1,
+    'h2s': 0.1,
+}
+
+#################### DEFINE SUBSTRATES (SUBSECTION) ######################
+class DtuRTPSubstrateMounting(ArchiveSection):
+    """
+    Section containing information about the mounting of the substrates on the
+    susceptor.
+    """
+
+    m_def = Section()
+    name = Quantity(
+        type=str,
+        description='The name of the substrate mounting.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.StringEditQuantity,
+        ),
+    )
+    substrate_batch = Quantity(
+        type=DTUCombinatorialLibrary,
+        description='A reference to the batch of the substrate used.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.ReferenceEditQuantity,
+        ),
+    )
+    substrate = Quantity(
+        type=DTUCombinatorialLibrary,
+        description='A reference to the substrate used.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.ReferenceEditQuantity,
+        ),
+    )
+    relative_position = Quantity(
+        type=str,
+        description='The relative position of the substrate on the susceptor.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            props=dict(suggestions=['bl', 'br', 'fl', 'fr', 'm', 'ha', 'hb', 'hc', 'hd',
+         'va', 'vb', 'vc', 'vd']),
+        ),
+    )
+    position_x = Quantity(
+        type=np.float64,
+        description='The x-coordinate of the substrate on the susceptor.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+        ),
+        unit='m',
+    )
+    position_y = Quantity(
+        type=np.float64,
+        description='The y-coordinate of the substrate on the susceptor.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+        ),
+        unit='m',
+    )
+    rotation = Quantity(
+        type=np.float64,
+        description="""
+            The rotation of the substrate on the susceptor, relative to
+            the width (x-axis) and height (y-axis) of the substrate.
+        """,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='degree',
+        ),
+        unit='rad',
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `DtuSubstrateMounting` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        super().normalize(archive, logger)
+        if isinstance(self.substrate_batch, MProxy):
+            self.substrate_batch.m_proxy_resolve()
+        if self.substrate is None and isinstance(
+            self.substrate_batch, DTUCombinatorialLibrary
+        ):
+            substrate = self.substrate_batch.next_not_used_in(DtuRTP)
+            self.substrate = substrate
+        if self.position_x is None or self.position_y is None or self.rotation is None:
+            positions = { #CHANGE THIS TO RIGHT VALUES FROM SUSCEPTOR
+                'bl': (-0.02, 0.035, 0),
+                'br': (0.02, 0.035, 0),
+                'fl': (-0.02, -0.005, 0),
+                'fr': (0.02, -0.005, 0),
+                'm': (0, -0.038, np.pi / 2),
+            }
+            if self.relative_position in positions:
+                self.position_x, self.position_y, self.rotation = positions[
+                    self.relative_position
+                ]
+        if self.relative_position is not None:
+            self.name = self.relative_position
+        elif self.position_x is not None and self.position_y is not None:
+            self.name = (
+                f'x{self.position_x.to("cm").magnitude:.1f}-'
+                f'y{self.position_y.to("cm").magnitude:.1f}'
+            ).replace('.', 'p')
+
+#################### HUMAN READABLE OVERVIEW (SUBSECTION) ######################
+class RTPOverview(ArchiveSection):
+    """
+    Section containing a human readable overview of the RTP process.
+    """
+    m_def = Section()
+    material_space = Quantity(
+        type=str,
+        a_eln={'component': 'StringEditQuantity'},
+        description='The material space explored by the deposition.',
+    )
+    annealing_pressure = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='Torr',
+            label='Annealing Pressure',
+        ),
+        unit='Pa',
+        description='Pressure in the RTP chamber during the annealing plateau',
+    )
+    annealing_time = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='minute',
+            label='Annealing Time',
+        ),
+        unit='s',
+        description='Time spent at the annealing plateau of the RTP process.',
+    )
+    total_heating_time = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='minute',
+            label='Total heating up time',
+        ),
+        unit='s',
+        description='Total time spent until maximum (main annealing plateau)' \
+        'temperature is reached.',
+    )
+    total_cooling_time = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='minute',
+            label='Total cooling down time',
+        ),
+        unit='s',
+        description='Total time spent between the end of the main annealing plateau ' \
+        'until the samples are cooled down to room temperature.',
+    )
+    annealing_temperature = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='celsius',
+            label='Annealing Temperature',
+        ),
+        unit='K',
+        description='Temperature during the annealing plateau of the RTP process.',
+    )
+    uses_toxic_gases = Quantity(
+    type=bool,
+    a_eln=ELNAnnotation(
+        component=ELNComponentEnum.BooleanEditQuantity,
+        label='Are toxic gases used?',
+    ),
+    description='Check box if toxic gases were used in the process.',
+    )
+    annealing_Ar_flow = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='sccm',
+            label='Ar Flow',
+            visibleIf={'uses_toxic_gases': False}
+            # <- Only visible if toxic gases are not used
+        ),
+        unit='m**3/s',
+        description='Argon flow used during the annealing plateau of the' \
+        ' RTP process.',
+    )
+    annealing_N2_flow = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='sccm',
+            label='N2 Flow',
+            visibleIf={'uses_toxic_gases': False}
+            # <- Only visible if toxic gases are not used
+        ),
+        unit='m**3/s',
+        description='Nitrogen flow used during the annealing plateau of the' \
+        ' RTP process.',
+    )
+    annealing_PH3_in_Ar_flow = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='sccm',
+            label='PH3 Flow',
+            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
+        ),
+        unit='m**3/s',
+        description='Phosphine flow used during the annealing plateau of' \
+        ' the RTP process.',
+    )
+    annealing_H2S_in_Ar_flow = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='sccm',
+            label='H2S Flow',
+            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
+        ),
+        unit='m**3/s',
+        description='H2S flow used during the annealing plateau of the RTP process.',
+    )
+    end_of_process_temperature = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='celsius',
+            label='End of process temperature',
+        ),
+        unit='K',
+        description='Temperature at the cooling state of the RTP process, when the' \
+        ' gases are shut off and final pump-purge procedure is initiated to ' \
+        'remove samples from chamber.',
+    )
+    def _calc_partial_pressure(self):
+        annealing_Ar_flow = (
+            self.annealing_Ar_flow.magnitude
+            if self.annealing_Ar_flow is not None else 0
+        )
+        annealing_N2_flow = (
+            self.annealing_N2_flow.magnitude
+            if self.annealing_N2_flow is not None else 0
+        )
+        annealing_H2S_in_ar_flow = (
+            self.annealing_H2S_in_Ar_flow.magnitude
+            if self.annealing_H2S_in_Ar_flow is not None else 0
+        )
+        annealing_PH3_in_Ar_flow = (
+            self.annealing_PH3_in_Ar_flow.magnitude
+            if self.annea is not None else 0
+        )
+        total_flow = (
+            annealing_Ar_flow
+            + annealing_H2S_in_ar_flow
+            + annealing_N2_flow
+            + annealing_PH3_in_Ar_flow
+        )
+
+        total_pressure = self.annealing_pressure.magnitude
+
+        annealing_PH3_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='Torr',
+            label='PH3 Partial Pressure',
+            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
+        ),
+        unit='Pa',
+        description='Partial pressure of PH3 during the annealing plateau of the' \
+        ' RTP process.',
+        )
+        annealing_H2S_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='Torr',
+            label='H2S Partial Pressure',
+            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
+        ),
+        unit='Pa',
+        description='Partial pressure of H2S during the annealing plateau of the' \
+        ' RTP process.',
+        )
+        annealing_N2_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='Torr',
+            label='N2 Partial Pressure',
+            visibleIf={'uses_toxic_gases': False}
+            # Only visible if toxic gases are not used
+        ),
+        unit='Pa',
+        description='Partial pressure of N2 during the annealing plateau of the' \
+        ' RTP process.',
+        )
+        annealing_Ar_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='Torr',
+            label='Ar Partial Pressure',
+            visibleIf={'uses_toxic_gases': False}
+            # Only visible if toxic gases are not used
+        ),
+        unit='Pa',
+        description='Partial pressure of Ar during the annealing plateau of the' \
+        ' RTP process.',
+        )
+        annealing_H2S_partial_pressure = (
+            annealing_H2S_in_ar_flow * ANNEALING_GAS_FRACTION['H2S']
+            / total_flow * total_pressure
+        )
+        self.annealing_H2S_partial_pressure = (
+        annealing_H2S_partial_pressure * ureg('kg/(m*s^2)')
+        )
+        annealing_PH3_partial_pressure = (
+            annealing_PH3_in_Ar_flow * ANNEALING_GAS_FRACTION['PH3']
+            / total_flow * total_pressure
+        )
+        self.annealing_PH3_partial_pressure = (
+            annealing_PH3_partial_pressure * ureg('kg/(m*s^2)')
+        )
+        annealing_N2_partial_pressure = (
+            annealing_N2_flow * ANNEALING_GAS_FRACTION['n2']
+            / total_flow * total_pressure
+        )
+        self.annealing_N2_partial_pressure = (
+            annealing_N2_partial_pressure * ureg('kg/(m*s^2)')
+        )
+        annealing_Ar_partial_pressure = (
+            annealing_Ar_flow * ANNEALING_GAS_FRACTION['Ar']
+            / total_flow * total_pressure
+        )
+        self.annealing_Ar_partial_pressure = (
+            annealing_Ar_partial_pressure * ureg('kg/(m*s^2)')
+        )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `RTPOverview` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+
+        super().normalize(archive, logger)
+        if self.annealing_Ar_flow is not None:
+            self._calc_partial_pressure()
+        if ( self.annealing_H2S_in_Ar_flow is not None
+            and self.annealing_PH3_in_Ar_flow is not None
+        ):
+            if (
+                self.annealing_H2S_in_Ar_flow.magnitude != 0
+                and self.annealing_PH3_in_Ar_flow.magnitude != 0
+            ):
+                self.ph3_h2s_ratio = (
+                    self.annealing_PH3_in_Ar_flow.magnitude /
+                      self.annealing_H2S_in_Ar_flow.magnitude
+                )
 
 class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
 
@@ -40,15 +419,13 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         label='RTP',
         links=['http://purl.obolibrary.org/obo/CHMO_0001328'],
     )
-
     lab_id = Quantity(
         type=str,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.StringEditQuantity,
             label='Run ID',
         ),
-        description='The ID of the run. Format: name_number_material_quarter_piece'
-        '-totalpieces ',
+        description='The ID of the run. Format: user_number_RTP.',
     )
     location = Quantity(
         type=str,
@@ -75,6 +452,34 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         ),
         description='Cell to upload the temperature log file from the RTP process.',
     )
+    samples_susceptor_before = Quantity(
+        type=str,
+        a_eln={
+            'component': 'FileEditQuantity',
+            'label': 'Image of the samples on susceptor before RTP process',
+        },
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
+        description='Cell to upload the image of the samples on susceptor before the' \
+        'RTP process.',
+    )
+    samples_susceptor_after = Quantity(
+        type=str,
+        a_eln={
+            'component': 'FileEditQuantity',
+            'label': 'Image of the samples on susceptor after RTP process',
+        },
+        a_browser=BrowserAnnotation(
+            adaptor=BrowserAdaptors.RawFileAdaptor,
+        ),
+        description='Cell to upload the image of the samples on susceptor after the' \
+        'RTP process.',
+    )
+    substrates = SubSection(
+        section_def=DtuRTPSubstrateMounting,
+        repeats=True,
+    )
 
     #log_file_pressure = Quantity(
     #    type=str,
@@ -86,16 +491,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     #    description='Cell to upload the pressure log file from the RTP process.',
     #)
 
-    #################### GENERAL CHECKS ######################
+    #################### GENERAL CHECKS (1st level) ######################
 
-    uses_toxic_gases = Quantity(
-    type=bool,
-    a_eln=ELNAnnotation(
-        component=ELNComponentEnum.BooleanEditQuantity,
-        label='Are toxic gases used?',
-    ),
-    description='Check box if toxic gases are used in the process.',
-    )
     base_pressure = Quantity(
         type=np.float64,
         a_eln= ELNAnnotation(
