@@ -2,22 +2,25 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import Schema
-from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
-                                                  ELNComponentEnum)
-from nomad.datamodel.metainfo.basesections import (Collection,
-                                                   CompositeSystemReference,
-                                                   Process, ProcessStep,
-                                                   PubChemPureSubstanceSection,
-                                                   PureSubstanceComponent,
-                                                   ReadableIdentifiers)
-from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
-from nomad.metainfo import (MEnum, MProxy, Package, Quantity, Section,
-                            SubSection)
-from nomad_material_processing.general import (CrystallineSubstrate, Cylinder,
-                                               Dopant, ElectronicProperties,
-                                               Geometry, RectangleCuboid)
+from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
+from nomad.datamodel.metainfo.basesections import (
+    Collection,
+    CompositeSystemReference,
+    Process,
+    ProcessStep,
+    PubChemPureSubstanceSection,
+    PureSubstanceComponent,
+    ReadableIdentifiers,
+)
+from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
+from nomad_material_processing.general import (
+    CrystallineSubstrate,
+    Dopant,
+    ElectronicProperties,
+    Geometry,
+    RectangleCuboid,
+)
 from nomad_material_processing.utils import create_archive
-from nomad_material_processing.general import Geometry, ThinFilmStack
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -712,7 +715,9 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 for 1 in range(self.number_of_pieces):
                     piece = DTULibraryParts()
                     number = 1+j * self.number_of_pieces + i
-                    piece.library_name = f'{self.combinatorial_Library.name}_S{number}-{total_nr}'
+                    piece.library_name = (
+                        f'{self.combinatorial_Library.name}_S{number}-{total_nr}'
+                    )
                     piece.upper_left_x = start_x + i * size
                     piece.upper_left_y = start_y - (j) * size
                     piece.lower_right_x = start_x + (i + 1) * size
@@ -732,7 +737,9 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             for i in range(self.number_of_pieces):
                 piece = DTULibraryParts()
                 number = i + 1
-                piece.library_name = f'{self.combinatorial_Library.name}_H{number}-{self.number_of_pieces}'
+                piece.library_name = (
+                    f'{self.combinatorial_Library.name}_H{number}-{self.number_of_pieces}'
+                )
                 piece.upper_left_x = start_x
                 piece.upper_left_y = start_y - i * size
                 piece.lower_right_x = start_x + self.library_size[0]
@@ -752,7 +759,9 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             for i in range(self.number_of_pieces):
                 piece = DTULibraryParts()
                 number = i + 1
-                piece.library_name = f'{self.combinatorial_Library.name}_V{number}-{self.number_of_pieces}'
+                piece.library_name = (
+                    f'{self.combinatorial_Library.name}_V{number}-{self.number_of_pieces}'
+                )
                 piece.upper_left_x = start_x + i * size
                 piece.upper_left_y = start_y
                 piece.lower_right_x = start_x + (i + 1) * size
@@ -767,13 +776,14 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 )
                 self.new_pieces.append(piece)
         elif self.pattern == 'custom':
-            if len(self.new_pieces) == 0:
 
-                for i in range(self.number_of_pieces):
-                    piece = DTULibraryParts()
-                    piece.library_name = f'{self.combinatorial_Library.name}_C{i+1}-{self.number_of_pieces}'
-                    piece.part_size = None  # Will be set later
-                    self.new_pieces.append(piece)
+            for i in range(self.number_of_pieces):
+                piece = DTULibraryParts()
+                piece.library_name = (
+                    f'{self.combinatorial_Library.name}_C{i+1}-{self.number_of_pieces}'
+                )
+                piece.part_size = None  # Will be set later
+                self.new_pieces.append(piece)
         else:
             logger.error(f'Unknown pattern {self.pattern}.')
 
