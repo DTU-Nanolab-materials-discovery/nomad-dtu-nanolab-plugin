@@ -475,7 +475,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
     m_def = Section(
         categories=[DTUNanolabCategory],
-        label='Substrate Cleaning',
+        label='Substrate Cleaving',
     )
     combinatorial_Library = Quantity(
         type=DTUCombinatorialLibrary,
