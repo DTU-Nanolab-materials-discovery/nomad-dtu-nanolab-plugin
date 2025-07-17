@@ -4084,7 +4084,7 @@ def generate_optix_cascade_plot(spectra, **kwargs):
         # Match timestamps in timestamp_map to the closest time in color_df
         for col in cols:
             spectrum_time = timestamp_map[col]
-            closest_idx = (color_df.index - spectrum_time).abs().argmin()
+            closest_idx = np.abs((color_df.index - spectrum_time).to_numpy()).argmin()
             color_value = color_df.iloc[closest_idx][color_column]
             colors.append(color_value)
 
