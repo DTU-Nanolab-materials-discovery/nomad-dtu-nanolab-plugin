@@ -4081,6 +4081,8 @@ def generate_optix_cascade_plot(spectra, **kwargs):
         if color_column not in color_df.columns:
             raise ValueError(f"Column '{color_column}' not found in color_df.")
 
+        # --- Ensure tz-naive for all timestamps ---
+        color_df.index = color_df.index.tz_localize(None)
         # Match timestamps in timestamp_map to the closest time in color_df
         for col in cols:
             spectrum_time = timestamp_map[col]
