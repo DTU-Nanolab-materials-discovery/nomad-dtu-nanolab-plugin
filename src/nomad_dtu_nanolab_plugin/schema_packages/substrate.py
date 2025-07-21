@@ -12,6 +12,7 @@ from nomad.datamodel.metainfo.basesections import (
     PureSubstanceComponent,
     ReadableIdentifiers,
 )
+from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
 from nomad_material_processing.general import (
     CrystallineSubstrate,
@@ -788,6 +789,54 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             logger.error(f'Unknown pattern {self.pattern}.')
 
 
+        #add the new pieces
+        if self.pattern != 'custom':
+            for piece in self.new_pieces:
+                if piece.part_size is None:
+                    continue
+
+                fig.add_shape(
+                    type='rect',
+                    x0=piece.upper_left_x+(0.01*piece.part_size[0]),
+                    y0=piece.upper_left_y-(0.01*piece.part_size[1]),
+                    x1=piece.lower_right_x-(0.01*piece.part_size[0]),
+                    y1=piece.lower_right_y+(0.01*piece.part_size[1]),
+                    name=piece.library_name,
+                    line=dict(color='green'),
+                    fillcolor='lightgreen',
+                    opacity=0.4,
+                )
+                fig.add_annotation(
+                    x=(piece.upper_left_x + piece.lower_right_x) / 2,
+                    y=(piece.upper_left_y + piece.lower_right_y) / 2,
+                    text=piece.new_name,
+                    showarrow=False,
+                )
+        fig.update_layout(
+            title='Positions of the new pieces in the library',
+            xaxis_title='X (mm)',
+            yaxis_title='Y (mm)',
+            width=800,
+            height=700,
+            xaxis=dict(
+                range=[-self.library_size[0]*1.1/2, self.library_size[0]*1.1/2],
+            ),
+            yaxis=dict(
+                range=[-self.library_size[1]*1.1/2, self.library_size[1]*1.1/2],
+            ),
+        )
+
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(
+            scrollZoom=False,
+        )
+
+        self.figures.append(
+            PlotlyFigure(
+                label='Positions of the new pieces in the library',
+                figure=plot_json,
+            )
+        )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
