@@ -124,13 +124,15 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
         )
 
         fig2 = go.Figure()
-        offset_step = 0.5
+        offset_step = 0.01
         result: XRDMappingResult
         for i, result in enumerate(self.results):
             fig2.add_trace(
                 go.Scatter(
                     x=result.two_theta.to('deg').magnitude,
-                    y=result.intensity.magnitude+i * offset_step,
+                    y=result.intensity.magnitude+(
+                        i * offset_step*(result.intensity.magnitude.min()+100)
+                        ),
                     mode='lines',
                     name=result.name,
                     hoverlabel=dict(namelength=-1),
