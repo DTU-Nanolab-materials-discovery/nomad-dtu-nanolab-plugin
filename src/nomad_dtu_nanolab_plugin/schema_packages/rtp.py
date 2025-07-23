@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import numpy as np
 import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, Schema
@@ -14,9 +16,10 @@ from nomad_material_processing.vapor_deposition.cvd.general import (
     ChemicalVaporDeposition,
     CVDStep,
 )
+
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import DTUCombinatorialLibrary
-from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
@@ -791,7 +794,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         description='Temperature points for the temperature profile plot.',
     )
     def plot(self) -> None:
-        fig = go.Figure():
+        fig = go.Figure()
         fig.add_trace(
             go.Scatter(
                x=self.time ('seconds').magnitude,
