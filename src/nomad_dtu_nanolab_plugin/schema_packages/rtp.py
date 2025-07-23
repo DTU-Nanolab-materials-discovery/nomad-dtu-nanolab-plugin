@@ -1,6 +1,5 @@
-from typing import TYPE_CHECKING
-
 import numpy as np
+import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
     BrowserAdaptors,
@@ -8,28 +7,24 @@ from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
 )
-from nomad.datamodel.metainfo.basesections import (
-    ChemicalVaporDeposition
-)
-from nomad.datamodel.metainfo.plot import PlotSection
+from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MProxy, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_material_processing.vapor_deposition.cvd.general import (
     ChemicalVaporDeposition,
     CVDStep,
 )
-
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import DTUCombinatorialLibrary
-
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
 
-m_package = Package(name='DTU RTP Schemas')
+m_package = Package(name='DTU RTP schema')
 
-# volumne fraction in the respective gas mixture (the complementary gas is Ar)
+# volume fraction in the respective gas mixture (the complementary gas is Ar)
 RTP_GAS_FRACTION = {
     'Ar': 1,
     'N2': 1,
@@ -124,7 +119,7 @@ class DtuRTPSubstrateMounting(ArchiveSection):
             substrate = self.substrate_batch.next_not_used_in(DtuRTP)
             self.substrate = substrate
         if self.position_x is None or self.position_y is None or self.rotation is None:
-            positions = { #CHANGE THIS TO RIGHT VALUES FROM SUSCEPTOR
+            positions = { #TODO #CHANGE THIS TO RIGHT VALUES FROM SUSCEPTOR
                 'bl': (-0.02, 0.035, 0),
                 'br': (0.02, 0.035, 0),
                 'fl': (-0.02, -0.005, 0),
@@ -619,7 +614,7 @@ class DTURTPSteps(CVDStep, ArchiveSection):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `DTUSteps` class.
+        The normalizer for the `DTURTPSteps` class.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
@@ -722,16 +717,16 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         description='Cell to upload the image of the samples on susceptor after the' \
         'RTP process.',
     )
-    substrates = SubSection(
-        section_def=DtuRTPSubstrateMounting,
-        repeats=True,
+    used_gases = Quantity(
+        type= str,
+       shape=['*'],
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.StringEditQuantity,
+            label='Used gases',
+        ),
+        description='Gases used in the process.',
     )
-    overview = SubSection(
-        section_def=RTPOverview,
-    )
-
-    #################### GENERAL CHECKS (1st level) ######################
-
+    #################### GENERAL CHECKS ######################
     base_pressure = Quantity(
         type=np.float64,
         a_eln= ELNAnnotation(
@@ -772,392 +767,62 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     unit='m**3/s',
     description='Chiller flow rate during the RTP process.',
     )
-
-    #################### HEATING RAMP UP ######################
-
-    heating_up_Ar_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='Ar Flow',
-            visibleIf={'uses_toxic_gases': False}
-            # <- Only visible if toxic gases are not used
-        ),
-        unit='m**3/s',
-        description='Argon flow rate used during the RTP process.',
+    ########################### SUBSECTIONS ########################################
+    substrates = SubSection(
+        section_def=DtuRTPSubstrateMounting,
+        repeats=True,
     )
-    heating_up_N2_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='N2 Flow',
-            visibleIf={'uses_toxic_gases': False}
-            # <- Only visible if toxic gases are not used
-        ),
-        unit='m**3/s',
-        description='Nitrogen flow rate used during the RTP process.',
+    overview = SubSection(
+        section_def=RTPOverview,
     )
-    heating_up_PH3_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='PH3 Flow',
-            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
-        ),
-        unit='m**3/s',
-        description='Phosphine flow rate used during the RTP process.',
+    steps = SubSection(
+        section_def=DTURTPSteps,
+        repeats=True,
     )
-    heating_up_H2S_flow = Quantity(
+    ############################## PLOTS #################################
+    time = Quantity(
         type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='H2S Flow',
-            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
-        ),
-        unit='m**3/s',
-        description='H2S flow rate used during the RTP process.',
+        shape=['*'],
+        description='Time points for the temperature profile plot.',
     )
-    heating_up_rate = Quantity(
+    temperature_profile = Quantity(
         type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='celsius/minute',
-            label='Heating Up Rate',
-        ),
-    unit='K/s',
-    description='Rate of temperature increase during the heating up phase of the' \
-    ' RTP process.',
+        shape=['*'],
+        description='Temperature points for the temperature profile plot.',
     )
-    heating_up_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='Torr',
-            label='HEating up pressure',
-        ),
-    unit='Pa',
-    description='Pressure in the RTP chamber during the heating up phase of the' \
-    ' RTP process.',
-    )
-
-################### ANNEALING PLATEAU ######################
-
-        description='Cell to upload the temperature log file from the RTP process.',
-    )
-    #log_file_pressure = Quantity(
-    #    type=str,
-    #    shape=['*'],
-    #    a_eln=ELNAnnotation(
-    #        component=ELNComponentEnum.FileEditQuantity,
-    #        label = 'Pressure log file'
-    #    ),
-    #    description='Cell to upload the pressure log file from the RTP process.',
-    #)
-
-    #################### HEATING RAMPING UP ######################
-
-    uses_toxic_gases = Quantity(
-    type=bool,
-    a_eln=ELNAnnotation(
-        component=ELNComponentEnum.BooleanEditQuantity,
-        label='Are toxic gases used?',
-    ),
-    description='Check if toxic gases are used in the process.',
-)
-    base_pressure = Quantity(
-        type=np.float64,
-        a_eln= ELNAnnotation(
-            component= ELNComponentEnum.FileEditQuantity,
-            label='Base Pressure without ballast',
-            defaultDisplayUnit = 'mtorr'
+    def plot(self) -> None:
+        fig = go.Figure():
+        fig.add_trace(
+            go.Scatter(
+               x=self.time ('seconds').magnitude,
+               y=self.temperature_profile ('celsius').magnitude,
+               mode='lines+markers',
+               name= 'Temperature Profile',
+            )
+        )
+        fig.update_layout(
+            title='RTP Temperature Profile',
+            xaxis_title='Time / seconds',
+            yaxis_title='Temperature / °C',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
             ),
-        unit='Pa',
-        description='Base pressure when ballast is OFF',
-    )
-    base_pressure_ballast = Quantity(
-    type=np.float64,
-    a_eln=ELNAnnotation(
-        component=ELNComponentEnum.FileEditQuantity,
-        label='Base Pressure with ballast',
-        defaultDisplayUnit='mtorr',
-        visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
-    ),
-    unit='Pa',
-    description='Base pressure when ballast is ON.',
-)
-    rate_of_rise = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mTorr/minute',
-            label='Rate of Rise',
-        ),
-    unit='Pa/s',
-    description='Rate of rise of the pressure in the RTP chamber during static vacuum',
-    )
-    chiller_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='l/minute',
-            label='Chiller Flow',
-        ),
-    unit='m³/s',
-    description='Chiller flow rate during the RTP process.',
-    )
-    Ar_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='Ar Flow',
-            visibleIf={'uses_toxic_gases': False}  # <- Only visible if tox gases not used
-        ),
-        unit='m³/s',
-        description='Argon flow rate used during the RTP process.',
-    )
-    N2_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='N2 Flow',
-            visibleIf={'uses_toxic_gases': False}  # <- Only visible if tox gases not used
-        ),
-        unit='m³/s',
-        description='Nitrogen flow rate used during the RTP process.',
-    )
-    PH3_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='PH3 Flow',
-            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
-        ),
-        unit='m³/s',
-        description='Phosphine flow rate used during the RTP process.',
-    )
-    H2S_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='H2S Flow',
-            visibleIf={'uses_toxic_gases': True}  # <- Only vis if toxic gases used
-        ),
-        unit='m³/s',
-        description='H2S flow rate used during the RTP process.',
-    )
-    heating_up_rate = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='Celsius/minute',
-            label='Heating Up Rate',
-        ),
-    unit='K/s',
-    description='Rate of temperature increase during the heating up phase of the' \
-    ' RTP process.',
-    )
-    heating_up_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='Torr',
-            label='HEating up pressure',
-        ),
-    unit='Pa',
-    description='Pressure in the RTP chamber during the heating up phase of the' \
-    ' RTP process.',
-    )
-
-################### ANNEALING PLATEAU ######################
-
-    annealing_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='Torr',
-            label='Annealing Pressure',
-        ),
-        unit='Pa',
-        description='Pressure in the RTP chamber during the annealing plateau',
-    )
-    annealing_time = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='minute',
-            label='Annealing Time',
-        ),
-        unit='s',
-        description='Time spent at the annealing plateau of the RTP process.',
-    )
-    annealing_temperature = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='celsius',
-            label='Annealing Temperature',
-        ),
-        unit='K',
-        unit='K',
-        description='Temperature during the annealing plateau of the RTP process.',
-    )
-    annealing_Ar_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='Ar Flow',
-            visibleIf={'uses_toxic_gases': False}
-            # <- Only visible if toxic gases are not used
-        ),
-        unit='m**3/s',
-        description='Argon flow used during the annealing plateau of the' \
-        ' RTP process.',
-    )
-    annealing_N2_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='N2 Flow',
-            visibleIf={'uses_toxic_gases': False}
-            # <- Only visible if toxic gases are not used
-        ),
-        unit='m**3/s',
-        description='Nitrogen flow used during the annealing plateau of the' \
-        ' RTP process.',
-    )
-    annealing_PH3_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='PH3 Flow',
-            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
-        ),
-        unit='m**3/s',
-        description='Phosphine flow used during the annealing plateau of' \
-        ' the RTP process.',
-    )
-    annealing_H2S_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='H2S Flow',
-            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
-        ),
-        unit='m**3/s',
-        description='H2S flow used during the annealing plateau of the RTP process.',
-    )
-    annealing_PH3_partial_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='Torr',
-            label='PH3 Partial Pressure',
-            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
-        ),
-        unit='Pa',
-        description='Partial pressure of PH3 during the annealing plateau of the' \
-        ' RTP process.',
-    )
-    annealing_H2S_partial_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='Torr',
-            label='H2S Partial Pressure',
-            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
-        ),
-        unit='Pa',
-        description='Partial pressure of H2S during the annealing plateau of the' \
-        ' RTP process.',
-    )
-
-    ################### COOLING DOWN ######################
-
-    cooling_Ar_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='Ar Flow',
-            visibleIf={'uses_toxic_gases': False}
-            # <- Only visible if toxic gases are not used
-        ),
-        unit='m**3/s',
-        description='Argon flow used during during the cooling phase of the' \
-    ' RTP process.',
-    )
-    cooling_N2_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='N2 Flow',
-            visibleIf={'uses_toxic_gases': False}
-            # <- Only visible if toxic gases are not used
-        ),
-        unit='m**3/s',
-        description='Nitrogen flow used during during the cooling phase of the' \
-    ' RTP process.',
-    )
-    cooling_PH3_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='PH3 Flow',
-            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
-        ),
-        unit='m**3/s',
-        description='Phosphine flow used during during the cooling down phase of the' \
-    ' RTP process.',
-    )
-    cooling_H2S_flow = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='sccm',
-            label='H2S Flow',
-            visibleIf={'uses_toxic_gases': True}  # <- Only visible if toxic gases used
-        ),
-        unit='m**3/s',
-        description='H2S flow used during during the cooling down phase of the' \
-    ' RTP process.',
-    )
-    cooling_down_rate = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='celsius/minute',
-            label='Cooling down rate',
-        ),
-    unit='K/s',
-    description='Rate of temperature decrease during the cooling down phase of the' \
-    ' RTP process.',
-    )
-    cooling_down_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='Torr',
-            label='HEating up pressure',
-        ),
-    unit='Pa',
-    description='Pressure in the RTP chamber during the cooling down phase of the' \
-    ' RTP process.',
-    )
-
+            yaxis=dict(
+                fixedrange=False,
+                type='log',
+            ),
+        )
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+        self.figures.append(
+            PlotlyFigure(
+                label='Temperature Profile',
+                figure=plot_json,
+            )
+        )
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `RTP` class.
@@ -1167,8 +832,28 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-
         super().normalize(archive, logger)
+        times, temps, current_time = [], [], 0
+        step: DTURTPSteps
+        for step in getattr(self, 'steps', []):  # Loop over all DTURTPSteps
+            step_overview = getattr(step, 'step_overview', None)
+            if (
+                step_overview is not None
+                and hasattr(step_overview, 'initial_temperature')
+                and hasattr(step_overview, 'final_temperature')
+                and hasattr(step_overview, 'duration')
+            ):
+                # Add initial point for the step
+                temps.append(step_overview.initial_temperature)
+                times.append(current_time)
+                # Add final point for the step
+                current_time += step_overview.duration or 0
+                temps.append(step_overview.final_temperature)
+                times.append(current_time)
+        self.time = np.array(times)
+        self.temperature_profile = np.array(temps)
+        self.figures = []
+        self.plot()
 
 #Lena's initial CODE
 #    temperature = Quantity(
