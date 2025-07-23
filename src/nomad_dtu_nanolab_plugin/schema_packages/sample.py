@@ -331,10 +331,10 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
             composition = self.surface_composition.m_to_dict()
 
         self.elemental_composition = [
-            ElementalComposition(element=e, atomic_fraction=v) 
+            ElementalComposition(element=e, atomic_fraction=v)
             for e,v in composition.items() if v
         ]
-        
+
         super().normalize(archive, logger)
 
 
@@ -374,10 +374,6 @@ class UniqueXrdPeaksReference(EntityReference):
 
 
 class ProcessParameterOverview(Schema):
-    m_def = Section(
-        categories=[DTUNanolabCategory],
-        label='Process Parameter Overview',
-    )
 
     position_x = Quantity(
         type=np.float64,
