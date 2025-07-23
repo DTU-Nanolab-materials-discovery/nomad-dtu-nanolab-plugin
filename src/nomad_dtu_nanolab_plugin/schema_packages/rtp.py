@@ -1,6 +1,5 @@
-from typing import TYPE_CHECKING
-
 import numpy as np
+import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
     BrowserAdaptors,
@@ -8,25 +7,24 @@ from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
 )
-from nomad.datamodel.metainfo.plot import PlotSection
+from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MProxy, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_material_processing.vapor_deposition.cvd.general import (
     ChemicalVaporDeposition,
     CVDStep,
 )
-
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import DTUCombinatorialLibrary
-
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
 
-m_package = Package(name='DTU RTP Schemas')
+m_package = Package(name='DTU RTP schema')
 
-# volumne fraction in the respective gas mixture (the complementary gas is Ar)
+# volume fraction in the respective gas mixture (the complementary gas is Ar)
 RTP_GAS_FRACTION = {
     'Ar': 1,
     'N2': 1,
@@ -121,7 +119,7 @@ class DtuRTPSubstrateMounting(ArchiveSection):
             substrate = self.substrate_batch.next_not_used_in(DtuRTP)
             self.substrate = substrate
         if self.position_x is None or self.position_y is None or self.rotation is None:
-            positions = { #CHANGE THIS TO RIGHT VALUES FROM SUSCEPTOR
+            positions = { #TODO #CHANGE THIS TO RIGHT VALUES FROM SUSCEPTOR
                 'bl': (-0.02, 0.035, 0),
                 'br': (0.02, 0.035, 0),
                 'fl': (-0.02, -0.005, 0),
@@ -616,7 +614,7 @@ class DTURTPSteps(CVDStep, ArchiveSection):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `DTUSteps` class.
+        The normalizer for the `DTURTPSteps` class.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
@@ -707,16 +705,16 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         description='Cell to upload the image of the samples on susceptor after the' \
         'RTP process.',
     )
-    substrates = SubSection(
-        section_def=DtuRTPSubstrateMounting,
-        repeats=True,
+    used_gases = Quantity(
+        type= str,
+       shape=['*'],
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.StringEditQuantity,
+            label='Used gases',
+        ),
+        description='Gases used in the process.',
     )
-    overview = SubSection(
-        section_def=RTPOverview,
-    )
-
-    #################### GENERAL CHECKS (1st level) ######################
-
+    #################### GENERAL CHECKS ######################
     base_pressure = Quantity(
         type=np.float64,
         a_eln= ELNAnnotation(
@@ -757,7 +755,62 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     unit='m**3/s',
     description='Chiller flow rate during the RTP process.',
     )
-
+    ########################### SUBSECTIONS ########################################
+    substrates = SubSection(
+        section_def=DtuRTPSubstrateMounting,
+        repeats=True,
+    )
+    overview = SubSection(
+        section_def=RTPOverview,
+    )
+    steps = SubSection(
+        section_def=DTURTPSteps,
+        repeats=True,
+    )
+    ############################## PLOTS #################################
+    time = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='Time points for the temperature profile plot.',
+    )
+    temperature_profile = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description='Temperature points for the temperature profile plot.',
+    )
+    def plot(self) -> None:
+        fig = go.Figure():
+        fig.add_trace(
+            go.Scatter(
+               x=self.time ('seconds').magnitude,
+               y=self.temperature_profile ('celsius').magnitude,
+               mode='lines+markers',
+               name= 'Temperature Profile',
+            )
+        )
+        fig.update_layout(
+            title='RTP Temperature Profile',
+            xaxis_title='Time / seconds',
+            yaxis_title='Temperature / °C',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                type='log',
+            ),
+        )
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+        self.figures.append(
+            PlotlyFigure(
+                label='Temperature Profile',
+                figure=plot_json,
+            )
+        )
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `RTP` class.
@@ -767,8 +820,28 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-
         super().normalize(archive, logger)
+        times, temps, current_time = [], [], 0
+        step: DTURTPSteps
+        for step in getattr(self, 'steps', []):  # Loop over all DTURTPSteps
+            step_overview = getattr(step, 'step_overview', None)
+            if (
+                step_overview is not None
+                and hasattr(step_overview, 'initial_temperature')
+                and hasattr(step_overview, 'final_temperature')
+                and hasattr(step_overview, 'duration')
+            ):
+                # Add initial point for the step
+                temps.append(step_overview.initial_temperature)
+                times.append(current_time)
+                # Add final point for the step
+                current_time += step_overview.duration or 0
+                temps.append(step_overview.final_temperature)
+                times.append(current_time)
+        self.time = np.array(times)
+        self.temperature_profile = np.array(temps)
+        self.figures = []
+        self.plot()
 
 #Lena's initial CODE
 #    temperature = Quantity(
