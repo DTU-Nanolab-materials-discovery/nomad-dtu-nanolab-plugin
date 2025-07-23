@@ -331,6 +331,7 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
             if v
         ]
 
+
         super().normalize(archive, logger)
 
 
