@@ -775,7 +775,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             label='Rate of Rise',
         ),
         unit='Pa/s',
-        description='Rate of rise of the pressure in the RTP chamber during static vacuum',
+        description='Rate of rise of the pressure in the RTP chamber during static '
+        'vacuum',
     )
     chiller_flow = Quantity(
         type=np.float64,
