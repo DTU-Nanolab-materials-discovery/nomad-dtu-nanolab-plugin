@@ -35,6 +35,7 @@ RTP_GAS_FRACTION = {
     'H2S': 0.1,
 }
 
+
 #################### DEFINE SUBSTRATES (SUBSECTION) ######################
 class DtuRTPSubstrateMounting(ArchiveSection):
     """
@@ -69,8 +70,23 @@ class DtuRTPSubstrateMounting(ArchiveSection):
         description='The relative position of the substrate on the susceptor.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
-            props=dict(suggestions=['bl', 'br', 'fl', 'fr', 'm', 'ha', 'hb', 'hc', 'hd',
-         'va', 'vb', 'vc', 'vd']),
+            props=dict(
+                suggestions=[
+                    'bl',
+                    'br',
+                    'fl',
+                    'fr',
+                    'm',
+                    'ha',
+                    'hb',
+                    'hc',
+                    'hd',
+                    'va',
+                    'vb',
+                    'vc',
+                    'vd',
+                ]
+            ),
         ),
     )
     position_x = Quantity(
@@ -122,7 +138,7 @@ class DtuRTPSubstrateMounting(ArchiveSection):
             substrate = self.substrate_batch.next_not_used_in(DtuRTP)
             self.substrate = substrate
         if self.position_x is None or self.position_y is None or self.rotation is None:
-            positions = { #TODO #CHANGE THIS TO RIGHT VALUES FROM SUSCEPTOR
+            positions = {  # TODO #CHANGE THIS TO RIGHT VALUES FROM SUSCEPTOR
                 'bl': (-0.02, 0.035, 0),
                 'br': (0.02, 0.035, 0),
                 'fl': (-0.02, -0.005, 0),
@@ -141,11 +157,13 @@ class DtuRTPSubstrateMounting(ArchiveSection):
                 f'y{self.position_y.to("cm").magnitude:.1f}'
             ).replace('.', 'p')
 
+
 #################### HUMAN READABLE OVERVIEW (SUBSECTION) ######################
 class RTPOverview(ArchiveSection):
     """
     Section containing a human readable overview of the RTP process.
     """
+
     m_def = Section()
     material_space = Quantity(
         type=str,
@@ -190,8 +208,7 @@ class RTPOverview(ArchiveSection):
             label='Ar Flow',
         ),
         unit='m**3/s',
-        description='Argon flow used during the annealing plateau of the' \
-        ' RTP process.',
+        description='Argon flow used during the annealing plateau of the RTP process.',
     )
     annealing_N2_flow = Quantity(
         type=np.float64,
@@ -201,7 +218,7 @@ class RTPOverview(ArchiveSection):
             label='N2 Flow',
         ),
         unit='m**3/s',
-        description='Nitrogen flow used during the annealing plateau of the' \
+        description='Nitrogen flow used during the annealing plateau of the'
         ' RTP process.',
     )
     annealing_PH3_in_Ar_flow = Quantity(
@@ -212,7 +229,7 @@ class RTPOverview(ArchiveSection):
             label='PH3 in Ar Flow',
         ),
         unit='m**3/s',
-        description='Phosphine flow used during the annealing plateau of' \
+        description='Phosphine flow used during the annealing plateau of'
         ' the RTP process.',
     )
     annealing_H2S_in_Ar_flow = Quantity(
@@ -233,7 +250,7 @@ class RTPOverview(ArchiveSection):
             label='Total heating up time',
         ),
         unit='s',
-        description='Total time spent until maximum (main annealing plateau)' \
+        description='Total time spent until maximum (main annealing plateau)'
         'temperature is reached.',
     )
     total_cooling_time = Quantity(
@@ -244,7 +261,7 @@ class RTPOverview(ArchiveSection):
             label='Total cooling down time',
         ),
         unit='s',
-        description='Total time spent between the end of the main annealing plateau ' \
+        description='Total time spent between the end of the main annealing plateau '
         'until the samples are cooled down to room temperature.',
     )
     end_of_process_temperature = Quantity(
@@ -255,27 +272,29 @@ class RTPOverview(ArchiveSection):
             label='End of process temperature',
         ),
         unit='K',
-        description='Temperature at the cooling state of the RTP process, when the' \
-        ' gases are shut off and final pump-purge procedure is initiated to ' \
+        description='Temperature at the cooling state of the RTP process, when the'
+        ' gases are shut off and final pump-purge procedure is initiated to '
         'remove samples from chamber.',
     )
 
     def _calc_partial_pressure(self):
         annealing_Ar_flow = (
             self.annealing_Ar_flow.magnitude
-            if self.annealing_Ar_flow is not None else 0
+            if self.annealing_Ar_flow is not None
+            else 0
         )
         annealing_N2_flow = (
             self.annealing_N2_flow.magnitude
-            if self.annealing_N2_flow is not None else 0
+            if self.annealing_N2_flow is not None
+            else 0
         )
         annealing_H2S_in_Ar_flow = (
             self.annealing_H2S_in_Ar_flow.magnitude
-            if self.annealing_H2S_in_Ar_flow is not None else 0
+            if self.annealing_H2S_in_Ar_flow is not None
+            else 0
         )
         annealing_PH3_in_Ar_flow = (
-            self.annealing_PH3_in_Ar_flow.magnitude
-            if self.annea is not None else 0
+            self.annealing_PH3_in_Ar_flow.magnitude if self.annea is not None else 0
         )
         total_flow = (
             annealing_Ar_flow
@@ -287,74 +306,80 @@ class RTPOverview(ArchiveSection):
         total_pressure = self.annealing_pressure.magnitude
 
         annealing_PH3_partial_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            defaultDisplayUnit='Torr',
-            label='PH3 Partial Pressure',
-        ),
-        unit='Pa',
-        description='Partial pressure of PH3 during the annealing plateau of the' \
-        ' RTP process.',
+            type=np.float64,
+            a_eln=ELNAnnotation(
+                defaultDisplayUnit='Torr',
+                label='PH3 Partial Pressure',
+            ),
+            unit='Pa',
+            description='Partial pressure of PH3 during the annealing plateau of the'
+            ' RTP process.',
         )
         annealing_H2S_partial_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            defaultDisplayUnit='Torr',
-            label='H2S Partial Pressure',
-        ),
-        unit='Pa',
-        description='Partial pressure of H2S during the annealing plateau of the' \
-        ' RTP process.',
+            type=np.float64,
+            a_eln=ELNAnnotation(
+                defaultDisplayUnit='Torr',
+                label='H2S Partial Pressure',
+            ),
+            unit='Pa',
+            description='Partial pressure of H2S during the annealing plateau of the'
+            ' RTP process.',
         )
         annealing_N2_partial_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            defaultDisplayUnit='Torr',
-            label='N2 Partial Pressure',
-        ),
-        unit='Pa',
-        description='Partial pressure of N2 during the annealing plateau of the' \
-        ' RTP process.',
+            type=np.float64,
+            a_eln=ELNAnnotation(
+                defaultDisplayUnit='Torr',
+                label='N2 Partial Pressure',
+            ),
+            unit='Pa',
+            description='Partial pressure of N2 during the annealing plateau of the'
+            ' RTP process.',
         )
         annealing_Ar_partial_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            defaultDisplayUnit='Torr',
-            label='Ar Partial Pressure',
-        ),
-        unit='Pa',
-        description='Partial pressure of Ar during the annealing plateau of the' \
-        ' RTP process.',
+            type=np.float64,
+            a_eln=ELNAnnotation(
+                defaultDisplayUnit='Torr',
+                label='Ar Partial Pressure',
+            ),
+            unit='Pa',
+            description='Partial pressure of Ar during the annealing plateau of the'
+            ' RTP process.',
         )
         annealing_H2S_partial_pressure = (
-            annealing_H2S_in_Ar_flow * RTP_GAS_FRACTION['H2S']
-            / total_flow * total_pressure
+            annealing_H2S_in_Ar_flow
+            * RTP_GAS_FRACTION['H2S']
+            / total_flow
+            * total_pressure
         )
-        self.annealing_H2S_partial_pressure = (
-        annealing_H2S_partial_pressure * ureg('kg/(m*s^2)')
+        self.annealing_H2S_partial_pressure = annealing_H2S_partial_pressure * ureg(
+            'kg/(m*s^2)'
         )
         annealing_PH3_partial_pressure = (
-            annealing_PH3_in_Ar_flow * RTP_GAS_FRACTION['PH3']
-            / total_flow * total_pressure
+            annealing_PH3_in_Ar_flow
+            * RTP_GAS_FRACTION['PH3']
+            / total_flow
+            * total_pressure
         )
-        self.annealing_PH3_partial_pressure = (
-            annealing_PH3_partial_pressure * ureg('kg/(m*s^2)')
+        self.annealing_PH3_partial_pressure = annealing_PH3_partial_pressure * ureg(
+            'kg/(m*s^2)'
         )
         annealing_N2_partial_pressure = (
-            annealing_N2_flow * RTP_GAS_FRACTION['N2']
-            / total_flow * total_pressure
+            annealing_N2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure
         )
-        self.annealing_N2_partial_pressure = (
-            annealing_N2_partial_pressure * ureg('kg/(m*s^2)')
+        self.annealing_N2_partial_pressure = annealing_N2_partial_pressure * ureg(
+            'kg/(m*s^2)'
         )
         annealing_Ar_partial_pressure = (
-            (annealing_H2S_in_Ar_flow*(1-RTP_GAS_FRACTION['H2S'])
-             +annealing_PH3_in_Ar_flow*(1-RTP_GAS_FRACTION['PH3'])
-             +annealing_Ar_flow*RTP_GAS_FRACTION['Ar'])
-            / total_flow * total_pressure
+            (
+                annealing_H2S_in_Ar_flow * (1 - RTP_GAS_FRACTION['H2S'])
+                + annealing_PH3_in_Ar_flow * (1 - RTP_GAS_FRACTION['PH3'])
+                + annealing_Ar_flow * RTP_GAS_FRACTION['Ar']
+            )
+            / total_flow
+            * total_pressure
         )
-        self.annealing_Ar_partial_pressure = (
-            annealing_Ar_partial_pressure * ureg('kg/(m*s^2)')
+        self.annealing_Ar_partial_pressure = annealing_Ar_partial_pressure * ureg(
+            'kg/(m*s^2)'
         )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -370,7 +395,8 @@ class RTPOverview(ArchiveSection):
         super().normalize(archive, logger)
         if self.annealing_Ar_flow is not None:
             self._calc_partial_pressure()
-        if ( self.annealing_H2S_in_Ar_flow is not None
+        if (
+            self.annealing_H2S_in_Ar_flow is not None
             and self.annealing_PH3_in_Ar_flow is not None
         ):
             if (
@@ -378,15 +404,17 @@ class RTPOverview(ArchiveSection):
                 and self.annealing_PH3_in_Ar_flow.magnitude != 0
             ):
                 self.ph3_h2s_ratio = (
-                    self.annealing_PH3_in_Ar_flow.magnitude /
-                      self.annealing_H2S_in_Ar_flow.magnitude
+                    self.annealing_PH3_in_Ar_flow.magnitude
+                    / self.annealing_H2S_in_Ar_flow.magnitude
                 )
+
 
 ##################### STEPS (SUBSECTION) ######################################
 class RTPStepOverview(ArchiveSection):
     """
     Section containing a human readable overview of a certain step of the RTP process.
     """
+
     m_def = Section()
     duration = Quantity(
         type=np.float64,
@@ -395,7 +423,7 @@ class RTPStepOverview(ArchiveSection):
             defaultDisplayUnit='minute',
             label='Duration',
         ),
-        unit ='s',
+        unit='s',
         description='Duration of the step.',
     )
     pressure = Quantity(
@@ -405,8 +433,8 @@ class RTPStepOverview(ArchiveSection):
             defaultDisplayUnit='Torr',
             label='Pressure',
         ),
-    unit='Pa',
-    description='Pressure in the RTP chamber during the step.',
+        unit='Pa',
+        description='Pressure in the RTP chamber during the step.',
     )
     step_Ar_flow = Quantity(
         type=np.float64,
@@ -455,8 +483,8 @@ class RTPStepOverview(ArchiveSection):
             defaultDisplayUnit='celsius',
             label='Initial Temperature',
         ),
-    unit='K',
-    description='Temperature at the beginning of the step.',
+        unit='K',
+        description='Temperature at the beginning of the step.',
     )
     final_temperature = Quantity(
         type=np.float64,
@@ -465,8 +493,8 @@ class RTPStepOverview(ArchiveSection):
             defaultDisplayUnit='celsius',
             label='Final Temperature',
         ),
-    unit='K',
-    description='Temperature at the end of the step.',
+        unit='K',
+        description='Temperature at the end of the step.',
     )
     temperature_ramp = Quantity(
         type=np.float64,
@@ -474,119 +502,111 @@ class RTPStepOverview(ArchiveSection):
             defaultDisplayUnit='celsius/minute',
             label='Temperature ramp rate. ',
         ),
-    unit='K/s',
-    description='Rate of temperature increase or decrease during the step',
+        unit='K/s',
+        description='Rate of temperature increase or decrease during the step',
     )
+
     def _calc_ramp(self):
         """
         Calculate the temperature ramp rate based on the initial and final temperatures
         and the duration of the step.
         """
-        if self.duration is not None and self.initial_temperature is not None \
-                and self.final_temperature is not None:
+        if (
+            self.duration is not None
+            and self.initial_temperature is not None
+            and self.final_temperature is not None
+        ):
             self.temperature_ramp = (
-                (self.final_temperature - self.initial_temperature)
-                / self.duration
+                (self.final_temperature - self.initial_temperature) / self.duration
             ) * ureg('K/s')
         else:
             self.temperature_ramp = None
 
     def _calc_partial_pressure(self):
         step_Ar_flow = (
-            self.step_Ar_flow.magnitude
-            if self.step_Ar_flow is not None else 0
+            self.step_Ar_flow.magnitude if self.step_Ar_flow is not None else 0
         )
         step_N2_flow = (
-            self.step_N2_flow.magnitude
-            if self.step_N2_flow is not None else 0
+            self.step_N2_flow.magnitude if self.step_N2_flow is not None else 0
         )
         step_H2S_in_Ar_flow = (
             self.step_H2S_in_Ar_flow.magnitude
-            if self.step_H2S_in_Ar_flow is not None else 0
+            if self.step_H2S_in_Ar_flow is not None
+            else 0
         )
         step_PH3_in_Ar_flow = (
             self.step_PH3_in_Ar_flow.magnitude
-            if self.step_PH3_in_Ar_flow is not None else 0
+            if self.step_PH3_in_Ar_flow is not None
+            else 0
         )
         total_flow = (
-            step_Ar_flow
-            + step_H2S_in_Ar_flow
-            + step_N2_flow
-            + step_PH3_in_Ar_flow
+            step_Ar_flow + step_H2S_in_Ar_flow + step_N2_flow + step_PH3_in_Ar_flow
         )
 
         total_pressure = self.annealing_pressure.magnitude
 
         step_PH3_partial_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            defaultDisplayUnit='Torr',
-            label='PH3 Partial Pressure',
-        ),
-        unit='Pa',
-        description='Partial pressure of PH3 during the annealing plateau of the' \
-        ' RTP process.',
+            type=np.float64,
+            a_eln=ELNAnnotation(
+                defaultDisplayUnit='Torr',
+                label='PH3 Partial Pressure',
+            ),
+            unit='Pa',
+            description='Partial pressure of PH3 during the annealing plateau of the'
+            ' RTP process.',
         )
         step_H2S_partial_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            defaultDisplayUnit='Torr',
-            label='H2S Partial Pressure',
-        ),
-        unit='Pa',
-        description='Partial pressure of H2S during the annealing plateau of the' \
-        ' RTP process.',
+            type=np.float64,
+            a_eln=ELNAnnotation(
+                defaultDisplayUnit='Torr',
+                label='H2S Partial Pressure',
+            ),
+            unit='Pa',
+            description='Partial pressure of H2S during the annealing plateau of the'
+            ' RTP process.',
         )
         step_N2_partial_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            defaultDisplayUnit='Torr',
-            label='N2 Partial Pressure',
-        ),
-        unit='Pa',
-        description='Partial pressure of N2 during the annealing plateau of the' \
-        ' RTP process.',
+            type=np.float64,
+            a_eln=ELNAnnotation(
+                defaultDisplayUnit='Torr',
+                label='N2 Partial Pressure',
+            ),
+            unit='Pa',
+            description='Partial pressure of N2 during the annealing plateau of the'
+            ' RTP process.',
         )
         step_Ar_partial_pressure = Quantity(
-        type=np.float64,
-        a_eln=ELNAnnotation(
-            defaultDisplayUnit='Torr',
-            label='Ar Partial Pressure',
-        ),
-        unit='Pa',
-        description='Partial pressure of Ar during the annealing plateau of the' \
-        ' RTP process.',
+            type=np.float64,
+            a_eln=ELNAnnotation(
+                defaultDisplayUnit='Torr',
+                label='Ar Partial Pressure',
+            ),
+            unit='Pa',
+            description='Partial pressure of Ar during the annealing plateau of the'
+            ' RTP process.',
         )
         step_H2S_partial_pressure = (
-            step_H2S_in_Ar_flow * RTP_GAS_FRACTION['H2S']
-            / total_flow * total_pressure
+            step_H2S_in_Ar_flow * RTP_GAS_FRACTION['H2S'] / total_flow * total_pressure
         )
-        self.step_H2S_partial_pressure = (
-        step_H2S_partial_pressure * ureg('kg/(m*s^2)')
-        )
+        self.step_H2S_partial_pressure = step_H2S_partial_pressure * ureg('kg/(m*s^2)')
         step_PH3_partial_pressure = (
-            step_PH3_in_Ar_flow * RTP_GAS_FRACTION['PH3']
-            / total_flow * total_pressure
+            step_PH3_in_Ar_flow * RTP_GAS_FRACTION['PH3'] / total_flow * total_pressure
         )
-        self.step_PH3_partial_pressure = (
-            step_PH3_partial_pressure * ureg('kg/(m*s^2)')
-        )
+        self.step_PH3_partial_pressure = step_PH3_partial_pressure * ureg('kg/(m*s^2)')
         step_N2_partial_pressure = (
-            step_N2_flow * RTP_GAS_FRACTION['N2']
-            / total_flow * total_pressure
+            step_N2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure
         )
-        self.step_N2_partial_pressure = (
-            step_N2_partial_pressure * ureg('kg/(m*s^2)')
-        )
+        self.step_N2_partial_pressure = step_N2_partial_pressure * ureg('kg/(m*s^2)')
         step_Ar_partial_pressure = (
-            (step_H2S_in_Ar_flow*(1-RTP_GAS_FRACTION['H2S'])
-             +step_PH3_in_Ar_flow*(1-RTP_GAS_FRACTION['PH3'])
-             +step_Ar_flow*RTP_GAS_FRACTION['Ar'])
-            / total_flow * total_pressure
+            (
+                step_H2S_in_Ar_flow * (1 - RTP_GAS_FRACTION['H2S'])
+                + step_PH3_in_Ar_flow * (1 - RTP_GAS_FRACTION['PH3'])
+                + step_Ar_flow * RTP_GAS_FRACTION['Ar']
+            )
+            / total_flow
+            * total_pressure
         )
-        self.step_Ar_partial_pressure = (
-            step_Ar_partial_pressure * ureg('kg/(m*s^2)')
-        )
+        self.step_Ar_partial_pressure = step_Ar_partial_pressure * ureg('kg/(m*s^2)')
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -604,6 +624,7 @@ class RTPStepOverview(ArchiveSection):
             and self.initial_temperature != self.final_temperature
         ):
             self._calc_ramp()
+
 
 class DTURTPSteps(CVDStep, ArchiveSection):
     """
@@ -626,9 +647,9 @@ class DTURTPSteps(CVDStep, ArchiveSection):
         """
         super().normalize(archive, logger)
 
+
 ###################### 1ST LEVEL CLASS (RTP) #################################
 class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
-
     """
     A synthesis method where a rapidly heated substrate is exposed to one or more
     volatile precursors, which react or decompose on the surface to produce a deposit.
@@ -665,8 +686,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         type=str,
         shape=['*'],
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.FileEditQuantity,
-            label= 'Gases log file'
+            component=ELNComponentEnum.FileEditQuantity, label='Gases log file'
         ),
         description='Cell to upload the gases log file from the RTP process.',
     )
@@ -674,28 +694,25 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     log_file_eklipse = Quantity(
         type=str,
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.FileEditQuantity,
-            label= 'Gases log file'
+            component=ELNComponentEnum.FileEditQuantity, label='Gases log file'
         ),
         description='Cell to upload the gases log file from the RTP process.',
     )
     log_file_T2BDiagnostics = Quantity(
         type=str,
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.FileEditQuantity,
-            label = 'Temperature log file'
-            label = 'Temperature log file'
+            component=ELNComponentEnum.FileEditQuantity, label='Temperature log file'
         ),
         description='Cell to upload the temperature log file from the RTP process.',
     )
-    #log_file_pressure = Quantity(
+    # log_file_pressure = Quantity(
     #    type=str,
     #    a_eln=ELNAnnotation(
     #        component=ELNComponentEnum.FileEditQuantity,
     #        label = 'Pressure log file'
     #    ),
     #    description='Cell to upload the pressure log file from the RTP process.',
-    #)
+    # )
     samples_susceptor_before = Quantity(
         type=str,
         a_eln={
@@ -705,7 +722,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
-        description='Cell to upload the image of the samples on susceptor before the' \
+        description='Cell to upload the image of the samples on susceptor before the'
         'RTP process.',
     )
     samples_susceptor_after = Quantity(
@@ -717,12 +734,12 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
-        description='Cell to upload the image of the samples on susceptor after the' \
+        description='Cell to upload the image of the samples on susceptor after the'
         'RTP process.',
     )
     used_gases = Quantity(
-        type= str,
-       shape=['*'],
+        type=str,
+        shape=['*'],
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.StringEditQuantity,
             label='Used gases',
@@ -732,23 +749,23 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     #################### GENERAL CHECKS ######################
     base_pressure = Quantity(
         type=np.float64,
-        a_eln= ELNAnnotation(
-            component= ELNComponentEnum.FileEditQuantity,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
             label='Base Pressure without ballast',
-            defaultDisplayUnit = 'mtorr'
-            ),
+            defaultDisplayUnit='mtorr',
+        ),
         unit='Pa',
         description='Base pressure when ballast is OFF',
     )
     base_pressure_ballast = Quantity(
-    type=np.float64,
-    a_eln=ELNAnnotation(
-        component=ELNComponentEnum.FileEditQuantity,
-        label='Base Pressure with ballast',
-        defaultDisplayUnit='mtorr',
-    ),
-    unit='Pa',
-    description='Base pressure when ballast is ON.',
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+            label='Base Pressure with ballast',
+            defaultDisplayUnit='mtorr',
+        ),
+        unit='Pa',
+        description='Base pressure when ballast is ON.',
     )
     rate_of_rise = Quantity(
         type=np.float64,
@@ -757,8 +774,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             defaultDisplayUnit='mTorr/minute',
             label='Rate of Rise',
         ),
-    unit='Pa/s',
-    description='Rate of rise of the pressure in the RTP chamber during static vacuum',
+        unit='Pa/s',
+        description='Rate of rise of the pressure in the RTP chamber during static vacuum',
     )
     chiller_flow = Quantity(
         type=np.float64,
@@ -767,8 +784,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             defaultDisplayUnit='l/minute',
             label='Chiller Flow',
         ),
-    unit='m**3/s',
-    description='Chiller flow rate during the RTP process.',
+        unit='m**3/s',
+        description='Chiller flow rate during the RTP process.',
     )
     ########################### SUBSECTIONS ########################################
     substrates = SubSection(
@@ -793,14 +810,15 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         shape=['*'],
         description='Temperature points for the temperature profile plot.',
     )
+
     def plot(self) -> None:
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(
-               x=self.time ('seconds').magnitude,
-               y=self.temperature_profile ('celsius').magnitude,
-               mode='lines+markers',
-               name= 'Temperature Profile',
+                x=self.time('seconds').magnitude,
+                y=self.temperature_profile('celsius').magnitude,
+                mode='lines+markers',
+                name='Temperature Profile',
             )
         )
         fig.update_layout(
@@ -826,6 +844,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 figure=plot_json,
             )
         )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `RTP` class.
@@ -858,7 +877,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         self.figures = []
         self.plot()
 
-#Lena's initial CODE
+
+# Lena's initial CODE
 #    temperature = Quantity(
 #        type=float,
 #        a_eln=ELNAnnotation(

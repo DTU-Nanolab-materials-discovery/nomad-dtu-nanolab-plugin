@@ -1,0 +1,48 @@
+data:
+  m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DTURTP
+  lab_id: "user_001_RTP"
+  location: "DTU; IDOL Lab"
+  used_gases:
+    - "Ar"
+    - "N2"
+    - "PH3"
+    - "H2S"
+  base_pressure: 0.05
+  base_pressure_ballast: 0.08
+  rate_of_rise: 0.001
+  chiller_flow: 0.002
+
+  substrates:
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DTURTPSubstrateMounting
+      name: "bl"
+      relative_position: "bl"
+      position_x: 0.02
+      position_y: 0.035
+      rotation: 0
+
+  overview:
+    m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPOverview
+    material_space: "Sn-P-S"
+    annealing_pressure: 500
+    annealing_time: 5
+    annealing_temperature: 300
+    annealing_Ar_flow: 0
+    annealing_N2_flow: 0
+    annealing_PH3_in_Ar_flow: 132
+    annealing_H2S_in_Ar_flow: 70
+    total_heating_time: 3
+    total_cooling_time: 3
+    end_of_process_temperature: 50
+
+  steps:
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DTURTPSteps
+      step_overview:
+        m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPStepOverview
+        duration: 3
+        pressure: 500
+        step_Ar_flow: 0
+        step_N2_flow: 0
+        step_PH3_in_Ar_flow: 132
+        step_H2S_in_Ar_flow: 50
+        initial_temperature: 25
+        final_temperature: 300
