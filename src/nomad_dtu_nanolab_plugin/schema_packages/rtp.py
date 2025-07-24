@@ -294,7 +294,9 @@ class RTPOverview(ArchiveSection):
             else 0
         )
         annealing_PH3_in_Ar_flow = (
-            self.annealing_PH3_in_Ar_flow.magnitude if self.annea is not None else 0
+            self.annealing_PH3_in_Ar_flow.magnitude
+            if self.annealing_PH3_in_Ar_flow is not None
+            else 0
         )
         total_flow = (
             annealing_Ar_flow
@@ -518,7 +520,7 @@ class RTPStepOverview(ArchiveSection):
         ):
             self.temperature_ramp = (
                 (self.final_temperature - self.initial_temperature) / self.duration
-            ) * ureg('K/s')
+            )
         else:
             self.temperature_ramp = None
 
@@ -806,8 +808,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(
-                x=self.time('seconds').magnitude,
-                y=self.temperature_profile('celsius').magnitude,
+                x=self.time,
+                y=self.temperature_profile,
                 mode='lines+markers',
                 name='Temperature Profile',
             )
@@ -863,8 +865,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 current_time += step_overview.duration or 0
                 temps.append(step_overview.final_temperature)
                 times.append(current_time)
-        self.time = np.array(times)
-        self.temperature_profile = np.array(temps)
+        self.time = times
+        self.temperature_profile = temps
         self.figures = []
         self.plot()
 

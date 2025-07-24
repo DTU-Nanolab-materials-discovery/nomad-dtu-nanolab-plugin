@@ -1,0 +1,13 @@
+data:
+  m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTP
+  lab_id: "user_001_RTP"
+  location: "DTU; IDOL Lab"
+  used_gases:
+    - "Ar"
+    - "N2"
+    - "PH3"
+    - "H2S"
+  base_pressure: 0.05
+  base_pressure_ballast: 0.08
+  rate_of_rise: 0.001
+  chiller_flow: 0.002
