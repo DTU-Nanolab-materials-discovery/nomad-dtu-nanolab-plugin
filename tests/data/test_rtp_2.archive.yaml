@@ -34,7 +34,7 @@ data:
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DTURTPSteps
       step_overview:
         m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPStepOverview
-        duration: 3
+        duration: 4000
         pressure: 500
         step_ar_flow: 0
         step_n2_flow: 0
@@ -45,7 +45,7 @@ data:
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DTURTPSteps
       step_overview:
         m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPStepOverview
-        duration: 5
+        duration: 47
         pressure: 500
         step_ar_flow: 0
         step_n2_flow: 0
@@ -56,7 +56,7 @@ data:
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DTURTPSteps
       step_overview:
         m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPStepOverview
-        duration: 3
+        duration: 83
         pressure: 500
         step_ar_flow: 0
         step_n2_flow: 0
