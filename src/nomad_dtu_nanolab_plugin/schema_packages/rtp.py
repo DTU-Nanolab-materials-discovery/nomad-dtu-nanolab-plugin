@@ -11,7 +11,6 @@ from nomad.datamodel.metainfo.annotations import (
 )
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MProxy, Package, Quantity, Section, SubSection
-from nomad.units import ureg
 from nomad_material_processing.vapor_deposition.cvd.general import (
     ChemicalVaporDeposition,
     CVDStep,
@@ -353,24 +352,21 @@ class RTPOverview(ArchiveSection):
             / total_flow
             * total_pressure
         )
-        self.annealing_h2s_partial_pressure = ureg.Quantity(
-            annealing_h2s_partial_pressure, 'torr'
-        )
+        self.annealing_h2s_partial_pressure = annealing_h2s_partial_pressure
+
         annealing_ph3_partial_pressure = (
             annealing_ph3_in_ar_flow
             * RTP_GAS_FRACTION['PH3']
             / total_flow
             * total_pressure
         )
-        self.annealing_ph3_partial_pressure = ureg.Quantity(
-            annealing_ph3_partial_pressure, 'torr'
-        )
+        self.annealing_ph3_partial_pressure = annealing_ph3_partial_pressure
+
         annealing_n2_partial_pressure = (
             annealing_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure
         )
-        self.annealing_n2_partial_pressure = ureg.Quantity(
-            annealing_n2_partial_pressure, 'torr'
-        )
+        self.annealing_n2_partial_pressure = annealing_n2_partial_pressure
+
         annealing_ar_partial_pressure = (
             (
                 annealing_h2s_in_ar_flow * (1 - RTP_GAS_FRACTION['H2S'])
@@ -380,9 +376,7 @@ class RTPOverview(ArchiveSection):
             / total_flow
             * total_pressure
         )
-        self.annealing_ar_partial_pressure = ureg.Quantity(
-            annealing_ar_partial_pressure, 'torr'
-        )
+        self.annealing_ar_partial_pressure = annealing_ar_partial_pressure
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -418,7 +412,7 @@ class RTPStepOverview(ArchiveSection):
         type=np.float64,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='seconds',
+            defaultDisplayUnit='minute',
             label='Duration',
         ),
         unit='s',
@@ -586,19 +580,18 @@ class RTPStepOverview(ArchiveSection):
         step_h2s_partial_pressure = (
             step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S'] / total_flow * total_pressure
         )
-        self.step_h2s_partial_pressure = ureg.Quantity(
-            step_h2s_partial_pressure, 'torr'
-        )
+        self.step_h2s_partial_pressure = step_h2s_partial_pressure
+
         step_ph3_partial_pressure = (
             step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3'] / total_flow * total_pressure
         )
-        self.step_ph3_partial_pressure = ureg.Quantity(
-            step_ph3_partial_pressure, 'torr'
-        )
+        self.step_ph3_partial_pressure = step_ph3_partial_pressure
+
         step_n2_partial_pressure = (
             step_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure
         )
-        self.step_n2_partial_pressure = ureg.Quantity(step_n2_partial_pressure, 'torr')
+        self.step_n2_partial_pressure = step_n2_partial_pressure
+
         step_ar_partial_pressure = (
             (
                 step_h2s_in_ar_flow * (1 - RTP_GAS_FRACTION['H2S'])
@@ -608,7 +601,7 @@ class RTPStepOverview(ArchiveSection):
             / total_flow
             * total_pressure
         )
-        self.step_ar_partial_pressure = ureg.Quantity(step_ar_partial_pressure, 'torr')
+        self.step_ar_partial_pressure = step_ar_partial_pressure
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -755,7 +748,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
             label='Base Pressure without ballast',
-            defaultDisplayUnit='torr',
+            defaultDisplayUnit='mtorr',
         ),
         unit='Pa',
         description='Base pressure when ballast is OFF',
@@ -765,7 +758,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
             label='Base Pressure with ballast',
-            defaultDisplayUnit='torr',
+            defaultDisplayUnit='mtorr',
         ),
         unit='Pa',
         description='Base pressure when ballast is ON.',
@@ -774,7 +767,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         type=np.float64,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='torr/minute',
+            defaultDisplayUnit='mtorr/minute',
             label='Rate of Rise',
         ),
         unit='Pa/s',
@@ -827,16 +820,22 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         )
         fig.update_layout(
             title='RTP Temperature Profile',
-            xaxis_title='Time / seconds',
+            xaxis_title='Time / minute',
             yaxis_title='Temperature / °C',
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
             xaxis=dict(
                 fixedrange=False,
+                showline=True,
+                showgrid=True,
+                zeroline=True,
             ),
             yaxis=dict(
                 fixedrange=False,
+                showline=True,
+                showgrid=True,
+                zeroline=True,
             ),
         )
         plot_json = fig.to_plotly_json()
@@ -881,24 +880,3 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         self.temperature_profile = temps
         self.figures = []
         self.plot()
-
-
-# Lena's initial CODE
-#    temperature = Quantity(
-#        type=float,
-#        a_eln=ELNAnnotation(
-#            component=ELNComponentEnum.NumberEditQuantity,
-#            defaultDisplayUnit='celsius',
-#        ),
-#        unit='K',
-#        description='Temperature of the process.',
-#    )
-#    used_gases = Quantity(
-#        type= str,
-#        shape=['*'],
-#        a_eln=ELNAnnotation(
-#            component=ELNComponentEnum.StringEditQuantity,
-#            label='Used gases',
-#        ),
-#        description='Gases used in the process.',
-#    )
