@@ -878,7 +878,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         repeats=True,
     )
     ############################## PLOTS #################################
-    # TODO add plot visualization samples on susceptor
+    #Set up temperature profile plot
     time = Quantity(
         type=np.float64,
         shape=['*'],
@@ -927,6 +927,79 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         self.figures.append(
             PlotlyFigure(
                 label='Temperature Profile',
+                figure=plot_json,
+            )
+        )
+    #Set up the substrates on susceptor graphical visualization
+    def plot_susceptor(self) -> None:
+        fig = go.Figure()
+
+        # Draw susceptor outline (square 51x51 mm centered at 0,0)
+        susceptor_size = 51  # mm
+        half_susceptor = susceptor_size / 2
+        fig.add_shape(
+            type="rect",
+            x0=-half_susceptor, y0=-half_susceptor,
+            x1=half_susceptor, y1=half_susceptor,
+            line=dict(color="black", width=2),
+            fillcolor="rgba(200,200,200,0.1)",
+            layer="below"
+    )
+        # Draw substrates
+        substrate_size = 25  # mm
+        half_substrate = substrate_size / 2
+
+        for substrate in getattr(self, "substrates", []):
+            # Get center position in mm (convert from meters if needed)
+            x = getattr(substrate, "position_x", 0)
+            y = getattr(substrate, "position_y", 0)
+            # If units are meters, convert to mm
+            if hasattr(x, "magnitude"):
+                x = x.to("mm").magnitude
+            if hasattr(y, "magnitude"):
+                y = y.to("mm").magnitude
+            # Only plot if relative_position is set by user
+            if getattr(substrate, "relative_position", None):
+                fig.add_shape(
+                    type="rect",
+                    x0=x - half_substrate, y0=y - half_substrate,
+                    x1=x + half_substrate, y1=y + half_substrate,
+                    line=dict(color="blue", width=2),
+                    fillcolor="rgba(100,100,255,0.3)",
+            )
+            # Add label
+                fig.add_annotation(
+                    x=x, y=y,
+                    text=substrate.relative_position,
+                    showarrow=False,
+                    font=dict(color="black", size=12),
+                    bgcolor="white",
+            )
+        fig.update_layout(
+            title="Substrates on Susceptor",
+            xaxis=dict(
+                range=[-half_susceptor-5, half_susceptor+5],
+                scaleanchor="y",
+                scaleratio=1,
+                showgrid=False,
+                zeroline=False,
+                visible=False,
+            ),
+            yaxis=dict(
+                range=[-half_susceptor-5, half_susceptor+5],
+                showgrid=False,
+                zeroline=False,
+                visible=False,
+            ),
+            width=500,
+            height=500,
+            plot_bgcolor="white",
+        )
+        plot_json = fig.to_plotly_json()
+        plot_json["config"] = dict(scrollZoom=False)
+        self.figures.append(
+            PlotlyFigure(
+                label="Susceptor Substrate Map",
                 figure=plot_json,
             )
         )
