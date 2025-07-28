@@ -19,7 +19,7 @@ data:
   overview:
     m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPOverview
     material_space: "Sn-P-S"
-    annealing_pressure: 500
+    annealing_pressure: 66661.184211
     annealing_time: 300
     annealing_temperature: 300
     annealing_ar_flow: 0
@@ -35,7 +35,7 @@ data:
       step_overview:
         m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPStepOverview
         duration: 180
-        pressure: 500
+        pressure: 66661.184211
         step_ar_flow: 0
         step_n2_flow: 0
         step_ph3_in_ar_flow: 132
@@ -46,7 +46,7 @@ data:
       step_overview:
         m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPStepOverview
         duration: 300
-        pressure: 500
+        pressure: 66661.184211
         step_ar_flow: 0
         step_n2_flow: 0
         step_ph3_in_ar_flow: 132
@@ -57,7 +57,7 @@ data:
       step_overview:
         m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPStepOverview
         duration: 180
-        pressure: 500
+        pressure: 66661.184211
         step_ar_flow: 0
         step_n2_flow: 0
         step_ph3_in_ar_flow: 132
