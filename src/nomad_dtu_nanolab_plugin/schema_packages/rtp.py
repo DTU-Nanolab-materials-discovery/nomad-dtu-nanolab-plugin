@@ -139,12 +139,20 @@ class DtuRTPSubstrateMounting(ArchiveSection):
             substrate = self.substrate_batch.next_not_used_in(DtuRTP)
             self.substrate = substrate
         if self.position_x is None or self.position_y is None or self.rotation is None:
-            positions = {  # TODO #CHANGE THIS TO RIGHT VALUES FROM SUSCEPTOR
-                'bl': (-0.02, 0.035, 0),
-                'br': (0.02, 0.035, 0),
-                'fl': (-0.02, -0.005, 0),
-                'fr': (0.02, -0.005, 0),
-                'm': (0, -0.038, np.pi / 2),
+            positions = {
+                'bl': (-0.0125, 0.0125, 0),
+                'br': (0.0125, 0.0125, 0),
+                'fl': (-0.0125, -0.0125, 0),
+                'fr': (0.0125, -0.0125, 0),
+                'm': (0, 0, 0),
+                'ha': (0, 0.01667, 0),
+                'hb': (0, 0.00833, 0),
+                'hc': (0, -0.00833, 0),
+                'hd': (0, -0.01667, 0),
+                'va': (-0.01667, 0, 0),
+                'vb': (-0.00833, 0, 0),
+                'vc': (0.00833, 0, 0),
+                'vd': (0.01667, 0, 0),
             }
             if self.relative_position in positions:
                 self.position_x, self.position_y, self.rotation = positions[
@@ -552,17 +560,22 @@ class RTPStepOverview(ArchiveSection):
         Calculate the temperature ramp rate based on the initial and final temperatures
         and the duration of the step.
         """
-        if (
-            self.duration is not None
-            and self.initial_temperature is not None
-            and self.final_temperature is not None
-        ):
-            temperature_ramp = (
-                self.final_temperature - self.initial_temperature
-            ) / self.duration
-            self.temperature_ramp = ureg.Quantity(temperature_ramp, 'K/s')  # TODO
-        else:
-            self.temperature_ramp = None
+        initial_temperature = (
+            self.initial_temperature.magnitude
+            if self.final_temperature is not None
+            else 0
+        )
+        final_temperature = (
+            self.final_temperature.magnitude
+            if self.final_temperature is not None
+            else 0
+        )
+        duration = self.duration.magnitude if self.duration is not None else 0
+        temperature_ramp = ureg.Quantity(
+            (final_temperature - initial_temperature) / duration, 'K/s'
+        )
+        self.temperature_ramp = temperature_ramp.to('celsius/minute')
+        self.duration = duration.to('s')
 
     def calc_partial_pressure(self):
         step_ar_flow = (
@@ -851,6 +864,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         repeats=True,
     )
     ############################## PLOTS #################################
+    # TODO add plot visualization samples on susceptor
     time = Quantity(
         type=np.float64,
         shape=['*'],
@@ -875,7 +889,6 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         fig.update_layout(
             title='RTP Temperature Profile',
             xaxis_title='Time / seconds',
-            # f'Time / {getattr(self, "_time_unit", "seconds")}'
             yaxis_title='Temperature / °C',
             template='plotly_white',
             hovermode='closest',
@@ -920,29 +933,17 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             step_overview = getattr(step, 'step_overview', None)
             if (
                 step_overview is not None
-                and hasattr(step_overview, 'initial_temperature')
-                and hasattr(step_overview, 'final_temperature')
-                and hasattr(step_overview, 'duration')
+                and isinstance(step_overview.initial_temperature, ureg.Quantity)
+                and isinstance(step_overview.final_temperature, ureg.Quantity)
+                and isinstance(step_overview.duration, ureg.Quantity)
             ):
                 # Add initial point for the step
-                temps.append(step_overview.initial_temperature)
+                temps.append(step_overview.initial_temperature.to('celsius').magnitude)
                 times.append(current_time)
                 # Add final point for the step
                 current_time += step_overview.duration or 0
-                temps.append(step_overview.final_temperature)
+                temps.append(step_overview.final_temperature.to('celsius').magnitude)
                 times.append(current_time)
-        # TODO Determine time unit
-        # hour = 3600
-        # minute = 60
-        # if times and times[-1] > hour:
-        #    self.time = [t / 3600 for t in times]
-        #    self._time_unit = 'hours'
-        # elif times and times[-1] > minute:
-        #    self.time = [t / 60 for t in times]
-        #    self._time_unit = 'minute'
-        # else:
-        #    self.time = times
-        #    self._time_unit = 's'
         self.time = times
         self.temperature_profile = temps
         self.figures = []
