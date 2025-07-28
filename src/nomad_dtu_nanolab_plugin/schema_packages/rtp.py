@@ -356,44 +356,49 @@ class RTPOverview(ArchiveSection):
 
         total_pressure = self.annealing_pressure.magnitude
 
-        annealing_h2s_partial_pressure = (
+        annealing_h2s_partial_pressure = ureg.Quantity(
             annealing_h2s_in_ar_flow
             * RTP_GAS_FRACTION['H2S']
             / total_flow
-            * total_pressure
+            * total_pressure,
+            'Pa'
         )
-        self.annealing_h2s_partial_pressure = ureg.Quantity(
-            annealing_h2s_partial_pressure, 'Pa'
+        self.annealing_h2s_partial_pressure = (
+            annealing_h2s_partial_pressure.to('mtorr').magnitude
         )
-        annealing_ph3_partial_pressure = (
+
+        annealing_ph3_partial_pressure = ureg.Quantity(
             annealing_ph3_in_ar_flow
             * RTP_GAS_FRACTION['PH3']
             / total_flow
-            * total_pressure
+            * total_pressure,
+            'Pa'
         )
-        self.annealing_ph3_partial_pressure = ureg.Quantity(
-            annealing_ph3_partial_pressure, 'Pa'
-        )
-
-        annealing_n2_partial_pressure = (
-            annealing_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure
-        )
-        self.annealing_n2_partial_pressure = ureg.Quantity(
-            annealing_n2_partial_pressure, 'Pa'
+        self.annealing_ph3_partial_pressure = (
+            annealing_ph3_partial_pressure.to('mtorr').magnitude
         )
 
-        annealing_ar_partial_pressure = (
+        annealing_n2_partial_pressure = ureg.Quantity(
+            annealing_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure,
+            'Pa'
+        )
+        self.annealing_n2_partial_pressure = (
+            annealing_n2_partial_pressure.to('mtorr').magnitude
+        )
+
+        annealing_ar_partial_pressure = ureg.quantity(
             (
                 annealing_h2s_in_ar_flow * (1 - RTP_GAS_FRACTION['H2S'])
                 + annealing_ph3_in_ar_flow * (1 - RTP_GAS_FRACTION['PH3'])
                 + annealing_ar_flow * RTP_GAS_FRACTION['Ar']
             )
             / total_flow
-            * total_pressure
+            * total_pressure,
+            'Pa'
         )
-        self.annealing_ar_partial_pressure = ureg.Quantity(
-            annealing_ar_partial_pressure, 'Pa'
-        )  # Defined in units I defined pressure w
+        self.annealing_ar_partial_pressure = (
+            annealing_ar_partial_pressure.to('mtorr').magnitude
+        )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -611,19 +616,19 @@ class RTPStepOverview(ArchiveSection):
 
         step_h2s_partial_pressure = ureg.Quantity(
             step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S'] / total_flow * total_pressure,
-            'torr'
+            'Pa'
         )
         self.step_h2s_partial_pressure = step_h2s_partial_pressure.to('mtorr').magnitude
 
         step_ph3_partial_pressure = ureg.Quantity(
             step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3'] / total_flow * total_pressure,
-            'torr'
+            'Pa'
         )
         self.step_ph3_partial_pressure = step_ph3_partial_pressure.to('mtorr').magnitude
 
         step_n2_partial_pressure = ureg.Quantity(
             step_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure,
-            'torr'
+            'Pa'
         )
         self.step_n2_partial_pressure = step_n2_partial_pressure.to('mtorr').magnitude
 
@@ -635,7 +640,7 @@ class RTPStepOverview(ArchiveSection):
             )
             / total_flow
             * total_pressure,
-            'torr'
+            'Pa'
         )
         self.step_ar_partial_pressure = step_ar_partial_pressure.to('mtorr').magnitude
 
