@@ -570,19 +570,28 @@ class RTPStepOverview(ArchiveSection):
             if self.final_temperature is not None
             else 0
         )
-        duration = self.duration.magnitude if self.duration is not None else 0
-        temperature_ramp = ureg.Quantity(
-            (final_temperature - initial_temperature) / duration, 'K/s'
+        duration = (
+            self.duration.magnitude
+            if self.duration is not None
+            else 0
         )
-        self.temperature_ramp = temperature_ramp.to('celsius/minute')
-        self.duration = duration.to('s')
+        temperature_ramp = ureg.Quantity(
+            ((final_temperature - initial_temperature)
+            / duration),
+            'K/s',
+        )
+        self.temperature_ramp = temperature_ramp.to('celsius/minute').magnitude
 
     def calc_partial_pressure(self):
         step_ar_flow = (
-            self.step_ar_flow.magnitude if self.step_ar_flow is not None else 0
+            self.step_ar_flow.magnitude
+            if self.step_ar_flow is not None
+            else 0
         )
         step_n2_flow = (
-            self.step_n2_flow.magnitude if self.step_n2_flow is not None else 0
+            self.step_n2_flow.magnitude
+            if self.step_n2_flow is not None
+            else 0
         )
         step_h2s_in_ar_flow = (
             self.step_h2s_in_ar_flow.magnitude
@@ -600,35 +609,35 @@ class RTPStepOverview(ArchiveSection):
 
         total_pressure = self.pressure.magnitude
 
-        step_h2s_partial_pressure = (
-            step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S'] / total_flow * total_pressure
+        step_h2s_partial_pressure = ureg.Quantity(
+            step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S'] / total_flow * total_pressure,
+            'torr'
         )
-        self.step_h2s_partial_pressure = ureg.Quantity(
-            step_h2s_partial_pressure, 'torr'
-        )
+        self.step_h2s_partial_pressure = step_h2s_partial_pressure.to('mtorr').magnitude
 
-        step_ph3_partial_pressure = (
-            step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3'] / total_flow * total_pressure
+        step_ph3_partial_pressure = ureg.Quantity(
+            step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3'] / total_flow * total_pressure,
+            'torr'
         )
-        self.step_ph3_partial_pressure = ureg.Quantity(
-            step_ph3_partial_pressure, 'torr'
-        )
+        self.step_ph3_partial_pressure = step_ph3_partial_pressure.to('mtorr').magnitude
 
-        step_n2_partial_pressure = (
-            step_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure
+        step_n2_partial_pressure = ureg.Quantity(
+            step_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure,
+            'torr'
         )
-        self.step_n2_partial_pressure = ureg.Quantity(step_n2_partial_pressure, 'torr')
+        self.step_n2_partial_pressure = step_n2_partial_pressure.to('mtorr').magnitude
 
-        step_ar_partial_pressure = (
+        step_ar_partial_pressure = ureg.Quantity(
             (
                 step_h2s_in_ar_flow * (1 - RTP_GAS_FRACTION['H2S'])
                 + step_ph3_in_ar_flow * (1 - RTP_GAS_FRACTION['PH3'])
                 + step_ar_flow * RTP_GAS_FRACTION['Ar']
             )
             / total_flow
-            * total_pressure
+            * total_pressure,
+            'torr'
         )
-        self.step_ar_partial_pressure = ureg.Quantity(step_ar_partial_pressure, 'torr')
+        self.step_ar_partial_pressure = step_ar_partial_pressure.to('mtorr').magnitude
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
