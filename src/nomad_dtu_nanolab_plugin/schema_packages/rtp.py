@@ -955,6 +955,16 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             font=dict(color="black", size=16),
             xanchor="right",
             yanchor="middle",
+            textangle=-90,  # Rotate text to be vertical
+        )
+        fig.add_annotation(
+            x=0,
+            y=-half_susceptor-7,  # 7 mm below the susceptor edge
+            text="you",
+            showarrow=False,
+            font=dict(color="black", size=16),
+            xanchor="center",
+            yanchor="top",
         )
         # Define substrate sizes by position
         square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
