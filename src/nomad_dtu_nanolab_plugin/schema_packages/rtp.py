@@ -997,22 +997,22 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     y = y.to("mm").magnitude
 
                 # Draw rectangle for the substrates
-                half_w, half_h = width / 2, height / 2
-                fig.add_shape(
-                    type="rect",
-                    x0=x - half_w, y0=y - half_h,
-                    x1=x + half_w, y1=y + half_h,
-                    line=dict(color="blue", width=2),
-                    fillcolor="rgba(100,100,255,0.3)",
-                )
+            half_w, half_h = width / 2, height / 2
+            fig.add_shape(
+                type="rect",
+                x0=x - half_w, y0=y - half_h,
+                x1=x + half_w, y1=y + half_h,
+                line=dict(color="blue", width=2),
+                fillcolor="rgba(100,100,255,0.3)",
+            )
                 # Add label to the substrates
-                fig.add_annotation(
-                    x=x, y=y,
-                    text=substrate.relative_position,
-                    showarrow=False,
-                    font=dict(color="black", size=12),
-                    bgcolor="white",
-                )
+            fig.add_annotation(
+                x=x, y=y,
+                text=substrate.relative_position,
+                showarrow=False,
+                font=dict(color="black", size=12),
+                bgcolor="white",
+            )
         fig.update_layout(
             title="Substrates on Susceptor",
             xaxis=dict(
