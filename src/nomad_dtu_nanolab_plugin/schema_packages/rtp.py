@@ -145,14 +145,14 @@ class DtuRTPSubstrateMounting(ArchiveSection):
                 'fl': (-0.0125, -0.0125, 0),
                 'fr': (0.0125, -0.0125, 0),
                 'm': (0, 0, 0),
-                'ha': (0, 0.01667, 0),
-                'hb': (0, 0.00833, 0),
-                'hc': (0, -0.00833, 0),
-                'hd': (0, -0.01667, 0),
-                'va': (-0.01667, 0, 0),
-                'vb': (-0.00833, 0, 0),
-                'vc': (0.00833, 0, 0),
-                'vd': (0.01667, 0, 0),
+                'ha': (0, 0.015, 0),
+                'hb': (0, 0.005, 0),
+                'hc': (0, -0.005, 0),
+                'hd': (0, -0.015, 0),
+                'va': (-0.015, 0, 0),
+                'vb': (-0.005, 0, 0),
+                'vc': (0.005, 0, 0),
+                'vd': (0.015, 0, 0),
             }
             if self.relative_position in positions:
                 self.position_x, self.position_y, self.rotation = positions[
@@ -948,14 +948,14 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         )
         # Add 'chamber' label to the left side
         fig.add_annotation(
-        x=-half_susceptor-7,  # 7 mm left of the susceptor edge
-        y=0,
-        text="chamber",
-        showarrow=False,
-        font=dict(color="black", size=16),
-        bgcolor="white",
-        xanchor="right",
-        yanchor="middle",
+            x=-half_susceptor-7,  # 7 mm left of the susceptor edge
+            y=0,
+            text="chamber",
+            showarrow=False,
+            font=dict(color="black", size=16),
+            bgcolor="white",
+            xanchor="right",
+            yanchor="middle",
         )
         # Define substrate sizes by position
         square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
@@ -964,24 +964,40 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         for substrate in getattr(self, "substrates", []):
             rel_pos = getattr(substrate, "relative_position", None)
             # Only plot if relative_position is set by user
-            if rel_pos:
-                # Get center position in mm (convert from meters if needed)
+            if rel_pos in square_positions:
+                width, height = 20, 20
+                #Use predefined coordinates
                 x = getattr(substrate, "position_x", 0)
                 y = getattr(substrate, "position_y", 0)
-                # If units are meters, convert to m
+                # If units are meters, convert to mm
+                if hasattr(x, "magnitude"):
+                    x = x.to("mm").magnitude
+                if hasattr(y, "magnitude"):
+                    y = y.to("mm").magnitude
+            elif rel_pos in rectangle_positions:
+                width, height = 40, 9.5
+                # Use predefined coordinates
+                x = getattr(substrate, "position_x", 0)
+                y = getattr(substrate, "position_y", 0)
+                # If units are meters, convert to mm
+                if hasattr(x, "magnitude"):
+                    x = x.to("mm").magnitude
+                if hasattr(y, "magnitude"):
+                    y = y.to("mm").magnitude
+            else:
+                width, height = 10, 10
+                x = getattr(substrate, "position_x", None)
+                y = getattr(substrate, "position_y", None)
+                if x is None or y is None:
+                    x, y = 0, 0  # Default to center of the susceptor if not set
+                # If units are meters, convert to mm
                 if hasattr(x, "magnitude"):
                     x = x.to("mm").magnitude
                 if hasattr(y, "magnitude"):
                     y = y.to("mm").magnitude
 
-                if rel_pos in square_positions:
-                    width, height = 20, 20
-                elif rel_pos in rectangle_positions:
-                    width, height = 40, 9.5
-                else:
-                    width, height = 10, 10
-                half_w, half_h = width / 2, height / 2
                 # Draw rectangle for the substrates
+                half_w, half_h = width / 2, height / 2
                 fig.add_shape(
                     type="rect",
                     x0=x - half_w, y0=y - half_h,
