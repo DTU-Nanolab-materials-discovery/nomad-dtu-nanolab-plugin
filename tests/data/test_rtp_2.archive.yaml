@@ -14,8 +14,15 @@ data:
     - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPSubstrateMounting
       name: "bl"
       relative_position: "bl"
-      rotation: 0
-
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPSubstrateMounting
+      name: "br"
+      relative_position: "br"
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPSubstrateMounting
+      name: "fl"
+      relative_position: "fl"
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPSubstrateMounting
+      name: "fr"
+      relative_position: "fr"
   overview:
     m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPOverview
     material_space: "Sn-P-S"
