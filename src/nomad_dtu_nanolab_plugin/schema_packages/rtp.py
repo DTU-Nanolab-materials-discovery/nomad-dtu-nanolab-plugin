@@ -112,7 +112,7 @@ class DtuRTPSubstrateMounting(ArchiveSection):
         type=np.float64,
         description="""
             The rotation of the substrate on the susceptor, relative to
-            the width (x-axis) and height (y-axis) of the substrate.
+            the width (x-axis) and height (y-axis) of the susceptor.
         """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
@@ -149,10 +149,10 @@ class DtuRTPSubstrateMounting(ArchiveSection):
                 'hb': (0, 0.005, 0),
                 'hc': (0, -0.005, 0),
                 'hd': (0, -0.015, 0),
-                'va': (-0.015, 0, 0),
-                'vb': (-0.005, 0, 0),
-                'vc': (0.005, 0, 0),
-                'vd': (0.015, 0, 0),
+                'va': (-0.015, 0, 90),
+                'vb': (-0.005, 0, 90),
+                'vc': (0.005, 0, 90),
+                'vd': (0.015, 0, 90),
             }
             if self.relative_position in positions:
                 self.position_x, self.position_y, self.rotation = positions[
@@ -162,8 +162,8 @@ class DtuRTPSubstrateMounting(ArchiveSection):
             self.name = self.relative_position
         elif self.position_x is not None and self.position_y is not None:
             self.name = (
-                f'x{self.position_x.to("cm").magnitude:.1f}-'
-                f'y{self.position_y.to("cm").magnitude:.1f}'
+                f'x{self.position_x.to("mm").magnitude:.1f}-'
+                f'y{self.position_y.to("mm").magnitude:.1f}'
             ).replace('.', 'p')
 
 
@@ -953,13 +953,13 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             text="chamber",
             showarrow=False,
             font=dict(color="black", size=16),
-            bgcolor="white",
             xanchor="right",
             yanchor="middle",
         )
         # Define substrate sizes by position
         square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
-        rectangle_positions = {'ha', 'hb', 'hc', 'hd', 'va', 'vb', 'vc', 'vd'}
+        rectangle_horizontal = {'ha', 'hb', 'hc', 'hd'}
+        rectangle_vertical = {'va', 'vb', 'vc', 'vd'}
         # Loop through substrates and plot them
         for substrate in getattr(self, "substrates", []):
             rel_pos = getattr(substrate, "relative_position", None)
@@ -974,8 +974,18 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     x = x.to("mm").magnitude
                 if hasattr(y, "magnitude"):
                     y = y.to("mm").magnitude
-            elif rel_pos in rectangle_positions:
+            elif rel_pos in rectangle_horizontal:
                 width, height = 40, 9.5
+                # Use predefined coordinates
+                x = getattr(substrate, "position_x", 0)
+                y = getattr(substrate, "position_y", 0)
+                # If units are meters, convert to mm
+                if hasattr(x, "magnitude"):
+                    x = x.to("mm").magnitude
+                if hasattr(y, "magnitude"):
+                    y = y.to("mm").magnitude
+            elif rel_pos in rectangle_vertical:
+                width, height = 9.5, 40
                 # Use predefined coordinates
                 x = getattr(substrate, "position_x", 0)
                 y = getattr(substrate, "position_y", 0)
@@ -990,11 +1000,6 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 y = getattr(substrate, "position_y", None)
                 if x is None or y is None:
                     x, y = 0, 0  # Default to center of the susceptor if not set
-                # If units are meters, convert to mm
-                if hasattr(x, "magnitude"):
-                    x = x.to("mm").magnitude
-                if hasattr(y, "magnitude"):
-                    y = y.to("mm").magnitude
 
                 # Draw rectangle for the substrates
             half_w, half_h = width / 2, height / 2
@@ -1016,7 +1021,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         fig.update_layout(
             title="Substrates on Susceptor",
             xaxis=dict(
-                range=[-half_susceptor-5, half_susceptor+5],
+                range=[-half_susceptor-15, half_susceptor+15],
                 scaleanchor="y",
                 scaleratio=1,
                 showgrid=False,
