@@ -940,7 +940,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         fig.add_annotation(
             x=-half_susceptor-7,  # 7 mm left of the susceptor edge
             y=0,
-            text="chamber",
+            text="RTP chamber",
             showarrow=False,
             font=dict(color="black", size=16),
             xanchor="right",
@@ -950,7 +950,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         fig.add_annotation(
             x=0,
             y=-half_susceptor-7,  # 7 mm below the susceptor edge
-            text="you",
+            text= "User",
             showarrow=False,
             font=dict(color="black", size=16),
             xanchor="center",
