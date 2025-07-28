@@ -386,7 +386,7 @@ class RTPOverview(ArchiveSection):
             annealing_n2_partial_pressure.to('mtorr').magnitude
         )
 
-        annealing_ar_partial_pressure = ureg.quantity(
+        annealing_ar_partial_pressure = ureg.Quantity(
             (
                 annealing_h2s_in_ar_flow * (1 - RTP_GAS_FRACTION['H2S'])
                 + annealing_ph3_in_ar_flow * (1 - RTP_GAS_FRACTION['PH3'])
