@@ -880,7 +880,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         description='Temperature points for the temperature profile plot.',
     )
 
-    def plot(self) -> None:
+    def plot_temperature_profile(self) -> None:
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(
@@ -920,6 +920,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 figure=plot_json,
             )
         )
+
     #Set up the substrates on susceptor graphical visualization
     def plot_susceptor(self) -> None:
         fig = go.Figure()
@@ -1024,4 +1025,5 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         self.time = times
         self.temperature_profile = temps
         self.figures = []
-        self.plot()
+        self.plot_temperature_profile()
+        self.plot_susceptor()
