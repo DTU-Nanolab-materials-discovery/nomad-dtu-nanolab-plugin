@@ -931,51 +931,72 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
         )
 
-    #Set up the substrates on susceptor graphical visualization
+    #Set up the substrates-on-susceptor graphical visualization
     def plot_susceptor(self) -> None:
         fig = go.Figure()
 
-        # Draw susceptor outline (square 51x51 mm centered at 0,0)
-        susceptor_size = 51  # mm
+        # Draw susceptor outline (square 50x50 mm centered at 0,0)
+        susceptor_size = 50  # mm
         half_susceptor = susceptor_size / 2
         fig.add_shape(
             type="rect",
             x0=-half_susceptor, y0=-half_susceptor,
             x1=half_susceptor, y1=half_susceptor,
-            line=dict(color="black", width=2),
+            line=dict(color="black", width=3),
             fillcolor="rgba(200,200,200,0.1)",
             layer="below"
-    )
-        # Draw substrates
-        substrate_size = 25  # mm
-        half_substrate = substrate_size / 2
-
+        )
+        # Add 'chamber' label to the left side
+        fig.add_annotation(
+        x=-half_susceptor-7,  # 7 mm left of the susceptor edge
+        y=0,
+        text="chamber",
+        showarrow=False,
+        font=dict(color="black", size=16),
+        bgcolor="white",
+        xanchor="right",
+        yanchor="middle",
+        )
+        # Define substrate sizes by position
+        square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
+        rectangle_positions = {'ha', 'hb', 'hc', 'hd', 'va', 'vb', 'vc', 'vd'}
+        # Loop through substrates and plot them
         for substrate in getattr(self, "substrates", []):
-            # Get center position in mm (convert from meters if needed)
-            x = getattr(substrate, "position_x", 0)
-            y = getattr(substrate, "position_y", 0)
-            # If units are meters, convert to mm
-            if hasattr(x, "magnitude"):
-                x = x.to("mm").magnitude
-            if hasattr(y, "magnitude"):
-                y = y.to("mm").magnitude
+            rel_pos = getattr(substrate, "relative_position", None)
             # Only plot if relative_position is set by user
-            if getattr(substrate, "relative_position", None):
+            if rel_pos:
+                # Get center position in mm (convert from meters if needed)
+                x = getattr(substrate, "position_x", 0)
+                y = getattr(substrate, "position_y", 0)
+                # If units are meters, convert to m
+                if hasattr(x, "magnitude"):
+                    x = x.to("mm").magnitude
+                if hasattr(y, "magnitude"):
+                    y = y.to("mm").magnitude
+
+                if rel_pos in square_positions:
+                    width, height = 20, 20
+                elif rel_pos in rectangle_positions:
+                    width, height = 40, 9.5
+                else:
+                    width, height = 10, 10
+                half_w, half_h = width / 2, height / 2
+                # Draw rectangle for the substrates
                 fig.add_shape(
                     type="rect",
-                    x0=x - half_substrate, y0=y - half_substrate,
-                    x1=x + half_substrate, y1=y + half_substrate,
+                    x0=x - half_w, y0=y - half_h,
+                    x1=x + half_w, y1=y + half_h,
                     line=dict(color="blue", width=2),
                     fillcolor="rgba(100,100,255,0.3)",
-            )
-            # Add label
+                )
+                # Add label to the substrates
                 fig.add_annotation(
                     x=x, y=y,
                     text=substrate.relative_position,
                     showarrow=False,
                     font=dict(color="black", size=12),
                     bgcolor="white",
-            )
+                )
         fig.update_layout(
             title="Substrates on Susceptor",
             xaxis=dict(
