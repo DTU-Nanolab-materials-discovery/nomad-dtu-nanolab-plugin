@@ -475,12 +475,12 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
             print('Warning: More than one sputtering reference found.')
         return results[0] if results else None
 
-    #def normalize(self, archive, logger):
-    #    super().normalize(archive, logger)
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
 
         # Ensure that the geometry is set to the default if not provided
-        #if not self.geometry:
-        #    self.geometry = self.substrate
+        if not self.geometry:
+            self.geometry = self.substrate
 
 
 class DtuLibraryReference(CompositeSystemReference):
