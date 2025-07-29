@@ -453,10 +453,11 @@ class DTULibraryParts(Collection, Schema):
         unit='m',
     )
     part_size = Quantity(
-        type = tuple[np.float64, np.float64],
+        type = np.float64,
+        shape=[2],
         description='The size of the library in the x and y direction.',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.TupleEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm'
             ),
         unit='m',
@@ -484,10 +485,11 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
     )
     library_size = Quantity(
-        type = tuple[np.float64, np.float64],
+        type =  np.float64,
+        shape=[2],
         description='The size of the library in the x and y direction.',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.TupleEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm'
             ),
         unit='m',
