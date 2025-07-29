@@ -54,6 +54,7 @@ class DTUSubstrate(CrystallineSubstrate, Schema):
     )
 
 
+
 class DTUSubstrateReference(CompositeSystemReference):
     reference = Quantity(
         type=DTUSubstrate,
