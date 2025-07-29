@@ -408,8 +408,6 @@ class DTULibraryParts(Collection, Schema):
     Schema for parts of a DTU combinatorial library.
     """
 
-    m_def = Section(    )
-
     library_name = Quantity(
         type=str,
         description='The name of the library.',
@@ -467,7 +465,6 @@ class DTULibraryParts(Collection, Schema):
         description='The geometries of the samples in the library.',
     )
 
-     #add a section that creates a new DTUCombinatorialLibrary from these information
 
 
 class DTULibraryCleaving(Process, Schema, PlotSection):
@@ -647,7 +644,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 x1=x1,
                 y1=y1,
                 line=dict(color='red', width = 3),
-                fillcolor='white ',
+                fillcolor='white',
                 opacity=0.5,
             )
             fig.add_annotation(
@@ -657,7 +654,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 showarrow=False,
             )
 
-        #add the new pieces
         if self.pattern != 'custom':
             for piece in self.new_pieces:
                 if piece.part_size is None:
@@ -677,7 +673,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 fig.add_annotation(
                     x=(piece.upper_left_x + piece.lower_right_x) / 2,
                     y=(piece.upper_left_y + piece.lower_right_y) / 2,
-                    text=piece.new_name,
+                    text=piece.library_name,
                     showarrow=False,
                 )
         fig.update_layout(
@@ -712,7 +708,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
         if self.pattern != 'custom':
             for piece in self.new_pieces:
-                if piece.part_size is None:
+                if piece.part_size is not None:
                     library = DTUCombinatorialLibrary(
                         name=piece.library_name.replace(' ', '-'),
                         datetime=self.datetime,
