@@ -9,17 +9,29 @@ from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
 )
+from nomad.datamodel.metainfo.basesections import (
+    CompositeSystemReference,
+    ElementalComposition,
+)
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MProxy, Package, Quantity, Section, SubSection
 from nomad.units import ureg
+from nomad_material_processing.general import (
+    ThinFilm,
+    ThinFilmReference,
+)
 from nomad_material_processing.vapor_deposition.cvd.general import (
     ChemicalVaporDeposition,
     CVDSource,
     CVDStep,
 )
+from nomad_measurements.utils import create_archive
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
-from nomad_dtu_nanolab_plugin.schema_packages.sample import DTUCombinatorialLibrary
+from nomad_dtu_nanolab_plugin.schema_packages.sample import (
+    DTUCombinatorialLibrary,
+    ProcessParameterOverview,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -37,38 +49,31 @@ RTP_GAS_FRACTION = {
 }
 
 
-#################### DEFINE SUBSTRATES (SUBSECTION) ######################
-class DtuRTPSubstrateMounting(ArchiveSection):
+#################### DEFINE INPUT_SAMPLES (SUBSECTION) ######################
+class DtuRTPInputSampleMounting(ArchiveSection):
     """
-    Section containing information about the mounting of the substrates on the
-    susceptor.
+    Section containing information about the mounting of the combinatiorial libraries
+    (input samples) on the susceptor.
     """
 
     m_def = Section()
     name = Quantity(
         type=str,
-        description='The name of the substrate mounting.',
+        description='The name of the input sample mounting.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.StringEditQuantity,
         ),
     )
-    substrate_batch = Quantity(
+    input_sample = Quantity(
         type=DTUCombinatorialLibrary,
-        description='A reference to the batch of the substrate used.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.ReferenceEditQuantity,
-        ),
-    )
-    substrate = Quantity(
-        type=DTUCombinatorialLibrary,
-        description='A reference to the substrate used.',
+        description='A reference to the input sample that is used.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.ReferenceEditQuantity,
         ),
     )
     relative_position = Quantity(
         type=str,
-        description='The relative position of the substrate on the susceptor.',
+        description='The relative position of the input sample on the susceptor.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
             props=dict(
@@ -92,7 +97,7 @@ class DtuRTPSubstrateMounting(ArchiveSection):
     )
     position_x = Quantity(
         type=np.float64,
-        description='The x-coordinate of the substrate on the susceptor.',
+        description='The x-coordinate of the input sample on the susceptor.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
@@ -101,7 +106,7 @@ class DtuRTPSubstrateMounting(ArchiveSection):
     )
     position_y = Quantity(
         type=np.float64,
-        description='The y-coordinate of the substrate on the susceptor.',
+        description='The y-coordinate of the input sample on the susceptor.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
@@ -111,7 +116,7 @@ class DtuRTPSubstrateMounting(ArchiveSection):
     rotation = Quantity(
         type=np.float64,
         description="""
-            The rotation of the substrate on the susceptor, relative to
+            The rotation of the input sample on the susceptor, relative to
             the width (x-axis) and height (y-axis) of the susceptor.
         """,
         a_eln=ELNAnnotation(
@@ -123,7 +128,7 @@ class DtuRTPSubstrateMounting(ArchiveSection):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `DtuSubstrateMounting` class.
+        The normalizer for the `DtuRTPInputSampleMounting` class.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
@@ -131,13 +136,6 @@ class DtuRTPSubstrateMounting(ArchiveSection):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        if isinstance(self.substrate_batch, MProxy):
-            self.substrate_batch.m_proxy_resolve()
-        if self.substrate is None and isinstance(
-            self.substrate_batch, DTUCombinatorialLibrary
-        ):
-            substrate = self.substrate_batch.next_not_used_in(DtuRTP)
-            self.substrate = substrate
         if self.position_x is None or self.position_y is None or self.rotation is None:
             positions = {
                 'bl': (-0.0125, 0.0125, 0),
@@ -361,30 +359,30 @@ class RTPOverview(ArchiveSection):
             * RTP_GAS_FRACTION['H2S']
             / total_flow
             * total_pressure,
-            'Pa'
+            'Pa',
         )
-        self.annealing_h2s_partial_pressure = (
-            annealing_h2s_partial_pressure.to('mtorr').magnitude
-        )
+        self.annealing_h2s_partial_pressure = annealing_h2s_partial_pressure.to(
+            'mtorr'
+        ).magnitude
 
         annealing_ph3_partial_pressure = ureg.Quantity(
             annealing_ph3_in_ar_flow
             * RTP_GAS_FRACTION['PH3']
             / total_flow
             * total_pressure,
-            'Pa'
+            'Pa',
         )
-        self.annealing_ph3_partial_pressure = (
-            annealing_ph3_partial_pressure.to('mtorr').magnitude
-        )
+        self.annealing_ph3_partial_pressure = annealing_ph3_partial_pressure.to(
+            'mtorr'
+        ).magnitude
 
         annealing_n2_partial_pressure = ureg.Quantity(
             annealing_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure,
-            'Pa'
+            'Pa',
         )
-        self.annealing_n2_partial_pressure = (
-            annealing_n2_partial_pressure.to('mtorr').magnitude
-        )
+        self.annealing_n2_partial_pressure = annealing_n2_partial_pressure.to(
+            'mtorr'
+        ).magnitude
 
         annealing_ar_partial_pressure = ureg.Quantity(
             (
@@ -394,11 +392,11 @@ class RTPOverview(ArchiveSection):
             )
             / total_flow
             * total_pressure,
-            'Pa'
+            'Pa',
         )
-        self.annealing_ar_partial_pressure = (
-            annealing_ar_partial_pressure.to('mtorr').magnitude
-        )
+        self.annealing_ar_partial_pressure = annealing_ar_partial_pressure.to(
+            'mtorr'
+        ).magnitude
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -575,28 +573,19 @@ class RTPStepOverview(ArchiveSection):
             if self.final_temperature is not None
             else 0
         )
-        duration = (
-            self.duration.magnitude
-            if self.duration is not None
-            else 0
-        )
+        duration = self.duration.magnitude if self.duration is not None else 0
         temperature_ramp = ureg.Quantity(
-            ((final_temperature - initial_temperature)
-            / duration),
+            ((final_temperature - initial_temperature) / duration),
             'K/s',
         )
         self.temperature_ramp = temperature_ramp.to('celsius/minute').magnitude
 
     def calc_partial_pressure(self):
         step_ar_flow = (
-            self.step_ar_flow.magnitude
-            if self.step_ar_flow is not None
-            else 0
+            self.step_ar_flow.magnitude if self.step_ar_flow is not None else 0
         )
         step_n2_flow = (
-            self.step_n2_flow.magnitude
-            if self.step_n2_flow is not None
-            else 0
+            self.step_n2_flow.magnitude if self.step_n2_flow is not None else 0
         )
         step_h2s_in_ar_flow = (
             self.step_h2s_in_ar_flow.magnitude
@@ -616,19 +605,18 @@ class RTPStepOverview(ArchiveSection):
 
         step_h2s_partial_pressure = ureg.Quantity(
             step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S'] / total_flow * total_pressure,
-            'Pa'
+            'Pa',
         )
         self.step_h2s_partial_pressure = step_h2s_partial_pressure.to('mtorr').magnitude
 
         step_ph3_partial_pressure = ureg.Quantity(
             step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3'] / total_flow * total_pressure,
-            'Pa'
+            'Pa',
         )
         self.step_ph3_partial_pressure = step_ph3_partial_pressure.to('mtorr').magnitude
 
         step_n2_partial_pressure = ureg.Quantity(
-            step_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure,
-            'Pa'
+            step_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure, 'Pa'
         )
         self.step_n2_partial_pressure = step_n2_partial_pressure.to('mtorr').magnitude
 
@@ -640,7 +628,7 @@ class RTPStepOverview(ArchiveSection):
             )
             / total_flow
             * total_pressure,
-            'Pa'
+            'Pa',
         )
         self.step_ar_partial_pressure = step_ar_partial_pressure.to('mtorr').magnitude
 
@@ -855,9 +843,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         unit='m**3/s',
         description='Chiller flow rate during the RTP process.',
     )
-    ########################### SUBSECTIONS ########################################
-    substrates = SubSection(
-        section_def=DtuRTPSubstrateMounting,
+    ############################## SUBSECTIONS ########################################
+    input_samples = SubSection(
+        section_def=DtuRTPInputSampleMounting,
         repeats=True,
     )
     overview = SubSection(
@@ -867,8 +855,73 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         section_def=DTURTPSteps,
         repeats=True,
     )
+
+    ############################## CREATING SAMPLE LIBRARY #########################
+    def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        samples = []
+        input_sample_mounting: DtuRTPInputSampleMounting
+        for idx, input_sample_mounting in enumerate(self.input_samples):
+            if input_sample_mounting.input_sample is None:
+                continue
+            if isinstance(input_sample_mounting.input_sample, MProxy):
+                input_sample_mounting.input_sample.m_proxy_resolve()
+            library = DTUCombinatorialLibrary()
+            library.input_sample = ThinFilmReference(
+                reference=input_sample_mounting.input_sample
+            )
+            output_sample_id = str(idx)
+            if input_sample_mounting.name is not None:
+                output_sample_id = input_sample_mounting.name.replace(' ', '-')
+            if self.lab_id is not None:
+                lab_id = self.lab_id
+            else:
+                lab_id = '_'.join(self.name.split())
+            library.lab_id = f'{lab_id}_{output_sample_id}'
+            elements = self.RTPOverview.material_space.split('-')
+            composition = [ElementalComposition(element=e) for e in elements if e]
+            layer = ThinFilm(
+                elemental_composition=composition,
+                lab_id=f'{library.lab_id}-Layer',
+            )
+            layer_ref = create_archive(layer, archive, f'{layer.lab_id}.archive.json')
+            library.layers = [
+                ThinFilmReference(
+                    name='Main layer',
+                    reference=layer_ref,
+                    lab_id=layer.lab_id,
+                )
+            ]
+
+            library.process_parameter_overview = ProcessParameterOverview()
+            # we write some important process parameters to the library
+            library.process_parameter_overview.position_x = (
+                input_sample_mounting.position_x
+            )
+            library.process_parameter_overview.position_y = (
+                input_sample_mounting.position_y
+            )
+            library.process_parameter_overview.rotation = input_sample_mounting.rotation
+            library.process_parameter_overview.width = (
+                input_sample_mounting.input_sample.geometry.width
+            )
+            library.process_parameter_overview.length = (
+                input_sample_mounting.input_sample.geometry.length
+            )
+
+            library_ref = create_archive(
+                library, archive, f'{library.lab_id}.archive.json'
+            )
+            samples.append(
+                CompositeSystemReference(
+                    name=f'Sample {output_sample_id}',
+                    reference=library_ref,
+                    lab_id=library.lab_id,
+                )
+            )
+        self.samples = samples
+
     ############################## PLOTS #################################
-    #Set up temperature profile plot
+    # Set up temperature profile plot
     time = Quantity(
         type=np.float64,
         shape=['*'],
@@ -921,7 +974,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
         )
 
-    #Set up the substrates-on-susceptor graphical visualization
+    # Set up the sample-on-susceptor graphical visualization
     def plot_susceptor(self) -> None:
         fig = go.Figure()
 
@@ -929,120 +982,126 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         susceptor_size = 50  # mm
         half_susceptor = susceptor_size / 2
         fig.add_shape(
-            type="rect",
-            x0=-half_susceptor, y0=-half_susceptor,
-            x1=half_susceptor, y1=half_susceptor,
-            line=dict(color="black", width=3),
-            fillcolor="rgba(200,200,200,0.1)",
-            layer="below"
+            type='rect',
+            x0=-half_susceptor,
+            y0=-half_susceptor,
+            x1=half_susceptor,
+            y1=half_susceptor,
+            line=dict(color='black', width=3),
+            fillcolor='rgba(200,200,200,0.1)',
+            layer='below',
         )
         # Add 'chamber' label to the left side
         fig.add_annotation(
-            x=-half_susceptor-7,  # 7 mm left of the susceptor edge
+            x=-half_susceptor - 7,  # 7 mm left of the susceptor edge
             y=0,
-            text="RTP chamber",
+            text='RTP chamber',
             showarrow=False,
-            font=dict(color="black", size=16),
-            xanchor="right",
-            yanchor="middle",
+            font=dict(color='black', size=16),
+            xanchor='right',
+            yanchor='middle',
             textangle=-90,  # Rotate text to be vertical
         )
+        # Add 'you' label to the bottom side
         fig.add_annotation(
             x=0,
-            y=-half_susceptor-7,  # 7 mm below the susceptor edge
-            text= "User",
+            y=-half_susceptor - 7,  # 7 mm below the susceptor edge
+            text='User',
             showarrow=False,
-            font=dict(color="black", size=16),
-            xanchor="center",
-            yanchor="top",
+            font=dict(color='black', size=16),
+            xanchor='center',
+            yanchor='top',
         )
-        # Define substrate sizes by position
+        # Define input sample sizes by relative position
         square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
         rectangle_horizontal = {'ha', 'hb', 'hc', 'hd'}
         rectangle_vertical = {'va', 'vb', 'vc', 'vd'}
-        # Loop through substrates and plot them
-        for substrate in getattr(self, "substrates", []):
-            rel_pos = getattr(substrate, "relative_position", None)
+        # Loop through input_samples (subclass) and plot them
+        for input_sample in getattr(self, 'input_samples', []):
+            rel_pos = getattr(input_sample, 'relative_position', None)
             # Only plot if relative_position is set by user
             if rel_pos in square_positions:
                 width, height = 20, 20
-                #Use predefined coordinates
-                x = getattr(substrate, "position_x", 0)
-                y = getattr(substrate, "position_y", 0)
+                # Use predefined coordinates
+                x = getattr(input_sample, 'position_x', 0)
+                y = getattr(input_sample, 'position_y', 0)
                 # If units are meters, convert to mm
-                if hasattr(x, "magnitude"):
-                    x = x.to("mm").magnitude
-                if hasattr(y, "magnitude"):
-                    y = y.to("mm").magnitude
+                if hasattr(x, 'magnitude'):
+                    x = x.to('mm').magnitude
+                if hasattr(y, 'magnitude'):
+                    y = y.to('mm').magnitude
             elif rel_pos in rectangle_horizontal:
                 width, height = 40, 9.5
                 # Use predefined coordinates
-                x = getattr(substrate, "position_x", 0)
-                y = getattr(substrate, "position_y", 0)
+                x = getattr(input_sample, 'position_x', 0)
+                y = getattr(input_sample, 'position_y', 0)
                 # If units are meters, convert to mm
-                if hasattr(x, "magnitude"):
-                    x = x.to("mm").magnitude
-                if hasattr(y, "magnitude"):
-                    y = y.to("mm").magnitude
+                if hasattr(x, 'magnitude'):
+                    x = x.to('mm').magnitude
+                if hasattr(y, 'magnitude'):
+                    y = y.to('mm').magnitude
             elif rel_pos in rectangle_vertical:
                 width, height = 9.5, 40
                 # Use predefined coordinates
-                x = getattr(substrate, "position_x", 0)
-                y = getattr(substrate, "position_y", 0)
+                x = getattr(input_sample, 'position_x', 0)
+                y = getattr(input_sample, 'position_y', 0)
                 # If units are meters, convert to mm
-                if hasattr(x, "magnitude"):
-                    x = x.to("mm").magnitude
-                if hasattr(y, "magnitude"):
-                    y = y.to("mm").magnitude
+                if hasattr(x, 'magnitude'):
+                    x = x.to('mm').magnitude
+                if hasattr(y, 'magnitude'):
+                    y = y.to('mm').magnitude
             else:
                 width, height = 10, 10
-                x = getattr(substrate, "position_x", None)
-                y = getattr(substrate, "position_y", None)
+                x = getattr(input_sample, 'position_x', None)
+                y = getattr(input_sample, 'position_y', None)
                 if x is None or y is None:
                     x, y = 0, 0  # Default to center of the susceptor if not set
 
-                # Draw rectangle for the substrates
+            # Draw rectangle for the input samples
             half_w, half_h = width / 2, height / 2
             fig.add_shape(
-                type="rect",
-                x0=x - half_w, y0=y - half_h,
-                x1=x + half_w, y1=y + half_h,
-                line=dict(color="blue", width=2),
-                fillcolor="rgba(100,100,255,0.3)",
+                type='rect',
+                x0=x - half_w,
+                y0=y - half_h,
+                x1=x + half_w,
+                y1=y + half_h,
+                line=dict(color='blue', width=2),
+                fillcolor='rgba(100,100,255,0.3)',
             )
-                # Add label to the substrates
+            # Add label to the input samples
             fig.add_annotation(
-                x=x, y=y,
-                text=substrate.relative_position,
+                x=x,
+                y=y,
+                text=input_sample.relative_position,
                 showarrow=False,
-                font=dict(color="black", size=12),
-                bgcolor="white",
+                font=dict(color='black', size=12),
+                bgcolor='white',
             )
         fig.update_layout(
-            title="Substrates on Susceptor",
+            title='Samples on Susceptor',
             xaxis=dict(
-                range=[-half_susceptor-15, half_susceptor+15],
-                scaleanchor="y",
+                range=[-half_susceptor - 15, half_susceptor + 15],
+                scaleanchor='y',
                 scaleratio=1,
                 showgrid=False,
                 zeroline=False,
                 visible=False,
             ),
             yaxis=dict(
-                range=[-half_susceptor-5, half_susceptor+5],
+                range=[-half_susceptor - 5, half_susceptor + 5],
                 showgrid=False,
                 zeroline=False,
                 visible=False,
             ),
             width=500,
             height=500,
-            plot_bgcolor="white",
+            plot_bgcolor='white',
         )
         plot_json = fig.to_plotly_json()
-        plot_json["config"] = dict(scrollZoom=False)
+        plot_json['config'] = dict(scrollZoom=False)
         self.figures.append(
             PlotlyFigure(
-                label="Susceptor Substrate Map",
+                label='Samples-on-Susceptor Map',
                 figure=plot_json,
             )
         )
