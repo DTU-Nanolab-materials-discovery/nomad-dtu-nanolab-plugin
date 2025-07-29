@@ -402,7 +402,7 @@ class DTUSubstrateCutting(Process, Schema):
         return super().normalize(archive, logger)
 
 
-m_package.__init_metainfo__()
+#m_package.__init_metainfo__()
 
 class DTULibraryParts(Collection, Schema):
     """
@@ -705,10 +705,10 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             )
         )
     def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-            pieces = []
-            for idx, piece in enumerate(self.new_pieces):
-                if piece.part_size is None:
-                    continue
+        pieces = []
+        for idx, piece in enumerate(self.new_pieces):
+            if piece.part_size is None:
+                continue
 
         if self.pattern == 'squares':
             total_nr = self.number_of_pieces ** 2
