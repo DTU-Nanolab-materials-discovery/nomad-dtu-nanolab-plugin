@@ -704,6 +704,15 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             )
         )
 
+    def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+
+        #add the new pieces
+        if self.pattern != 'custom':
+            for piece in self.new_pieces:
+                if piece.part_size is None:
+                    continue
+
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUSubstrateCleaning` class.
@@ -727,6 +736,48 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             ]:
                 logger.error(f'Unknown pattern {self.pattern}.')
                 return
+            else:
+                self.recognize_pattern(logger)
+                self.create_from_pattern = False
+
+        if self.new_pieces is not None and len(self.new_pieces) > 0:
+            if self.create_child_libraries:
+                origin= self.combinatorial_Library
+                if origin is None:
+                    logger.error(
+                        'A combinatorial library must be set to create child libraries.'
+                    )
+                    return
+                else :
+                    for piece in self.new_pieces:
+                        library = DTUCombinatorialLibrary(
+                            name=piece.library_name,
+                            datetime=self.datetime,
+                            lab_id=piece.library_name,
+                            geometry=piece.geometry,
+                            description=f'Part of {origin.name} library',
+                            process_parameter_overview=origin.process_parameter_overview,
+                            elemental_composition=origin.elemental_composition,
+                            components=origin.components,
+                            layers=origin.layers,
+                            substrate=origin.substrate,
+                        )
+
+                        library.normalize(archive, logger)
+                        file_name = f'{library.lab_id}.archive.json'
+                        substrate_archive = create_archive(library, archive, file_name)
+
+                        self.child_libraries.append(
+                            CompositeSystemReference(
+                            reference=substrate_archive,
+                            name=library.name,
+                            lab_id=library.lab_id,
+                            )
+                        )
+
+
+
+        return super().normalize(archive, logger)
 
 
 m_package.__init_metainfo__()
