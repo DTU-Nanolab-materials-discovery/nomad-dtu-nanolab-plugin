@@ -10,19 +10,10 @@ data:
   rate_of_rise: 20
   chiller_flow: 11.2
 
-  substrates:
-    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPSubstrateMounting
-      name: "bl"
-      relative_position: "bl"
-    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPSubstrateMounting
-      name: "br"
-      relative_position: "br"
-    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPSubstrateMounting
-      name: "fl"
-      relative_position: "fl"
-    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPSubstrateMounting
-      name: "fr"
-      relative_position: "fr"
+  InputSamples:
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPInputSampleMounting
+      name: "m"
+      relative_position: "m"
   overview:
     m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPOverview
     material_space: "Sn-P-S"
