@@ -1012,6 +1012,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             xanchor='center',
             yanchor='top',
         )
+        # TODO use the real dimensions of the samples
         # Define input sample sizes by relative position
         square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
         rectangle_horizontal = {'ha', 'hb', 'hc', 'hd'}
@@ -1022,45 +1023,21 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             # Only plot if relative_position is set by user
             if rel_pos in square_positions:
                 width, height = 20, 20
-                # Use predefined coordinates
-                x = getattr(input_sample, 'position_x', 0)
-                y = getattr(input_sample, 'position_y', 0)
-                # If units are meters, convert to mm
-                if hasattr(x, 'magnitude'):
-                    x = x.to('mm').magnitude
-                if hasattr(y, 'magnitude'):
-                    y = y.to('mm').magnitude
             elif rel_pos in rectangle_horizontal:
                 width, height = 40, 9.5
-                # Use predefined coordinates
-                x = getattr(input_sample, 'position_x', 0)
-                y = getattr(input_sample, 'position_y', 0)
-                # If units are meters, convert to mm
-                if hasattr(x, 'magnitude'):
-                    x = x.to('mm').magnitude
-                if hasattr(y, 'magnitude'):
-                    y = y.to('mm').magnitude
             elif rel_pos in rectangle_vertical:
                 width, height = 9.5, 40
-                # Use predefined coordinates
-                x = getattr(input_sample, 'position_x', 0)
-                y = getattr(input_sample, 'position_y', 0)
-                # If units are meters, convert to mm
-                if hasattr(x, 'magnitude'):
-                    x = x.to('mm').magnitude
-                if hasattr(y, 'magnitude'):
-                    y = y.to('mm').magnitude
             else:
                 width, height = 10, 10
-                x = getattr(input_sample, 'position_x', None)
-                y = getattr(input_sample, 'position_y', None)
-                if x is None or y is None:
-                    x, y = 0, 0  # Default to center of the susceptor if not set
-                if hasattr(x, 'magnitude'):
-                    x = x.to('mm').magnitude
-                if hasattr(y, 'magnitude'):
-                    y = y.to('mm').magnitude
-
+            x = getattr(input_sample, 'position_x', 0)
+            y = getattr(input_sample, 'position_y', 0)
+            # Default to center if not set
+            if x is None or y is None:
+                x, y = 0, 0
+            if hasattr(x, 'magnitude'):
+                x = x.to('mm').magnitude
+            if hasattr(y, 'magnitude'):
+                y = y.to('mm').magnitude
             # Draw rectangle for the input samples
             half_w, half_h = width / 2, height / 2
             fig.add_shape(
@@ -1076,7 +1053,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             fig.add_annotation(
                 x=x,
                 y=y,
-                text=input_sample.relative_position,
+                text=input_sample.name,
                 showarrow=False,
                 font=dict(color='black', size=12),
                 bgcolor='white',
