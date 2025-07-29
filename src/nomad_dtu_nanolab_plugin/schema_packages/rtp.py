@@ -1066,6 +1066,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 y = getattr(input_sample, 'position_y', None)
                 if x is None or y is None:
                     x, y = 0, 0  # Default to center of the susceptor if not set
+                if hasattr(x, 'magnitude'):
+                    x = x.to('mm').magnitude
+                if hasattr(y, 'magnitude'):
+                    y = y.to('mm').magnitude
 
             # Draw rectangle for the input samples
             half_w, half_h = width / 2, height / 2
