@@ -731,8 +731,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             scrollZoom=False,
         )
 
-        # remove old plots and add the new geometry
-        self.figures = []
         self.figures.append(
             PlotlyFigure(
                 label='Positions of the new pieces in the library',
@@ -808,6 +806,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 self.create_from_pattern = False
 
         if self.new_pieces is not None and len(self.new_pieces) > 0:
+            self.figures = []
             self.plot()
             if self.create_child_libraries:
                 origin= self.combinatorial_Library
