@@ -559,13 +559,12 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     piece.lower_right_x = start_x + (i + 1) * size
                     piece.lower_right_y = start_y - (j + 1) * size
                     piece.part_size = (size, size)
-                    piece.geometry = Geometry(
-                        geometry=RectangleCuboid(
+                    piece.geometry = RectangleCuboid(
                             length=size,
                             width=size,
                             height=heig,
                         )
-                    )
+
                     self.new_pieces.append(piece)
         elif self.pattern == 'horizontal stripes':
             size = self.library_size[1] / self.number_of_pieces
