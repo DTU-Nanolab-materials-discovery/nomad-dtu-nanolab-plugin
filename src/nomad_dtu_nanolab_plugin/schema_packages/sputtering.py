@@ -2678,6 +2678,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             library.substrate = SubstrateReference(
                 reference=substrate_mounting.substrate
             )
+            library.geometry = substrate_mounting.substrate.geometry
             sample_id = str(idx)
             if substrate_mounting.name is not None:
                 sample_id = substrate_mounting.name.replace(' ', '-')
