@@ -44,7 +44,6 @@ from nomad.datamodel.results import Material, Results
 from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_material_processing.general import (
-    SubstrateReference,
     ThinFilm,
     ThinFilmReference,
 )
@@ -2675,10 +2674,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             if isinstance(substrate_mounting.substrate, MProxy):
                 substrate_mounting.substrate.m_proxy_resolve()
             library = DTUCombinatorialLibrary()
-            library.substrate.name = SubstrateReference(
-                name=substrate_mounting.name,
-                reference=substrate_mounting.substrate
-            )
+            library.substrate.reference=substrate_mounting.substrate
+            library.substrate.lab_id =substrate_mounting.substrate.name
+            library.substrate.name =substrate_mounting.substrate.name
+
             sample_id = str(idx)
             if substrate_mounting.name is not None:
                 sample_id = substrate_mounting.name.replace(' ', '-')
