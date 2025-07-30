@@ -480,7 +480,7 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
 
         # Ensure that the geometry is set to the default if not provided
         if not self.geometry:
-            self.geometry = self.substrate
+            self.geometry = self.substrate.geometry
 
 
 class DtuLibraryReference(CompositeSystemReference):
