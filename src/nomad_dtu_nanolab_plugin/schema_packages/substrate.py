@@ -554,6 +554,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     piece.library_name = (
                         f'{self.combinatorial_Library.name}_S{number}-{total_nr}'
                     )
+                    piece.name = f'Square {number} of {total_nr}'
+                    piece.lab_id = piece.library_name.replace(' ', '_')
                     piece.upper_left_x = start_x + i * size
                     piece.upper_left_y = start_y - (j) * size
                     piece.lower_right_x = start_x + (i + 1) * size
@@ -575,6 +577,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 piece.library_name = (
                     f'{self.combinatorial_Library.name}_H{number}-{self.number_of_pieces}'
                 )
+                piece.name = f'Horizontal stripe {number} of {self.number_of_pieces}'
+                piece.lab_id = piece.library_name.replace(' ', '_')
                 piece.upper_left_x = start_x
                 piece.upper_left_y = start_y - i * size
                 piece.lower_right_x = start_x + self.library_size[0]
@@ -597,6 +601,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 piece.library_name = (
                     f'{self.combinatorial_Library.name}_V{number}-{self.number_of_pieces}'
                 )
+                piece.name = f'Vertical stripe {number} of {self.number_of_pieces}'
+                piece.lab_id = piece.library_name.replace(' ', '_')
                 piece.upper_left_x = start_x + i * size
                 piece.upper_left_y = start_y
                 piece.lower_right_x = start_x + (i + 1) * size
@@ -611,21 +617,28 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 )
                 self.new_pieces.append(piece)
         elif self.pattern == 'custom':
+            self.handle_custom_pattern()
 
-            for i in range(self.number_of_pieces):
-                piece = DTULibraryParts()
-                piece.library_name = (
-                    f'{self.combinatorial_Library.name}_C{i+1}-{self.number_of_pieces}'
-                )
-                piece.part_size = None  # Will be set later
-                self.new_pieces.append(piece)
-        else:
-            logger.error(f'Unknown pattern {self.pattern}.')
+    def handle_custom_pattern(self) -> None:
+        """
+        Handles the filling of custom pattern for the library pieces.
+        """
+        for i in range(self.number_of_pieces):
+            piece = DTULibraryParts()
+            piece.library_name = (
+                f'{self.combinatorial_Library.name}_C{i+1}-{self.number_of_pieces}'
+            )
+            piece.name = f'Custom piece {i+1} of {self.number_of_pieces}'
+            piece.lab_id = piece.library_name.replace(' ', '_')
+            piece.part_size = None  # Will be set later
+            self.new_pieces.append(piece)
+
 
     def plot(self) -> None:
         """
         Plots the positions of the new pieces in the library.
         """
+
         import plotly.graph_objects as go
         if self.new_pieces is None or len(self.new_pieces) == 0:
             return
@@ -718,6 +731,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             scrollZoom=False,
         )
 
+        # remove old plots and add the new geometry
+        self.figures = []
         self.figures.append(
             PlotlyFigure(
                 label='Positions of the new pieces in the library',
