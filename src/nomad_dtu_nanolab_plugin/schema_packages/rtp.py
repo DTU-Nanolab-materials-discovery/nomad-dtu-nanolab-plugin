@@ -19,6 +19,7 @@ from nomad.units import ureg
 from nomad_material_processing.general import (
     ThinFilm,
     ThinFilmReference,
+    SubstrateReference,
 )
 from nomad_material_processing.vapor_deposition.cvd.general import (
     ChemicalVaporDeposition,
@@ -869,65 +870,34 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     ############################## CREATING SAMPLE LIBRARY #########################
     def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         samples = []
-        input_sample_mounting: DtuRTPInputSampleMounting
-        for idx, input_sample_mounting in enumerate(self.input_samples):
-            if input_sample_mounting.input_sample is None:
-                continue
-            if isinstance(input_sample_mounting.input_sample, MProxy):
-                input_sample_mounting.input_sample.m_proxy_resolve()
-            library = DTUCombinatorialLibrary()
-            library.input_sample = ThinFilmReference(
-                reference=input_sample_mounting.input_sample
-            )
-            output_sample_id = str(idx)
-            if input_sample_mounting.name is not None:
-                output_sample_id = input_sample_mounting.name.replace(' ', '-')
-            if self.lab_id is not None:
-                lab_id = self.lab_id
-            else:
-                lab_id = '_'.join(self.name.split())
-            library.lab_id = f'{lab_id}_{output_sample_id}'
-            elements = self.RTPOverview.material_space.split('-')
-            composition = [ElementalComposition(element=e) for e in elements if e]
-            layer = ThinFilm(
-                elemental_composition=composition,
-                lab_id=f'{library.lab_id}-Layer',
-            )
-            layer_ref = create_archive(layer, archive, f'{layer.lab_id}.archive.json')
-            library.layers = [
-                ThinFilmReference(
-                    name='Main layer',
-                    reference=layer_ref,
-                    lab_id=layer.lab_id,
+        rtp_name = self.name
+        rtp_datetime = self.datetime
+        for rtp_sample in self.input_samples:
+            origin = rtp_sample.input_sample
+            if rtp_sample.name is not None:
+                library = DTUCombinatorialLibrary(
+                    name=f'{rtp_name} {rtp_sample.name}',
+                    datetime=rtp_datetime,
+                    lab_id= f'{rtp_name} {rtp_sample.name}'.replace(' ', '_'),
+                    description = f'RTP library for {rtp_sample.name}',
+                    elemental_composition = rtp_sample.elemental_composition, # TODO
+                    #keep compo and add new compo
+                    layer = origin.layer, #TODO add new layer (no need
+                    # to keep the old one)
+                    geometry = origin.geometry,
+                    substrate = origin.substrate,
+                    process_parameter_overview = origin.process_parameter_overview,
                 )
-            ]
-
-            library.process_parameter_overview = ProcessParameterOverview()
-            # we write some important process parameters to the library
-            library.process_parameter_overview.position_x = (
-                input_sample_mounting.position_x
+        library_ref = create_archive(
+            library, archive, f'{library.lab_id}.archive.json'
+        )
+        samples.append(
+            CompositeSystemReference(
+                name=f'Sample {library.name}',
+                reference=library_ref,
+                lab_id=library.lab_id,
             )
-            library.process_parameter_overview.position_y = (
-                input_sample_mounting.position_y
-            )
-            library.process_parameter_overview.rotation = input_sample_mounting.rotation
-            library.process_parameter_overview.width = (
-                input_sample_mounting.input_sample.geometry.width
-            )
-            library.process_parameter_overview.length = (
-                input_sample_mounting.input_sample.geometry.length
-            )
-
-            library_ref = create_archive(
-                library, archive, f'{library.lab_id}.archive.json'
-            )
-            samples.append(
-                CompositeSystemReference(
-                    name=f'Sample {output_sample_id}',
-                    reference=library_ref,
-                    lab_id=library.lab_id,
-                )
-            )
+        )
         self.samples = samples
 
     ############################## PLOTS #################################
