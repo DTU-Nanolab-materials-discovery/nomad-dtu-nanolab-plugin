@@ -632,10 +632,10 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         fig = go.Figure()
         #add the original library to the plot
         if self.combinatorial_Library is not None:
-            x0 = self.library_size[0] / 2 * (-1)
-            y0 = self.library_size[1] / 2
-            x1 = self.library_size[0] / 2
-            y1 = -self.library_size[1] / 2
+            x0 = self.library_size[0].to('mm').magnitude / 2 * (-1)
+            y0 = self.library_size[1].to('mm').magnitude / 2
+            x1 = self.library_size[0].to('mm').magnitude / 2
+            y1 = -self.library_size[1].to('mm').magnitude / 2
             fig.add_shape(
                 type='rect',
                 x0=x0,
@@ -660,18 +660,36 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
                 fig.add_shape(
                     type='rect',
-                    x0=piece.upper_left_x+(0.01*piece.part_size[0]),
-                    y0=piece.upper_left_y-(0.01*piece.part_size[1]),
-                    x1=piece.lower_right_x-(0.01*piece.part_size[0]),
-                    y1=piece.lower_right_y+(0.01*piece.part_size[1]),
+                    x0=(
+                        piece.upper_left_x.to('mm').magnitude+
+                        (0.01*piece.part_size[0].to('mm').magnitude)
+                    ),
+                    y0=(
+                        piece.upper_left_y.to('mm').magnitude-
+                        (0.01*piece.part_size[1].to('mm').magnitude)
+                    ),
+                    x1=(
+                        piece.lower_right_x.to('mm').magnitude-
+                        (0.01*piece.part_size[0].to('mm').magnitude)
+                    ),
+                    y1=(
+                        piece.lower_right_y.to('mm').magnitude+
+                        (0.01*piece.part_size[1].to('mm').magnitude)
+                    ),
                     name=piece.library_name,
                     line=dict(color='green'),
                     fillcolor='lightgreen',
                     opacity=0.4,
                 )
                 fig.add_annotation(
-                    x=(piece.upper_left_x + piece.lower_right_x) / 2,
-                    y=(piece.upper_left_y + piece.lower_right_y) / 2,
+                    x=(
+                        (piece.upper_left_x.to('mm').magnitude +
+                         piece.lower_right_x.to('mm').magnitude) / 2
+                    ),
+                    y=(
+                        (piece.upper_left_y.to('mm').magnitude +
+                          piece.lower_right_y.to('mm').magnitude) / 2
+                    ),
                     text=piece.library_name,
                     showarrow=False,
                 )
@@ -682,10 +700,16 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             width=800,
             height=700,
             xaxis=dict(
-                range=[-self.library_size[0]*1.1/2, self.library_size[0]*1.1/2],
+                range=[
+                    -self.library_size[0].to('mm').magnitude*1.1/2,
+                    self.library_size[0].to('mm').magnitude*1.1/2,
+                    ],
             ),
             yaxis=dict(
-                range=[-self.library_size[1]*1.1/2, self.library_size[1]*1.1/2],
+                range=[
+                    -self.library_size[1].to('mm').magnitude*1.1/2,
+                    self.library_size[1].to('mm').magnitude*1.1/2,
+                ],
             ),
         )
 
