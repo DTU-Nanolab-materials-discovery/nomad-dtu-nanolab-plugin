@@ -584,13 +584,12 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 piece.lower_right_x = start_x + self.library_size[0]
                 piece.lower_right_y = start_y - (i + 1) * size
                 piece.part_size = (self.library_size[0], size)
-                piece.geometry = Geometry(
-                    geometry=RectangleCuboid(
+                piece.geometry = RectangleCuboid(
                         length=self.library_size[0],
                         width=size,
                         height=heig,
                     )
-                )
+
                 self.new_pieces.append(piece)
         elif self.pattern == 'vertical stripes':
             size = self.library_size[0] / self.number_of_pieces
@@ -608,13 +607,12 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 piece.lower_right_x = start_x + (i + 1) * size
                 piece.lower_right_y = start_y - self.library_size[1]
                 piece.part_size = (size, self.library_size[1])
-                piece.geometry = Geometry(
-                    geometry=RectangleCuboid(
+                piece.geometry = RectangleCuboid(
                         length=size,
                         width=self.library_size[1],
                         height=heig,
                     )
-                )
+
                 self.new_pieces.append(piece)
         elif self.pattern == 'custom':
             self.handle_custom_pattern()
