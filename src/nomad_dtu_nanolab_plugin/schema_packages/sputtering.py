@@ -871,7 +871,7 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         """
         Set the properties of the gas based on the used gas supply.
         """
-
+        self.gas = PureSubstanceSection()
         self.gas.name = self.gas_supply.system.name
         self.gas.iupac_name = self.gas_supply.system.iupac_name
         self.gas.molecular_formula = self.gas_supply.system.molecular_formula
@@ -881,7 +881,6 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         self.gas.smile = self.gas_supply.system.smiles
         self.gas.canonical_smile = self.gas_supply.system.canonical_smiles
         self.gas.cas_number = self.gas_supply.system.cas_number
-
 
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
