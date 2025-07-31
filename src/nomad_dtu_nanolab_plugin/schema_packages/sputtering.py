@@ -822,7 +822,6 @@ class DtuCrackerSource(DTUSource):
 
 
 class DtuGasSupplyComponent(Component):
-
     m_def = Section()
 
     reference = Quantity(
@@ -839,7 +838,6 @@ class DtuGasSupplyComponent(Component):
             component=ELNComponentEnum.StringEditQuantity,
         ),
     )
-
 
 
 class DTUGasFlow(GasFlow, ArchiveSection):
@@ -875,7 +873,6 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         self.gas.canonical_smile = self.gas_supply.reference.canonical_smiles
         self.gas.cas_number = self.gas_supply.reference.cas_number
 
-
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUGasFlow` class.
@@ -887,13 +884,13 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         """
         super().normalize(archive, logger)
 
-        #TODO add a normalizer to find the right bottle
+        # TODO add a normalizer to find the right bottle
         from nomad.datamodel.context import ServerContext
 
         if (
             self.gas_supply is None
             and self.gas_name is not None
-            and isinstance(archive.m_context, ServerContext)#what does this do?
+            and isinstance(archive.m_context, ServerContext)  # what does this do?
         ):
             from nomad.search import MetadataPagination, search
 
@@ -907,13 +904,13 @@ class DTUGasFlow(GasFlow, ArchiveSection):
                 pagination=MetadataPagination(page_size=1),
                 user_id=archive.metadata.main_author.user_id,
             )
-            #if there is not strickly one bottle in use, we sent a warning
+            # if there is not strickly one bottle in use, we sent a warning
             if search_result.pagination.total == 0:
                 logger.warning(
                     f'No in use {self.gas_name} found. '
                     f'Please check the gas bottles inventory.'
                 )
-            #if there is only one bottle in use, we set the used_gas_supply
+            # if there is only one bottle in use, we set the used_gas_supply
             elif search_result.pagination.total == 1:
                 self.gas_supply = DtuGasSupplyComponent()
                 entry_id = search_result.data[0]['entry_id']
@@ -931,6 +928,7 @@ class DTUGasFlow(GasFlow, ArchiveSection):
 
         if self.gas_supply is not None:
             self.set_gas_properties()
+
 
 class DtuTemperature(TimeSeries):
     m_def = Section(
@@ -1130,7 +1128,7 @@ class SourceOverview(ArchiveSection):
         },
         unit='kW*h',
         description='The end of the deposition target accumulated power ',
-    )#TODO check unit
+    )  # TODO check unit
     target_id = SubSection(
         section_def=DTUTargetReference,
         description='A reference to the target used.',
@@ -2450,17 +2448,16 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             new_gas_flows = []
             # generate the gas flows by removing the
-            for gas_flow in environment.gas_flows:
+            for single_gas_flow in environment.gas_flow:
                 # if the average flow is below 1, we unright the gas flow
-                flow_rate_values = gas_flow.flow_rate.value
+                flow_rate_values = single_gas_flow.flow_rate.value
                 magnitudes = [q.to('m^3/s').magnitude for q in flow_rate_values]
                 avg_flow = np.mean(magnitudes)
                 if avg_flow >= 1:
-                    new_gas_flows.append(gas_flow)
-            environment.gas_flows = new_gas_flows
+                    new_gas_flows.append(single_gas_flow)
+            environment.gas_flow = new_gas_flows
 
             step.environment = environment
-
 
             if 'Deposition' in step.name:
                 step.creates_new_thin_film = True
@@ -2759,7 +2756,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         samples = []
-        substrate_mounting: DtuSubstrateMounting#TODO ?????
+        substrate_mounting: DtuSubstrateMounting  # TODO ?????
         for idx, substrate_mounting in enumerate(self.substrates):
             if substrate_mounting.substrate is None:
                 continue
