@@ -44,13 +44,14 @@ from nomad_material_processing.combinatorial import (
 from nomad_material_processing.general import ThinFilmStack
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
-from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DepositionParameters
+from nomad_dtu_nanolab_plugin.schema_packages.sputtering import (
+    DepositionParameters,
+)
 
 if TYPE_CHECKING:
     from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
         DtuNanolabMeasurement,
     )
-    from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
 
 m_package = Package()
 
@@ -374,9 +375,7 @@ class UniqueXrdPeaksReference(EntityReference):
     )
 
 
-class ProcessParameterOverview(Schema):
-    m_def = Section()
-
+class ProcessParameterOverview(ArchiveSection):
     position_x = Quantity(
         type=np.float64,
         description='The x-coordinate of the substrate on the platen.',
@@ -424,7 +423,6 @@ class ProcessParameterOverview(Schema):
     )
     deposition_parameters = SubSection(
         section_def=DepositionParameters,
-        description='The deposition parameters used for the sample.',
     )
 
 
@@ -434,9 +432,8 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         label='Combinatorial Library',
     )
 
-    process_parameter_overview = SubSection(
+    process_parameter_overview = SubSection(  # FAULTY LINE
         section_def=ProcessParameterOverview,
-        description='An overview of the process parameters used to create the library.',
     )
 
     def get_references(self, entry_type: type[Schema] = None) -> list:

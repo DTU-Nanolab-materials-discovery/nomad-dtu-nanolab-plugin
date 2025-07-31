@@ -2805,9 +2805,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 substrate_mounting.position_y
             )
 
-            library.process_parameter_overview.deposition_parameters = (
-                self.deposition_parameters.copy()
-            )
+            # library.process_parameter_overview.deposition_parameters = (
+            #    self.deposition_parameters
+            # )
             # TODO add more process parameters
 
             library_ref = create_archive(
