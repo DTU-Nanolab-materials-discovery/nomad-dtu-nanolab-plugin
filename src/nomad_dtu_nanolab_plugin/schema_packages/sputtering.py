@@ -1109,8 +1109,9 @@ class SourceOverview(ArchiveSection):
         type=np.float64,
         a_eln={
             'component': 'NumberEditQuantity',
-            'defaultDisplayUnit': 'kWh'},
+            'defaultDisplayUnit': 'kWh',
             'label': 'Accumulated power (Energy)',
+        },
         unit='kWh',
         description='The end of the deposition target accumulated power ',
     )#TODO check unit
