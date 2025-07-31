@@ -418,7 +418,7 @@ class ProcessParameterOverview(ArchiveSection):
         ),
         unit='m',
     )
-    deposition_parameters = SubSection(
+    deposition_parameters = SubSection(  # FAULTY LINE
         section_def=DepositionParameters,
     )
 
@@ -429,7 +429,7 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         label='Combinatorial Library',
     )
 
-    process_parameter_overview = SubSection(  # FAULTY LINE
+    process_parameter_overview = SubSection(
         section_def=ProcessParameterOverview,
     )
 
