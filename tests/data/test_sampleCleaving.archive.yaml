@@ -1,0 +1,39 @@
+data:
+  m_def: nomad_dtu_nanolab_plugin.schema_packages.substrate.DTULibraryCleaving
+  combinatorial_Library:
+    m_def: nomad_dtu_nanolab_plugin.schema_packages.sample.DTUCombinatorialLibrary
+  library_size : [2 , 2]
+  pattern : 'squares'
+  number_of_pieces : 2
+  create_from_pattern : True
+  new_pieces:
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.substrate.DTULibraryParts
+      library_name: mittma_0001_Cu_BL_S_1-4
+      upper_left_x: -1
+      upper_left_y: 1
+      lower_right_x: 0
+      lower_right_y: 0
+      part_size: [1,1]
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.substrate.DTULibraryParts
+      library_name: mittma_0001_Cu_BL_S_2-4
+      upper_left_x: 0
+      upper_left_y: 1
+      lower_right_x: 1
+      lower_right_y: 0
+      part_size: [1,1]
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.substrate.DTULibraryParts
+      library_name: mittma_0001_Cu_BL_S_3-4
+      upper_left_x: -1
+      upper_left_y: 0
+      lower_right_x: 0
+      lower_right_y: -1
+      part_size: [1,1]
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.substrate.DTULibraryParts
+      library_name: mittma_0001_Cu_BL_S_4-4
+      upper_left_x: 0
+      upper_left_y: 0
+      lower_right_x: 1
+      lower_right_y: -1
+      part_size: [1,1]
+
+

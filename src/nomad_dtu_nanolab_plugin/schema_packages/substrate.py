@@ -1,21 +1,3 @@
-#
-# Copyright The NOMAD Authors.
-#
-# This file is part of NOMAD. See https://nomad-lab.eu for further info.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -30,6 +12,7 @@ from nomad.datamodel.metainfo.basesections import (
     PureSubstanceComponent,
     ReadableIdentifiers,
 )
+from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
 from nomad_material_processing.general import (
     CrystallineSubstrate,
@@ -43,6 +26,10 @@ from nomad_material_processing.utils import create_archive
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.sample import (
+    DTUCombinatorialLibrary,
+    DtuLibraryReference,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -65,6 +52,7 @@ class DTUSubstrate(CrystallineSubstrate, Schema):
         default='1 sided',
         a_eln={'component': 'RadioEnumEditQuantity'},
     )
+
 
 
 class DTUSubstrateReference(CompositeSystemReference):
@@ -197,10 +185,7 @@ class DTUSubstrateBatch(Collection, Schema):
     def next_used_in(
         self, entry_type: type[Schema], negate: bool = False
     ) -> DTUSubstrate:
-        from nomad.search import (
-            MetadataPagination,
-            search,
-        )
+        from nomad.search import MetadataPagination, search
 
         ref: DTUSubstrateReference
         for ref in self.entities:
@@ -415,6 +400,425 @@ class DTUSubstrateCutting(Process, Schema):
             logger (BoundLogger): A structlog logger.
         """
         self.samples = self.substrate_batch.entities
+        return super().normalize(archive, logger)
+
+
+class DTULibraryParts(Collection, Schema):
+    """
+    Schema for parts of a DTU combinatorial library.
+    """
+
+    library_name = Quantity(
+        type=str,
+        description='The name of the library.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
+    )
+    upper_left_x = Quantity(
+        type=np.float64,
+        description='The x-coordinate of the upper left corner of the library.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
+    )
+
+    upper_left_y = Quantity(
+        type=np.float64,
+        description='The y-coordinate of the upper left corner of the library.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
+    )
+    lower_right_x = Quantity(
+        type=np.float64,
+        description='The x-coordinate of the lower right corner of the library.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
+    )
+    lower_right_y = Quantity(
+        type=np.float64,
+        description='The y-coordinate of the lower right corner of the library.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
+    )
+    part_size = Quantity(
+        type = np.float64,
+        shape=[2],
+        description='The size of the library in the x and y direction.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
+    )
+    geometry = SubSection(
+        section_def=Geometry,
+        description='The geometries of the samples in the library.',
+    )
+
+
+
+class DTULibraryCleaving(Process, Schema, PlotSection):
+    """
+    Schema for substrate cleaning at the DTU Nanolab.
+    """
+
+    m_def = Section(
+        categories=[DTUNanolabCategory],
+        label='Substrate Cleaving',
+    )
+    combinatorial_Library = Quantity(
+        type=DTUCombinatorialLibrary,
+        description='The combinatorial sample that is broken into pieces .',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
+    )
+    library_size = Quantity(
+        type =  np.float64,
+        shape=[2],
+        description='The size of the library in the x and y direction.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm'
+            ),
+        unit='m',
+    )
+
+    pattern= Quantity(
+        type = MEnum(
+            'squares',
+            'horizontal stripes',
+            'vertical stripes',
+            'custom',
+        ),
+        description='The pattern according to which the original library is broken.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.RadioEnumEditQuantity),
+        default='custom',
+    )
+
+    number_of_pieces = Quantity(
+        type=int,
+        description='The number of pieces the original library is broken into ' \
+        'for horizontal, vertical and custom. ' \
+        'For squares it is the number of squares in one direction.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
+    )
+
+    create_from_pattern = Quantity(
+        type=bool,
+        description='Whether to create the new pieces from the pattern.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+        default=False,
+    )
+
+    create_child_libraries = Quantity(
+        type=bool,
+        description='Whether to create child libraries from the new pieces.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+        default=False,
+    )
+
+    new_pieces = SubSection(
+        section_def= DTULibraryParts,
+        repeats=True,
+    )
+    child_libraries = SubSection(
+        section_def=DtuLibraryReference,
+        repeats=True,
+        description='The child libraries created from the combinatorial library.',
+    )
+
+    def recognize_pattern(self, logger: 'BoundLogger') -> None:
+        """
+        Recognizes the pattern of the library and creates the new pieces accordingly.
+        """
+        heig = self.combinatorial_Library.geometry.height
+        start_x = (self.library_size[0]/2) *(-1)
+        start_y = self.library_size[1]/2
+
+        if self.pattern == 'squares':
+            total_nr = self.number_of_pieces ** 2
+            size = self.library_size[0] / self.number_of_pieces
+            for j in range(self.number_of_pieces):
+                for i in range(self.number_of_pieces):
+                    piece = DTULibraryParts()
+                    number = 1+j * self.number_of_pieces + i
+                    piece.library_name = (
+                        f'{self.combinatorial_Library.name}_S{number}-{total_nr}'
+                    )
+                    piece.name = f'Square {number} of {total_nr}'
+                    piece.lab_id = piece.library_name.replace(' ', '_')
+                    piece.upper_left_x = start_x + i * size
+                    piece.upper_left_y = start_y - (j) * size
+                    piece.lower_right_x = start_x + (i + 1) * size
+                    piece.lower_right_y = start_y - (j + 1) * size
+                    piece.part_size = (size, size)
+                    piece.geometry = RectangleCuboid(
+                            length=size,
+                            width=size,
+                            height=heig,
+                        )
+
+                    self.new_pieces.append(piece)
+        elif self.pattern == 'horizontal stripes':
+            size = self.library_size[1] / self.number_of_pieces
+
+            for i in range(self.number_of_pieces):
+                piece = DTULibraryParts()
+                number = i + 1
+                piece.library_name = (
+                    f'{self.combinatorial_Library.name}_H{number}-{self.number_of_pieces}'
+                )
+                piece.name = f'Horizontal stripe {number} of {self.number_of_pieces}'
+                piece.lab_id = piece.library_name.replace(' ', '_')
+                piece.upper_left_x = start_x
+                piece.upper_left_y = start_y - i * size
+                piece.lower_right_x = start_x + self.library_size[0]
+                piece.lower_right_y = start_y - (i + 1) * size
+                piece.part_size = (self.library_size[0], size)
+                piece.geometry = RectangleCuboid(
+                        length=self.library_size[0],
+                        width=size,
+                        height=heig,
+                    )
+
+                self.new_pieces.append(piece)
+        elif self.pattern == 'vertical stripes':
+            size = self.library_size[0] / self.number_of_pieces
+
+            for i in range(self.number_of_pieces):
+                piece = DTULibraryParts()
+                number = i + 1
+                piece.library_name = (
+                    f'{self.combinatorial_Library.name}_V{number}-{self.number_of_pieces}'
+                )
+                piece.name = f'Vertical stripe {number} of {self.number_of_pieces}'
+                piece.lab_id = piece.library_name.replace(' ', '_')
+                piece.upper_left_x = start_x + i * size
+                piece.upper_left_y = start_y
+                piece.lower_right_x = start_x + (i + 1) * size
+                piece.lower_right_y = start_y - self.library_size[1]
+                piece.part_size = (size, self.library_size[1])
+                piece.geometry = RectangleCuboid(
+                        length=size,
+                        width=self.library_size[1],
+                        height=heig,
+                    )
+
+                self.new_pieces.append(piece)
+        elif self.pattern == 'custom':
+            self.handle_custom_pattern()
+
+    def handle_custom_pattern(self) -> None:
+        """
+        Handles the filling of custom pattern for the library pieces.
+        """
+        for i in range(self.number_of_pieces):
+            piece = DTULibraryParts()
+            piece.library_name = (
+                f'{self.combinatorial_Library.name}_C{i+1}-{self.number_of_pieces}'
+            )
+            piece.name = f'Custom piece {i+1} of {self.number_of_pieces}'
+            piece.lab_id = piece.library_name.replace(' ', '_')
+            piece.part_size = None  # Will be set later
+            self.new_pieces.append(piece)
+
+
+    def plot(self) -> None:
+        """
+        Plots the positions of the new pieces in the library.
+        """
+
+        import plotly.graph_objects as go
+        if self.new_pieces is None or len(self.new_pieces) == 0:
+            return
+        fig = go.Figure()
+        #add the original library to the plot
+        if self.combinatorial_Library is not None:
+            x0 = self.library_size[0].to('mm').magnitude / 2 * (-1)
+            y0 = self.library_size[1].to('mm').magnitude / 2
+            x1 = self.library_size[0].to('mm').magnitude / 2
+            y1 = -self.library_size[1].to('mm').magnitude / 2
+            fig.add_shape(
+                type='rect',
+                x0=x0,
+                y0=y0,
+                x1=x1,
+                y1=y1,
+                line=dict(color='red', width = 3),
+                fillcolor='white',
+                opacity=0.5,
+            )
+            fig.add_annotation(
+                x=(x0 + x1) / 2,
+                y=(y0 + y1) / 2,
+                text=self.combinatorial_Library.name,
+                showarrow=False,
+            )
+
+        if self.pattern != 'custom':
+            for piece in self.new_pieces:
+                if piece.part_size is None:
+                    continue
+
+                fig.add_shape(
+                    type='rect',
+                    x0=(
+                        piece.upper_left_x.to('mm').magnitude+
+                        (0.01*piece.part_size[0].to('mm').magnitude)
+                    ),
+                    y0=(
+                        piece.upper_left_y.to('mm').magnitude-
+                        (0.01*piece.part_size[1].to('mm').magnitude)
+                    ),
+                    x1=(
+                        piece.lower_right_x.to('mm').magnitude-
+                        (0.01*piece.part_size[0].to('mm').magnitude)
+                    ),
+                    y1=(
+                        piece.lower_right_y.to('mm').magnitude+
+                        (0.01*piece.part_size[1].to('mm').magnitude)
+                    ),
+                    name=piece.library_name,
+                    line=dict(color='green'),
+                    fillcolor='lightgreen',
+                    opacity=0.4,
+                )
+                fig.add_annotation(
+                    x=(
+                        (piece.upper_left_x.to('mm').magnitude +
+                         piece.lower_right_x.to('mm').magnitude) / 2
+                    ),
+                    y=(
+                        (piece.upper_left_y.to('mm').magnitude +
+                          piece.lower_right_y.to('mm').magnitude) / 2
+                    ),
+                    text=piece.library_name,
+                    showarrow=False,
+                )
+        fig.update_layout(
+            title='Positions of the new pieces in the library',
+            xaxis_title='X (mm)',
+            yaxis_title='Y (mm)',
+            width=800,
+            height=700,
+            xaxis=dict(
+                range=[
+                    -self.library_size[0].to('mm').magnitude*1.1/2,
+                    self.library_size[0].to('mm').magnitude*1.1/2,
+                    ],
+            ),
+            yaxis=dict(
+                range=[
+                    -self.library_size[1].to('mm').magnitude*1.1/2,
+                    self.library_size[1].to('mm').magnitude*1.1/2,
+                ],
+            ),
+        )
+
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(
+            scrollZoom=False,
+        )
+
+        self.figures.append(
+            PlotlyFigure(
+                label='Positions of the new pieces in the library',
+                figure=plot_json,
+            )
+        )
+
+    def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        origin= self.combinatorial_Library
+        children = []
+
+        if self.pattern != 'custom':
+            for piece in self.new_pieces:
+                if piece.part_size is not None:
+                    library = DTUCombinatorialLibrary(
+                        name=piece.library_name.replace(' ', '-'),
+                        datetime=self.datetime,
+                        lab_id=piece.library_name,
+                        geometry=piece.geometry,
+                        description=f'Part of {origin.name} library',
+                        process_parameter_overview=origin.process_parameter_overview,
+                        elemental_composition=origin.elemental_composition,
+                        components=origin.components,
+                        layers=origin.layers,
+                        substrate=origin.substrate,
+                    )
+
+                    library.normalize(archive, logger)
+                    file_name = f'{library.lab_id}.archive.json'
+                    child_archive = create_archive(library, archive, file_name)
+
+                    children.append(
+                        CompositeSystemReference(
+                        reference=child_archive,
+                        name=library.name,
+                        lab_id=library.lab_id,
+                        )
+                    )
+            self.child_libraries = children
+
+
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `DTUSubstrateCleaning` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+
+        if self.combinatorial_Library is not None and self.library_size is None:
+            self.library_size = self.combinatorial_Library.geometry.length, \
+                self.combinatorial_Library.geometry.width
+
+        if self.create_from_pattern:
+            if self.number_of_pieces is None or self.number_of_pieces <=1:
+                logger.error(
+                    'The number of pieces must be at least 2 to create a pattern.'
+                )
+                return
+            elif self.pattern not in [
+                'squares',
+                'horizontal stripes',
+                'vertical stripes',
+                'custom',
+            ]:
+                logger.error(f'Unknown pattern {self.pattern}.')
+                return
+            else:
+                self.recognize_pattern(logger)
+                self.create_from_pattern = False
+
+        if self.new_pieces is not None and len(self.new_pieces) > 0:
+            self.figures = []
+            self.plot()
+            if self.create_child_libraries:
+                origin= self.combinatorial_Library
+                if origin is None:
+                    logger.error(
+                        'A combinatorial library must be set to create child libraries.'
+                    )
+                    return
+                else :
+                    self.add_libraries(archive, logger)
+                    self.create_child_libraries = False
+
+
+
         return super().normalize(archive, logger)
 
 
