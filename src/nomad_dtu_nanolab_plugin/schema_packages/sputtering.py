@@ -914,12 +914,6 @@ class DTUGasFlow(GasFlow, ArchiveSection):
                     f'No in use {self.gas_name} found. '
                     f'Please check the gas bottles inventory.'
                 )
-            elif search_result.pagination.total >= 1:
-                logger.warning(
-                    f'Found multiple ({search_result.pagination.total}) in use '
-                    f'{self.gas_name} bottles. Only one bottle should be in use '
-                    f'at a time. Please check the gas bottles inventory.'
-                )
             #if there is only one bottle in use, we set the used_gas_supply
             elif search_result.pagination.total == 1:
                 self.gas_supply = DtuGasSupplyComponent()
@@ -930,6 +924,13 @@ class DTUGasFlow(GasFlow, ArchiveSection):
                 )
                 self.gas_supply.gas_name = self.gas_name
                 self.gas_supply.lab_id = self.gas_name
+            else:
+                logger.warning(
+                    f'Found multiple ({search_result.pagination.total}) in use '
+                    f'{self.gas_name} bottles. Only one bottle should be in use '
+                    f'at a time. Please check the gas bottles inventory.'
+                )
+
 
         if self.gas_supply is not None:
             self.set_gas_properties()
@@ -1127,10 +1128,10 @@ class SourceOverview(ArchiveSection):
         type=np.float64,
         a_eln={
             'component': 'NumberEditQuantity',
-            'defaultDisplayUnit': 'kWh',
+            'defaultDisplayUnit': 'kW*h',
             'label': 'Accumulated power (Energy)',
         },
-        unit='kWh',
+        unit='kW*h',
         description='The end of the deposition target accumulated power ',
     )#TODO check unit
     target_id = SubSection(
@@ -2454,8 +2455,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # generate the gas flows by removing the
             for gas_flow in environment.gas_flows:
                 # if the average flow is below 1, we unright the gas flow
-                if gas_flow.flow_rate.to('m^3/s').magnitude > 1:
-                    new_gas_flows.append(gas_flow.flow_rate)
+                flow_rate_values = gas_flow.flow_rate.value
+                magnitudes = [q.to('m^3/s').magnitude for q in flow_rate_values]
+                avg_flow = np.mean(magnitudes)
+                if avg_flow >= 1:
+                    new_gas_flows.append(gas_flow)
             environment.gas_flows = new_gas_flows
 
             step.environment = environment
