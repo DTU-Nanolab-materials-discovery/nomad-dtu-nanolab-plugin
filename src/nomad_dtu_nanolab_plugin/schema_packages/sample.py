@@ -22,34 +22,26 @@ import numpy as np
 from ase.data import chemical_symbols
 from ase.spacegroup import Spacegroup
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import (
-    ELNAnnotation,
-    ELNComponentEnum,
-    Filter,
-    SectionProperties,
-)
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum, Filter,
+                                                  SectionProperties)
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
-from nomad.datamodel.metainfo.basesections.v1 import (
-    Activity,
-    ElementalComposition,
-    Entity,
-    EntityReference,
-)
+from nomad.datamodel.metainfo.basesections.v1 import (Activity,
+                                                      ElementalComposition,
+                                                      Entity, EntityReference)
 from nomad.metainfo import Package, Section
 from nomad.metainfo.metainfo import MEnum, Quantity, SubSection
-from nomad_material_processing.combinatorial import (
-    CombinatorialLibrary,
-    CombinatorialSample,
-)
+from nomad_material_processing.combinatorial import (CombinatorialLibrary,
+                                                     CombinatorialSample)
 from nomad_material_processing.general import Geometry, ThinFilmStack
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
 if TYPE_CHECKING:
-    from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-        DtuNanolabMeasurement,
-    )
-    from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
+    from nomad_dtu_nanolab_plugin.schema_packages.basesections import \
+        DtuNanolabMeasurement
+    from nomad_dtu_nanolab_plugin.schema_packages.sputtering import \
+        DTUSputtering
 
 m_package = Package()
 
@@ -457,14 +449,14 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         return [entry.data for entry in entry_list]
 
     def get_measurements(self) -> list['DtuNanolabMeasurement']:
-        from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-            DtuNanolabMeasurement,
-        )
+        from nomad_dtu_nanolab_plugin.schema_packages.basesections import \
+            DtuNanolabMeasurement
 
         return self.get_references(DtuNanolabMeasurement)
 
     def get_sputtering(self) -> 'DTUSputtering':
-        from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
+        from nomad_dtu_nanolab_plugin.schema_packages.sputtering import \
+            DTUSputtering
 
         results = self.get_references(DTUSputtering)
         if len(results) > 1:
