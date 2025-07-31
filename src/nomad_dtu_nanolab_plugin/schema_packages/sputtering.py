@@ -2488,8 +2488,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             for single_gas_flow in environment.gas_flow:
                 # if the average flow is below 1, we unright the gas flow
                 flow_rate_values = single_gas_flow.flow_rate.value
-                magnitudes = [q.to('m^3/s').magnitude for q in flow_rate_values]
+                magnitudes = [q.to('cm^3/minute').magnitude for q in flow_rate_values]
                 avg_flow = np.mean(magnitudes)
+                logger.warning(
+                    f'Average flow for {single_gas_flow.gas_name} in step {key}: {avg_flow}'
+                )
                 if avg_flow >= 1:
                     new_gas_flows.append(single_gas_flow)
             environment.gas_flow = new_gas_flows
