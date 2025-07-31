@@ -43,7 +43,7 @@ class DTUGasSupply(CompositeSystem, Schema):
     )
     in_use = Quantity(
         type=bool,
-        a_eln={'component': 'BooleanEditQuantity'},
+        a_eln={'component': 'BoolEditQuantity'},
         default=True,
         description='Indicates whether the gas supply is currently in use.',
     )
