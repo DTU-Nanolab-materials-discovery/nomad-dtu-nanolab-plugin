@@ -857,6 +857,23 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         description='The gas supply used.',
     )
 
+    def set_gas_properties(self) -> None:
+        """
+        Set the properties of the gas based on the used gas supply.
+        """
+
+        self.gas.name = self.gas_supply.system.name
+        self.gas.iupac_name = self.gas_supply.system.iupac_name
+        self.gas.molecular_formula = self.gas_supply.system.molecular_formula
+        self.gas.molecular_mass = self.gas_supply.system.molecular_mass
+        self.gas.inchi = self.gas_supply.system.inchi
+        self.gas.inchi_key = self.gas_supply.system.inchi_key
+        self.gas.smile = self.gas_supply.system.smiles
+        self.gas.canonical_smile = self.gas_supply.system.canonical_smiles
+        self.gas.cas_number = self.gas_supply.system.cas_number
+
+
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUGasFlow` class.
@@ -894,16 +911,15 @@ class DTUGasFlow(GasFlow, ArchiveSection):
                     f'No in use {self.gas_name} found. '
                     f'Please check the gas bottles inventory.'
                 )
-            if search_result.pagination.total >= 1:
+            elif search_result.pagination.total >= 1:
                 logger.warning(
                     f'Found multiple ({search_result.pagination.total}) in use '
                     f'{self.gas_name} bottles. Only one bottle should be in use '
                     f'at a time. Please check the gas bottles inventory.'
                 )
             #if there is only one bottle in use, we set the used_gas_supply
-            if search_result.pagination.total == 1:
+            elif search_result.pagination.total == 1:
                 self.gas_supply = DtuGasSupplyComponent()
-                self.gas_supply.system = DTUGasSupply()
                 entry_id = search_result.data[0]['entry_id']
                 upload_id = search_result.data[0]['upload_id']
                 self.gas_supply.system = (
@@ -912,35 +928,6 @@ class DTUGasFlow(GasFlow, ArchiveSection):
                 self.gas_supply.gas_name = self.gas_name
                 self.gas_supply.lab_id = self.gas_name
 
-    def set_gas_properties(self) -> Self:
-        """
-        Set the properties of the gas based on the used gas supply.
-        """
-
-        self.gas_name = self.gas_supply.system.name
-        self.gas.name = self.gas_supply.system.name
-        self.gas.iupac_name = self.gas_supply.system.iupac_name
-        self.gas.molecular_formula = self.gas_supply.system.molecular_formula
-        self.gas.molecular_mass = self.gas_supply.system.molecular_mass
-        self.gas.inchi = self.gas_supply.system.inchi
-        self.gas.inchi_key = self.gas_supply.system.inchi_key
-        self.gas.smile = self.gas_supply.system.smiles
-        self.gas.canonical_smile = self.gas_supply.system.canonical_smiles
-        self.gas.cas_number = self.gas_supply.system.cas_number
-
-
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        """
-        The normalizer for the `DTUGasFlow` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger (BoundLogger): A structlog logger.
-        """
-        super().normalize(archive, logger)
-
-        #fill in gas subsection from the reference
         if self.gas_supply is not None:
             self.set_gas_properties()
 
