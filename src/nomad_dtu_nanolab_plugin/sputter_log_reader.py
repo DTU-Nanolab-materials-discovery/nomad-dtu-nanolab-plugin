@@ -1866,7 +1866,7 @@ class Deposition_Event(Lf_Event):
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_id'] = (
             self.data[f'PC Source {source_number} Loaded Target'].iloc[0]
         )
-        #the acumulated power is the last power recorded after the deposition
+        # the acumulated power is the last power recorded after the deposition
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_usage'] = (
             self.data[f'PC Source {source_number} Usage'].iloc[-1]
         )
@@ -6019,6 +6019,11 @@ def map_params_to_nomad(params, gun_list):
             None,  # duration has no unit since it is a TimeDelta object
         ],
         [
+            ['deposition', 'platen_position'],
+            ['deposition_parameters', 'platen_rotation'],
+            'degree',
+        ],
+        [
             ['deposition', 'avg_capman_pressure'],
             ['deposition_parameters', 'sputter_pressure'],
             'mtorr',
@@ -6174,7 +6179,7 @@ def map_params_to_nomad(params, gun_list):
                     [
                         ['deposition', gun, 'target_usage'],
                         ['deposition_parameters', gun, 'target_usage'],
-                        'kW*h',#TODO test that
+                        'kW*h',  # TODO test that
                     ],
                     [
                         ['deposition', gun, 'avg_output_power'],
