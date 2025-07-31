@@ -832,10 +832,26 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         description='The name of the gas.',
     )
     used_gas_supply = Quantity(
-        type=CompositeSystem,
+        type=DTUGasSupply,
         a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
         description='Reference to the gas supply used.',
     )
+    def set_gas_properties(self) -> Self:
+        """
+        Set the properties of the gas based on the used gas supply.
+        """
+
+        self.gas_name = self.used_gas_supply.name
+        self.gas.name = self.used_gas_supply.name
+        self.gas.iupac_name = self.used_gas_supply.iupac_name
+        self.gas.molecular_formula = self.used_gas_supply.molecular_formula
+        self.gas.molecular_mass = self.used_gas_supply.molecular_mass
+        self.gas.inchi = self.used_gas_supply.inchi
+        self.gas.inchi_key = self.used_gas_supply.inchi_key
+        self.gas.smile = self.used_gas_supply.smiles
+        self.gas.canonical_smile = self.used_gas_supply.canonical_smiles
+        self.gas.cas_number = self.used_gas_supply.cas_number
+
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -854,7 +870,7 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         if (
             self.used_gas_supply is None
             and self.gas_name is not None
-            and isinstance(archive.m_context, ServerContext)
+            and isinstance(archive.m_context, ServerContext)#what does this do?
         ):
             from nomad.search import MetadataPagination, search
 
@@ -868,38 +884,28 @@ class DTUGasFlow(GasFlow, ArchiveSection):
                 pagination=MetadataPagination(page_size=1),
                 user_id=archive.metadata.main_author.user_id,
             )
-            if search_result.pagination.total > 0:
+            #if there is not strickly one bottle in use, we sent a warning
+            if search_result.pagination.total == 0:
+                logger.warning(
+                    f'No in use {self.gas_name} found. '
+                    f'Please check the gas bottles inventory.'
+                )
+            if search_result.pagination.total >= 1:
+                logger.warning(
+                    f'Found multiple ({search_result.pagination.total}) in use '
+                    f'{self.gas_name} bottles. Only one bottle should be in use '
+                    f'at a time. Please check the gas bottles inventory.'
+                )
+            #if there is only one bottle in use, we set the used_gas_supply
+            if search_result.pagination.total == 1:
                 entry_id = search_result.data[0]['entry_id']
                 upload_id = search_result.data[0]['upload_id']
-                self.system = f'../uploads/{upload_id}/archive/{entry_id}#data'
-                if search_result.pagination.total > 1:
-                    logger.warn(
-                        f'Found {search_result.pagination.total} in '
-                        f'use {self.gas_name} bottles'
-                        f'"{self.gas_name}". Will use the first one found.'
-                    )
-            else:
-                logger.warn(f'No in use {self.gas_name} found')
-        elif self.gas_name is None and self.used_gas_supply is not None:
-            self.gas_name = self.used_gas_supply.lab_id
+                self.used_gas_supply = f'../uploads/{upload_id}/archive/{entry_id}#data'
 
 
         #fill in the gas subsection from the reference
-
-        if self.used_gas_supply is None:
-            return
-
-        self.gas_name = self.used_gas_supply.name
-        self.gas.name = self.used_gas_supply.name
-        self.gas.iupac_name = self.used_gas_supply.iupac_name
-        self.gas.molecular_formula = self.used_gas_supply.molecular_formula
-        self.gas.molecular_mass = self.used_gas_supply.molecular_mass
-        self.gas.inchi = self.used_gas_supply.inchi
-        self.gas.inchi_key = self.used_gas_supply.inchi_key
-        self.gas.smile = self.used_gas_supply.smiles
-        self.gas.canonical_smile = self.used_gas_supply.canonical_smiles
-        self.gas.cas_number = self.used_gas_supply.cas_number
-
+        if self.used_gas_supply is not None:
+            self.set_gas_properties()
 
 class DtuTemperature(TimeSeries):
     m_def = Section(
@@ -2415,7 +2421,16 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             environment = self.generate_environment_log_data(step_params, key, logger)
 
+            new_gas_flows = []
+            # generate the gas flows by removing the
+            for gas_flow in environment.gas_flows:
+                # if the average flow is below 1, we unright the gas flow
+                if gas_flow.flow_rate.to('m^3/s').magnitude > 1:
+                    new_gas_flows.append(gas_flow.flow_rate)
+            environment.gas_flows = new_gas_flows
+
             step.environment = environment
+
 
             if 'Deposition' in step.name:
                 step.creates_new_thin_film = True
