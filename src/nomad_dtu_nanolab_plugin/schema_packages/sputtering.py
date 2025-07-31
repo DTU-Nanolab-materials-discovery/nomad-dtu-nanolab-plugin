@@ -23,50 +23,82 @@ from typing import TYPE_CHECKING, Self
 import numpy as np
 import pandas as pd
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.annotations import (BrowserAdaptors,
-                                                  BrowserAnnotation,
-                                                  ELNAnnotation,
-                                                  ELNComponentEnum)
-from nomad.datamodel.metainfo.basesections import (Component, CompositeSystem,
-                                                   CompositeSystemReference,
-                                                   ElementalComposition,
-                                                   InstrumentReference,
-                                                   PureSubstanceComponent,
-                                                   PureSubstanceSection)
+from nomad.datamodel.metainfo.annotations import (
+    BrowserAdaptors,
+    BrowserAnnotation,
+    ELNAnnotation,
+    ELNComponentEnum,
+)
+from nomad.datamodel.metainfo.basesections import (
+    Component,
+    CompositeSystem,
+    CompositeSystemReference,
+    ElementalComposition,
+    InstrumentReference,
+    PureSubstanceComponent,
+    PureSubstanceSection,
+)
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.datamodel.metainfo.workflow import Link
 from nomad.datamodel.results import Material, Results
-from nomad.metainfo import (MEnum, MProxy, Package, Quantity, Section,
-                            SubSection)
+from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
 from nomad.units import ureg
-from nomad_material_processing.general import (SubstrateReference, ThinFilm,
-                                               ThinFilmReference)
+from nomad_material_processing.general import (
+    SubstrateReference,
+    ThinFilm,
+    ThinFilmReference,
+)
 from nomad_material_processing.vapor_deposition.general import (
-    ChamberEnvironment, GasFlow, Pressure, SubstrateHeater, TimeSeries,
-    VolumetricFlowRate)
+    ChamberEnvironment,
+    GasFlow,
+    Pressure,
+    SubstrateHeater,
+    TimeSeries,
+    VolumetricFlowRate,
+)
 from nomad_material_processing.vapor_deposition.pvd.general import (
-    PVDEvaporationSource, PVDSource, PVDStep)
-from nomad_material_processing.vapor_deposition.pvd.sputtering import \
-    SputterDeposition
+    PVDEvaporationSource,
+    PVDSource,
+    PVDStep,
+)
+from nomad_material_processing.vapor_deposition.pvd.sputtering import SputterDeposition
 from nomad_measurements.utils import create_archive, merge_sections
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
-    DTUCombinatorialLibrary, ProcessParameterOverview)
+    DTUCombinatorialLibrary,
+    ProcessParameterOverview,
+)
 from nomad_dtu_nanolab_plugin.schema_packages.substrate import (
-    DTUSubstrate, DTUSubstrateBatch)
+    DTUSubstrate,
+    DTUSubstrateBatch,
+)
 from nomad_dtu_nanolab_plugin.schema_packages.target import DTUTarget
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
-    GAS_FRACTION, Sample, format_logfile, generate_plots, get_nested_value,
-    map_environment_params_to_nomad, map_gas_flow_params_to_nomad,
-    map_heater_params_to_nomad, map_material_params_to_nomad,
-    map_params_to_nomad, map_platen_bias_params_to_nomad,
-    map_s_cracker_params_to_nomad, map_source_deprate_params_to_nomad,
-    map_source_presput_params_to_nomad, map_source_up_params_to_nomad,
-    map_sputter_source_params_to_nomad, map_step_params_to_nomad,
-    plot_plotly_chamber_config, read_events, read_guns, read_logfile,
-    read_samples)
+    GAS_FRACTION,
+    Sample,
+    format_logfile,
+    generate_plots,
+    get_nested_value,
+    map_environment_params_to_nomad,
+    map_gas_flow_params_to_nomad,
+    map_heater_params_to_nomad,
+    map_material_params_to_nomad,
+    map_params_to_nomad,
+    map_platen_bias_params_to_nomad,
+    map_s_cracker_params_to_nomad,
+    map_source_deprate_params_to_nomad,
+    map_source_presput_params_to_nomad,
+    map_source_up_params_to_nomad,
+    map_sputter_source_params_to_nomad,
+    map_step_params_to_nomad,
+    plot_plotly_chamber_config,
+    read_events,
+    read_guns,
+    read_logfile,
+    read_samples,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
