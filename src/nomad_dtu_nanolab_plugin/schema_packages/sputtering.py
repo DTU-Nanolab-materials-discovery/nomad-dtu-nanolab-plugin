@@ -1110,6 +1110,7 @@ class SourceOverview(ArchiveSection):
         a_eln={
             'component': 'NumberEditQuantity',
             'defaultDisplayUnit': 'kWh'},
+            'label': 'Accumulated power (Energy)',
         unit='kWh',
         description='The end of the deposition target accumulated power ',
     )#TODO check unit
