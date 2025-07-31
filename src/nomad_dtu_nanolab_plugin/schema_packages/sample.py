@@ -44,6 +44,7 @@ from nomad_material_processing.combinatorial import (
 from nomad_material_processing.general import ThinFilmStack
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DepositionParameters
 
 if TYPE_CHECKING:
     from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
@@ -165,7 +166,6 @@ class AbsorptionCoefficient(SampleProperty):
         description='The mean absorption coefficient above the absorption edge.',
         unit='cm^-1',
     )
-
 
 
 class Thickness(SampleProperty):
@@ -306,9 +306,9 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
         a_eln=ELNAnnotation(
             properties=SectionProperties(
                 visible=Filter(exclude=['elemental_composition', 'components']),
-                editable=Filter(include=[])
+                editable=Filter(include=[]),
             ),
-        )
+        ),
     )
     band_gap = SubSection(section_def=BandGap)
     absorption_coefficient = SubSection(section_def=AbsorptionCoefficient)
@@ -332,7 +332,8 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
 
         self.elemental_composition = [
             ElementalComposition(element=e, atomic_fraction=v)
-            for e,v in composition.items() if v
+            for e, v in composition.items()
+            if v
         ]
 
         super().normalize(archive, logger)
@@ -374,7 +375,6 @@ class UniqueXrdPeaksReference(EntityReference):
 
 
 class ProcessParameterOverview(Schema):
-
     m_def = Section()
 
     position_x = Quantity(
@@ -422,6 +422,10 @@ class ProcessParameterOverview(Schema):
         ),
         unit='m',
     )
+    deposition_parameters = SubSection(
+        section_def=DepositionParameters,
+        description='The deposition parameters used for the sample.',
+    )
 
 
 class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
@@ -430,8 +434,8 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         label='Combinatorial Library',
     )
 
-    process_parameter_overview = Quantity(
-        type=ProcessParameterOverview,
+    process_parameter_overview = SubSection(
+        section_def=ProcessParameterOverview,
         description='An overview of the process parameters used to create the library.',
     )
 

@@ -1866,7 +1866,7 @@ class Deposition_Event(Lf_Event):
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_id'] = (
             self.data[f'PC Source {source_number} Loaded Target'].iloc[0]
         )
-        #the acumulated power is the last power recorded after the deposition
+        # the acumulated power is the last power recorded after the deposition
         params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_usage'] = (
             self.data[f'PC Source {source_number} Usage'].iloc[-1]
         )
@@ -5430,7 +5430,7 @@ def read_logfile(file_path):
     as they are in the logfile.
     """
     for i in range(5):
-        df = pd.read_csv(file_path, header=[i+1], skiprows=[i], low_memory=False)
+        df = pd.read_csv(file_path, header=[i + 1], skiprows=[i], low_memory=False)
 
         # Check if the 'Time Stamp' column exists in the DataFrame
         if 'Time Stamp' in df.columns:
@@ -6019,6 +6019,11 @@ def map_params_to_nomad(params, gun_list):
             None,  # duration has no unit since it is a TimeDelta object
         ],
         [
+            ['deposition', 'platen_position'],
+            ['deposition_parameters', 'platen_rotation'],
+            'degree',
+        ],
+        [
             ['deposition', 'avg_capman_pressure'],
             ['deposition_parameters', 'sputter_pressure'],
             'mtorr',
@@ -6174,7 +6179,7 @@ def map_params_to_nomad(params, gun_list):
                     [
                         ['deposition', gun, 'target_usage'],
                         ['deposition_parameters', gun, 'target_usage'],
-                        'kW*h',#TODO test that
+                        'kW*h',  # TODO test that
                     ],
                     [
                         ['deposition', gun, 'avg_output_power'],

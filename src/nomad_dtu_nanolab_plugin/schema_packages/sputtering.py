@@ -1385,6 +1385,12 @@ class DepositionParameters(ArchiveSection):
         unit='s',
         description='The total deposition time.',
     )
+    platen_rotation = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
+        unit='rad',
+        description='The platen rotation angle during the deposition.',
+    )
     sputter_pressure = Quantity(
         type=np.float64,
         default=0.6666,
@@ -2453,9 +2459,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 flow_rate_values = single_gas_flow.flow_rate.value
                 magnitudes = [q.to('cm^3/minute').magnitude for q in flow_rate_values]
                 avg_flow = np.mean(magnitudes)
-                logger.warning(
-                    f'Average flow for {single_gas_flow.gas_name} in step {key}: {avg_flow}'
-                )
                 if avg_flow >= 1:
                     new_gas_flows.append(single_gas_flow)
             environment.gas_flow = new_gas_flows
@@ -2793,6 +2796,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             ]
 
             library.process_parameter_overview = ProcessParameterOverview()
+
             # we write some important process parameters to the library
             library.process_parameter_overview.position_x = (
                 substrate_mounting.position_x
@@ -2801,6 +2805,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 substrate_mounting.position_y
             )
 
+            library.process_parameter_overview.deposition_parameters = (
+                self.deposition_parameters.copy()
+            )
             # TODO add more process parameters
 
             library_ref = create_archive(
@@ -2870,6 +2877,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                         self.instruments[0].platen_rotation + 120 * ureg('degree')
                     ) % (360 * ureg('degree'))
                     self.instruments[0].platen_rotation = new_angle.to('degree')
+                    self.deposition_parameters.platen_rotation = new_angle.to('degree')
             else:
                 logger.warning(
                     'No angle correction is done since the data is before the 8th'
