@@ -822,6 +822,9 @@ class DtuCrackerSource(DTUSource):
 
 
 class DtuGasSupplyComponent(Component):
+
+    m_def = Section()
+
     system = Quantity(
         type=DTUGasSupply,
         description='The gas supply used.',
