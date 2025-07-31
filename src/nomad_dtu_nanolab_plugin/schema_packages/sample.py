@@ -373,7 +373,8 @@ class UniqueXrdPeaksReference(EntityReference):
     )
 
 
-class ProcessParameterOverview(Schema):
+
+class ProcessParameterOverview(ArchiveSection):
 
     position_x = Quantity(
         type=np.float64,
@@ -428,8 +429,8 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         label='Combinatorial Library',
     )
 
-    process_parameter_overview = Quantity(
-        type=ProcessParameterOverview,
+    process_parameter_overview = SubSection(
+        section_def=ProcessParameterOverview,
         description='An overview of the process parameters used to create the library.',
     )
 
