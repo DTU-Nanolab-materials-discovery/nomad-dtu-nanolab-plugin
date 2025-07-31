@@ -832,7 +832,7 @@ class DtuGasSupplyComponent(Component):
 
     m_def = Section()
 
-    system = Quantity(
+    reference = Quantity(
         type=DTUGasSupply,
         description='The gas supply used.',
         a_eln=ELNAnnotation(
@@ -872,15 +872,15 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         Set the properties of the gas based on the used gas supply.
         """
         self.gas = PureSubstanceSection()
-        self.gas.name = self.gas_supply.system.name
-        self.gas.iupac_name = self.gas_supply.system.iupac_name
-        self.gas.molecular_formula = self.gas_supply.system.molecular_formula
-        self.gas.molecular_mass = self.gas_supply.system.molecular_mass
-        self.gas.inchi = self.gas_supply.system.inchi
-        self.gas.inchi_key = self.gas_supply.system.inchi_key
-        self.gas.smile = self.gas_supply.system.smiles
-        self.gas.canonical_smile = self.gas_supply.system.canonical_smiles
-        self.gas.cas_number = self.gas_supply.system.cas_number
+        self.gas.name = self.gas_supply.reference.name
+        self.gas.iupac_name = self.gas_supply.reference.iupac_name
+        self.gas.molecular_formula = self.gas_supply.reference.molecular_formula
+        self.gas.molecular_mass = self.gas_supply.reference.molecular_mass
+        self.gas.inchi = self.gas_supply.reference.inchi
+        self.gas.inchi_key = self.gas_supply.reference.inchi_key
+        self.gas.smile = self.gas_supply.reference.smiles
+        self.gas.canonical_smile = self.gas_supply.reference.canonical_smiles
+        self.gas.cas_number = self.gas_supply.reference.cas_number
 
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -925,7 +925,7 @@ class DTUGasFlow(GasFlow, ArchiveSection):
                 self.gas_supply = DtuGasSupplyComponent()
                 entry_id = search_result.data[0]['entry_id']
                 upload_id = search_result.data[0]['upload_id']
-                self.gas_supply.system = (
+                self.gas_supply.reference = (
                     f'../uploads/{upload_id}/archive/{entry_id}#data'
                 )
                 self.gas_supply.gas_name = self.gas_name
