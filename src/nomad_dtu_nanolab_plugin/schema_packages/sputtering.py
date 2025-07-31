@@ -827,6 +827,7 @@ class DtuCrackerSource(DTUSource):
         section_def=DTUShutter,
     )
 
+
 class DtuGasSupplyComponent(Component):
     system = Quantity(
         type=DTUGasSupply,
@@ -909,12 +910,14 @@ class DTUGasFlow(GasFlow, ArchiveSection):
             #if there is only one bottle in use, we set the used_gas_supply
             if search_result.pagination.total == 1:
                 self.gas_supply = DtuGasSupplyComponent()
+                self.gas_supply.system = DTUGasSupply()
                 entry_id = search_result.data[0]['entry_id']
                 upload_id = search_result.data[0]['upload_id']
                 self.gas_supply.system = (
                     f'../uploads/{upload_id}/archive/{entry_id}#data'
                 )
                 self.gas_supply.gas_name = self.gas_name
+                self.gas_supply.lab_id = self.gas_name
 
     def set_gas_properties(self) -> Self:
         """
