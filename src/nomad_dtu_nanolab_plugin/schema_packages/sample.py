@@ -44,12 +44,14 @@ from nomad_material_processing.combinatorial import (
 from nomad_material_processing.general import ThinFilmStack
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.sputtering import (
+    DepositionParameters,
+)
 
 if TYPE_CHECKING:
     from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
         DtuNanolabMeasurement,
     )
-    from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
 
 m_package = Package()
 
@@ -165,7 +167,6 @@ class AbsorptionCoefficient(SampleProperty):
         description='The mean absorption coefficient above the absorption edge.',
         unit='cm^-1',
     )
-
 
 
 class Thickness(SampleProperty):
@@ -306,9 +307,9 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
         a_eln=ELNAnnotation(
             properties=SectionProperties(
                 visible=Filter(exclude=['elemental_composition', 'components']),
-                editable=Filter(include=[])
+                editable=Filter(include=[]),
             ),
-        )
+        ),
     )
     band_gap = SubSection(section_def=BandGap)
     absorption_coefficient = SubSection(section_def=AbsorptionCoefficient)
@@ -331,10 +332,11 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
             composition = self.surface_composition.m_to_dict()
 
         self.elemental_composition = [
-            ElementalComposition(element=e, atomic_fraction=v) 
-            for e,v in composition.items() if v
+            ElementalComposition(element=e, atomic_fraction=v)
+            for e, v in composition.items()
+            if v
         ]
-        
+
         super().normalize(archive, logger)
 
 
@@ -373,12 +375,7 @@ class UniqueXrdPeaksReference(EntityReference):
     )
 
 
-class ProcessParameterOverview(Schema):
-    m_def = Section(
-        categories=[DTUNanolabCategory],
-        label='Process Parameter Overview',
-    )
-
+class ProcessParameterOverview(ArchiveSection):
     position_x = Quantity(
         type=np.float64,
         description='The x-coordinate of the substrate on the platen.',
@@ -424,6 +421,9 @@ class ProcessParameterOverview(Schema):
         ),
         unit='m',
     )
+    deposition_parameters = SubSection(  # FAULTY LINE
+        section_def=DepositionParameters,
+    )
 
 
 class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
@@ -432,9 +432,8 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         label='Combinatorial Library',
     )
 
-    process_parameter_overview = Quantity(
-        type=ProcessParameterOverview,
-        description='An overview of the process parameters used to create the library.',
+    process_parameter_overview = SubSection(
+        section_def=ProcessParameterOverview,
     )
 
     def get_references(self, entry_type: type[Schema] = None) -> list:
