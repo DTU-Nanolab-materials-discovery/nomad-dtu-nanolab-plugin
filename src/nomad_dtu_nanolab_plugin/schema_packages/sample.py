@@ -374,10 +374,6 @@ class UniqueXrdPeaksReference(EntityReference):
 
 
 class ProcessParameterOverview(Schema):
-    m_def = Section(
-        categories=[DTUNanolabCategory],
-        label='Process Parameter Overview',
-    )
 
     position_x = Quantity(
         type=np.float64,
