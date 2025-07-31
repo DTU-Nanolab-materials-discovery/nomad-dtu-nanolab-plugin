@@ -2678,7 +2678,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 substrate_mounting.substrate.m_proxy_resolve()
             library = DTUCombinatorialLibrary()
             library.substrate = SubstrateReference(
-                reference=substrate_mounting.substrate
+                reference=substrate_mounting.substrate.m_proxy_value
             )
             sample_id = str(idx)
             if substrate_mounting.name is not None:
