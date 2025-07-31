@@ -827,6 +827,23 @@ class DtuCrackerSource(DTUSource):
         section_def=DTUShutter,
     )
 
+class DtuGasSupplyComponent(Component):
+    system = Quantity(
+        type=DTUGasSupply,
+        description='The gas supply used.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.ReferenceEditQuantity,
+        ),
+    )
+    gas_name = Quantity(
+        type=str,
+        description='The name of the gas.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.StringEditQuantity,
+        ),
+    )
+
+
 
 class DTUGasFlow(GasFlow, ArchiveSection):
     """
@@ -840,27 +857,11 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         a_eln={'component': 'StringEditQuantity', 'label': 'Gas name'},
         description='The name of the gas.',
     )
-    gas_supply = Quantity(
-        type=DTUGasSupply,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
-        description='Reference to the gas supply used.',
+
+    gas_supply = SubSection(
+        section_def=DtuGasSupplyComponent,
+        description='The gas supply used.',
     )
-    def set_gas_properties(self) -> Self:
-        """
-        Set the properties of the gas based on the used gas supply.
-        """
-
-        self.gas_name = self.gas_supply.name
-        self.gas.name = self.gas_supply.name
-        self.gas.iupac_name = self.gas_supply.iupac_name
-        self.gas.molecular_formula = self.gas_supply.molecular_formula
-        self.gas.molecular_mass = self.gas_supply.molecular_mass
-        self.gas.inchi = self.gas_supply.inchi
-        self.gas.inchi_key = self.gas_supply.inchi_key
-        self.gas.smile = self.gas_supply.smiles
-        self.gas.canonical_smile = self.gas_supply.canonical_smiles
-        self.gas.cas_number = self.gas_supply.cas_number
-
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -907,12 +908,43 @@ class DTUGasFlow(GasFlow, ArchiveSection):
                 )
             #if there is only one bottle in use, we set the used_gas_supply
             if search_result.pagination.total == 1:
+                self.gas_supply = DtuGasSupplyComponent()
                 entry_id = search_result.data[0]['entry_id']
                 upload_id = search_result.data[0]['upload_id']
-                self.gas_supply = f'../uploads/{upload_id}/archive/{entry_id}#data'
+                self.gas_supply.system = (
+                    f'../uploads/{upload_id}/archive/{entry_id}#data'
+                )
+                self.gas_supply.gas_name = self.gas_name
+
+    def set_gas_properties(self) -> Self:
+        """
+        Set the properties of the gas based on the used gas supply.
+        """
+
+        self.gas_name = self.gas_supply.system.name
+        self.gas.name = self.gas_supply.system.name
+        self.gas.iupac_name = self.gas_supply.system.iupac_name
+        self.gas.molecular_formula = self.gas_supply.system.molecular_formula
+        self.gas.molecular_mass = self.gas_supply.system.molecular_mass
+        self.gas.inchi = self.gas_supply.system.inchi
+        self.gas.inchi_key = self.gas_supply.system.inchi_key
+        self.gas.smile = self.gas_supply.system.smiles
+        self.gas.canonical_smile = self.gas_supply.system.canonical_smiles
+        self.gas.cas_number = self.gas_supply.system.cas_number
 
 
-        #fill in the gas subsection from the reference
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `DTUGasFlow` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        super().normalize(archive, logger)
+
+        #fill in gas subsection from the reference
         if self.gas_supply is not None:
             self.set_gas_properties()
 
