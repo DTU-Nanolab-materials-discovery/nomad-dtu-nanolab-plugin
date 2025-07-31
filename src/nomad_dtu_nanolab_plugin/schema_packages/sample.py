@@ -375,6 +375,8 @@ class UniqueXrdPeaksReference(EntityReference):
 
 class ProcessParameterOverview(Schema):
 
+    m_def = Section()
+
     position_x = Quantity(
         type=np.float64,
         description='The x-coordinate of the substrate on the platen.',
