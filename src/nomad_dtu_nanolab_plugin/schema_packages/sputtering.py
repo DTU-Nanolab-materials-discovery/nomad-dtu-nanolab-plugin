@@ -930,14 +930,12 @@ class DTUGasFlow(GasFlow, ArchiveSection):
                     f'../uploads/{upload_id}/archive/{entry_id}#data'
                 )
                 self.gas_supply.gas_name = self.gas_name
-                self.gas_supply.lab_id = self.gas_name
             else:
                 logger.warning(
                     f'Found multiple ({search_result.pagination.total}) in use '
                     f'{self.gas_name} bottles. Only one bottle should be in use '
                     f'at a time. Please check the gas bottles inventory.'
                 )
-
 
         if self.gas_supply is not None:
             self.set_gas_properties()
