@@ -2843,13 +2843,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             library.process_parameter_overview.position_y = (
                 substrate_mounting.position_y
             )
-            library.process_parameter_overview.rotation = substrate_mounting.rotation
-            library.process_parameter_overview.width = (
-                substrate_mounting.substrate.geometry.width
-            )
-            library.process_parameter_overview.length = (
-                substrate_mounting.substrate.geometry.length
-            )
+
             # TODO add more process parameters
 
             libraries.append(library)
