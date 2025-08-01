@@ -39,6 +39,7 @@ from nomad_measurements.utils import create_archive
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sputtering import (
     DepositionParameters,
+    DTUSputtering,
 )
 
 if TYPE_CHECKING:
@@ -48,6 +49,10 @@ if TYPE_CHECKING:
     from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
         DtuNanolabMeasurement,
     )
+    # from nomad_dtu_nanolab_plugin.schema_packages.sputtering import (
+    #    DepositionParameters,
+    #    DTUSputtering,
+    # )
 
 m_package = Package()
 
@@ -418,6 +423,7 @@ class ProcessParameterOverview(ArchiveSection):
         ),
         unit='m',
     )
+
     deposition_parameters = SubSection(  # FAULTY LINE
         section_def=DepositionParameters,
     )
