@@ -891,6 +891,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 layer_ref = create_archive(
                     layer, archive, f'{layer.lab_id}.archive.json'
                 )
+
                 library = DTUCombinatorialLibrary(
                     name = f'{rtp_name} {rtp_sample.name}',
                     datetime = rtp_datetime,
@@ -908,6 +909,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     substrate = origin.substrate,
                     process_parameter_overview = origin.process_parameter_overview,
                 )
+
         library_ref = create_archive(
             library, archive, f'{library.lab_id}.archive.json'
         )
@@ -1012,23 +1014,21 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             xanchor='center',
             yanchor='top',
         )
-        # TODO use the real dimensions of the samples
-        # Define input sample sizes by relative position
-        square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
-        rectangle_horizontal = {'ha', 'hb', 'hc', 'hd'}
-        rectangle_vertical = {'va', 'vb', 'vc', 'vd'}
         # Loop through input_samples (subclass) and plot them
         for input_sample in getattr(self, 'input_samples', []):
-            rel_pos = getattr(input_sample, 'relative_position', None)
-            # Only plot if relative_position is set by user
-            if rel_pos in square_positions:
-                width, height = 20, 20
-            elif rel_pos in rectangle_horizontal:
-                width, height = 40, 9.5
-            elif rel_pos in rectangle_vertical:
-                width, height = 9.5, 40
+            # Get geometry from input_combi_lib if available
+            geometry = getattr(input_sample.input_combi_lib, 'geometry', None)
+            if geometry is not None:
+                width = getattr(geometry, 'width', 10)
+                height = getattr(geometry, 'length', 10)
+                # Convert to mm if units are present
+                if hasattr(width, 'magnitude'):
+                    width = width.to('mm').magnitude
+                if hasattr(height, 'magnitude'):
+                    height = height.to('mm').magnitude
             else:
-                width, height = 10, 10
+                width, height = 10, 10  # fallback if geometry is missing
+
             x = getattr(input_sample, 'position_x', 0)
             y = getattr(input_sample, 'position_y', 0)
             # Default to center if not set
