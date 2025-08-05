@@ -159,7 +159,7 @@ class DtuRTPInputSampleMounting(ArchiveSection):
             self.name = self.relative_position
         elif self.position_x is not None and self.position_y is not None:
             self.name = (
-                f'x{self.position_x.to("mm").magnitude:.1f}-'
+                f'x{self.position_x.to("mm").magnitude:.1f}'
                 f'y{self.position_y.to("mm").magnitude:.1f}'
             ).replace('.', 'p')
 
