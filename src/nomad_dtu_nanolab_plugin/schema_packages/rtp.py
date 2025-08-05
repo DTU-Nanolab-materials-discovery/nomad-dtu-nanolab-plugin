@@ -11,15 +11,13 @@ from nomad.datamodel.metainfo.annotations import (
 )
 from nomad.datamodel.metainfo.basesections import (
     CompositeSystemReference,
-    ElementalComposition,
 )
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
-from nomad.metainfo import MProxy, Package, Quantity, Section, SubSection
+from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_material_processing.general import (
     ThinFilm,
     ThinFilmReference,
-    SubstrateReference,
 )
 from nomad_material_processing.vapor_deposition.cvd.general import (
     ChemicalVaporDeposition,
@@ -31,7 +29,6 @@ from nomad_measurements.utils import create_archive
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
     DTUCombinatorialLibrary,
-    ProcessParameterOverview,
 )
 
 if TYPE_CHECKING:
@@ -65,9 +62,10 @@ class DtuRTPInputSampleMounting(ArchiveSection):
             component=ELNComponentEnum.StringEditQuantity,
         ),
     )
-    input_sample = Quantity(
+    input_combi_lib = Quantity(
         type=DTUCombinatorialLibrary,
-        description='A reference to the input sample that is used.',
+        description='A reference to the input sample (combinatorial library)' \
+        ' that is used.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.ReferenceEditQuantity,
         ),
@@ -175,7 +173,10 @@ class RTPOverview(ArchiveSection):
     m_def = Section()
     material_space = Quantity(
         type=str,
-        a_eln={'component': 'StringEditQuantity'},
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.StringEditQuantity,
+            label='Material space',
+        ),
         description='The material space explored by the RTP process.',
     )
     annealing_pressure = Quantity(
@@ -857,23 +858,52 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         repeats=True,
     )
 
-    ############################## CREATING SAMPLE LIBRARY #########################
+    ############################## CREATING RTP SAMPLE LIBRARY ######################
     def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         samples = []
         rtp_name = self.name
         rtp_datetime = self.datetime
+        rtp_materialspace=self.overview.material_space
         for rtp_sample in self.input_samples:
-            origin = rtp_sample.input_sample
+            origin = rtp_sample.input_combi_lib
+
+            rtp_elements = set(rtp_materialspace.split('-'))
+            origin_elements = set(e.element for e in origin.elemental_composition)
+            if rtp_elements == origin_elements:
+                elemental_composition = origin.elemental_composition
+            else:
+                # Merge and remove duplicates, keep order from origin first
+                merged_elements = (
+                    list(origin_elements)
+                    + [e for e in rtp_elements if e not in origin_elements]
+                )
+                elemental_composition = (
+                    [type(origin.elemental_composition[0])(element=e)
+                     for e in merged_elements]
+                )
+
             if rtp_sample.name is not None:
+                #Create a new ThinFilm layer for this sample
+                layer= ThinFilm(
+                    elemental_composition=elemental_composition,
+                    lab_id=f'{rtp_name} {rtp_sample.name}-Layer'.replace(' ', '_'),
+                )
+                layer_ref = create_archive(
+                    layer, archive, f'{layer.lab_id}.archive.json'
+                )
                 library = DTUCombinatorialLibrary(
-                    name=f'{rtp_name} {rtp_sample.name}',
-                    datetime=rtp_datetime,
-                    lab_id= f'{rtp_name} {rtp_sample.name}'.replace(' ', '_'),
-                    description = f'RTP library for {rtp_sample.name}',
-                    elemental_composition = rtp_sample.elemental_composition, # TODO
-                    #keep compo and add new compo
-                    layer = origin.layer, #TODO add new layer (no need
-                    # to keep the old one)
+                    name = f'{rtp_name} {rtp_sample.name}',
+                    datetime = rtp_datetime,
+                    lab_id = f'{rtp_name} {rtp_sample.name}'.replace(' ', '_'),
+                    description = f'RTP library for {rtp_name} {rtp_sample.name}',
+                    elemental_composition = elemental_composition,
+                    layers = [
+                        ThinFilmReference(
+                            name='Main Layer',
+                            reference=layer_ref,
+                            lab_id=layer.lab_id,
+                        )
+                    ],
                     geometry = origin.geometry,
                     substrate = origin.substrate,
                     process_parameter_overview = origin.process_parameter_overview,
