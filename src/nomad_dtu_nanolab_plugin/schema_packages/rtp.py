@@ -1018,6 +1018,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         for input_sample in getattr(self, 'input_samples', []):
             # Get geometry from input_combi_lib if available
             geometry = getattr(input_sample.input_combi_lib, 'geometry', None)
+            rel_pos = getattr(input_sample, 'relative_position', None)
             if geometry is not None:
                 width = getattr(geometry, 'width', 10)
                 height = getattr(geometry, 'length', 10)
@@ -1027,8 +1028,18 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 if hasattr(height, 'magnitude'):
                     height = height.to('mm').magnitude
             else:
-                width, height = 10, 10  # fallback if geometry is missing
-
+                # If geometry is missing but relative_position is set, use custom shapes
+                square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
+                rectangle_horizontal = {'ha', 'hb', 'hc', 'hd'}
+                rectangle_vertical = {'va', 'vb', 'vc', 'vd'}
+                if rel_pos in square_positions:
+                    width, height = 20, 20
+                elif rel_pos in rectangle_horizontal:
+                    width, height = 40, 9.5
+                elif rel_pos in rectangle_vertical:
+                    width, height = 9.5, 40
+                else:
+                    width, height = 10, 10  # fallback if nothing is set
             x = getattr(input_sample, 'position_x', 0)
             y = getattr(input_sample, 'position_y', 0)
             # Default to center if not set
