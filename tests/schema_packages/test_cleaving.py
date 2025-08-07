@@ -4,7 +4,7 @@ from nomad.client import normalize_all, parse
 
 
 def test_schema():
-    test_library = os.path.join('tests', 'data', 'test_combilib.archive.yaml')
+    test_library = os.path.join('tests', 'data', 'test_cobilib.archive.yaml')
     entry_archive2 = parse(test_library)[0]
     normalize_all(entry_archive2)
 
