@@ -1,7 +1,6 @@
 import os.path
 
 from nomad.client import normalize_all, parse
-from nomad_material_processing.general import RectangleCuboid
 
 
 def test_schema():
