@@ -22,7 +22,7 @@ def test_schema():
 
     library.lab_id= 'mittma_0000_test_BL'
     library.name= 'mittma 0000 test BL'
-    library.substrate.reference = substrate
+    library.substrate= substrate
 
     cleaving.input_library = library
     cleaving.library_size = [40, 40]
