@@ -12,10 +12,26 @@ def test_schema():
     entry_archive = parse(test_cleave)[0]
     normalize_all(entry_archive)
 
+    test_substrate = os.path.join('tests', 'data', 'test_substrate.archive.yaml')
+    entry_archive3 = parse(test_substrate)[0]
+    normalize_all(entry_archive3)
+
     cleaving = entry_archive.data
     library = entry_archive2.data
+    substrate = entry_archive3.data
+
+    substrate.geometry.width = 100
+    substrate.geometry.length = 100
+    substrate.geometry.height = 1
+
+    library.lab_id= 'mittma_0000_test_BL'
+    library.name= 'mittma 0000 test BL'
+    library.elemental_composition[0].element = 'C'
+    library.elemental_composition[1].element = 'P'
+    library.substrate.reference = substrate
 
     cleaving.input_library = library
+    cleaving.library_size = [40, 40]
     cleaving.create_from_pattern = True
     cleaving.pattern = 'squares'
     cleaving.number_of_pieces = 2
