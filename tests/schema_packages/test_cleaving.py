@@ -22,8 +22,6 @@ def test_schema():
 
     library.lab_id= 'mittma_0000_test_BL'
     library.name= 'mittma 0000 test BL'
-    library.elemental_composition[0].element = 'C'
-    library.elemental_composition[1].element = 'P'
     library.substrate.reference = substrate
 
     cleaving.input_library = library
