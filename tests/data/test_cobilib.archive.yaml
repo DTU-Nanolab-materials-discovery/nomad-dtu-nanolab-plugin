@@ -1,3 +1,8 @@
 data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.sample.DTUCombinatorialLibrary
   name: Test Cleaving Library
+  geometry:
+    m_def: nomad_material_processing.general.RectangleCuboid
+    width: 100
+    length: 100
+    height: 1
