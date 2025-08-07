@@ -33,4 +33,4 @@ def test_schema():
 
     normalize_all(entry_archive)
     assumed_pieces = cleaving.number_of_pieces** 2
-    assert cleaving.new_pieces == assumed_pieces
+    assert len(cleaving.new_pieces) == assumed_pieces
