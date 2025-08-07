@@ -21,11 +21,6 @@ def test_schema():
     library = entry_archive2.data
     substrate = entry_archive3.data
 
-    substrate.geometry=RectangleCuboid(
-        length=100,
-        width=100,
-        height=1)
-
     library.lab_id= 'mittma_0000_test_BL'
     library.name= 'mittma 0000 test BL'
     library.elemental_composition[0].element = 'C'

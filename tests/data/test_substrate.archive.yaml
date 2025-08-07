@@ -4,3 +4,8 @@ data:
   supplier: Siegert
   substrate_polishing: 1 sided
   lab_id: test_substrate_000
+  geometry:
+    m_def: nomad_material_processing.general.RectangleCuboid
+    width: 100
+    length: 100
+    height: 1
