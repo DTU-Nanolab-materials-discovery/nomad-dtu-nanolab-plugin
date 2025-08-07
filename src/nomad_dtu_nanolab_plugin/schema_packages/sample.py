@@ -475,8 +475,10 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         super().normalize(archive, logger)
 
         # Ensure that the geometry is set to the default if not provided
-        # if not self.geometry and self.substrate.reference:
-        #    self.geometry = self.substrate.reference.geometry
+        if not self.geometry and self.substrate.reference:
+            substrate_geometry = self.substrate.reference.geometry
+            if substrate_geometry:
+                self.geometry = substrate_geometry
 
 class DtuLibraryReference(CompositeSystemReference):
     reference = Quantity(

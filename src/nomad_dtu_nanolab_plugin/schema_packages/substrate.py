@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
+import plotly.graph_objects as go
 from nomad.datamodel.data import Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import (
@@ -464,6 +465,27 @@ class DTULibraryParts(Collection, Schema):
         section_def=Geometry,
         description='The geometries of the samples in the library.',
     )
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `DTULibraryParts` class.
+        """
+
+        #fetch the size of the library from its geometry subsection if applicable
+        if self.combinatorial_Library is not None and self.library_size is None:
+            length = self.combinatorial_Library.geometry.length
+            width = self.combinatorial_Library.geometry.width
+            radius = self.combinatorial_Library.geometry.radius
+            if radius is not None:
+                self.library_size = 2 * radius, 2 * radius
+            elif length is None and width is not None:
+                self.library_size = width, width
+            elif length is not None and width is not None:
+                self.library_size = length, width
+            else:
+                logger.error(
+                    'The library size could not be determined from the geometry. ' \
+                    'Please add it manually.'
+                )
 
 
 
@@ -565,6 +587,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                             length=size,
                             width=size,
                             height=heig,
+                            volume=size * size * heig,
+                            surface_area=(size * size)
                         )
 
                     self.new_pieces.append(piece)
@@ -588,6 +612,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                         length=self.library_size[0],
                         width=size,
                         height=heig,
+                        volume=self.library_size[0] * size * heig,
+                        surface_area=(self.library_size[0] * size)
                     )
 
                 self.new_pieces.append(piece)
@@ -611,6 +637,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                         length=size,
                         width=self.library_size[1],
                         height=heig,
+                        volume= size * self.library_size[1] * heig,
+                        surface_area=(size * self.library_size[1] )
                     )
 
                 self.new_pieces.append(piece)
@@ -628,9 +656,108 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             )
             piece.name = f'Custom piece {i+1} of {self.number_of_pieces}'
             piece.lab_id = piece.library_name.replace(' ', '_')
-            piece.part_size = None  # Will be set later
             self.new_pieces.append(piece)
 
+    def handle_custom_plot(self) -> None:
+        """
+        Handles the plotting of the custom pattern for the library pieces.
+        """
+        import plotly.graph_objects as go
+        if self.new_pieces is None or len(self.new_pieces) == 0:
+            return
+        fig = go.Figure()
+
+        self.add_original_library_to_plot(fig)
+
+        #TODO : add the custom pieces to the plot considering their shapes
+
+        fig.update_layout(
+            title='Positions of the new pieces in the library',
+            xaxis_title='X (mm)',
+            yaxis_title='Y (mm)',
+            width=800,
+            height=700,
+            xaxis=dict(
+                range=[
+                    -self.library_size[0].to('mm').magnitude*1.1/2,
+                    self.library_size[0].to('mm').magnitude*1.1/2,
+                    ],
+            ),
+            yaxis=dict(
+                range=[
+                    -self.library_size[1].to('mm').magnitude*1.1/2,
+                    self.library_size[1].to('mm').magnitude*1.1/2,
+                ],
+            ),
+        )
+
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(
+            scrollZoom=False,
+        )
+
+        self.figures.append(
+            PlotlyFigure(
+                label='Positions of the new pieces in the library',
+                figure=plot_json,
+            )
+        )
+
+    def add_original_library_to_plot(self, fig: go.Figure) -> None:
+        """
+        Adds the original library to the plot.
+        """
+
+        # check geometry subsection for shape and size of the library
+        length = self.combinatorial_Library.geometry.length
+        width = self.combinatorial_Library.geometry.width
+        radius = self.combinatorial_Library.geometry.radius
+        x0 = -self.library_size[0].to('mm').magnitude / 2
+        y0 = self.library_size[1].to('mm').magnitude / 2
+        x1 = self.library_size[0].to('mm').magnitude / 2
+        y1 = -self.library_size[1].to('mm').magnitude / 2
+
+
+        if self.combinatorial_Library is not None:
+            if radius is not None:
+                fig.add_shape(
+                    type='circle',
+                    x0=x0,
+                    y0=y0,
+                    x1=x1,
+                    y1=y1,
+                    line=dict(color='red', width=3),
+                    fillcolor='white',
+                    opacity=0.5,
+                )
+            elif length is None and width is not None:
+                fig.add_shape(
+                    type='rect',
+                    x0=x0,
+                    y0=y0,
+                    x1=x1,
+                    y1=y1,
+                    line=dict(color='red', width=3),
+                    fillcolor='white',
+                    opacity=0.5,
+                )
+            elif length is not None and width is not None:
+                fig.add_shape(
+                    type='rect',
+                    x0=x0,
+                    y0=y0,
+                    x1=x1,
+                    y1=y1,
+                    line=dict(color='red', width=3),
+                    fillcolor='white',
+                    opacity=0.5,
+                )
+            fig.add_annotation(
+                x=(x0 + x1) / 2,
+                y=(y0 + y1) / 2,
+                text=self.combinatorial_Library.name,
+                showarrow=False,
+            )
 
     def plot(self) -> None:
         """
@@ -641,28 +768,9 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         if self.new_pieces is None or len(self.new_pieces) == 0:
             return
         fig = go.Figure()
-        #add the original library to the plot
-        if self.combinatorial_Library is not None:
-            x0 = self.library_size[0].to('mm').magnitude / 2 * (-1)
-            y0 = self.library_size[1].to('mm').magnitude / 2
-            x1 = self.library_size[0].to('mm').magnitude / 2
-            y1 = -self.library_size[1].to('mm').magnitude / 2
-            fig.add_shape(
-                type='rect',
-                x0=x0,
-                y0=y0,
-                x1=x1,
-                y1=y1,
-                line=dict(color='red', width = 3),
-                fillcolor='white',
-                opacity=0.5,
-            )
-            fig.add_annotation(
-                x=(x0 + x1) / 2,
-                y=(y0 + y1) / 2,
-                text=self.combinatorial_Library.name,
-                showarrow=False,
-            )
+
+        #add the original library of any shape to the plot
+        self.add_original_library_to_plot(fig=self)
 
         if self.pattern != 'custom':
             for piece in self.new_pieces:
@@ -769,6 +877,25 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     )
             self.child_libraries = children
 
+    def fill_library_size(self, logger: 'BoundLogger') -> None:
+        #fetch the size of the library from its geometry subsection
+        if self.combinatorial_Library is not None and self.library_size is None:
+            length = self.combinatorial_Library.geometry.length
+            width = self.combinatorial_Library.geometry.width
+            radius = self.combinatorial_Library.geometry.radius
+            if radius is not None:
+                self.library_size = 2 * radius, 2 * radius
+            elif length is None and width is not None:
+                self.library_size = width, width
+            elif length is not None and width is not None:
+                self.library_size = length, width
+            else:
+                logger.error(
+                    'The library size could not be determined from the geometry. ' \
+                    'Please add it manually.'
+                )
+                return
+
 
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -781,10 +908,10 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             logger (BoundLogger): A structlog logger.
         """
 
-        if self.combinatorial_Library is not None and self.library_size is None:
-            self.library_size = self.combinatorial_Library.geometry.length, \
-                self.combinatorial_Library.geometry.width
+        if self.combinatorial_Library is not None:
+            self.fill_library_size(logger)
 
+        #Check the pattern input and create the new pieces according to selection
         if self.create_from_pattern:
             if self.number_of_pieces is None or self.number_of_pieces <=1:
                 logger.error(
@@ -803,9 +930,19 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 self.recognize_pattern(logger)
                 self.create_from_pattern = False
 
+
+
         if self.new_pieces is not None and len(self.new_pieces) > 0:
-            self.figures = []
-            self.plot()
+            #update the plot with the new pieces
+            if self.pattern == 'custom' :
+                self.figures = []
+                self.handle_custom_plot()
+            else:
+                self.figures = []
+                self.plot()
+            #if the user wants to create child libraries from the new pieces
+            #then we create them and add them to the archive
+            #and reset the create_child_libraries flag
             if self.create_child_libraries:
                 origin= self.combinatorial_Library
                 if origin is None:
