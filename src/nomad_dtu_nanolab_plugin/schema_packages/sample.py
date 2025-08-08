@@ -472,6 +472,20 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         return results[0] if results else None
 
     def normalize(self, archive, logger):
+        """
+        Normalizes the combinatorial library entry by ensuring required fields are set.
+
+        This method first calls the superclass's normalize method. It then checks if the
+        geometry attribute is not set and, if so, attempts to set it from the substrate's
+        reference geometry if available.
+
+        Parameters
+        ----------
+        archive : Archive
+            The archive object being normalized.
+        logger : Logger
+            Logger for recording normalization events or warnings.
+        """
         super().normalize(archive, logger)
 
         # Ensure that the geometry is set to the default if not provided
