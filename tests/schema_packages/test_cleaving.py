@@ -24,7 +24,7 @@ def test_cleaving():
     library.name= 'mittma 0000 test BL'
     library.substrate= substrate
 
-    cleaving.input_library = library
+    cleaving.combinatorial_Library = library
     #cleaving.library_size = [40, 40]
     cleaving.create_from_pattern = True
     cleaving.pattern = 'squares'
@@ -34,4 +34,4 @@ def test_cleaving():
     normalize_all(entry_archive)
     #assumed_pieces = cleaving.number_of_pieces** 2
     #assert len(cleaving.new_pieces) == assumed_pieces
-    assert cleaving.input_library is not None
+    assert cleaving.library_size is not None
