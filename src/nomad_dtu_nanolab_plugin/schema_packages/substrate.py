@@ -610,8 +610,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 piece.lower_right_y = start_y - (i + 1) * size
                 piece.part_size = (self.library_size[0], size)
                 piece.geometry = RectangleCuboid(
-                        length=self.library_size[0],
-                        width=size,
+                        length=size,
+                        width=self.library_size[0],
                         height=heig,
                         volume=self.library_size[0] * size * heig,
                         surface_area=(self.library_size[0] * size)
@@ -635,8 +635,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 piece.lower_right_y = start_y - self.library_size[1]
                 piece.part_size = (size, self.library_size[1])
                 piece.geometry = RectangleCuboid(
-                        length=size,
-                        width=self.library_size[1],
+                        length=self.library_size[1],
+                        width=size,
                         height=heig,
                         volume= size * self.library_size[1] * heig,
                         surface_area=(size * self.library_size[1] )
@@ -668,7 +668,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             return
         fig = go.Figure()
 
-        self.add_original_library_to_plot(fig)
+        #self.add_original_library_to_plot(fig)
 
         #TODO : add the custom pieces to the plot considering their shapes
 
@@ -755,8 +755,42 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             return
         fig = go.Figure()
 
-        #add the original library of any shape to the plot
-        self.add_original_library_to_plot(fig=self)
+        x0 = -self.library_size[0].to('mm').magnitude / 2
+        y0 = self.library_size[1].to('mm').magnitude / 2
+        x1 = self.library_size[0].to('mm').magnitude / 2
+        y1 = -self.library_size[1].to('mm').magnitude / 2
+
+
+        if self.combinatorial_Library is not None:
+            if isinstance(self.combinatorial_Library.geometry, Cylinder):
+                fig.add_shape(
+                    type='circle',
+                    x0=x0,
+                    y0=y0,
+                    x1=x1,
+                    y1=y1,
+                    line=dict(color='red', width=3),
+                    fillcolor='white',
+                    opacity=0.5,
+                )
+            elif isinstance(self.combinatorial_Library.geometry, RectangleCuboid):
+                fig.add_shape(
+                    type='rect',
+                    x0=x0,
+                    y0=y0,
+                    x1=x1,
+                    y1=y1,
+                    line=dict(color='red', width=3),
+                    fillcolor='white',
+                    opacity=0.5,
+                )
+            fig.add_annotation(
+                x=(x0 + x1) / 2,
+                y=(y0 + y1) / 2,
+                text=self.combinatorial_Library.name,
+                showarrow=False,
+            )
+
 
         if self.pattern != 'custom':
             for piece in self.new_pieces:
