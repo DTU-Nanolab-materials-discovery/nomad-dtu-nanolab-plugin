@@ -3,6 +3,6 @@ data:
   name: Test Cleaving Library
   geometry:
     m_def: nomad_material_processing.general.RectangleCuboid
-    width: 100
-    length: 100
-    height: 1
+    width: 40 mm
+    length: 40 nn
+    height: 1 mm

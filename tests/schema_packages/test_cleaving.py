@@ -37,6 +37,8 @@ def test_cleaving():
 
     #assumed_pieces = cleaving.number_of_pieces** 2
     #assert len(cleaving.new_pieces) == assumed_pieces
-    input_width = 100
+    from pint import UnitRegistry
+    ureg = UnitRegistry()
+    input_width = 40
     assert cleaving.combinatorial_Library is not None
-    assert cleaving.combinatorial_Library.geometry.width == input_width
+    assert cleaving.combinatorial_Library.geometry.width == input_width * ureg.mm
