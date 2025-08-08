@@ -470,16 +470,17 @@ class DTULibraryParts(Collection, Schema):
         The normalizer for the `DTULibraryParts` class.
         """
 
+
         #fetch the size of the library from its geometry subsection if applicable
         if self.combinatorial_Library is not None and self.library_size is None:
-            length = self.combinatorial_Library.geometry.length
-            width = self.combinatorial_Library.geometry.width
-            radius = self.combinatorial_Library.geometry.radius
-            if radius is not None:
+
+
+            if isinstance(self.combinatorial_Library.geometry, Cylinder):
+                radius = self.combinatorial_Library.geometry.radius
                 self.library_size = 2 * radius, 2 * radius
-            elif length is None and width is not None:
-                self.library_size = width, width
-            elif length is not None and width is not None:
+            elif isinstance(self.combinatorial_Library.geometry, RectangleCuboid):
+                length = self.combinatorial_Library.geometry.length
+                width = self.combinatorial_Library.geometry.width
                 self.library_size = length, width
             else:
                 logger.error(
@@ -708,10 +709,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         Adds the original library to the plot.
         """
 
-        # check geometry subsection for shape and size of the library
-        length = self.combinatorial_Library.geometry.length
-        width = self.combinatorial_Library.geometry.width
-        radius = self.combinatorial_Library.geometry.radius
         x0 = -self.library_size[0].to('mm').magnitude / 2
         y0 = self.library_size[1].to('mm').magnitude / 2
         x1 = self.library_size[0].to('mm').magnitude / 2
@@ -719,7 +716,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
 
         if self.combinatorial_Library is not None:
-            if radius is not None:
+            if isinstance(self.combinatorial_Library.geometry, Cylinder):
                 fig.add_shape(
                     type='circle',
                     x0=x0,
@@ -730,18 +727,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     fillcolor='white',
                     opacity=0.5,
                 )
-            elif length is None and width is not None:
-                fig.add_shape(
-                    type='rect',
-                    x0=x0,
-                    y0=y0,
-                    x1=x1,
-                    y1=y1,
-                    line=dict(color='red', width=3),
-                    fillcolor='white',
-                    opacity=0.5,
-                )
-            elif length is not None and width is not None:
+            elif isinstance(self.combinatorial_Library.geometry, RectangleCuboid):
                 fig.add_shape(
                     type='rect',
                     x0=x0,
