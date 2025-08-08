@@ -18,11 +18,11 @@ def test_schema():
 
     cleaving = entry_archive.data
     library = entry_archive2.data
-    #substrate = entry_archive3.data
+    substrate = entry_archive3.data
 
     library.lab_id= 'mittma_0000_test_BL'
     library.name= 'mittma 0000 test BL'
-    #library.substrate= substrate
+    library.substrate= substrate
 
     cleaving.input_library = library
     cleaving.library_size = [40, 40]
