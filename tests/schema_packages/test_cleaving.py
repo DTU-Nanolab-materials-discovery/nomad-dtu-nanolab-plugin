@@ -32,6 +32,8 @@ def test_cleaving():
 
 
     entry_archive.data = cleaving
+    entry_archive2.data = library
+    entry_archive3.data = substrate
 
     normalize_all(entry_archive)
     normalize_all(entry_archive2)
