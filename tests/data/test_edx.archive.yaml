@@ -1,4 +1,3 @@
 data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.edx.EDXMeasurement
-  edx_data_file: anait_0029_Ba-Zr_BL.xlsx
-
+  edx_data_file: mittma_00012_FR.xlsx
