@@ -733,7 +733,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         Plots the positions of the new pieces in the library.
         """
 
-        import plotly.graph_objects as go
+        # Removed redundant import of plotly.graph_objects as go
         if self.new_pieces is None or len(self.new_pieces) == 0:
             return
         fig = go.Figure()
