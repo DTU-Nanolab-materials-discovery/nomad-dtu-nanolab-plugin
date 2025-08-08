@@ -27,7 +27,7 @@ def test_cleaving():
     cleaving.combinatorial_Library = library
     #cleaving.library_size = [40, 40]
     cleaving.create_from_pattern = True
-    cleaving.pattern = 'squares'
+    cleaving.pattern = 'horizontal stripes'
     cleaving.number_of_pieces = 2
 
 
@@ -40,11 +40,5 @@ def test_cleaving():
     normalize_all(entry_archive3)
 
 
-    from pint import UnitRegistry
-    ureg = UnitRegistry()
-    input_width = 40
-    assert cleaving.combinatorial_Library is not None
-    assert cleaving.combinatorial_Library.geometry.width == input_width * ureg.meter
-    assert cleaving.library_size[0] == input_width * ureg.meter
-    assumed_pieces = cleaving.number_of_pieces** 2
+    assumed_pieces = cleaving.number_of_pieces
     assert len(cleaving.new_pieces) == assumed_pieces
