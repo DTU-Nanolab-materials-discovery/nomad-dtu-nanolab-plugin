@@ -849,6 +849,21 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         )
 
     def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        Create and add child combinatorial library entries based on the new pieces in the current library.
+
+        For each new piece (if not using a 'custom' pattern and if the piece has a defined size), this method:
+        - Creates a new DTUCombinatorialLibrary instance with relevant attributes.
+        - Normalizes the new library and creates an associated archive.
+        - Appends a CompositeSystemReference to the list of child libraries.
+
+        Parameters:
+            archive (EntryArchive): The parent entry archive to which new child archives are linked.
+            logger (BoundLogger): Logger for logging errors or information during processing.
+
+        Side Effects:
+            Updates self.child_libraries with references to the newly created child libraries.
+        """
         origin= self.combinatorial_Library
         children = []
 
