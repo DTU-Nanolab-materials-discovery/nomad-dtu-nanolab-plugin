@@ -3,34 +3,26 @@ from typing import TYPE_CHECKING
 import numpy as np
 import plotly.graph_objects as go
 from nomad.datamodel.data import Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
-from nomad.datamodel.metainfo.basesections import (
-    Collection,
-    CompositeSystemReference,
-    Process,
-    ProcessStep,
-    PubChemPureSubstanceSection,
-    PureSubstanceComponent,
-    ReadableIdentifiers,
-)
+from nomad.datamodel.metainfo.annotations import (ELNAnnotation,
+                                                  ELNComponentEnum)
+from nomad.datamodel.metainfo.basesections import (Collection,
+                                                   CompositeSystemReference,
+                                                   Process, ProcessStep,
+                                                   PubChemPureSubstanceSection,
+                                                   PureSubstanceComponent,
+                                                   ReadableIdentifiers)
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
-from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
-from nomad_material_processing.general import (
-    CrystallineSubstrate,
-    Cylinder,
-    Dopant,
-    ElectronicProperties,
-    Geometry,
-    RectangleCuboid,
-)
+from nomad.metainfo import (MEnum, MProxy, Package, Quantity, Section,
+                            SubSection)
+from nomad_material_processing.general import (CrystallineSubstrate, Cylinder,
+                                               Dopant, ElectronicProperties,
+                                               Geometry, RectangleCuboid)
 from nomad_material_processing.utils import create_archive
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
-    DTUCombinatorialLibrary,
-    DtuLibraryReference,
-)
+    DTUCombinatorialLibrary, DtuLibraryReference)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -879,22 +871,19 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
     def fill_library_size(self, logger: 'BoundLogger') -> None:
         #fetch the size of the library from its geometry subsection
-        if self.combinatorial_Library is not None and self.library_size is None:
-            length = self.combinatorial_Library.geometry.length
-            width = self.combinatorial_Library.geometry.width
-            radius = self.combinatorial_Library.geometry.radius
-            if radius is not None:
-                self.library_size = 2 * radius, 2 * radius
-            elif length is None and width is not None:
-                self.library_size = width, width
-            elif length is not None and width is not None:
-                self.library_size = length, width
-            else:
-                logger.error(
-                    'The library size could not be determined from the geometry. ' \
-                    'Please add it manually.'
-                )
-                return
+        if isinstance(self.combinatorial_Library.geometry, RectangleCuboid):
+            self.library_size = [
+                self.combinatorial_Library.geometry.width,
+                self.combinatorial_Library.geometry.length,
+            ]
+        elif isinstance(self.combinatorial_Library.geometry, Cylinder):
+            self.library_size = [self.combinatorial_Library.geometry.radius * 2] * 2
+        else:
+            logger.error(
+                'The library size could not be determined from the geometry. ' \
+                'Please add it manually.'
+            )
+            return
 
 
 
