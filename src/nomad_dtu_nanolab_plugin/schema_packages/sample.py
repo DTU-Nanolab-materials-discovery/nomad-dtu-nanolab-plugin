@@ -476,8 +476,8 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         Normalizes the combinatorial library entry by ensuring required fields are set.
 
         This method first calls the superclass's normalize method. It then checks if the
-        geometry attribute is not set and, if so, attempts to set it from the substrate's
-        reference geometry if available.
+        geometry attribute is not set and, if so, attempts to set it from
+        the substrate's reference geometry if available.
 
         Parameters
         ----------

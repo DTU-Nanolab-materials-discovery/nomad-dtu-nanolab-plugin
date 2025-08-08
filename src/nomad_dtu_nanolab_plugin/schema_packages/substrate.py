@@ -468,13 +468,13 @@ class DTULibraryParts(Collection, Schema):
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTULibraryParts` class.
-        """
-
-
         Placeholder for normalization logic.
         """
         pass
+
+
 class DTULibraryCleaving(Process, Schema, PlotSection):
+
     """
     Schema for substrate cleaning at the DTU Nanolab.
     """
@@ -849,19 +849,24 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
     def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        Create and add child combinatorial library entries based on the new pieces in the current library.
+        Create and add child combinatorial library entries based on
+        the new pieces in the current library.
 
-        For each new piece (if not using a 'custom' pattern and if the piece has a defined size), this method:
+        For each new piece (if not using a 'custom' pattern and if the piece has
+        a defined size), this method:
         - Creates a new DTUCombinatorialLibrary instance with relevant attributes.
         - Normalizes the new library and creates an associated archive.
         - Appends a CompositeSystemReference to the list of child libraries.
 
         Parameters:
-            archive (EntryArchive): The parent entry archive to which new child archives are linked.
-            logger (BoundLogger): Logger for logging errors or information during processing.
+            archive (EntryArchive): The parent entry archive to which
+            new child archives are linked.
+            logger (BoundLogger): Logger for logging errors
+            or information during processing.
 
         Side Effects:
-            Updates self.child_libraries with references to the newly created child libraries.
+            Updates self.child_libraries with references to the
+            newly created child libraries.
         """
         origin= self.combinatorial_Library
         children = []
@@ -897,7 +902,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
     def fill_library_size(self, logger: 'BoundLogger') -> None:
         """
-        Sets the `library_size` attribute based on the geometry of the associated combinatorial library.
+        Sets the `library_size` attribute based on
+        the geometry of the associated combinatorial library.
 
         If the geometry is a RectangleCuboid, sets the size to [width, length].
         If the geometry is a Cylinder, sets the size to [diameter, diameter].
