@@ -6,6 +6,6 @@ data:
   lab_id: test_substrate_000
   geometry:
     m_def: nomad_material_processing.general.RectangleCuboid
-    width: 100
-    length: 100
-    height: 1
+    width: (40.0, 'mm')
+    length: (40.0, 'mm')
+    height: (1.0, 'mm')
