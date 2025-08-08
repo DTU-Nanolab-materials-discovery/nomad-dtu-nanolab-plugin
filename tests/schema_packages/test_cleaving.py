@@ -31,9 +31,9 @@ def test_cleaving():
     cleaving.number_of_pieces = 2
 
 
-    entry_archive.data = cleaving
-    entry_archive2.data = library
     entry_archive3.data = substrate
+    entry_archive2.data = library
+    entry_archive.data = cleaving
 
     normalize_all(entry_archive)
     normalize_all(entry_archive2)
