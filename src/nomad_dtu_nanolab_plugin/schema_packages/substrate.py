@@ -471,24 +471,6 @@ class DTULibraryParts(Collection, Schema):
         """
 
 
-        #fetch the size of the library from its geometry subsection if applicable
-        if self.combinatorial_Library is not None and self.library_size is None:
-
-
-            if isinstance(self.combinatorial_Library.geometry, Cylinder):
-                radius = self.combinatorial_Library.geometry.radius
-                self.library_size = 2 * radius, 2 * radius
-            elif isinstance(self.combinatorial_Library.geometry, RectangleCuboid):
-                length = self.combinatorial_Library.geometry.length
-                width = self.combinatorial_Library.geometry.width
-                self.library_size = length, width
-            else:
-                logger.error(
-                    'The library size could not be determined from the geometry. ' \
-                    'Please add it manually.'
-                )
-
-
 
 class DTULibraryCleaving(Process, Schema, PlotSection):
     """
