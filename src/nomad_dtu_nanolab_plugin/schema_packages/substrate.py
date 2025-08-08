@@ -882,6 +882,16 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             self.child_libraries = children
 
     def fill_library_size(self, logger: 'BoundLogger') -> None:
+        """
+        Sets the `library_size` attribute based on the geometry of the associated combinatorial library.
+
+        If the geometry is a RectangleCuboid, sets the size to [width, length].
+        If the geometry is a Cylinder, sets the size to [diameter, diameter].
+        If the geometry is unrecognized, logs an error and does not set the size.
+
+        Args:
+            logger (BoundLogger): Logger for error reporting.
+        """
         #fetch the size of the library from its geometry subsection
         if isinstance(self.combinatorial_Library.geometry, RectangleCuboid):
             self.library_size = [
