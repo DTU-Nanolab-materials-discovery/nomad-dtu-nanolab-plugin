@@ -25,7 +25,7 @@ def test_cleaving():
     library.substrate= substrate
 
     cleaving.input_library = library
-    cleaving.library_size = [40, 40]
+    #cleaving.library_size = [40, 40]
     cleaving.create_from_pattern = True
     cleaving.pattern = 'squares'
     cleaving.number_of_pieces = 2
@@ -34,4 +34,4 @@ def test_cleaving():
     normalize_all(entry_archive)
     #assumed_pieces = cleaving.number_of_pieces** 2
     #assert len(cleaving.new_pieces) == assumed_pieces
-    assert cleaving.pattern == 'squares'
+    assert cleaving.create_from_pattern
