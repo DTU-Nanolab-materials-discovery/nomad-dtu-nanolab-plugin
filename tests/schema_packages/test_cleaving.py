@@ -42,3 +42,4 @@ def test_cleaving():
     input_width = 40
     assert cleaving.combinatorial_Library is not None
     assert cleaving.combinatorial_Library.geometry.width == input_width * ureg.meter
+    assert cleaving.library_size[0] == input_width * ureg.meter
