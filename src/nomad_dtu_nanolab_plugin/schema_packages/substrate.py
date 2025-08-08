@@ -647,7 +647,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         """
         Handles the plotting of the custom pattern for the library pieces.
         """
-        import plotly.graph_objects as go
         if self.new_pieces is None or len(self.new_pieces) == 0:
             return
         fig = go.Figure()
