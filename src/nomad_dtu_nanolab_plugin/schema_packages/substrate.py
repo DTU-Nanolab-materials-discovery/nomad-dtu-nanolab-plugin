@@ -471,7 +471,9 @@ class DTULibraryParts(Collection, Schema):
         """
 
 
-
+        Placeholder for normalization logic.
+        """
+        pass
 class DTULibraryCleaving(Process, Schema, PlotSection):
     """
     Schema for substrate cleaning at the DTU Nanolab.
