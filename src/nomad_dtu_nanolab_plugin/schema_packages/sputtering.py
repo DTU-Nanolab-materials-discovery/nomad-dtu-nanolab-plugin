@@ -895,8 +895,8 @@ class DTUGasFlow(GasFlow, ArchiveSection):
             from nomad.search import MetadataPagination, search
 
             query = {
-                'results.data.in_use': True,
-                'results.data.molecular_formula': self.gas_name,
+                'data.in_use': True,
+                'data.molecular_formula': self.gas_name,
             }
             search_result = search(
                 owner='all',
