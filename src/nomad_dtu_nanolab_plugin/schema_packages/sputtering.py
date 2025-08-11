@@ -2238,10 +2238,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         gun_list = ['magkeeper3', 'magkeeper4', 'taurus']
 
-        # Mapping the params to the respective sections
+        # Mapping the params to the respective sections:
+        # mapping refers to linking a (nested) location in the param dictionnary
+        # to a (nested) location in the DTUSputtering class, together with an info on
+        # the unit of the incomming value (if applicable)
         param_nomad_map = map_params_to_nomad(params, gun_list)
 
         # Initializing a temporary class objects
+
         sputtering = DTUSputtering()
         sputtering.samples = []
         sputtering.steps = []
@@ -2253,6 +2257,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.temperature_ramp_down = TempRampDown()
 
         for gun in gun_list:
+            # check if the gun has been used during the deposition
             if params['deposition'].get(gun, {}).get('enabled', False):
                 # Create a SourceOverview object and set it to the relevant attribute
                 source_overview = SourceOverview()
@@ -2262,22 +2267,37 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 target_reference = DTUTargetReference()
                 setattr(source_overview, 'target_id', target_reference)
 
+        # check if the S cracker has been used and initiate it if so
         if params['deposition'].get('s_cracker', {}).get('enabled', False):
             sputtering.deposition_parameters.s_cracker = SCrackerOverview()
 
         sputtering.end_of_process = EndOfProcess()
 
         # Looping through the param_nomad_map
+        # here we unpack the map to get the
+        #   #1. the path in the param dict of the incomming data
+        #   #2. the path in the nomad DTUSputtering class where the data should go
+        #   #3. the unit of the value from the param dict
+
+        #Ex:
+        # [
+        #     ['deposition', 'avg_temp_1'],  #1
+        #     ['deposition_parameters', 'deposition_temperature'],  #2
+        #     'degC',  #3
+        # ],
         for input_keys, output_keys, unit in param_nomad_map:
+            #we wrap everything into a config dict
             config = {
-                'input_dict': params,
-                'input_keys': input_keys,
-                'output_obj': sputtering,
+                'input_dict': params, #the params dict from where the data comes
+                'input_keys': input_keys, #1
+                'output_obj': sputtering, # the target object where we write the data
                 'output_obj_name': 'sputtering',
-                'output_keys': output_keys,
-                'unit': unit,
-                'logger': logger,
+                'output_keys': output_keys, #2
+                'unit': unit, #3
+                'logger': logger, #a logger
             }
+            #call write_data with the config dict
+            # data will perform the writing operation
             self.write_data(config)
 
         # Special case for the adjusted instrument parameters
@@ -2288,6 +2308,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         sputtering.instruments = [instrument_reference]
 
+        # Generating the target ramp up, presput and deprate measurement using another
+        # generate_ function nested into the generate_general_log_data
+        # function. the generate_source_up_presput_deprate_log_data uses
+        # a very similar logic as the all the other generate_ functions
         targets_ramp_up, targets_presput, targets_deprate = (
             self.generate_source_up_presput_deprate_log_data(params, logger)
         )
@@ -2298,6 +2322,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         sputtering.source_deprate.extend(targets_deprate)
 
+        # if the depositon was interrupted (this an info that we get from the params
+        # dict, we put a flag on this sputtering process
         if params['deposition']['interrupted']:
             sputtering.flags.append(DtuFlag(flag='INTERRUPTED_DEPOSITION'))
 
@@ -2319,6 +2345,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 )
 
                 # Looping through the source_ramp_up_param_nomad_map
+                # see generate_general_log_data comments for more info on the logic
                 for input_keys, output_keys, unit in source_ramp_up_param_nomad_map:
                     config = {
                         'input_dict': params,
@@ -2361,6 +2388,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 )
 
                 # Looping through the source_deprate_param_nomad_map
+                #
                 for input_keys, output_keys, unit in source_deprate_param_nomad_map:
                     config = {
                         'input_dict': params,
@@ -2408,6 +2436,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             step_param_nomad_map = map_step_params_to_nomad(key)
 
             # Looping through the step_param_nomad_map
+            # see generate_general_log_data comments for more info on the logic
+
             for input_keys, output_keys, unit in step_param_nomad_map:
                 config = {
                     'input_dict': step_params,
@@ -2915,25 +2945,41 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             self.lab_id = sample_id
         # Openning the log file
         with archive.m_context.raw_file(self.log_file, 'r') as log:
+            # reading the csv logfile
             log_df = read_logfile(log.name)
+            # formatting the logfiles (finding out which power supply is connected to
+            # which source, harmonizing some column names)
             formated_log_df, _ = format_logfile(log_df)
+            # calling the read_events master function that extracts events from the log
+            # file based on conditions and a dict of all the events (deposition, ...),
+            # and a couple dictionary of process derived parameters: one master
+            # parameter dict and one step dict
             events_plot, params, step_params = read_events(log_df)
+
+        # if the parsing has not failed
         if params is not None:
-            # Writing logfile data to the respective sections
+            # we write logfile data from the master parameter dict to the
+            # respective sections
             sputtering = self.generate_general_log_data(params, logger)
 
         if step_params is not None and sputtering is not None:
+            # we write logfile data from the step parameter dict to the steps section
             steps = self.generate_step_log_data(step_params, archive, logger)
             sputtering.steps.extend(steps)
 
         # Merging the sputtering object with self
+
         if self.overwrite:
+
+            # If we are overwriting, it means that we favour data incomming from the
+            # logfile parsing over the data that is already there in the entry
             merge_sections(sputtering, self, logger)
             for _, prop in self.m_def.all_properties.items():
                 if sputtering.m_is_set(prop):
                     self.m_set(prop, None)
                     self.m_set(prop, sputtering.m_get(prop))
         else:
+            # if not, we favour data that is already in the entry
             merge_sections(self, sputtering, logger)
 
         # Run the nomalizer of the environment subsection
@@ -2947,8 +2993,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         self.correct_platen_angle(archive, logger)
 
         # Triggering the plotting of multiple plots
+
         self.figures = []
 
+        # Generating the plot using the master plotting function
         plots = generate_plots(
             formated_log_df,
             events_plot,
@@ -2956,10 +3004,16 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             self.lab_id,
         )
 
+        # Updating the plots with two plots displaying out the samples are mounted
+        # relative to the platen and relative to the chamber during deposition
         plots.update(self.plot_plotly_chamber_config(logger))
 
+
+        # call the plotting function from self to show all the plots from the
+        # plots list in the entry
         self.plot(plots, archive, logger)
 
+        #create combinatorial libraries if the parsing has been successful
         if self.deposition_parameters is not None:
             self.add_libraries(archive, logger)
 
@@ -2974,6 +3028,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         """
         # Analysing log file
         if self.log_file and self.process_log_file:
+            #call to the master function that parses the logfile
             self.parse_log_file(archive, logger)
 
         archive.workflow2 = None
