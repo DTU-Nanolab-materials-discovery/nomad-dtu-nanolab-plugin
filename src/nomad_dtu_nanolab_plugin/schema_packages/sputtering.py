@@ -894,13 +894,25 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         ):
             from nomad.search import MetadataPagination, search
 
-            query = {
-                'data.in_use': True,
-                'data.molecular_formula': self.gas_name,
-            }
+            # query = {
+            #     'data.in_use': True,
+            #     'data.molecular_formula': self.gas_name,
+            # }
+
+
+            search_quantities = [
+                {
+                    "id": "data.in_use#nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply",
+                    "str_value": "true"
+                },
+                {
+                    "id": "data.molecular_formula#nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply",
+                    "str_value": self.gas_name
+                }
+            ]
             search_result = search(
                 owner='all',
-                query=query,
+                search_quantities=search_quantities,
                 pagination=MetadataPagination(page_size=1),
                 user_id=archive.metadata.main_author.user_id,
             )
