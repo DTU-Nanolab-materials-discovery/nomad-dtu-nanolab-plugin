@@ -45,7 +45,7 @@ from nomad_material_processing.general import ThinFilmStack
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sputtering import (
-    DepositionParameters,
+    # DepositionParameters,
     DTUSputtering,
 )
 
@@ -427,9 +427,9 @@ class ProcessParameterOverview(ArchiveSection):
         unit='m',
     )
 
-    deposition_parameters = SubSection(  # FAULTY LINE
-        section_def=DepositionParameters,
-    )
+    # deposition_parameters = SubSection(  # FAULTY LINE TODO
+        # section_def=DepositionParameters,
+    # )
 
 
 class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
