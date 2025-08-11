@@ -53,10 +53,10 @@ if TYPE_CHECKING:
     from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
         DtuNanolabMeasurement,
     )
-    # from nomad_dtu_nanolab_plugin.schema_packages.sputtering import (
-    #    DepositionParameters,
-    #    DTUSputtering,
-    # )
+    from nomad_dtu_nanolab_plugin.schema_packages.sputtering import (
+        #    DepositionParameters,
+        DTUSputtering,
+    )
 
 m_package = Package()
 
