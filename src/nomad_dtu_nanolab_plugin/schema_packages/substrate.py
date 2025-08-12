@@ -871,7 +871,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
         origin= self.combinatorial_Library
         origin_ref= DtuLibraryReference(
-            reference=origin,
+            #reference=origin,
             name=origin.name,
             lab_id=origin.lab_id,
         )
