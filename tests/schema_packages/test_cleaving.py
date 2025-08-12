@@ -30,8 +30,6 @@ def test_cleaving():
     cleaving.pattern = 'horizontal stripes'
     cleaving.number_of_pieces = 2
 
-
-
     entry_archive3.data = substrate
     entry_archive2.data = library
     entry_archive.data = cleaving
@@ -40,10 +38,11 @@ def test_cleaving():
     normalize_all(entry_archive2)
     normalize_all(entry_archive3)
 
+
     cleaving.create_child_libraries = True
     entry_archive.data = cleaving
     normalize_all(entry_archive)
 
     assumed_pieces = cleaving.number_of_pieces
     assert len(cleaving.new_pieces) == assumed_pieces
-    assert len(cleaving.child_libraries) == assumed_pieces
+    assert len(cleaving.child_libraries) == len(cleaving.new_pieces)
