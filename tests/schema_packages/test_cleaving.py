@@ -29,6 +29,7 @@ def test_cleaving():
     cleaving.create_from_pattern = True
     cleaving.pattern = 'horizontal stripes'
     cleaving.number_of_pieces = 2
+    cleaving.create_child_libraries = True
 
 
     entry_archive3.data = substrate
