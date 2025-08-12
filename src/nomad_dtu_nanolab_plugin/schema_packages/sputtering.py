@@ -2898,7 +2898,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     def add_target_to_workflow(self, archive: 'EntryArchive') -> None:
         """
-        Temporary method to add the target to the workflow2.inputs list.
+        Method to add the target to the workflow2.inputs list.
         """
         for step in self.steps:
             step: DTUSteps
@@ -2908,6 +2908,21 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     if isinstance(m, DTUTargetComponent):
                         archive.workflow2.inputs.append(
                             Link(name=f'Target: {m.name}', section=m.system)
+                        )
+                        return
+
+    def add_gas_supply_to_workflow(self, archive: 'EntryArchive') -> None:
+        """
+        Method to add the bottles to the workflow2.inputs list.
+        """
+        for step in self.steps:
+            step: DTUSteps
+            for gas_flow in step.environment.gas_flow:
+                gas_flow: DTUGasFlow
+                for g in gas_flow.gas_supply:
+                    if isinstance(g, DtuGasSupplyComponent):
+                        archive.workflow2.inputs.append(
+                            Link(name=f'Gas Supply: {g.name}', section=g.reference)
                         )
                         return
 
@@ -3046,6 +3061,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         archive.workflow2 = None
         super().normalize(archive, logger)
         self.add_target_to_workflow(archive)
+        self.add_gas_supply_to_workflow(archive)
         archive.workflow2.inputs.extend(
             [
                 Link(name=f'Substrate: {substrate.name}', section=substrate.substrate)
