@@ -441,9 +441,15 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
         avg_layer_thickness = ureg.Quantity(
             df_data['Layer 1 Thickness (nm)'].mean(), 'nm'
         )
-        avg_density = ureg.Quantity(
-            df_data['Layer 1 Density (g/cm³)'].mean(), 'g/(cm**3)'
-        )
+
+        if 'Layer 1 Density (g/cm³)' in df_data.columns:
+            avg_density = ureg.Quantity(
+                df_data['Layer 1 Density (g/cm³)'].mean(), 'g/(cm**3)'
+            )
+        elif self.avg_density is not None:
+            avg_density =self.avg_density
+        else:
+            avg_density = None
 
         pattern = r'Layer 1 [A-Z][a-z]? Atomic %'
         percentage_labels = [
@@ -463,11 +469,17 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                 x_absolute=ureg.Quantity(row['X (mm)'], 'mm'),
                 y_absolute=ureg.Quantity(row['Y (mm)'], 'mm'),
                 layer_thickness=ureg.Quantity(row['Layer 1 Thickness (nm)'], 'nm'),
-                assumed_material_density=ureg.Quantity(
-                    row['Layer 1 Density (g/cm³)'], 'g/(cm**3)'
-                ),
                 quantifications=quantifications,
             )
+
+            if 'Layer 1 Density (g/cm³)' in df_data.columns:
+                    result.assumed_material_density = ureg.Quantity(
+                        row['Layer 1 Density (g/cm³)'], 'g/(cm**3)'
+                    )
+            elif self.avg_density is not None:
+                result.assumed_material_density = avg_density
+
+
             result.normalize(archive, logger)
             results.append(result)
         edx = EDXMeasurement(
