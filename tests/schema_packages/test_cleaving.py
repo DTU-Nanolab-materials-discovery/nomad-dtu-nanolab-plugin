@@ -42,3 +42,4 @@ def test_cleaving():
 
     assumed_pieces = cleaving.number_of_pieces
     assert len(cleaving.new_pieces) == assumed_pieces
+    assert len(cleaving.pieces) == assumed_pieces
