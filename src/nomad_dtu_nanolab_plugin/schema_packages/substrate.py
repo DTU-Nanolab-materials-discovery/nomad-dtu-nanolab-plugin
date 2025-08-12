@@ -887,7 +887,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                         components=origin.components,
                         layers=origin.layers,
                         substrate=origin.substrate,
-                        parent_library=origin,
+                        parent=origin,
                     )
 
                     library.normalize(archive, logger)
