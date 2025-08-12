@@ -870,6 +870,11 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         """
 
         origin= self.combinatorial_Library
+        origin_ref= DtuLibraryReference(
+            reference=origin,
+            name=origin.name,
+            lab_id=origin.lab_id,
+        )
         children = []
 
         if self.pattern != 'custom':
@@ -887,7 +892,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                         components=origin.components,
                         layers=origin.layers,
                         substrate=origin.substrate,
-                        parent=origin,
+                        parent=origin_ref,
                     )
 
                     library.normalize(archive, logger)
