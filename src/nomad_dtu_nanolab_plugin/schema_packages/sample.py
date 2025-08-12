@@ -35,7 +35,7 @@ from nomad.datamodel.metainfo.basesections.v1 import (
     Entity,
     EntityReference,
 )
-from nomad.metainfo import Package, Section
+from nomad.metainfo import Package, Section, SectionProxy
 from nomad.metainfo.metainfo import MEnum, Quantity, SubSection
 from nomad_material_processing.combinatorial import (
     CombinatorialLibrary,
@@ -436,6 +436,13 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
     geometry = SubSection(
         section_def=Geometry,
         description='The geometries of the samples in the library.',
+    )
+
+    parent = SubSection(
+        section_def= SectionProxy('DtuLibraryReference'),
+        label='Parent Library',
+        description='The parent library of the combinatorial library. '
+                    'Only applicable if this library is a child of another library.',
     )
 
     def get_references(self, entry_type: type[Schema] = None) -> list:

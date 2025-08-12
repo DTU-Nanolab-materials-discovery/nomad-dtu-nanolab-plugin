@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import plotly.graph_objects as go
-from nomad.datamodel.data import Schema
+from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import (
     Collection,
@@ -404,7 +404,7 @@ class DTUSubstrateCutting(Process, Schema):
         return super().normalize(archive, logger)
 
 
-class DTULibraryParts(Collection, Schema):
+class DTULibraryParts(ArchiveSection):
     """
     Schema for parts of a DTU combinatorial library.
     """
@@ -872,6 +872,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         children = []
 
         if self.pattern != 'custom':
+
             for piece in self.new_pieces:
                 if piece.part_size is not None:
                     library = DTUCombinatorialLibrary(
@@ -885,6 +886,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                         components=origin.components,
                         layers=origin.layers,
                         substrate=origin.substrate,
+                        parent_library=origin,
                     )
 
                     library.normalize(archive, logger)
