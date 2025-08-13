@@ -902,7 +902,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
                     children.append(
                         CompositeSystemReference(
-                        reference=child_archive,
+                        reference=child_archive.m_proxy_value,
                         name=library.name,
                         lab_id=library.lab_id,
                         )
@@ -1010,7 +1010,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     self.add_libraries(archive, logger)
                     self.create_child_libraries = False
 
-        self.handle_workflow(archive, logger)
+        #self.handle_workflow(archive, logger)
 
         return super().normalize(archive, logger)
 
