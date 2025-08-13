@@ -14,6 +14,7 @@ from nomad.datamodel.metainfo.basesections import (
     ReadableIdentifiers,
 )
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
+from nomad.datamodel.metainfo.workflow import Link
 from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
 from nomad_material_processing.general import (
     CrystallineSubstrate,
@@ -901,7 +902,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
                     children.append(
                         CompositeSystemReference(
-                        reference=child_archive,
+                        reference=child_archive.m_proxy_value,
                         name=library.name,
                         lab_id=library.lab_id,
                         )
@@ -935,7 +936,22 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             )
             return
 
+    def handle_workflow(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
 
+        archive.workflow2 = None
+        super().normalize(archive, logger)
+        if self.combinatorial_Library is not None:
+            archive.workflow2.inputs.extend(
+                Link(name=f'Substrate: {self.combinatorial_Library.name}',
+                     section=self.combinatorial_Library)
+            )
+        if self.child_libraries is not None and len(self.child_libraries) > 0:
+            archive.workflow2.outputs.extend(
+                [
+                    Link(name=f'New libraries of {lib.name}', section=lib)
+                    for lib in self.child_libraries
+                ]
+            )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -946,6 +962,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+
 
         if self.combinatorial_Library is not None:
             self.fill_library_size(logger)
@@ -993,9 +1010,11 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     self.add_libraries(archive, logger)
                     self.create_child_libraries = False
 
-
+        self.handle_workflow(archive, logger)
 
         return super().normalize(archive, logger)
+
+
 
 
 m_package.__init_metainfo__()
