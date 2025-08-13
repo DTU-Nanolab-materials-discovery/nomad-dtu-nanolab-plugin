@@ -902,7 +902,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
                     children.append(
                         CompositeSystemReference(
-                        reference=child_archive.m_proxy_value,
+                        reference=child_archive,
                         name=library.name,
                         lab_id=library.lab_id,
                         )
