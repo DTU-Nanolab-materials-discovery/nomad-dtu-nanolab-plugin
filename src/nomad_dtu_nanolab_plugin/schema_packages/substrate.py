@@ -938,8 +938,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
     def handle_workflow(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
 
-        archive.workflow2 = None
-        super().normalize(archive, logger)
         if self.combinatorial_Library is not None:
             archive.workflow2.inputs.extend(
                 Link(name=f'Substrate: {self.combinatorial_Library.name}',
@@ -1010,7 +1008,9 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     self.add_libraries(archive, logger)
                     self.create_child_libraries = False
 
-        #self.handle_workflow(archive, logger)
+        archive.workflow2 = None
+        super().normalize(archive, logger)
+        self.handle_workflow(archive, logger)
 
         return super().normalize(archive, logger)
 
