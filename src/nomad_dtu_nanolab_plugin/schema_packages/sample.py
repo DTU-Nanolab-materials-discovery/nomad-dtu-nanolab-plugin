@@ -438,7 +438,7 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         description='The geometries of the samples in the library.',
     )
 
-    parent = SubSection(
+    parent_library = SubSection(
         section_def= SectionProxy('DtuLibraryReference'),
         label='Parent Library',
         description='The parent library of the combinatorial library. '
