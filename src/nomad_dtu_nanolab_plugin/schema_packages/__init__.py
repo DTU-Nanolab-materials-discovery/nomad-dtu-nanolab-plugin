@@ -1,4 +1,5 @@
 from nomad.config.models.plugins import SchemaPackageEntryPoint
+from pydantic import Field
 
 
 class BasesectionsEntryPoint(SchemaPackageEntryPoint):
@@ -15,6 +16,15 @@ basesections = BasesectionsEntryPoint(
 
 
 class SputteringEntryPoint(SchemaPackageEntryPoint):
+    overwrite_libraries: bool = Field(
+        False,
+        description='Whether to overwrite existing libraries with the same name.',
+    )
+    overwrite_layers: bool = Field(
+        False, 
+        description='Whether to overwrite existing layers with the same name.',
+    )
+
     def load(self):
         from nomad_dtu_nanolab_plugin.schema_packages.sputtering import m_package
 
