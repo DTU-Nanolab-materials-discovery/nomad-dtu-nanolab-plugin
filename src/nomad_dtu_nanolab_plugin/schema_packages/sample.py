@@ -167,7 +167,6 @@ class AbsorptionCoefficient(SampleProperty):
     )
 
 
-
 class Thickness(SampleProperty):
     value = Quantity(
         type=np.float64,
@@ -306,9 +305,9 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
         a_eln=ELNAnnotation(
             properties=SectionProperties(
                 visible=Filter(exclude=['elemental_composition', 'components']),
-                editable=Filter(include=[])
+                editable=Filter(include=[]),
             ),
-        )
+        ),
     )
     band_gap = SubSection(section_def=BandGap)
     absorption_coefficient = SubSection(section_def=AbsorptionCoefficient)
@@ -332,7 +331,8 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
 
         self.elemental_composition = [
             ElementalComposition(element=e, atomic_fraction=v)
-            for e,v in composition.items() if v
+            for e, v in composition.items()
+            if v
         ]
 
         super().normalize(archive, logger)
@@ -374,7 +374,6 @@ class UniqueXrdPeaksReference(EntityReference):
 
 
 class ProcessParameterOverview(ArchiveSection):
-
     position_x = Quantity(
         type=np.float64,
         description='The x-coordinate of the substrate on the platen.',
@@ -439,10 +438,10 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
     )
 
     parent_library = SubSection(
-        section_def= SectionProxy('DtuLibraryReference'),
+        section_def=SectionProxy('DtuLibraryReference'),
         label='Parent Library',
         description='The parent library of the combinatorial library. '
-                    'Only applicable if this library is a child of another library.',
+        'Only applicable if this library is a child of another library.',
     )
 
     def get_references(self, entry_type: type[Schema] = None) -> list:
@@ -500,6 +499,7 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
             substrate_geometry = self.substrate.reference.geometry
             if substrate_geometry:
                 self.geometry = substrate_geometry
+
 
 class DtuLibraryReference(CompositeSystemReference):
     reference = Quantity(

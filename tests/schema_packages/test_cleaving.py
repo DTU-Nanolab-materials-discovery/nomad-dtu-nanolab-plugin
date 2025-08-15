@@ -20,12 +20,12 @@ def test_cleaving():
     library = entry_archive2.data
     substrate = entry_archive3.data
 
-    library.lab_id= 'mittma_0000_test_BL'
-    library.name= 'mittma 0000 test BL'
-    library.substrate= substrate
+    library.lab_id = 'mittma_0000_test_BL'
+    library.name = 'mittma 0000 test BL'
+    library.substrate = substrate
 
     cleaving.combinatorial_Library = library
-    #cleaving.library_size = [40, 40]
+    # cleaving.library_size = [40, 40]
     cleaving.create_from_pattern = True
     cleaving.pattern = 'horizontal stripes'
     cleaving.number_of_pieces = 2
@@ -38,11 +38,10 @@ def test_cleaving():
     normalize_all(entry_archive2)
     normalize_all(entry_archive3)
 
-
     cleaving.create_child_libraries = True
     entry_archive.data = cleaving
     normalize_all(entry_archive)
 
     assumed_pieces = cleaving.number_of_pieces
     assert len(cleaving.new_pieces) == assumed_pieces
-    #assert len(cleaving.child_libraries) == len(cleaving.new_pieces)
+    # assert len(cleaving.child_libraries) == len(cleaving.new_pieces)

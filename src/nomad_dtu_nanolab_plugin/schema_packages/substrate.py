@@ -56,7 +56,6 @@ class DTUSubstrate(CrystallineSubstrate, Schema):
     )
 
 
-
 class DTUSubstrateReference(CompositeSystemReference):
     reference = Quantity(
         type=DTUSubstrate,
@@ -139,12 +138,12 @@ class DTUSubstrateBatch(Collection, Schema):
     )
     diameter = Quantity(
         type=np.float64,
-        default=0.1524, #6 inch
+        default=0.1524,  # 6 inch
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'inch'},
         unit='m',
         description=(
             'Only used if the shape is circular. The diameter of the substrate.'
-        )
+        ),
     )
     length = Quantity(
         type=np.float64,
@@ -153,7 +152,7 @@ class DTUSubstrateBatch(Collection, Schema):
         unit='m',
         description=(
             'Only used if the shape is rectangular. The length of the substrate.'
-        )
+        ),
     )
     width = Quantity(
         type=np.float64,
@@ -162,7 +161,7 @@ class DTUSubstrateBatch(Collection, Schema):
         unit='m',
         description=(
             'Only used if the shape is rectangular. The width of the substrate.'
-        )
+        ),
     )
     thickness = Quantity(
         type=np.float64,
@@ -230,7 +229,7 @@ class DTUSubstrateBatch(Collection, Schema):
             geometry.width = self.width
         elif self.shape == 'Circular':
             geometry = Cylinder()
-            geometry.radius = self.diameter/2
+            geometry.radius = self.diameter / 2
         else:
             raise ValueError(f'Unknown shape: {self.shape}')
 
@@ -419,9 +418,8 @@ class DTULibraryParts(ArchiveSection):
         type=np.float64,
         description='The x-coordinate of the upper left corner of the library.',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm'
-            ),
+            component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='mm'
+        ),
         unit='m',
     )
 
@@ -429,43 +427,40 @@ class DTULibraryParts(ArchiveSection):
         type=np.float64,
         description='The y-coordinate of the upper left corner of the library.',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm'
-            ),
+            component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='mm'
+        ),
         unit='m',
     )
     lower_right_x = Quantity(
         type=np.float64,
         description='The x-coordinate of the lower right corner of the library.',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm'
-            ),
+            component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='mm'
+        ),
         unit='m',
     )
     lower_right_y = Quantity(
         type=np.float64,
         description='The y-coordinate of the lower right corner of the library.',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm'
-            ),
+            component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='mm'
+        ),
         unit='m',
     )
     part_size = Quantity(
-        type = np.float64,
+        type=np.float64,
         shape=[2],
         description='The size of the library in the x and y direction.',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm'
-            ),
+            component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='mm'
+        ),
         unit='m',
     )
     geometry = SubSection(
         section_def=Geometry,
         description='The geometries of the samples in the library.',
     )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTULibraryParts` class.
@@ -475,7 +470,6 @@ class DTULibraryParts(ArchiveSection):
 
 
 class DTULibraryCleaving(Process, Schema, PlotSection):
-
     """
     Schema for substrate cleaning at the DTU Nanolab.
     """
@@ -490,18 +484,17 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
     )
     library_size = Quantity(
-        type =  np.float64,
+        type=np.float64,
         shape=[2],
         description='The size of the library in the x and y direction.',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm'
-            ),
+            component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='mm'
+        ),
         unit='m',
     )
 
-    pattern= Quantity(
-        type = MEnum(
+    pattern = Quantity(
+        type=MEnum(
             'squares',
             'horizontal stripes',
             'vertical stripes',
@@ -514,8 +507,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
     number_of_pieces = Quantity(
         type=int,
-        description='The number of pieces the original library is broken into ' \
-        'for horizontal, vertical and custom. ' \
+        description='The number of pieces the original library is broken into '
+        'for horizontal, vertical and custom. '
         'For squares it is the number of squares in one direction.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
     )
@@ -535,7 +528,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
     )
 
     new_pieces = SubSection(
-        section_def= DTULibraryParts,
+        section_def=DTULibraryParts,
         repeats=True,
     )
     child_libraries = SubSection(
@@ -549,16 +542,16 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         Recognizes the pattern of the library and creates the new pieces accordingly.
         """
         heig = self.combinatorial_Library.geometry.height
-        start_x = (self.library_size[0]/2) *(-1)
-        start_y = self.library_size[1]/2
+        start_x = (self.library_size[0] / 2) * (-1)
+        start_y = self.library_size[1] / 2
 
         if self.pattern == 'squares':
-            total_nr = self.number_of_pieces ** 2
+            total_nr = self.number_of_pieces**2
             size = self.library_size[0] / self.number_of_pieces
             for j in range(self.number_of_pieces):
                 for i in range(self.number_of_pieces):
                     piece = DTULibraryParts()
-                    number = 1+j * self.number_of_pieces + i
+                    number = 1 + j * self.number_of_pieces + i
                     piece.library_name = (
                         f'{self.combinatorial_Library.name}_S{number}-{total_nr}'
                     )
@@ -570,12 +563,12 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     piece.lower_right_y = start_y - (j + 1) * size
                     piece.part_size = (size, size)
                     piece.geometry = RectangleCuboid(
-                            length=size,
-                            width=size,
-                            height=heig,
-                            volume=size * size * heig,
-                            surface_area=(size * size)
-                        )
+                        length=size,
+                        width=size,
+                        height=heig,
+                        volume=size * size * heig,
+                        surface_area=(size * size),
+                    )
 
                     self.new_pieces.append(piece)
         elif self.pattern == 'horizontal stripes':
@@ -584,9 +577,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             for i in range(self.number_of_pieces):
                 piece = DTULibraryParts()
                 number = i + 1
-                piece.library_name = (
-                    f'{self.combinatorial_Library.name}_H{number}-{self.number_of_pieces}'
-                )
+                piece.library_name = f'{self.combinatorial_Library.name}_H{number}-{self.number_of_pieces}'
                 piece.name = f'Horizontal stripe {number} of {self.number_of_pieces}'
                 piece.lab_id = piece.library_name.replace(' ', '_')
                 piece.upper_left_x = start_x
@@ -595,12 +586,12 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 piece.lower_right_y = start_y - (i + 1) * size
                 piece.part_size = (self.library_size[0], size)
                 piece.geometry = RectangleCuboid(
-                        length=size,
-                        width=self.library_size[0],
-                        height=heig,
-                        volume=self.library_size[0] * size * heig,
-                        surface_area=(self.library_size[0] * size)
-                    )
+                    length=size,
+                    width=self.library_size[0],
+                    height=heig,
+                    volume=self.library_size[0] * size * heig,
+                    surface_area=(self.library_size[0] * size),
+                )
 
                 self.new_pieces.append(piece)
         elif self.pattern == 'vertical stripes':
@@ -609,9 +600,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             for i in range(self.number_of_pieces):
                 piece = DTULibraryParts()
                 number = i + 1
-                piece.library_name = (
-                    f'{self.combinatorial_Library.name}_V{number}-{self.number_of_pieces}'
-                )
+                piece.library_name = f'{self.combinatorial_Library.name}_V{number}-{self.number_of_pieces}'
                 piece.name = f'Vertical stripe {number} of {self.number_of_pieces}'
                 piece.lab_id = piece.library_name.replace(' ', '_')
                 piece.upper_left_x = start_x + i * size
@@ -620,12 +609,12 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 piece.lower_right_y = start_y - self.library_size[1]
                 piece.part_size = (size, self.library_size[1])
                 piece.geometry = RectangleCuboid(
-                        length=self.library_size[1],
-                        width=size,
-                        height=heig,
-                        volume= size * self.library_size[1] * heig,
-                        surface_area=(size * self.library_size[1] )
-                    )
+                    length=self.library_size[1],
+                    width=size,
+                    height=heig,
+                    volume=size * self.library_size[1] * heig,
+                    surface_area=(size * self.library_size[1]),
+                )
 
                 self.new_pieces.append(piece)
         elif self.pattern == 'custom':
@@ -638,9 +627,9 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         for i in range(self.number_of_pieces):
             piece = DTULibraryParts()
             piece.library_name = (
-                f'{self.combinatorial_Library.name}_C{i+1}-{self.number_of_pieces}'
+                f'{self.combinatorial_Library.name}_C{i + 1}-{self.number_of_pieces}'
             )
-            piece.name = f'Custom piece {i+1} of {self.number_of_pieces}'
+            piece.name = f'Custom piece {i + 1} of {self.number_of_pieces}'
             piece.lab_id = piece.library_name.replace(' ', '_')
             self.new_pieces.append(piece)
 
@@ -652,9 +641,9 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             return
         fig = go.Figure()
 
-        #self.add_original_library_to_plot(fig)
+        # self.add_original_library_to_plot(fig)
 
-        #TODO : add the custom pieces to the plot considering their shapes
+        # TODO : add the custom pieces to the plot considering their shapes
 
         fig.update_layout(
             title='Positions of the new pieces in the library',
@@ -664,14 +653,14 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             height=700,
             xaxis=dict(
                 range=[
-                    -self.library_size[0].to('mm').magnitude*1.1/2,
-                    self.library_size[0].to('mm').magnitude*1.1/2,
-                    ],
+                    -self.library_size[0].to('mm').magnitude * 1.1 / 2,
+                    self.library_size[0].to('mm').magnitude * 1.1 / 2,
+                ],
             ),
             yaxis=dict(
                 range=[
-                    -self.library_size[1].to('mm').magnitude*1.1/2,
-                    self.library_size[1].to('mm').magnitude*1.1/2,
+                    -self.library_size[1].to('mm').magnitude * 1.1 / 2,
+                    self.library_size[1].to('mm').magnitude * 1.1 / 2,
                 ],
             ),
         )
@@ -697,7 +686,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         y0 = self.library_size[1].to('mm').magnitude / 2
         x1 = self.library_size[0].to('mm').magnitude / 2
         y1 = -self.library_size[1].to('mm').magnitude / 2
-
 
         if self.combinatorial_Library is not None:
             if isinstance(self.combinatorial_Library.geometry, Cylinder):
@@ -744,7 +732,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         x1 = self.library_size[0].to('mm').magnitude / 2
         y1 = -self.library_size[1].to('mm').magnitude / 2
 
-
         if self.combinatorial_Library is not None:
             if isinstance(self.combinatorial_Library.geometry, Cylinder):
                 fig.add_shape(
@@ -775,7 +762,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 showarrow=False,
             )
 
-
         if self.pattern != 'custom':
             for piece in self.new_pieces:
                 if piece.part_size is None:
@@ -784,20 +770,20 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 fig.add_shape(
                     type='rect',
                     x0=(
-                        piece.upper_left_x.to('mm').magnitude+
-                        (0.01*piece.part_size[0].to('mm').magnitude)
+                        piece.upper_left_x.to('mm').magnitude
+                        + (0.01 * piece.part_size[0].to('mm').magnitude)
                     ),
                     y0=(
-                        piece.upper_left_y.to('mm').magnitude-
-                        (0.01*piece.part_size[1].to('mm').magnitude)
+                        piece.upper_left_y.to('mm').magnitude
+                        - (0.01 * piece.part_size[1].to('mm').magnitude)
                     ),
                     x1=(
-                        piece.lower_right_x.to('mm').magnitude-
-                        (0.01*piece.part_size[0].to('mm').magnitude)
+                        piece.lower_right_x.to('mm').magnitude
+                        - (0.01 * piece.part_size[0].to('mm').magnitude)
                     ),
                     y1=(
-                        piece.lower_right_y.to('mm').magnitude+
-                        (0.01*piece.part_size[1].to('mm').magnitude)
+                        piece.lower_right_y.to('mm').magnitude
+                        + (0.01 * piece.part_size[1].to('mm').magnitude)
                     ),
                     name=piece.library_name,
                     line=dict(color='green'),
@@ -806,12 +792,18 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 )
                 fig.add_annotation(
                     x=(
-                        (piece.upper_left_x.to('mm').magnitude +
-                         piece.lower_right_x.to('mm').magnitude) / 2
+                        (
+                            piece.upper_left_x.to('mm').magnitude
+                            + piece.lower_right_x.to('mm').magnitude
+                        )
+                        / 2
                     ),
                     y=(
-                        (piece.upper_left_y.to('mm').magnitude +
-                          piece.lower_right_y.to('mm').magnitude) / 2
+                        (
+                            piece.upper_left_y.to('mm').magnitude
+                            + piece.lower_right_y.to('mm').magnitude
+                        )
+                        / 2
                     ),
                     text=piece.library_name,
                     showarrow=False,
@@ -824,14 +816,14 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             height=700,
             xaxis=dict(
                 range=[
-                    -self.library_size[0].to('mm').magnitude*1.1/2,
-                    self.library_size[0].to('mm').magnitude*1.1/2,
-                    ],
+                    -self.library_size[0].to('mm').magnitude * 1.1 / 2,
+                    self.library_size[0].to('mm').magnitude * 1.1 / 2,
+                ],
             ),
             yaxis=dict(
                 range=[
-                    -self.library_size[1].to('mm').magnitude*1.1/2,
-                    self.library_size[1].to('mm').magnitude*1.1/2,
+                    -self.library_size[1].to('mm').magnitude * 1.1 / 2,
+                    self.library_size[1].to('mm').magnitude * 1.1 / 2,
                 ],
             ),
         )
@@ -870,8 +862,8 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             newly created child libraries.
         """
 
-        origin= self.combinatorial_Library
-        origin_ref= DtuLibraryReference(
+        origin = self.combinatorial_Library
+        origin_ref = DtuLibraryReference(
             reference=origin.m_proxy_value,
             name=origin.name,
             lab_id=origin.lab_id,
@@ -879,7 +871,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         children = []
 
         if self.pattern != 'custom':
-
             for piece in self.new_pieces:
                 if piece.part_size is not None:
                     library = DTUCombinatorialLibrary(
@@ -902,9 +893,9 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
                     children.append(
                         CompositeSystemReference(
-                        reference=child_archive.m_proxy_value,
-                        name=library.name,
-                        lab_id=library.lab_id,
+                            reference=child_archive.m_proxy_value,
+                            name=library.name,
+                            lab_id=library.lab_id,
                         )
                     )
             self.child_libraries = children
@@ -921,7 +912,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         Args:
             logger (BoundLogger): Logger for error reporting.
         """
-        #fetch the size of the library from its geometry subsection
+        # fetch the size of the library from its geometry subsection
         if isinstance(self.combinatorial_Library.geometry, RectangleCuboid):
             self.library_size = [
                 self.combinatorial_Library.geometry.width,
@@ -931,17 +922,18 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             self.library_size = [self.combinatorial_Library.geometry.radius * 2] * 2
         else:
             logger.error(
-                'The library size could not be determined from the geometry. ' \
+                'The library size could not be determined from the geometry. '
                 'Please add it manually.'
             )
             return
 
     def handle_workflow(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-
         if self.combinatorial_Library is not None:
             archive.workflow2.inputs.extend(
-                Link(name=f'Substrate: {self.combinatorial_Library.name}',
-                     section=self.combinatorial_Library)
+                Link(
+                    name=f'Substrate: {self.combinatorial_Library.name}',
+                    section=self.combinatorial_Library,
+                )
             )
         if self.child_libraries is not None and len(self.child_libraries) > 0:
             archive.workflow2.outputs.extend(
@@ -961,13 +953,12 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             logger (BoundLogger): A structlog logger.
         """
 
-
         if self.combinatorial_Library is not None:
             self.fill_library_size(logger)
 
-        #Check the pattern input and create the new pieces according to selection
+        # Check the pattern input and create the new pieces according to selection
         if self.create_from_pattern:
-            if self.number_of_pieces is None or self.number_of_pieces <=1:
+            if self.number_of_pieces is None or self.number_of_pieces <= 1:
                 logger.error(
                     'The number of pieces must be at least 2 to create a pattern.'
                 )
@@ -984,37 +975,33 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 self.recognize_pattern(logger)
                 self.create_from_pattern = False
 
-
-
         if self.new_pieces is not None and len(self.new_pieces) > 0:
-            #update the plot with the new pieces
-            if self.pattern == 'custom' :
+            # update the plot with the new pieces
+            if self.pattern == 'custom':
                 self.figures = []
                 self.handle_custom_plot()
             else:
                 self.figures = []
                 self.plot()
-            #if the user wants to create child libraries from the new pieces
-            #then we create them and add them to the archive
-            #and reset the create_child_libraries flag
+            # if the user wants to create child libraries from the new pieces
+            # then we create them and add them to the archive
+            # and reset the create_child_libraries flag
             if self.create_child_libraries:
-                origin= self.combinatorial_Library
+                origin = self.combinatorial_Library
                 if origin is None:
                     logger.error(
                         'A combinatorial library must be set to create child libraries.'
                     )
                     return
-                else :
+                else:
                     self.add_libraries(archive, logger)
                     self.create_child_libraries = False
 
-        #archive.workflow2 = None
-        #super().normalize(archive, logger)
-        #self.handle_workflow(archive, logger)
+        # archive.workflow2 = None
+        # super().normalize(archive, logger)
+        # self.handle_workflow(archive, logger)
 
         return super().normalize(archive, logger)
-
-
 
 
 m_package.__init_metainfo__()

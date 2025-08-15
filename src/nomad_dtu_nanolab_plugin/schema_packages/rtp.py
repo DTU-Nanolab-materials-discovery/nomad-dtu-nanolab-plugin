@@ -23,7 +23,7 @@ m_package = Package(name='DTU RTP Schemas')
 
 class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     """
-    A synthesis method where a rapidly heated substrate is exposed to one or more 
+    A synthesis method where a rapidly heated substrate is exposed to one or more
     volatile precursors, which react or decompose on the surface to produce a deposit.
     [database_cross_reference: https://orcid.org/0000-0002-0640-0422]
 
@@ -89,7 +89,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         description='Pressure of the process.',
     )
     used_gases = Quantity(
-        type= str,
+        type=str,
         shape=['*'],
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.StringEditQuantity,
@@ -109,5 +109,3 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         """
 
         super().normalize(archive, logger)
-
-

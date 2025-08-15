@@ -77,7 +77,7 @@ def grid_to_MIheader(grid):
     """Convert a grid (array of x,y) into a multi index header"""
     MIgrid = []
     for i in range(len(grid)):
-        MIgrid = np.append(MIgrid, (f'{grid.iloc[i,0]},{grid.iloc[i,1]}'))
+        MIgrid = np.append(MIgrid, (f'{grid.iloc[i, 0]},{grid.iloc[i, 1]}'))
     return MIgrid
 
 
@@ -1241,7 +1241,7 @@ def interactive_XRD_shift(
                 y=shifted_y_data,
                 mode='lines',
                 line=dict(color=colors[i]),
-                name=f'{i+1}: {x[i]}, {y[i]}',
+                name=f'{i + 1}: {x[i]}, {y[i]}',
             ),
             row=1,
             col=1,
