@@ -906,27 +906,26 @@ class DTUGasFlow(GasFlow, ArchiveSection):
             #     'data.molecular_formula': self.gas_name,
             # }
 
-
             query = {
-                "and": [
+                'and': [
                     {
-                        "search_quantities": {
-                            "id": (
-                                "data.in_use#"
-                                "nomad_dtu_nanolab_plugin.schema_packages."
-                                "gas.DTUGasSupply"
+                        'search_quantities': {
+                            'id': (
+                                'data.in_use#'
+                                'nomad_dtu_nanolab_plugin.schema_packages.'
+                                'gas.DTUGasSupply'
                             ),
-                            "str_value": "true",
+                            'str_value': 'true',
                         }
                     },
                     {
-                        "search_quantities": {
-                            "id": (
-                                "data.molecular_formula#"
-                                "nomad_dtu_nanolab_plugin.schema_packages."
-                                "gas.DTUGasSupply"
+                        'search_quantities': {
+                            'id': (
+                                'data.molecular_formula#'
+                                'nomad_dtu_nanolab_plugin.schema_packages.'
+                                'gas.DTUGasSupply'
                             ),
-                            "str_value": self.gas_name,
+                            'str_value': self.gas_name,
                         }
                     },
                 ]
@@ -2310,24 +2309,24 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         #   #2. the path in the nomad DTUSputtering class where the data should go
         #   #3. the unit of the value from the param dict
 
-        #Ex:
+        # Ex:
         # [
         #     ['deposition', 'avg_temp_1'],  #1
         #     ['deposition_parameters', 'deposition_temperature'],  #2
         #     'degC',  #3
         # ],
         for input_keys, output_keys, unit in param_nomad_map:
-            #we wrap everything into a config dict
+            # we wrap everything into a config dict
             config = {
-                'input_dict': params, #the params dict from where the data comes
-                'input_keys': input_keys, #1
-                'output_obj': sputtering, # the target object where we write the data
+                'input_dict': params,  # the params dict from where the data comes
+                'input_keys': input_keys,  # 1
+                'output_obj': sputtering,  # the target object where we write the data
                 'output_obj_name': 'sputtering',
-                'output_keys': output_keys, #2
-                'unit': unit, #3
-                'logger': logger, #a logger
+                'output_keys': output_keys,  # 2
+                'unit': unit,  # 3
+                'logger': logger,  # a logger
             }
-            #call write_data with the config dict
+            # call write_data with the config dict
             # data will perform the writing operation
             self.write_data(config)
 
@@ -3014,7 +3013,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # Merging the sputtering object with self
 
         if self.overwrite:
-
             # If we are overwriting, it means that we favour data incomming from the
             # logfile parsing over the data that is already there in the entry
             merge_sections(sputtering, self, logger)
@@ -3052,12 +3050,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # relative to the platen and relative to the chamber during deposition
         plots.update(self.plot_plotly_chamber_config(logger))
 
-
         # call the plotting function from self to show all the plots from the
         # plots list in the entry
         self.plot(plots, archive, logger)
 
-        #create combinatorial libraries if the parsing has been successful
+        # create combinatorial libraries if the parsing has been successful
         if self.deposition_parameters is not None:
             self.add_libraries(archive, logger)
 
@@ -3072,7 +3069,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         """
         # Analysing log file
         if self.log_file and self.process_log_file:
-            #call to the master function that parses the logfile
+            # call to the master function that parses the logfile
             self.parse_log_file(archive, logger)
 
         archive.workflow2 = None
