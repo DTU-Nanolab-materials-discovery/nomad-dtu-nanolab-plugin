@@ -1008,9 +1008,9 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     self.add_libraries(archive, logger)
                     self.create_child_libraries = False
 
-        archive.workflow2 = None
-        super().normalize(archive, logger)
-        self.handle_workflow(archive, logger)
+        #archive.workflow2 = None
+        #super().normalize(archive, logger)
+        #self.handle_workflow(archive, logger)
 
         return super().normalize(archive, logger)
 
