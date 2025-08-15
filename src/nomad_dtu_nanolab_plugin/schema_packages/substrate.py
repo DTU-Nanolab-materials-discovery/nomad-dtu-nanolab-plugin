@@ -577,7 +577,10 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             for i in range(self.number_of_pieces):
                 piece = DTULibraryParts()
                 number = i + 1
-                piece.library_name = f'{self.combinatorial_Library.name}_H{number}-{self.number_of_pieces}'
+                piece.library_name = (
+                    f'{self.combinatorial_Library.name}_H{number}-'
+                    f'{self.number_of_pieces}'
+                )
                 piece.name = f'Horizontal stripe {number} of {self.number_of_pieces}'
                 piece.lab_id = piece.library_name.replace(' ', '_')
                 piece.upper_left_x = start_x
@@ -600,7 +603,10 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             for i in range(self.number_of_pieces):
                 piece = DTULibraryParts()
                 number = i + 1
-                piece.library_name = f'{self.combinatorial_Library.name}_V{number}-{self.number_of_pieces}'
+                piece.library_name = (
+                    f'{self.combinatorial_Library.name}_V{number}-'
+                    f'{self.number_of_pieces}'
+                )
                 piece.name = f'Vertical stripe {number} of {self.number_of_pieces}'
                 piece.lab_id = piece.library_name.replace(' ', '_')
                 piece.upper_left_x = start_x + i * size
