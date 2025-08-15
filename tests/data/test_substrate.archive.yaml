@@ -1,0 +1,11 @@
+data:
+  m_def: nomad_dtu_nanolab_plugin.schema_packages.substrate.DTUSubstrate
+  name: test_substrate
+  supplier: Siegert
+  substrate_polishing: 1 sided
+  lab_id: test_substrate_000
+  geometry:
+    m_def: nomad_material_processing.general.RectangleCuboid
+    width: 40.0
+    length: 40.0
+    height: 1.0

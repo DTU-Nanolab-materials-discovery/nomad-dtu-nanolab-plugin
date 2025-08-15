@@ -35,13 +35,13 @@ from nomad.datamodel.metainfo.basesections.v1 import (
     Entity,
     EntityReference,
 )
-from nomad.metainfo import Package, Section
+from nomad.metainfo import Package, Section, SectionProxy
 from nomad.metainfo.metainfo import MEnum, Quantity, SubSection
 from nomad_material_processing.combinatorial import (
     CombinatorialLibrary,
     CombinatorialSample,
 )
-from nomad_material_processing.general import ThinFilmStack
+from nomad_material_processing.general import Geometry, ThinFilmStack
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
@@ -165,7 +165,6 @@ class AbsorptionCoefficient(SampleProperty):
         description='The mean absorption coefficient above the absorption edge.',
         unit='cm^-1',
     )
-
 
 
 class Thickness(SampleProperty):
@@ -306,9 +305,9 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
         a_eln=ELNAnnotation(
             properties=SectionProperties(
                 visible=Filter(exclude=['elemental_composition', 'components']),
-                editable=Filter(include=[])
+                editable=Filter(include=[]),
             ),
-        )
+        ),
     )
     band_gap = SubSection(section_def=BandGap)
     absorption_coefficient = SubSection(section_def=AbsorptionCoefficient)
@@ -331,10 +330,11 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
             composition = self.surface_composition.m_to_dict()
 
         self.elemental_composition = [
-            ElementalComposition(element=e, atomic_fraction=v) 
-            for e,v in composition.items() if v
+            ElementalComposition(element=e, atomic_fraction=v)
+            for e, v in composition.items()
+            if v
         ]
-        
+
         super().normalize(archive, logger)
 
 
@@ -374,11 +374,6 @@ class UniqueXrdPeaksReference(EntityReference):
 
 
 class ProcessParameterOverview(ArchiveSection):
-    m_def = Section(
-        categories=[DTUNanolabCategory],
-        label='Process Parameter Overview',
-    )
-
     position_x = Quantity(
         type=np.float64,
         description='The x-coordinate of the substrate on the platen.',
@@ -437,6 +432,18 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         description='An overview of the process parameters used to create the library.',
     )
 
+    geometry = SubSection(
+        section_def=Geometry,
+        description='The geometries of the samples in the library.',
+    )
+
+    parent_library = SubSection(
+        section_def=SectionProxy('DtuLibraryReference'),
+        label='Parent Library',
+        description='The parent library of the combinatorial library. '
+        'Only applicable if this library is a child of another library.',
+    )
+
     def get_references(self, entry_type: type[Schema] = None) -> list:
         from nomad.client import ArchiveQuery
 
@@ -469,6 +476,29 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         if len(results) > 1:
             print('Warning: More than one sputtering reference found.')
         return results[0] if results else None
+
+    def normalize(self, archive, logger):
+        """
+        Normalizes the combinatorial library entry by ensuring required fields are set.
+
+        This method first calls the superclass's normalize method. It then checks if the
+        geometry attribute is not set and, if so, attempts to set it from
+        the substrate's reference geometry if available.
+
+        Parameters
+        ----------
+        archive : Archive
+            The archive object being normalized.
+        logger : Logger
+            Logger for recording normalization events or warnings.
+        """
+        super().normalize(archive, logger)
+
+        # Ensure that the geometry is set to the default if not provided
+        if not self.geometry and self.substrate.reference:
+            substrate_geometry = self.substrate.reference.geometry
+            if substrate_geometry:
+                self.geometry = substrate_geometry
 
 
 class DtuLibraryReference(CompositeSystemReference):

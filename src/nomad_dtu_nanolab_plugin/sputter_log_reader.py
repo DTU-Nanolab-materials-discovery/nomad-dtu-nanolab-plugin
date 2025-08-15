@@ -5426,7 +5426,7 @@ def read_logfile(file_path):
     as they are in the logfile.
     """
     for i in range(5):
-        df = pd.read_csv(file_path, header=[i+1], skiprows=[i], low_memory=False)
+        df = pd.read_csv(file_path, header=[i + 1], skiprows=[i], low_memory=False)
 
         # Check if the 'Time Stamp' column exists in the DataFrame
         if 'Time Stamp' in df.columns:

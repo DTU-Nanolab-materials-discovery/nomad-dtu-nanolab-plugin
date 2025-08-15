@@ -447,7 +447,7 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
                 df_data['Layer 1 Density (g/cm³)'].mean(), 'g/(cm**3)'
             )
         elif self.avg_density is not None:
-            avg_density =self.avg_density
+            avg_density = self.avg_density
         else:
             avg_density = None
 
@@ -473,12 +473,11 @@ class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
             )
 
             if 'Layer 1 Density (g/cm³)' in df_data.columns:
-                    result.assumed_material_density = ureg.Quantity(
-                        row['Layer 1 Density (g/cm³)'], 'g/(cm**3)'
-                    )
+                result.assumed_material_density = ureg.Quantity(
+                    row['Layer 1 Density (g/cm³)'], 'g/(cm**3)'
+                )
             elif self.avg_density is not None:
                 result.assumed_material_density = avg_density
-
 
             result.normalize(archive, logger)
             results.append(result)

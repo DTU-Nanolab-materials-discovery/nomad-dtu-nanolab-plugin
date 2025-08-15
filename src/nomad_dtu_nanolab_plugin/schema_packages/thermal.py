@@ -6,6 +6,7 @@ from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
 m_package = Package()
 
+
 class DtuThermalEvaporation(ThermalEvaporation, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
