@@ -104,9 +104,17 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
+    from nomad_dtu_nanolab_plugin.schema_packages import SputteringEntryPoint
+
 import os
 
-m_package = Package(name='DTU customised sputter Schemas')
+from nomad.config import config
+
+configuration: 'SputteringEntryPoint' = config.get_plugin_entry_point(
+    'nomad_dtu_nanolab_plugin.schema_packages:sputtering'
+)
+
+m_package = Package()
 
 
 class DtuSubstrateMounting(ArchiveSection):
@@ -2693,7 +2701,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 elemental_composition=composition,
                 lab_id=f'{library.lab_id}-Layer',
             )
-            layer_ref = create_archive(layer, archive, f'{layer.lab_id}.archive.json')
+            layer_ref = create_archive(
+                layer,
+                archive,
+                f'{layer.lab_id}.archive.json',
+                overwrite=configuration.overwrite_layers,
+            )
             library.layers = [
                 ThinFilmReference(
                     name='Main layer',
@@ -2720,7 +2733,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # TODO add more process parameters
 
             library_ref = create_archive(
-                library, archive, f'{library.lab_id}.archive.json'
+                library,
+                archive,
+                f'{library.lab_id}.archive.json',
+                overwrite=configuration.overwrite_libraries,
             )
             samples.append(
                 CompositeSystemReference(
