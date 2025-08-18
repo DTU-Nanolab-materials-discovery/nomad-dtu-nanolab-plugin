@@ -34,7 +34,7 @@ from nomad_material_processing.general import (
     RectangleCuboid,
     ThinFilmStack,
 )
-from nomad_material_processing.utils import create_archive
+from nomad_measurements.utils import create_archive
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
