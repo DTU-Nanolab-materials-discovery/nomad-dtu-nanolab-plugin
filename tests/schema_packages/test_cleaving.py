@@ -10,22 +10,22 @@ from nomad_dtu_nanolab_plugin.schema_packages.sample import (
 )
 
 
-@pytest.mark.usefixtures("tmp_path")
+@pytest.mark.usefixtures('tmp_path')
 def test_cleaving(tmp_path):
     test_library = os.path.join('tests', 'data', 'test_combilib.archive.yaml')
-    tmp_file = tmp_path / "combilib.archive.yaml"
+    tmp_file = tmp_path / 'combilib.archive.yaml'
     shutil.copy(test_library, tmp_file)
     library_archive = parse(tmp_file)[0]
     normalize_all(library_archive)
 
     test_cleave = os.path.join('tests', 'data', 'test_cleaving.archive.yaml')
-    tmp_file = tmp_path / "cleaving.archive.yaml"
+    tmp_file = tmp_path / 'cleaving.archive.yaml'
     shutil.copy(test_cleave, tmp_file)
     cleaving_archive = parse(tmp_file)[0]
     normalize_all(cleaving_archive)
 
     test_substrate = os.path.join('tests', 'data', 'test_substrate.archive.yaml')
-    tmp_file = tmp_path / "substrate.archive.yaml"
+    tmp_file = tmp_path / 'substrate.archive.yaml'
     shutil.copy(test_substrate, tmp_file)
     substrate_archive = parse(tmp_file)[0]
     normalize_all(substrate_archive)
