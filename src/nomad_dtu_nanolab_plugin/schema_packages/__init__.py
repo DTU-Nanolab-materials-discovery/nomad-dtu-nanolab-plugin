@@ -21,7 +21,7 @@ class SputteringEntryPoint(SchemaPackageEntryPoint):
         description='Whether to overwrite existing libraries with the same name.',
     )
     overwrite_layers: bool = Field(
-        False, 
+        False,
         description='Whether to overwrite existing layers with the same name.',
     )
 
@@ -36,11 +36,13 @@ sputtering = SputteringEntryPoint(
     description='Schema package defined for sputtering.',
 )
 
+
 class RTPEntryPoint(SchemaPackageEntryPoint):
     def load(self):
         from nomad_dtu_nanolab_plugin.schema_packages.rtp import m_package
 
         return m_package
+
 
 rtp = RTPEntryPoint(
     name='RTP',
