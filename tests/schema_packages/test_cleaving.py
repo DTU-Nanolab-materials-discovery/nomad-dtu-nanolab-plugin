@@ -2,6 +2,9 @@ import os.path
 
 from nomad.client import normalize_all, parse
 
+from nomad_dtu_nanolab_plugin.schema_packages.sample import DTUCombinatorialLibrary
+from nomad_dtu_nanolab_plugin.schema_packages.substrate import DTULibraryCleaving
+
 
 def test_cleaving():
     test_library = os.path.join('tests', 'data', 'test_cobilib.archive.yaml')
@@ -19,15 +22,17 @@ def test_cleaving():
     cleaving = entry_archive.data
     library = entry_archive2.data
     substrate = entry_archive3.data
+    assert isinstance(cleaving, DTULibraryCleaving)
+    assert isinstance(library, DTUCombinatorialLibrary)
 
     library.lab_id = 'mittma_0000_test_BL'
     library.name = 'mittma 0000 test BL'
     library.substrate = substrate
 
     cleaving.combinatorial_library = library
-    cleaving.fetch_library_size=True
+    cleaving.fetch_library_size = True
     # cleaving.library_size = [40, 40]
-    cleaving.create_from_pattern = True
+    cleaving.generate_pattern = True
     cleaving.pattern = 'horizontal stripes'
     cleaving.number_of_pieces = 2
 
