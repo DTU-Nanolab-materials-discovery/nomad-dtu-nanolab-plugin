@@ -24,7 +24,8 @@ def test_cleaving():
     library.name = 'mittma 0000 test BL'
     library.substrate = substrate
 
-    cleaving.combinatorial_Library = library
+    cleaving.combinatorial_library = library
+    cleaving.fetch_library_size=True
     # cleaving.library_size = [40, 40]
     cleaving.create_from_pattern = True
     cleaving.pattern = 'horizontal stripes'
