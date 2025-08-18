@@ -54,7 +54,6 @@ class DtuRTPInputSampleMounting(ArchiveSection):
     (input samples) on the susceptor.
     """
 
-    m_def = Section()
     name = Quantity(
         type=str,
         description='The name of the input sample mounting.',
@@ -170,7 +169,6 @@ class RTPOverview(ArchiveSection):
     Section containing a human readable overview of the RTP process.
     """
 
-    m_def = Section()
     material_space = Quantity(
         type=str,
         a_eln=ELNAnnotation(
