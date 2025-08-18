@@ -1020,7 +1020,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
         origin: DTUCombinatorialLibrary = self.combinatorial_library
         origin_ref = DtuLibraryReference(
-            reference=origin.m_proxy_value,
+            reference=origin,
             name=origin.name,
             lab_id=origin.lab_id,
         )
@@ -1083,16 +1083,16 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
     def handle_workflow(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         if self.combinatorial_library is not None:
-            archive.workflow2.inputs.extend(
+            archive.workflow2.inputs.append(
                 Link(
-                    name=f'Substrate: {self.combinatorial_library.name}',
+                    name=f'Parent library: {self.combinatorial_library.name}',
                     section=self.combinatorial_library,
                 )
             )
         if self.child_libraries is not None and len(self.child_libraries) > 0:
             archive.workflow2.outputs.extend(
                 [
-                    Link(name=f'New libraries of {lib.name}', section=lib)
+                    Link(name=f'Child library: {lib.name}', section=lib.reference)
                     for lib in self.child_libraries
                 ]
             )
@@ -1106,6 +1106,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+        archive.workflow2 = None
         super().normalize(archive, logger)
         self.end_time = self.datetime
         self.method = 'Sample splitting'
@@ -1157,9 +1158,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 else:
                     self.add_libraries(archive, logger)
 
-        # archive.workflow2 = None
-        # super().normalize(archive, logger)
-        # self.handle_workflow(archive, logger)
+        self.handle_workflow(archive, logger)
 
 
 m_package.__init_metainfo__()
