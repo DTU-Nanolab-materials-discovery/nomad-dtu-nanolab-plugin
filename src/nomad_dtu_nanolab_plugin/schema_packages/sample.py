@@ -435,7 +435,6 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
 
     parent_library = SubSection(
         section_def=SectionProxy('DtuLibraryReference'),
-        label='Parent Library',
         description='The parent library of the combinatorial library. '
         'Only applicable if this library is a child of another library.',
     )
@@ -1020,7 +1019,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
         origin: DTUCombinatorialLibrary = self.combinatorial_library
         origin_ref = DtuLibraryReference(
-            reference=origin,
+            reference=origin.m_proxy_value,
             name=origin.name,
             lab_id=origin.lab_id,
         )

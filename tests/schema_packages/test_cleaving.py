@@ -39,6 +39,7 @@ def test_cleaving(tmp_path):
     library.lab_id = 'mittma_0000_test_BL'
     library.name = 'mittma 0000 test BL'
     library.substrate = substrate
+    library.m_proxy_value = '<proxy_value>'
 
     cleaving.combinatorial_library = library
     cleaving.fetch_library_size = True
