@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
+import warnings
 import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
@@ -63,8 +64,7 @@ class DtuRTPInputSampleMounting(ArchiveSection):
     )
     input_combi_lib = Quantity(
         type=DTUCombinatorialLibrary,
-        description='A reference to the input sample (combinatorial library)'
-        ' that is used.',
+        description='The input sample (combinatorial library) that is used.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.ReferenceEditQuantity,
         ),
@@ -562,17 +562,22 @@ class RTPStepOverview(ArchiveSection):
         Calculate the temperature ramp rate based on the initial and final temperatures
         and the duration of the step.
         """
-        initial_temperature = (
-            self.initial_temperature.magnitude
-            if self.final_temperature is not None
-            else 0
-        )
-        final_temperature = (
-            self.final_temperature.magnitude
-            if self.final_temperature is not None
-            else 0
-        )
-        duration = self.duration.magnitude if self.duration is not None else 0
+        if (
+            self.initial_temperature is None
+            or self.final_temperature is None
+            or self.duration is None
+        ):
+            warnings.warn(
+                "Cannot calculate temperature ramp: initial_temperature," \
+                " final_temperature, or duration is missing.",
+                UserWarning
+            )
+            return
+
+        initial_temperature = self.initial_temperature.magnitude
+        final_temperature = self.final_temperature.magnitude
+        duration = self.duration.magnitude
+
         temperature_ramp = ureg.Quantity(
             ((final_temperature - initial_temperature) / duration),
             'K/s',
@@ -581,10 +586,14 @@ class RTPStepOverview(ArchiveSection):
 
     def calc_partial_pressure(self):
         step_ar_flow = (
-            self.step_ar_flow.magnitude if self.step_ar_flow is not None else 0
+            self.step_ar_flow.magnitude
+            if self.step_ar_flow is not None
+            else 0
         )
         step_n2_flow = (
-            self.step_n2_flow.magnitude if self.step_n2_flow is not None else 0
+            self.step_n2_flow.magnitude
+            if self.step_n2_flow is not None
+            else 0
         )
         step_h2s_in_ar_flow = (
             self.step_h2s_in_ar_flow.magnitude
@@ -603,19 +612,26 @@ class RTPStepOverview(ArchiveSection):
         total_pressure = self.pressure.magnitude
 
         step_h2s_partial_pressure = ureg.Quantity(
-            step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S'] / total_flow * total_pressure,
+            step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S']
+            / total_flow
+            * total_pressure,
             'Pa',
         )
         self.step_h2s_partial_pressure = step_h2s_partial_pressure.to('mtorr').magnitude
 
         step_ph3_partial_pressure = ureg.Quantity(
-            step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3'] / total_flow * total_pressure,
+            step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3']
+            / total_flow
+            * total_pressure,
             'Pa',
         )
         self.step_ph3_partial_pressure = step_ph3_partial_pressure.to('mtorr').magnitude
 
         step_n2_partial_pressure = ureg.Quantity(
-            step_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure, 'Pa'
+            step_n2_flow * RTP_GAS_FRACTION['N2']
+            / total_flow
+            * total_pressure,
+            'Pa'
         )
         self.step_n2_partial_pressure = step_n2_partial_pressure.to('mtorr').magnitude
 
@@ -700,7 +716,7 @@ class DTURTPSteps(CVDStep, ArchiveSection):
         super().normalize(archive, logger)
         # Clear existing sources
         self.sources = []
-        # Get used_gases from parent DtuRTP
+        # Get used_gases from DtuRTP main class
         parent = getattr(self, 'm_parent', None)
         if parent is not None and hasattr(parent, 'used_gases'):
             for gas in parent.used_gases:
@@ -871,7 +887,6 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         rtp_materialspace = self.overview.material_space
         for rtp_sample in self.input_samples:
             origin = rtp_sample.input_combi_lib
-
             rtp_elements = set(rtp_materialspace.split('-'))
             origin_elements = set(e.element for e in origin.elemental_composition)
             if rtp_elements == origin_elements:
@@ -885,7 +900,6 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     type(origin.elemental_composition[0])(element=e)
                     for e in merged_elements
                 ]
-
             if rtp_sample.name is not None:
                 # Create a new ThinFilm layer for this sample
                 layer = ThinFilm(
@@ -895,7 +909,6 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 layer_ref = create_archive(
                     layer, archive, f'{layer.lab_id}.archive.json'
                 )
-
                 library = DTUCombinatorialLibrary(
                     name=f'{rtp_name} {rtp_sample.name}',
                     datetime=rtp_datetime,
@@ -905,7 +918,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     layers=[
                         ThinFilmReference(
                             name='Main Layer',
-                            reference=layer_ref,
+                            reference=layer_ref.m_proxy_value,
                             lab_id=layer.lab_id,
                         )
                     ],
@@ -913,8 +926,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     substrate=origin.substrate,
                     process_parameter_overview=origin.process_parameter_overview,
                 )
-
-        library_ref = create_archive(library, archive, f'{library.lab_id}.archive.json')
+        file_name = f'{library.lab_id}.archive.json'
+        library_ref = create_archive(library, archive, file_name)
         samples.append(
             CompositeSystemReference(
                 name=f'Sample {library.name}',
@@ -1021,6 +1034,14 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             # Get geometry from input_combi_lib if available
             geometry = getattr(input_sample.input_combi_lib, 'geometry', None)
             rel_pos = getattr(input_sample, 'relative_position', None)
+            x = getattr(input_sample, 'position_x', None)
+            y = getattr(input_sample, 'position_y', None)
+            # Warning: Check missing relative position/xposition/yposition
+            if rel_pos is None and x is None and y is None:
+                warnings.warn(
+                f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}' has no relative position, x, or y set. It will be placed at the center by default.",
+                UserWarning
+            )
             if geometry is not None:
                 width = getattr(geometry, 'width', 10)
                 height = getattr(geometry, 'length', 10)
@@ -1030,7 +1051,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 if hasattr(height, 'magnitude'):
                     height = height.to('mm').magnitude
             else:
-                # If geometry is missing but relative_position is set, use custom shapes
+            # If geometry is missing but relative_position is set, use custom shapes
                 square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
                 rectangle_horizontal = {'ha', 'hb', 'hc', 'hd'}
                 rectangle_vertical = {'va', 'vb', 'vc', 'vd'}
@@ -1042,8 +1063,6 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     width, height = 9.5, 40
                 else:
                     width, height = 10, 10  # fallback if nothing is set
-            x = getattr(input_sample, 'position_x', 0)
-            y = getattr(input_sample, 'position_y', 0)
             # Default to center if not set
             if x is None or y is None:
                 x, y = 0, 0
