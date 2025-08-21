@@ -1,7 +1,7 @@
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
-import warnings
 import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
@@ -30,7 +30,7 @@ from nomad_measurements.utils import create_archive
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
     DTUCombinatorialLibrary,
-    DtuLibraryReference
+    DtuLibraryReference,
 )
 
 if TYPE_CHECKING:
@@ -945,7 +945,6 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         shape=['*'],
         description='Temperature points for the temperature profile plot.',
     )
-
     def plot_temperature_profile(self) -> None:
         fig = go.Figure()
         fig.add_trace(
@@ -986,7 +985,64 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 figure=plot_json,
             )
         )
-
+    # Helper function to plot a sample on the susceptor. It is called in the next.
+    def plot_sample_on_susceptor(self, fig, input_sample):
+        geometry = getattr(input_sample.input_combi_lib, 'geometry', None)
+        rel_pos = getattr(input_sample, 'relative_position', None)
+        x = getattr(input_sample, 'position_x', None)
+        y = getattr(input_sample, 'position_y', None)
+        if rel_pos is None and x is None and y is None:
+            warnings.warn(
+                f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}'"
+                " has no relative position, x, or y set."
+                " It will be placed at the center by default.",
+                UserWarning
+            )
+        if geometry is not None:
+            width = getattr(geometry, 'width', 10)
+            height = getattr(geometry, 'length', 10)
+            if hasattr(width, 'magnitude'):
+                width = width.to('mm').magnitude
+            if hasattr(height, 'magnitude'):
+                height = height.to('mm').magnitude
+        else:
+            square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
+            rectangle_horizontal = {'ha', 'hb', 'hc', 'hd'}
+            rectangle_vertical = {'va', 'vb', 'vc', 'vd'}
+            if rel_pos in square_positions:
+                width, height = 20, 20
+            elif rel_pos in rectangle_horizontal:
+                width, height = 40, 9.5
+            elif rel_pos in rectangle_vertical:
+                width, height = 9.5, 40
+            else:
+                width, height = 10, 10
+        if x is None or y is None:
+            x = 0
+            y = 0
+        if hasattr(x, 'magnitude'):
+               x = x.to('mm').magnitude
+        if hasattr(y, 'magnitude'):
+            y = y.to('mm').magnitude
+        half_w, half_h = width / 2, height / 2
+        fig.add_shape(
+            type='rect',
+            x0=x - half_w,
+            y0=y - half_h,
+            x1=x + half_w,
+            y1=y + half_h,
+            line=dict(color='blue', width=2),
+            fillcolor='rgba(100,100,255,0.3)',
+        )
+        label = rel_pos if rel_pos else input_sample.name
+        fig.add_annotation(
+            x=x,
+            y=y,
+            text=label,
+            showarrow=False,
+            font=dict(color='black', size=12),
+            bgcolor='white',
+        )
     # Set up the sample-on-susceptor graphical visualization
     def plot_susceptor(self) -> None:
         fig = go.Figure()
@@ -1025,67 +1081,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             xanchor='center',
             yanchor='top',
         )
-        # Loop through input_samples (subclass) and plot them
+        # Loop through input_samples and plot them, using the helper function.
         for input_sample in getattr(self, 'input_samples', []):
-            # Get geometry from input_combi_lib if available
-            geometry = getattr(input_sample.input_combi_lib, 'geometry', None)
-            rel_pos = getattr(input_sample, 'relative_position', None)
-            x = getattr(input_sample, 'position_x', None)
-            y = getattr(input_sample, 'position_y', None)
-            # Warning: Check missing relative position/xposition/yposition
-            if rel_pos is None and x is None and y is None:
-                warnings.warn(
-                f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}' has no relative position, x, or y set. It will be placed at the center by default.",
-                UserWarning
-            )
-            if geometry is not None:
-                width = getattr(geometry, 'width', 10)
-                height = getattr(geometry, 'length', 10)
-                # Convert to mm if units are present
-                if hasattr(width, 'magnitude'):
-                    width = width.to('mm').magnitude
-                if hasattr(height, 'magnitude'):
-                    height = height.to('mm').magnitude
-            else:
-            # If geometry is missing but relative_position is set, use custom shapes
-                square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
-                rectangle_horizontal = {'ha', 'hb', 'hc', 'hd'}
-                rectangle_vertical = {'va', 'vb', 'vc', 'vd'}
-                if rel_pos in square_positions:
-                    width, height = 20, 20
-                elif rel_pos in rectangle_horizontal:
-                    width, height = 40, 9.5
-                elif rel_pos in rectangle_vertical:
-                    width, height = 9.5, 40
-                else:
-                    width, height = 10, 10  # fallback if nothing is set
-            # Default to center if not set
-            if x is None or y is None:
-                x, y = 0, 0
-            if hasattr(x, 'magnitude'):
-                x = x.to('mm').magnitude
-            if hasattr(y, 'magnitude'):
-                y = y.to('mm').magnitude
-            # Draw rectangle for the input samples
-            half_w, half_h = width / 2, height / 2
-            fig.add_shape(
-                type='rect',
-                x0=x - half_w,
-                y0=y - half_h,
-                x1=x + half_w,
-                y1=y + half_h,
-                line=dict(color='blue', width=2),
-                fillcolor='rgba(100,100,255,0.3)',
-            )
-            # Add label to the input samples
-            fig.add_annotation(
-                x=x,
-                y=y,
-                text=input_sample.name,
-                showarrow=False,
-                font=dict(color='black', size=12),
-                bgcolor='white',
-            )
+            self.plot_sample_on_susceptor(fig, input_sample)
         fig.update_layout(
             title='Samples on Susceptor',
             xaxis=dict(
