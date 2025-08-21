@@ -30,6 +30,7 @@ from nomad_measurements.utils import create_archive
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
     DTUCombinatorialLibrary,
+    DtuLibraryReference
 )
 
 if TYPE_CHECKING:
@@ -918,13 +919,18 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     layers=[
                         ThinFilmReference(
                             name='Main Layer',
-                            reference=layer_ref.m_proxy_value,
+                            reference=layer_ref,
                             lab_id=layer.lab_id,
                         )
                     ],
                     geometry=origin.geometry,
                     substrate=origin.substrate,
                     process_parameter_overview=origin.process_parameter_overview,
+                    parent_library = DtuLibraryReference(
+                        reference=origin.m_proxy_value,
+                        name=origin.name,
+                        lab_id=origin.lab_id,
+                    )
                 )
         file_name = f'{library.lab_id}.archive.json'
         library_ref = create_archive(library, archive, file_name)
