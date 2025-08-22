@@ -569,9 +569,9 @@ class RTPStepOverview(ArchiveSection):
             or self.duration is None
         ):
             warnings.warn(
-                "Cannot calculate temperature ramp: initial_temperature," \
-                " final_temperature, or duration is missing.",
-                UserWarning
+                'Cannot calculate temperature ramp: initial_temperature,'
+                ' final_temperature, or duration is missing.',
+                UserWarning,
             )
             return
 
@@ -587,14 +587,10 @@ class RTPStepOverview(ArchiveSection):
 
     def calc_partial_pressure(self):
         step_ar_flow = (
-            self.step_ar_flow.magnitude
-            if self.step_ar_flow is not None
-            else 0
+            self.step_ar_flow.magnitude if self.step_ar_flow is not None else 0
         )
         step_n2_flow = (
-            self.step_n2_flow.magnitude
-            if self.step_n2_flow is not None
-            else 0
+            self.step_n2_flow.magnitude if self.step_n2_flow is not None else 0
         )
         step_h2s_in_ar_flow = (
             self.step_h2s_in_ar_flow.magnitude
@@ -613,26 +609,19 @@ class RTPStepOverview(ArchiveSection):
         total_pressure = self.pressure.magnitude
 
         step_h2s_partial_pressure = ureg.Quantity(
-            step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S']
-            / total_flow
-            * total_pressure,
+            step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S'] / total_flow * total_pressure,
             'Pa',
         )
         self.step_h2s_partial_pressure = step_h2s_partial_pressure.to('mtorr').magnitude
 
         step_ph3_partial_pressure = ureg.Quantity(
-            step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3']
-            / total_flow
-            * total_pressure,
+            step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3'] / total_flow * total_pressure,
             'Pa',
         )
         self.step_ph3_partial_pressure = step_ph3_partial_pressure.to('mtorr').magnitude
 
         step_n2_partial_pressure = ureg.Quantity(
-            step_n2_flow * RTP_GAS_FRACTION['N2']
-            / total_flow
-            * total_pressure,
-            'Pa'
+            step_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure, 'Pa'
         )
         self.step_n2_partial_pressure = step_n2_partial_pressure.to('mtorr').magnitude
 
@@ -744,7 +733,6 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         categories=[DTUNanolabCategory],
         label='RTP',
         links=['http://purl.obolibrary.org/obo/CHMO_0001328'],
-        links=['http://purl.obolibrary.org/obo/CHMO_0001328'],
     )
     lab_id = Quantity(
         type=str,
@@ -761,15 +749,6 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             component=ELNComponentEnum.StringEditQuantity,
         ),
     )
-    log_file_eklipse = Quantity(
-        type=str,
-        shape=['*'],
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.FileEditQuantity, label='Gases log file'
-        ),
-        description='Cell to upload the gases log file from the RTP process.',
-    )
-    log_file_T2BDiagnostics = Quantity(
     log_file_eklipse = Quantity(
         type=str,
         a_eln=ELNAnnotation(
@@ -910,6 +889,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 layer_ref = create_archive(
                     layer, archive, f'{layer.lab_id}.archive.json'
                 )
+                # Create new library
                 library = DTUCombinatorialLibrary(
                     name=f'{rtp_name} {rtp_sample.name}',
                     datetime=rtp_datetime,
@@ -926,11 +906,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     geometry=origin.geometry,
                     substrate=origin.substrate,
                     process_parameter_overview=origin.process_parameter_overview,
-                    parent_library = DtuLibraryReference(
+                    parent_library=DtuLibraryReference(
                         reference=origin.m_proxy_value,
                         name=origin.name,
                         lab_id=origin.lab_id,
-                    )
+                    ),
                 )
         file_name = f'{library.lab_id}.archive.json'
         library_ref = create_archive(library, archive, file_name)
@@ -955,6 +935,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         shape=['*'],
         description='Temperature points for the temperature profile plot.',
     )
+
     def plot_temperature_profile(self) -> None:
         fig = go.Figure()
         fig.add_trace(
@@ -995,6 +976,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 figure=plot_json,
             )
         )
+
     # Helper function to plot a sample on the susceptor. It is called in the next.
     def plot_sample_on_susceptor(self, fig, input_sample):
         geometry = getattr(input_sample.input_combi_lib, 'geometry', None)
@@ -1004,9 +986,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         if rel_pos is None and x is None and y is None:
             warnings.warn(
                 f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}'"
-                " has no relative position, x, or y set."
-                " It will be placed at the center by default.",
-                UserWarning
+                ' has no relative position, x, or y set.'
+                ' It will be placed at the center by default.',
+                UserWarning,
             )
         if geometry is not None:
             width = getattr(geometry, 'width', 10)
@@ -1031,7 +1013,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             x = 0
             y = 0
         if hasattr(x, 'magnitude'):
-               x = x.to('mm').magnitude
+            x = x.to('mm').magnitude
         if hasattr(y, 'magnitude'):
             y = y.to('mm').magnitude
         half_w, half_h = width / 2, height / 2
@@ -1053,6 +1035,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             font=dict(color='black', size=12),
             bgcolor='white',
         )
+
     # Set up the sample-on-susceptor graphical visualization
     def plot_susceptor(self) -> None:
         fig = go.Figure()
