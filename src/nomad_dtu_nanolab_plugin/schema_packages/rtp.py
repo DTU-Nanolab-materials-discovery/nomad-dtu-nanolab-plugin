@@ -1001,23 +1001,23 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
         if geometry is not None:
             width = getattr(geometry, 'width', 10)
-            height = getattr(geometry, 'length', 10)
+            length = getattr(geometry, 'length', 10)
             if hasattr(width, 'magnitude'):
                 width = width.to('mm').magnitude
-            if hasattr(height, 'magnitude'):
-                height = height.to('mm').magnitude
+            if hasattr(length, 'magnitude'):
+                length = length.to('mm').magnitude
         else:
             square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
             rectangle_horizontal = {'ha', 'hb', 'hc', 'hd'}
             rectangle_vertical = {'va', 'vb', 'vc', 'vd'}
             if rel_pos in square_positions:
-                width, height = 20, 20
+                width, length = 20, 20
             elif rel_pos in rectangle_horizontal:
-                width, height = 40, 9.5
+                width, length = 40, 9.5
             elif rel_pos in rectangle_vertical:
-                width, height = 9.5, 40
+                width, length = 9.5, 40
             else:
-                width, height = 10, 10
+                width, length = 10, 10
         if x is None or y is None:
             x = 0
             y = 0
@@ -1025,13 +1025,13 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             x = x.to('mm').magnitude
         if hasattr(y, 'magnitude'):
             y = y.to('mm').magnitude
-        half_w, half_h = width / 2, height / 2
+        half_w, half_l = width / 2, length / 2
         fig.add_shape(
             type='rect',
             x0=x - half_w,
-            y0=y - half_h,
+            y0=y - half_l,
             x1=x + half_w,
-            y1=y + half_h,
+            y1=y + half_l,
             line=dict(color='blue', width=2),
             fillcolor='rgba(100,100,255,0.3)',
         )
