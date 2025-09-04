@@ -1123,7 +1123,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             finally:
                 self.fetch_library_size = False
 
-
         # Check the pattern input and create the new pieces according to selection
         if self.generate_pattern:
             self.generate_pattern = False

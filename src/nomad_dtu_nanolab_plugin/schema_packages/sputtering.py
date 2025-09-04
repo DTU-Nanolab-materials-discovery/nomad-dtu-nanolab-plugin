@@ -2752,16 +2752,19 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             #     )
         if configuration.overwrite_libraries:
             time.sleep(5)  # to ensure that layers are processed before samples
-        self.samples = [CompositeSystemReference(
-            name=f'Sample {sample_id}',
-            reference=create_archive(
-                library,
-                archive,
-                f'{library.lab_id}.archive.json',
-                overwrite=configuration.overwrite_libraries,
-            ),
-            lab_id=library.lab_id,
-        ) for library in libraries]
+        self.samples = [
+            CompositeSystemReference(
+                name=f'Sample {sample_id}',
+                reference=create_archive(
+                    library,
+                    archive,
+                    f'{library.lab_id}.archive.json',
+                    overwrite=configuration.overwrite_libraries,
+                ),
+                lab_id=library.lab_id,
+            )
+            for library in libraries
+        ]
 
     def add_target_to_workflow(self, archive: 'EntryArchive') -> None:
         """
