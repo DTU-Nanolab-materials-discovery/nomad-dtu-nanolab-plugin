@@ -2750,8 +2750,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             #         reference=library_ref,
             #         lab_id=library.lab_id,
             #     )
-        
-        time.sleep(5)  # to ensure that layers are processed before samples
+        if configuration.overwrite_libraries:
+            time.sleep(5)  # to ensure that layers are processed before samples
         self.samples = [CompositeSystemReference(
             name=f'Sample {sample_id}',
             reference=create_archive(
