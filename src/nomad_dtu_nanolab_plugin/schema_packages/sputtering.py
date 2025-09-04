@@ -17,6 +17,7 @@
 #
 
 import json
+import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Self
 
@@ -2675,7 +2676,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         return gas_flow
 
     def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        samples = []
+        libraries = []
         substrate_mounting: DtuSubstrateMounting
         for idx, substrate_mounting in enumerate(self.substrates):
             if substrate_mounting.substrate is None:
@@ -2732,19 +2733,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
             # TODO add more process parameters
 
-            library_ref = create_archive(
-                library,
-                archive,
-                f'{library.lab_id}.archive.json',
-                overwrite=configuration.overwrite_libraries,
-            )
-            samples.append(
-                CompositeSystemReference(
-                    name=f'Sample {sample_id}',
-                    reference=library_ref,
-                    lab_id=library.lab_id,
-                )
-            )
+            libraries.append(library)
             # step: DTUSteps
             # for step in self.steps:
             #     if not step.creates_new_thin_film:
@@ -2761,8 +2750,21 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             #         reference=library_ref,
             #         lab_id=library.lab_id,
             #     )
-
-        self.samples = samples
+        if configuration.overwrite_libraries:
+            time.sleep(5)  # to ensure that layers are processed before samples
+        self.samples = [
+            CompositeSystemReference(
+                name=f'Sample {sample_id}',
+                reference=create_archive(
+                    library,
+                    archive,
+                    f'{library.lab_id}.archive.json',
+                    overwrite=configuration.overwrite_libraries,
+                ),
+                lab_id=library.lab_id,
+            )
+            for library in libraries
+        ]
 
     def add_target_to_workflow(self, archive: 'EntryArchive') -> None:
         """

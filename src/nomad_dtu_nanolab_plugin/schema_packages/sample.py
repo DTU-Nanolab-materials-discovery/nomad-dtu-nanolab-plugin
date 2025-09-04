@@ -690,7 +690,9 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         """
         Recognizes the pattern of the library and creates the new pieces accordingly.
         """
-        height = self.combinatorial_library.geometry.height
+        height = None
+        if self.combinatorial_library.geometry:
+            height = self.combinatorial_library.geometry.height
         start_x = (self.library_x_length / 2) * (-1)
         start_y = self.library_y_length / 2
 
@@ -715,9 +717,10 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                         length=size,
                         width=size,
                         height=height,
-                        volume=size * size * height,
                         surface_area=(size * size),
                     )
+                    if height is not None:
+                        piece.geometry.volume = size * size * height
 
                     self.new_pieces.append(piece)
         elif self.pattern == 'horizontal stripes':
@@ -741,9 +744,10 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     length=size,
                     width=self.library_x_length,
                     height=height,
-                    volume=self.library_x_length * size * height,
                     surface_area=(self.library_x_length * size),
                 )
+                if height is not None:
+                    piece.geometry.volume = self.library_x_length * size * height
 
                 self.new_pieces.append(piece)
         elif self.pattern == 'vertical stripes':
@@ -767,9 +771,10 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                     length=self.library_y_length,
                     width=size,
                     height=height,
-                    volume=size * self.library_y_length * height,
                     surface_area=(size * self.library_y_length),
                 )
+                if height is not None:
+                    piece.geometry.volume = size * self.library_y_length * height
 
                 self.new_pieces.append(piece)
         elif self.pattern == 'custom':
@@ -1113,8 +1118,10 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             self.location = 'DTU Nanolab'
 
         if self.fetch_library_size and self.combinatorial_library is not None:
-            self.fetch_library_size = False
-            self.fill_library_size(logger)
+            try:
+                self.fill_library_size(logger)
+            finally:
+                self.fetch_library_size = False
 
         # Check the pattern input and create the new pieces according to selection
         if self.generate_pattern:
