@@ -378,9 +378,7 @@ class RTPOverview(ArchiveSection):
         ).magnitude
 
         annealing_n2_partial_pressure = ureg.Quantity(
-            annealing_n2_flow * RTP_GAS_FRACTION['N2']
-            / total_flow
-            * total_pressure,
+            annealing_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure,
             'Pa',
         )
         self.annealing_n2_partial_pressure = annealing_n2_partial_pressure.to(
@@ -419,9 +417,7 @@ class RTPOverview(ArchiveSection):
             self.annealing_h2s_in_ar_flow,
         ]
         if any(
-            flow is not None
-            and getattr(flow, 'magnitude', flow) != 0
-            for flow in flows
+            flow is not None and getattr(flow, 'magnitude', flow) != 0 for flow in flows
         ):
             self.calc_partial_pressure()
 
@@ -613,25 +609,19 @@ class RTPStepOverview(ArchiveSection):
         total_pressure = self.pressure.magnitude
 
         step_h2s_partial_pressure = ureg.Quantity(
-            step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S']
-            / total_flow
-            * total_pressure,
+            step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S'] / total_flow * total_pressure,
             'Pa',
         )
         self.step_h2s_partial_pressure = step_h2s_partial_pressure.to('mtorr').magnitude
 
         step_ph3_partial_pressure = ureg.Quantity(
-            step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3']
-            / total_flow
-            * total_pressure,
+            step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3'] / total_flow * total_pressure,
             'Pa',
         )
         self.step_ph3_partial_pressure = step_ph3_partial_pressure.to('mtorr').magnitude
 
         step_n2_partial_pressure = ureg.Quantity(
-            step_n2_flow * RTP_GAS_FRACTION['N2']
-            / total_flow
-            * total_pressure,
+            step_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure,
             'Pa',
         )
         self.step_n2_partial_pressure = step_n2_partial_pressure.to('mtorr').magnitude
@@ -946,6 +936,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         shape=['*'],
         description='Temperature points for the temperature profile plot.',
     )
+
     def plot_temperature_profile(self) -> None:
         fig = go.Figure()
         fig.add_trace(
@@ -986,6 +977,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 figure=plot_json,
             )
         )
+
     # Helper function to plot a sample on the susceptor. It is called in the next.
     def plot_sample_on_susceptor(self, fig, input_sample):
         geometry = getattr(input_sample.input_combi_lib, 'geometry', None)
@@ -1044,6 +1036,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             font=dict(color='black', size=12),
             bgcolor='white',
         )
+
     # Set up the sample-on-susceptor graphical visualization
     def plot_susceptor(self) -> None:
         fig = go.Figure()
