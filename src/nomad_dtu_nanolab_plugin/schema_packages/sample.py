@@ -167,7 +167,6 @@ class AbsorptionCoefficient(SampleProperty):
     )
 
 
-
 class Thickness(SampleProperty):
     value = Quantity(
         type=np.float64,
@@ -306,9 +305,9 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
         a_eln=ELNAnnotation(
             properties=SectionProperties(
                 visible=Filter(exclude=['elemental_composition', 'components']),
-                editable=Filter(include=[])
+                editable=Filter(include=[]),
             ),
-        )
+        ),
     )
     band_gap = SubSection(section_def=BandGap)
     absorption_coefficient = SubSection(section_def=AbsorptionCoefficient)
@@ -331,10 +330,11 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
             composition = self.surface_composition.m_to_dict()
 
         self.elemental_composition = [
-            ElementalComposition(element=e, atomic_fraction=v) 
-            for e,v in composition.items() if v
+            ElementalComposition(element=e, atomic_fraction=v)
+            for e, v in composition.items()
+            if v
         ]
-        
+
         super().normalize(archive, logger)
 
 

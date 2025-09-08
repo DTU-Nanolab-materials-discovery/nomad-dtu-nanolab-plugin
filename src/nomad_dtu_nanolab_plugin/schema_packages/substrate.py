@@ -149,12 +149,12 @@ class DTUSubstrateBatch(Collection, Schema):
     )
     diameter = Quantity(
         type=np.float64,
-        default=0.1524, #6 inch
+        default=0.1524,  # 6 inch
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'inch'},
         unit='m',
         description=(
             'Only used if the shape is circular. The diameter of the substrate.'
-        )
+        ),
     )
     length = Quantity(
         type=np.float64,
@@ -163,7 +163,7 @@ class DTUSubstrateBatch(Collection, Schema):
         unit='m',
         description=(
             'Only used if the shape is rectangular. The length of the substrate.'
-        )
+        ),
     )
     width = Quantity(
         type=np.float64,
@@ -172,7 +172,7 @@ class DTUSubstrateBatch(Collection, Schema):
         unit='m',
         description=(
             'Only used if the shape is rectangular. The width of the substrate.'
-        )
+        ),
     )
     thickness = Quantity(
         type=np.float64,
@@ -243,7 +243,7 @@ class DTUSubstrateBatch(Collection, Schema):
             geometry.width = self.width
         elif self.shape == 'Circular':
             geometry = Cylinder()
-            geometry.radius = self.diameter/2
+            geometry.radius = self.diameter / 2
         else:
             raise ValueError(f'Unknown shape: {self.shape}')
 
