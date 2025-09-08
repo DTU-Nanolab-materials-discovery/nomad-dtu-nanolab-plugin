@@ -1,0 +1,73 @@
+data:
+  m_def: nomad_material_processing.general.RectangleCuboid
+  height : 1
+  width: 40
+  lenght: 20
+  m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTP
+  lab_id: "user_001_RTP"
+  location: "DTU; IDOL Lab"
+  used_gases:
+    - "PH3"
+    - "H2S"
+  base_pressure: 11
+  base_pressure_ballast: 80
+  rate_of_rise: 20
+  chiller_flow: 11.2
+
+  input_samples:
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPInputSampleMounting
+      relative_position: "bl"
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPInputSampleMounting
+      relative_position: "br"
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPInputSampleMounting
+      relative_position: "fl"
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTPInputSampleMounting
+      relative_position: "fr"
+  overview:
+    m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPOverview
+    material_space: "Sn-P-S"
+    annealing_pressure: 66661.184211
+    annealing_time: 300
+    annealing_temperature: 300
+    annealing_ar_flow: 0
+    annealing_n2_flow: 0
+    annealing_ph3_in_ar_flow: 132
+    annealing_h2s_in_ar_flow: 44
+    total_heating_time: 180
+    total_cooling_time: 180
+    end_of_process_temperature: 50
+
+  steps:
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DTURTPSteps
+      step_overview:
+        m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPStepOverview
+        duration: 180
+        pressure: 66661.184211
+        step_ar_flow: 0
+        step_n2_flow: 0
+        step_ph3_in_ar_flow: 132
+        step_h2s_in_ar_flow: 44
+        initial_temperature: 297.15
+        final_temperature: 572.15
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DTURTPSteps
+      step_overview:
+        m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPStepOverview
+        duration: 300
+        pressure: 66661.184211
+        step_ar_flow: 0
+        step_n2_flow: 0
+        step_ph3_in_ar_flow: 132
+        step_h2s_in_ar_flow: 44
+        initial_temperature: 572.15
+        final_temperature: 572.15
+    - m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DTURTPSteps
+      step_overview:
+        m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.RTPStepOverview
+        duration: 180
+        pressure: 66661.184211
+        step_ar_flow: 0
+        step_n2_flow: 0
+        step_ph3_in_ar_flow: 132
+        step_h2s_in_ar_flow: 44
+        initial_temperature: 572.15
+        final_temperature: 297.15
