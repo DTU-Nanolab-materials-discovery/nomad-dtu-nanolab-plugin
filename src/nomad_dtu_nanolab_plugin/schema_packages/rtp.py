@@ -896,7 +896,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     lab_id=f'{rtp_name} {rtp_sample.name}-Layer'.replace(' ', '_'),
                 )
                 layer_ref = create_archive(
-                    layer, archive, f'{layer.lab_id}.archive.json'
+                    layer,
+                    archive,
+                    f'{layer.lab_id}.archive.json',
+                    overwrite=configuration.overwrite_layers,
                 )
                 # Create new library
                 library = DTUCombinatorialLibrary(
@@ -923,18 +926,17 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 )
                 samples.append(library)
                 file_name = f'{library.lab_id}.archive.json'
-                library_ref = create_archive(
-                    library,
-                    archive,
-                    file_name,
-                    overwrite=configuration.overwrite_libraries,
-                )
         if configuration.overwrite_libraries:
             time.sleep(5)  # to ensure that layers are processed before samples
         self.samples = [
             CompositeSystemReference(
                 name=f'Sample {library.name}',
-                reference=library_ref,
+                reference=create_archive(
+                    library,
+                    archive,
+                    file_name,
+                    overwrite=configuration.overwrite_libraries,
+                ),
                 lab_id=library.lab_id,
             )
             for library in samples
