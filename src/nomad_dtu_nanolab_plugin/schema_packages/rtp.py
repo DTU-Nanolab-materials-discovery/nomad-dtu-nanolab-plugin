@@ -2,6 +2,7 @@ import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
+import time
 import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
@@ -36,7 +37,13 @@ from nomad_dtu_nanolab_plugin.schema_packages.sample import (
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
+    from nomad_dtu_nanolab_plugin.schema_packages import RTPEntryPoint
 
+from nomad.config import config
+
+configuration: 'RTPEntryPoint' = config.get_plugin_entry_point(
+    'nomad_dtu_nanolab_plugin.schema_packages:rtp'
+)
 
 m_package = Package(name='DTU RTP schema')
 
@@ -809,7 +816,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     base_pressure = Quantity(
         type=np.float64,
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.FileEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             label='Base Pressure without ballast',
             defaultDisplayUnit='mtorr',
         ),
@@ -819,7 +826,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     base_pressure_ballast = Quantity(
         type=np.float64,
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.FileEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             label='Base Pressure with ballast',
             defaultDisplayUnit='mtorr',
         ),
@@ -913,16 +920,24 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                         lab_id=origin.lab_id,
                     ),
                 )
-        file_name = f'{library.lab_id}.archive.json'
-        library_ref = create_archive(library, archive, file_name)
-        samples.append(
+                samples.append(library)
+                file_name = f'{library.lab_id}.archive.json'
+                library_ref = create_archive(
+                    library,
+                    archive,
+                    file_name,
+                    overwrite=configuration.overwrite_libraries,
+                )
+        if configuration.overwrite_libraries:
+            time.sleep(5)  # to ensure that layers are processed before samples
+        self.samples = [
             CompositeSystemReference(
                 name=f'Sample {library.name}',
                 reference=library_ref,
                 lab_id=library.lab_id,
             )
-        )
-        self.samples = samples
+            for library in samples
+        ]
 
     ############################## PLOTS #################################
     # Set up temperature profile plot
