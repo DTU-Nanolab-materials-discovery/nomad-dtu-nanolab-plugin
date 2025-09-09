@@ -46,6 +46,7 @@ class RTPEntryPoint(SchemaPackageEntryPoint):
         False,
         description='Whether to overwrite existing layers with the same name.',
     )
+
     def load(self):
         from nomad_dtu_nanolab_plugin.schema_packages.rtp import m_package
 

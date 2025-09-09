@@ -1,8 +1,8 @@
+import time
 import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
-import time
 import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
@@ -37,6 +37,7 @@ from nomad_dtu_nanolab_plugin.schema_packages.sample import (
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
+
     from nomad_dtu_nanolab_plugin.schema_packages import RTPEntryPoint
 
 from nomad.config import config
