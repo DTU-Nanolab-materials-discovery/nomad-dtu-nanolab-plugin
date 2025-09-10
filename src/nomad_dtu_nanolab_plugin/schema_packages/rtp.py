@@ -123,8 +123,8 @@ class DtuRTPInputSampleMounting(ArchiveSection):
     rotation = Quantity(
         type=np.float64,
         description="""
-            The rotation of the input sample on the susceptor, relative to
-            the width (x-axis) and height (y-axis) of the susceptor.
+            The angle between the initial position in the "mother" sample
+            and the position on the susceptor.
         """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
@@ -143,32 +143,30 @@ class DtuRTPInputSampleMounting(ArchiveSection):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        if self.position_x is None or self.position_y is None or self.rotation is None:
+        if self.position_x is None or self.position_y is None:
             positions = {
-                'bl': (-0.0125, 0.0125, 0),
-                'br': (0.0125, 0.0125, 0),
-                'fl': (-0.0125, -0.0125, 0),
-                'fr': (0.0125, -0.0125, 0),
+                'bl': (-0.0125, 0.0125),
+                'br': (0.0125, 0.0125),
+                'fl': (-0.0125, -0.0125),
+                'fr': (0.0125, -0.0125),
                 'm': (0, 0, 0),
-                'ha': (0, 0.015, 0),
-                'hb': (0, 0.005, 0),
-                'hc': (0, -0.005, 0),
-                'hd': (0, -0.015, 0),
-                'va': (-0.015, 0, 90),
-                'vb': (-0.005, 0, 90),
-                'vc': (0.005, 0, 90),
-                'vd': (0.015, 0, 90),
+                'ha': (0, 0.015),
+                'hb': (0, 0.005),
+                'hc': (0, -0.005),
+                'hd': (0, -0.015),
+                'va': (-0.015, 0),
+                'vb': (-0.005, 0),
+                'vc': (0.005, 0),
+                'vd': (0.015, 0),
             }
             if self.relative_position in positions:
-                self.position_x, self.position_y, self.rotation = positions[
-                    self.relative_position
-                ]
+                self.position_x, self.position_y = positions[self.relative_position]
         if self.relative_position is not None:
             self.name = self.relative_position
         elif self.position_x is not None and self.position_y is not None:
             self.name = (
-                f'x{self.position_x.to("mm").magnitude:.1f}'
-                f'y{self.position_y.to("mm").magnitude:.1f}'
+                f'x{self.position_x.to("cm").magnitude:.1f}'
+                f'y{self.position_y.to("cm").magnitude:.1f}'
             ).replace('.', 'p')
 
 
@@ -480,7 +478,7 @@ class RTPStepOverview(ArchiveSection):
         type=np.float64,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='cm^#/minute',
+            defaultDisplayUnit='cm^3/minute',
             label='PH3 in Ar Flow',
         ),
         unit='m**3/s',
@@ -941,6 +939,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
             for library in samples
         ]
+        if not samples:
+            warnings.warn(
+                'No RTP sample libraries were created. '
+                'Check that input_samples have valid input_combi_lib and name.'
+            )
 
     ############################## PLOTS #################################
     # Set up temperature profile plot
@@ -1155,5 +1158,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         self.time = times
         self.temperature_profile = temps
         self.figures = []
+        if self.overview is not None:
+            self.add_libraries(archive, logger)
         self.plot_temperature_profile()
         self.plot_susceptor()
