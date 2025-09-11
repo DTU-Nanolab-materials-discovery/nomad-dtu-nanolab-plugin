@@ -947,25 +947,12 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
 
     ############################## PLOTS #################################
     # Set up temperature profile plot
-    time = Quantity(
-        type=np.float64,
-        shape=['*'],
-        description='Time points for the temperature profile plot.',
-        a_eln=None,
-    )
-    temperature_profile = Quantity(
-        type=np.float64,
-        shape=['*'],
-        description='Temperature points for the temperature profile plot.',
-        a_eln=None,
-    )
-
     def plot_temperature_profile(self) -> None:
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(
-                x=self.time,
-                y=self.temperature_profile,
+                x=self._time,
+                y=self._temperature_profile,
                 mode='lines+markers',
                 name='Temperature Profile',
             )
@@ -1079,7 +1066,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         )
         # Add 'chamber' label to the left side
         fig.add_annotation(
-            x=-half_susceptor - 7,  # 7 mm left of the susceptor edge
+            x=-half_susceptor - 2,  # 2 mm left of the susceptor edge
             y=0,
             text='RTP chamber',
             showarrow=False,
@@ -1160,8 +1147,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 current_time += step_overview.duration or 0
                 temps.append(step_overview.final_temperature.to('celsius').magnitude)
                 times.append(current_time)
-        self.time = times
-        self.temperature_profile = temps
+        self._time = times
+        self._temperature_profile = temps
         self.figures = []
         if self.overview is not None:
             self.add_libraries(archive, logger)
