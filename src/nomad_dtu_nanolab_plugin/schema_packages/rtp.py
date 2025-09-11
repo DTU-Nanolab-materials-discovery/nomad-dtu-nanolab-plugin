@@ -593,14 +593,10 @@ class RTPStepOverview(ArchiveSection):
 
     def calc_partial_pressure(self):
         step_ar_flow = (
-            self.step_ar_flow.magnitude
-            if self.step_ar_flow is not None
-            else 0
+            self.step_ar_flow.magnitude if self.step_ar_flow is not None else 0
         )
         step_n2_flow = (
-            self.step_n2_flow.magnitude
-            if self.step_n2_flow is not None
-            else 0
+            self.step_n2_flow.magnitude if self.step_n2_flow is not None else 0
         )
         step_h2s_in_ar_flow = (
             self.step_h2s_in_ar_flow.magnitude
