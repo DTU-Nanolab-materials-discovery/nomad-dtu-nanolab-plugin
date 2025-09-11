@@ -951,11 +951,13 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         type=np.float64,
         shape=['*'],
         description='Time points for the temperature profile plot.',
+        a_eln=ELNAnnotation(visible=False),
     )
     temperature_profile = Quantity(
         type=np.float64,
         shape=['*'],
         description='Temperature points for the temperature profile plot.',
+        a_eln=ELNAnnotation(visible=False),
     )
 
     def plot_temperature_profile(self) -> None:
@@ -1086,10 +1088,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             yanchor='middle',
             textangle=-90,  # Rotate text to be vertical
         )
-        # Add 'you' label to the bottom side
+        # Add 'user' label to the bottom side
         fig.add_annotation(
             x=0,
-            y=-half_susceptor - 7,  # 7 mm below the susceptor edge
+            y=-half_susceptor - 2,  # 2 mm below the susceptor edge
             text='User',
             showarrow=False,
             font=dict(color='black', size=16),
@@ -1137,6 +1139,14 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+        # Populate lab_id with the name given to the upload if not already set
+        if (
+            not self.lab_id
+            and hasattr(archive, 'metadata')
+            and hasattr(archive.metadata, 'entry_name')
+        ):
+            self.lab_id = archive.metadata.entry_name
+
         super().normalize(archive, logger)
         times, temps, current_time = [], [], 0
         step: DTURTPSteps
