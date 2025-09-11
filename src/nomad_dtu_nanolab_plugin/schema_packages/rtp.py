@@ -10,6 +10,8 @@ from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
     ELNAnnotation,
     ELNComponentEnum,
+    Filter,
+    SectionProperties,
 )
 from nomad.datamodel.metainfo.basesections import (
     CompositeSystemReference,
