@@ -369,7 +369,7 @@ class RTPOverview(ArchiveSection):
             'Pa',
         )
         self.annealing_h2s_partial_pressure = annealing_h2s_partial_pressure.to(
-            'mtorr'
+            'Pa'
         ).magnitude
 
         annealing_ph3_partial_pressure = ureg.Quantity(
@@ -380,7 +380,7 @@ class RTPOverview(ArchiveSection):
             'Pa',
         )
         self.annealing_ph3_partial_pressure = annealing_ph3_partial_pressure.to(
-            'mtorr'
+            'Pa'
         ).magnitude
 
         annealing_n2_partial_pressure = ureg.Quantity(
@@ -388,7 +388,7 @@ class RTPOverview(ArchiveSection):
             'Pa',
         )
         self.annealing_n2_partial_pressure = annealing_n2_partial_pressure.to(
-            'mtorr'
+            'Pa'
         ).magnitude
 
         annealing_ar_partial_pressure = ureg.Quantity(
@@ -402,7 +402,7 @@ class RTPOverview(ArchiveSection):
             'Pa',
         )
         self.annealing_ar_partial_pressure = annealing_ar_partial_pressure.to(
-            'mtorr'
+            'Pa'
         ).magnitude
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -589,14 +589,18 @@ class RTPStepOverview(ArchiveSection):
             ((final_temperature - initial_temperature) / duration),
             'K/s',
         )
-        self.temperature_ramp = temperature_ramp.to('celsius/minute').magnitude
+        self.temperature_ramp = temperature_ramp.to('K/s').magnitude
 
     def calc_partial_pressure(self):
         step_ar_flow = (
-            self.step_ar_flow.magnitude if self.step_ar_flow is not None else 0
+            self.step_ar_flow.magnitude
+            if self.step_ar_flow is not None
+            else 0
         )
         step_n2_flow = (
-            self.step_n2_flow.magnitude if self.step_n2_flow is not None else 0
+            self.step_n2_flow.magnitude
+            if self.step_n2_flow is not None
+            else 0
         )
         step_h2s_in_ar_flow = (
             self.step_h2s_in_ar_flow.magnitude
@@ -618,19 +622,19 @@ class RTPStepOverview(ArchiveSection):
             step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S'] / total_flow * total_pressure,
             'Pa',
         )
-        self.step_h2s_partial_pressure = step_h2s_partial_pressure.to('mtorr').magnitude
+        self.step_h2s_partial_pressure = step_h2s_partial_pressure.to('Pa').magnitude
 
         step_ph3_partial_pressure = ureg.Quantity(
             step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3'] / total_flow * total_pressure,
             'Pa',
         )
-        self.step_ph3_partial_pressure = step_ph3_partial_pressure.to('mtorr').magnitude
+        self.step_ph3_partial_pressure = step_ph3_partial_pressure.to('Pa').magnitude
 
         step_n2_partial_pressure = ureg.Quantity(
             step_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure,
             'Pa',
         )
-        self.step_n2_partial_pressure = step_n2_partial_pressure.to('mtorr').magnitude
+        self.step_n2_partial_pressure = step_n2_partial_pressure.to('Pa').magnitude
 
         step_ar_partial_pressure = ureg.Quantity(
             (
@@ -642,7 +646,7 @@ class RTPStepOverview(ArchiveSection):
             * total_pressure,
             'Pa',
         )
-        self.step_ar_partial_pressure = step_ar_partial_pressure.to('mtorr').magnitude
+        self.step_ar_partial_pressure = step_ar_partial_pressure.to('Pa').magnitude
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
