@@ -764,13 +764,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     'samples',
                     'figures',
                 ],
-                visible=Filter(
-                    exclude=[
-                        'end_time',
-                        'instruments',
-                        'method'
-                    ]
-                ),
+                visible=Filter(exclude=['end_time', 'instruments', 'method']),
             )
         ),
     )
