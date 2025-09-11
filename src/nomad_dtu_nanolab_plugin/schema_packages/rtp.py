@@ -951,13 +951,13 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         type=np.float64,
         shape=['*'],
         description='Time points for the temperature profile plot.',
-        a_eln=ELNAnnotation(visible=False),
+        a_eln=None,
     )
     temperature_profile = Quantity(
         type=np.float64,
         shape=['*'],
         description='Temperature points for the temperature profile plot.',
-        a_eln=ELNAnnotation(visible=False),
+        a_eln=None,
     )
 
     def plot_temperature_profile(self) -> None:
@@ -1139,14 +1139,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        # Populate lab_id with the name given to the upload if not already set
-        if (
-            not self.lab_id
-            and hasattr(archive, 'metadata')
-            and hasattr(archive.metadata, 'entry_name')
-        ):
-            self.lab_id = archive.metadata.entry_name
-
+        # Populate lab_id according to generated name
+        if self.lab_id is None:
+            self.lab_id = self.name.replace(' ', '_')
         super().normalize(archive, logger)
         times, temps, current_time = [], [], 0
         step: DTURTPSteps
