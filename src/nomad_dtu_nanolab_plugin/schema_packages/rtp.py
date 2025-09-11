@@ -740,6 +740,37 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         categories=[DTUNanolabCategory],
         label='RTP',
         links=['http://purl.obolibrary.org/obo/CHMO_0001328'],
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                order=[
+                    'name',
+                    'datetime',
+                    'lab_id',
+                    'location',
+                    'log_file_eklipse',
+                    'log_file_T2BDiagnostics',
+                    'samples_susceptor_before',
+                    'samples_susceptor_after',
+                    'base_pressure',
+                    'base_pressure_ballast',
+                    'rate_of_rise',
+                    'chiller_flow',
+                    'used_gases',
+                    'overview',
+                    'steps',
+                    'input_samples',
+                    'samples',
+                    'figures',
+                ],
+                visible=Filter(
+                    exclude=[
+                        'end_time',
+                        'instruments',
+                        'method'
+                    ]
+                ),
+            )
+        ),
     )
     lab_id = Quantity(
         type=str,
