@@ -224,7 +224,8 @@ class RTPOverview(ArchiveSection):
             label='Ar Flow',
         ),
         unit='m**3/s',
-        description='Argon flow used during the annealing plateau of the RTP process.',
+        description='Argon flow used during the annealing plateau of the RTP process.'
+        'The unit "cm^3/minute" is used equal to sccm.',
     )
     annealing_n2_flow = Quantity(
         type=np.float64,
@@ -235,7 +236,7 @@ class RTPOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='Nitrogen flow used during the annealing plateau of the'
-        ' RTP process.',
+        ' RTP process. The unit "cm^3/minute" is used equal to sccm.',
     )
     annealing_ph3_in_ar_flow = Quantity(
         type=np.float64,
@@ -246,7 +247,7 @@ class RTPOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='Phosphine flow used during the annealing plateau of'
-        ' the RTP process.',
+        ' the RTP process. The unit "cm^3/minute" is used equal to sccm.',
     )
     annealing_h2s_in_ar_flow = Quantity(
         type=np.float64,
@@ -256,13 +257,14 @@ class RTPOverview(ArchiveSection):
             label='H2S in Ar Flow',
         ),
         unit='m**3/s',
-        description='H2S flow used during the annealing plateau of the RTP process.',
+        description='H2S flow used during the annealing plateau of the RTP process.'
+        'The unit "cm^3/minute" is used equal to sccm.',
     )
     total_heating_time = Quantity(
         type=np.float64,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='second',
+            defaultDisplayUnit='minute',
             label='Total heating up time',
         ),
         unit='s',
@@ -273,7 +275,7 @@ class RTPOverview(ArchiveSection):
         type=np.float64,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='second',
+            defaultDisplayUnit='minute',
             label='Total cooling down time',
         ),
         unit='s',
@@ -464,7 +466,8 @@ class RTPStepOverview(ArchiveSection):
             label='Ar Flow',
         ),
         unit='m**3/s',
-        description='Argon flow rate used during the step.',
+        description='Argon flow rate used during the step.'
+        'The unit "cm^3/minute" is used equal to sccm.',
     )
     step_n2_flow = Quantity(
         type=np.float64,
@@ -474,7 +477,8 @@ class RTPStepOverview(ArchiveSection):
             label='N2 Flow',
         ),
         unit='m**3/s',
-        description='Nitrogen flow rate used during the step.',
+        description='Nitrogen flow rate used during the step. '
+        'The unit "cm^3/minute" is used equal to sccm.',
     )
     step_ph3_in_ar_flow = Quantity(
         type=np.float64,
@@ -484,7 +488,8 @@ class RTPStepOverview(ArchiveSection):
             label='PH3 in Ar Flow',
         ),
         unit='m**3/s',
-        description='Phosphine flow rate used during the step.',
+        description='Phosphine flow rate used during the step.'
+        'The unit "cm^3/minute" is used equal to sccm.',
     )
     step_h2s_in_ar_flow = Quantity(
         type=np.float64,
@@ -494,7 +499,8 @@ class RTPStepOverview(ArchiveSection):
             label='H2S in ArFlow',
         ),
         unit='m**3/s',
-        description='H2S flow rate used during the step.',
+        description='H2S flow rate used during the step.'
+        'The unit "cm^3/minute" is used equal to sccm.',
     )
     initial_temperature = Quantity(
         type=np.float64,
