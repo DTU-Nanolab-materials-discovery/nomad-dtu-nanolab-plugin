@@ -622,10 +622,11 @@ class RTPStepOverview(ArchiveSection):
 
         total_pressure = self.pressure.magnitude
 
-        step_h2s_partial_pressure = (
+        step_h2s_partial_pressure = ureg.Quantity(
             step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S'] / total_flow * total_pressure,
+            'Pa',
         )
-        self.step_h2s_partial_pressure = step_h2s_partial_pressure
+        self.step_h2s_partial_pressure = step_h2s_partial_pressure.to('Pa').magnitude
 
         step_ph3_partial_pressure = ureg.Quantity(
             step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3'] / total_flow * total_pressure,
