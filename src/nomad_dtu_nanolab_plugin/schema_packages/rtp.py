@@ -372,9 +372,7 @@ class RTPOverview(ArchiveSection):
             * total_pressure,
             'Pa',
         )
-        self.annealing_h2s_partial_pressure = annealing_h2s_partial_pressure.to(
-            'Pa'
-        ).magnitude
+        self.annealing_h2s_partial_pressure = annealing_h2s_partial_pressure
 
         annealing_ph3_partial_pressure = ureg.Quantity(
             annealing_ph3_in_ar_flow
@@ -383,17 +381,13 @@ class RTPOverview(ArchiveSection):
             * total_pressure,
             'Pa',
         )
-        self.annealing_ph3_partial_pressure = annealing_ph3_partial_pressure.to(
-            'Pa'
-        ).magnitude
+        self.annealing_ph3_partial_pressure = annealing_ph3_partial_pressure
 
         annealing_n2_partial_pressure = ureg.Quantity(
             annealing_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure,
             'Pa',
         )
-        self.annealing_n2_partial_pressure = annealing_n2_partial_pressure.to(
-            'Pa'
-        ).magnitude
+        self.annealing_n2_partial_pressure = annealing_n2_partial_pressure
 
         annealing_ar_partial_pressure = ureg.Quantity(
             (
@@ -405,9 +399,7 @@ class RTPOverview(ArchiveSection):
             * total_pressure,
             'Pa',
         )
-        self.annealing_ar_partial_pressure = annealing_ar_partial_pressure.to(
-            'Pa'
-        ).magnitude
+        self.annealing_ar_partial_pressure = annealing_ar_partial_pressure
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -626,19 +618,19 @@ class RTPStepOverview(ArchiveSection):
             step_h2s_in_ar_flow * RTP_GAS_FRACTION['H2S'] / total_flow * total_pressure,
             'Pa',
         )
-        self.step_h2s_partial_pressure = step_h2s_partial_pressure.to('Pa').magnitude
+        self.step_h2s_partial_pressure = step_h2s_partial_pressure
 
         step_ph3_partial_pressure = ureg.Quantity(
             step_ph3_in_ar_flow * RTP_GAS_FRACTION['PH3'] / total_flow * total_pressure,
             'Pa',
         )
-        self.step_ph3_partial_pressure = step_ph3_partial_pressure.to('Pa').magnitude
+        self.step_ph3_partial_pressure = step_ph3_partial_pressure
 
         step_n2_partial_pressure = ureg.Quantity(
             step_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure,
             'Pa',
         )
-        self.step_n2_partial_pressure = step_n2_partial_pressure.to('Pa').magnitude
+        self.step_n2_partial_pressure = step_n2_partial_pressure
 
         step_ar_partial_pressure = ureg.Quantity(
             (
@@ -650,7 +642,7 @@ class RTPStepOverview(ArchiveSection):
             * total_pressure,
             'Pa',
         )
-        self.step_ar_partial_pressure = step_ar_partial_pressure.to('Pa').magnitude
+        self.step_ar_partial_pressure = step_ar_partial_pressure
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
