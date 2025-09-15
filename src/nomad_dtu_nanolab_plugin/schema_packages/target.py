@@ -20,6 +20,7 @@ import os
 from typing import TYPE_CHECKING
 
 import numpy as np
+#i have opinions
 import pandas as pd
 from nomad.atomutils import Formula
 from nomad.datamodel.data import Schema
