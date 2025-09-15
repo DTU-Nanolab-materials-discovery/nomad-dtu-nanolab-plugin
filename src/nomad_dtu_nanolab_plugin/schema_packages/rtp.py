@@ -898,9 +898,15 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         rtp_datetime = self.datetime
         rtp_materialspace = self.overview.material_space
         for rtp_sample in self.input_samples:
+            # Get the the input sample and original sample
             origin = rtp_sample.input_combi_lib
-            rtp_elements = set(rtp_materialspace.split('-'))
+            origin_layer = origin.components[0].system if origin.components else None
+
+            # Get elemental compositions
             origin_elements = set(e.element for e in origin.elemental_composition)
+            rtp_elements = set(rtp_materialspace.split('-'))
+
+            # Merge for library
             if rtp_elements == origin_elements:
                 elemental_composition = origin.elemental_composition
             else:
@@ -912,10 +918,39 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     type(origin.elemental_composition[0])(element=e)
                     for e in merged_elements
                 ]
+
+            # Merge for the layer
+            if origin_layer is not None and hasattr(
+                origin_layer, 'elemental_composition'
+            ):
+                layer_origin_elements = set(
+                    e.element for e in origin_layer.elemental_composition
+                )
+                # Merge origin_layer and library compositions
+                merged_layer_elements = list(layer_origin_elements) + [
+                    e for e in rtp_elements if e not in layer_origin_elements
+                ]
+                layer_elemental_composition = [
+                    type(origin_layer.elemental_composition[0])(element=e)
+                    for e in merged_layer_elements
+                ]
+            else:
+                warnings.warn(
+                    (
+                        f'Could not determine elemental composition for the '
+                        f"new layer of sample '{rtp_sample.name}'. "
+                        'No origin layer or missing elemental composition in origin'
+                        ' layer.'
+                    ),
+                    UserWarning,
+                )
+
+            # Create new layer and library only if an input sample has been specified
+            # and overview is filled (to get material space -> elemental composition)
             if rtp_sample.name is not None:
                 # Create a new ThinFilm layer for this sample
                 layer = ThinFilm(
-                    elemental_composition=elemental_composition,
+                    elemental_composition=layer_elemental_composition,
                     lab_id=f'{rtp_name} {rtp_sample.name}-Layer'.replace(' ', '_'),
                 )
                 layer_ref = create_archive(
@@ -967,7 +1002,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         if not samples:
             warnings.warn(
                 'No RTP sample libraries were created. '
-                'Check that input_samples have valid input_combi_lib and name.'
+                'Check that input_samples have valid input_combi_lib and name and'
+                'that overview.material_space is filled.',
+                UserWarning,
             )
 
     ############################## PLOTS #################################
