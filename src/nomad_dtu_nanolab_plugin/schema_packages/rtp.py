@@ -203,14 +203,14 @@ class RTPOverview(ArchiveSection):
                     'total_cooling_time',
                     'annealing_pressure',
                     'annealing_ar_flow',
-                    'annealing_ar_partial_pressure',
                     'annealing_n2_flow',
-                    'annealing_n2_partial_pressure',
                     'annealing_ph3_in_ar_flow',
-                    'annealing_ph3_partial_pressure',
                     'annealing_h2s_in_ar_flow',
-                    'annealing_h2s_partial_pressure',
                     'end_of_process_temperature',
+                    'annealing_h2s_partial_pressure',
+                    'annealing_ph3_partial_pressure',
+                    'annealing_n2_partial_pressure',
+                    'annealing_ar_partial_pressure',
                 ],
             )
         ),
@@ -474,15 +474,15 @@ class RTPStepOverview(ArchiveSection):
                     'duration',
                     'initial_temperature',
                     'final_temperature',
-                    'temperature_ramp',
                     'pressure',
                     'step_ar_flow',
-                    'step_ar_partial_pressure',
                     'step_n2_flow',
-                    'step_n2_partial_pressure',
                     'step_ph3_in_ar_flow',
-                    'step_ph3_partial_pressure',
                     'step_h2s_in_ar_flow',
+                    'temperature_ramp',
+                    'step_ar_partial_pressure',
+                    'step_n2_partial_pressure',
+                    'step_ph3_partial_pressure',
                     'step_h2s_partial_pressure',
                 ],
             )
@@ -750,7 +750,6 @@ class DTURTPSteps(CVDStep, ArchiveSection):
     """
     Class representing each step in the RTP process.
     """
-
     m_def = Section(
         a_eln=ELNAnnotation(
             properties=SectionProperties(
@@ -761,7 +760,7 @@ class DTURTPSteps(CVDStep, ArchiveSection):
                     'sources',
                     'comment',
                 ],
-                visible=Filter(exclude=['start_time', 'duration', 'step_index']),
+                visible=Filter(exclude=['start_time', 'duration', 'step_index','environment', 'sample_parameters']),
             )
         ),
     )
@@ -972,7 +971,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         for rtp_sample in self.input_samples:
             # Get the the input sample and original sample
             origin = rtp_sample.input_combi_lib
-            origin_layer = origin.layers if origin.layers else None
+            origin_layer = origin.layers[0] if origin.layers else None
 
             # Get elemental compositions
             origin_elements = set(e.element for e in origin.elemental_composition)
@@ -992,7 +991,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 ]
 
             # Merge for the layer
-            if origin_layer and origin_layer.elemental_composition:
+            if origin_layer is not None and origin_layer.elemental_composition is not None:
                 layer_origin_elements = set(
                     e.element for e in origin_layer.elemental_composition
                 )
