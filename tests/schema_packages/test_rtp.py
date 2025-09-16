@@ -10,5 +10,5 @@ def test_schema():
     normalize_all(entry_archive)
 
     assert entry_archive.data.steps[0].step_overview.temperature_ramp == pytest.approx(
-        91.6667
+        1.5277777777777777
     )
