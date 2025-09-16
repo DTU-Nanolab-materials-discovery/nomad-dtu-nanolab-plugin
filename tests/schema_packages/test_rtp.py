@@ -9,6 +9,10 @@ def test_schema():
     entry_archive = parse(test_file)[0]
     normalize_all(entry_archive)
 
-    assert entry_archive.data.steps[0].step_overview.temperature_ramp == pytest.approx(
-        1.5277777777777777
+    assert (
+        entry_archive.data.steps[0].step_overview.temperature_ramp.units
+        == 'kelvin / second'
     )
+    assert entry_archive.data.steps[
+        0
+    ].step_overview.temperature_ramp.magnitude == pytest.approx(1.5277777777777777)
