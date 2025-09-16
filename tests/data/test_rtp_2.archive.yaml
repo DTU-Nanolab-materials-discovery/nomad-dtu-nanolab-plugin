@@ -1,10 +1,5 @@
 data:
-  m_def: nomad_material_processing.general.RectangleCuboid
-  height : 1
-  width: 40
-  lenght: 20
   m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTP
-  lab_id: "user_001_RTP"
   location: "DTU; IDOL Lab"
   used_gases:
     - "PH3"
