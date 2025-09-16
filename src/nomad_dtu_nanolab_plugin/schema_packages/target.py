@@ -92,7 +92,9 @@ class DTUTarget(CompositeSystem, Schema):
                     'supplier_id',
                     'purity',
                     'impurity_file',
+                    'bonded',
                     'thickness',
+                    'total_thickness',
                     'magkeeper_target',
                     'datetime',
                     'refill_or_mounting_date',
@@ -144,12 +146,26 @@ class DTUTarget(CompositeSystem, Schema):
     )
     thickness = Quantity(
         type=np.float64,
-        default=0.00635,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm',
+            label='Material Thickness',
         ),
         unit='m',
+    )
+    total_thickness = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            label='Total Target Thickness',
+        ),
+        unit='m',
+    )
+    bonded = Quantity(
+        type=bool,
+        default=False,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
     magkeeper_target = Quantity(
         type=bool,
