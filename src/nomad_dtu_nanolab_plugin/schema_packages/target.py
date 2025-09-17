@@ -211,6 +211,27 @@ class DTUTarget(CompositeSystem, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+        # Set default values for thickness and total_thickness based on bonded
+        default_total_thickness = 0.00635
+        default_thickness_bonded = 0.00335
+
+        if getattr(self, 'bonded', False) is False:
+            # If thickness is None or 0, set to 6.35 mm
+            if not self.thickness:
+                self.thickness = default_total_thickness
+            # If total_thickness is None or 0, set to 6.35 mm
+            if not self.total_thickness:
+                self.total_thickness = default_total_thickness
+            # Ensure thickness equals total_thickness
+            self.thickness = self.total_thickness
+        else:
+            # If total_thickness is None or 0, set to 6.35 mm
+            if not self.total_thickness:
+                self.total_thickness = default_total_thickness
+            # If thickness is None or 0, set to 3 mm
+            if not self.thickness:
+                self.thickness = default_thickness_bonded
+
         if self.impurity_file is None:
             return super().normalize(archive, logger)
 
