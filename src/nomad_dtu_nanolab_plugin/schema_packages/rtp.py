@@ -750,6 +750,7 @@ class DTURTPSteps(CVDStep, ArchiveSection):
     """
     Class representing each step in the RTP process.
     """
+
     m_def = Section(
         a_eln=ELNAnnotation(
             properties=SectionProperties(
@@ -760,7 +761,15 @@ class DTURTPSteps(CVDStep, ArchiveSection):
                     'sources',
                     'comment',
                 ],
-                visible=Filter(exclude=['start_time', 'duration', 'step_index','environment', 'sample_parameters']),
+                visible=Filter(
+                    exclude=[
+                        'start_time',
+                        'duration',
+                        'step_index',
+                        'environment',
+                        'sample_parameters',
+                    ]
+                ),
             )
         ),
     )
@@ -971,7 +980,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         for rtp_sample in self.input_samples:
             # Get the the input sample and original sample
             origin = rtp_sample.input_combi_lib
-            origin_layer = origin.layers[0] if origin.layers else None
+            origin_layer = (
+                origin.layers[0].reference if origin.layers else None
+            )
 
             # Get elemental compositions
             origin_elements = set(e.element for e in origin.elemental_composition)
@@ -991,7 +1002,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 ]
 
             # Merge for the layer
-            if origin_layer is not None and origin_layer.elemental_composition is not None:
+            if (
+                origin_layer is not None
+                and origin_layer.elemental_composition is not None
+            ):
                 layer_origin_elements = set(
                     e.element for e in origin_layer.elemental_composition
                 )
@@ -1257,10 +1271,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+        super().normalize(archive, logger)
         # Populate lab_id according to generated name
         if self.lab_id is None:
             self.lab_id = self.name.replace(' ', '_')
-        super().normalize(archive, logger)
         times, temps, current_time = [], [], 0
         step: DTURTPSteps
         for step in getattr(self, 'steps', []):  # Loop over all DTURTPSteps
