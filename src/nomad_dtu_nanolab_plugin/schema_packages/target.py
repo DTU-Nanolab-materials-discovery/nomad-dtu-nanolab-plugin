@@ -90,19 +90,19 @@ class DTUTarget(CompositeSystem, Schema):
                     'lab_id',
                     'main_material',
                     'supplier_id',
+                    'target_number',
                     'purity',
                     'impurity_file',
                     'bonded',
+                    'magkeeper_target',
                     'thickness',
                     'total_thickness',
-                    'magkeeper_target',
                     'datetime',
                     'refill_or_mounting_date',
                     'time_used',
                     'description',
                     'main_phases',
                     'impurities',
-                    'composition',
                 ],
             )
         ),
@@ -169,7 +169,7 @@ class DTUTarget(CompositeSystem, Schema):
     )
     magkeeper_target = Quantity(
         type=bool,
-        default=True,
+        default=False,
         a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
     refill_or_mounting_date = Quantity(
@@ -212,14 +212,11 @@ class DTUTarget(CompositeSystem, Schema):
             logger (BoundLogger): A structlog logger.
         """
 
-        if self.impurity_file is None:
-            return super().normalize(archive, logger)
-
         # Set default values for thickness and total_thickness based on bonded
         default_total_thickness = 0.00635
         default_thickness_bonded = 0.00335
 
-        if getattr(self, 'bonded', False) is False:
+        if self.magkeeper_target is True:
             # If thickness is None or 0, set to 6.35 mm
             if not self.thickness:
                 self.thickness = default_total_thickness
@@ -228,13 +225,16 @@ class DTUTarget(CompositeSystem, Schema):
                 self.total_thickness = default_total_thickness
             # Ensure thickness equals total_thickness
             self.thickness = self.total_thickness
-        else:
+        if self.bonded is True:
             # If total_thickness is None or 0, set to 6.35 mm
             if not self.total_thickness:
                 self.total_thickness = default_total_thickness
             # If thickness is None or 0, set to 3 mm
             if not self.thickness:
                 self.thickness = default_thickness_bonded
+
+        if self.impurity_file is None:
+            return super().normalize(archive, logger)
 
         file_name: str = os.path.basename(self.impurity_file)
         file_info_list = os.path.splitext(file_name)[0].split('_')
