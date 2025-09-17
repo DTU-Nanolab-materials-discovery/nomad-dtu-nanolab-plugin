@@ -94,6 +94,7 @@ class DtuRTPInputSampleMounting(ArchiveSection):
             component=ELNComponentEnum.ReferenceEditQuantity,
         ),
     )
+
     relative_position = Quantity(
         type=str,
         description='The relative position of the input sample on the susceptor.',
