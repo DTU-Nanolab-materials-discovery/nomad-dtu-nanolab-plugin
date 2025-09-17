@@ -980,9 +980,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         for rtp_sample in self.input_samples:
             # Get the the input sample and original sample
             origin = rtp_sample.input_combi_lib
-            origin_layer = (
-                origin.layers[0].reference if origin.layers else None
-            )
+            origin_layer = origin.layers[0].reference if origin.layers else None
 
             # Get elemental compositions
             origin_elements = set(e.element for e in origin.elemental_composition)
