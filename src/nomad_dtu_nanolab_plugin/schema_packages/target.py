@@ -20,6 +20,8 @@ import os
 from typing import TYPE_CHECKING
 
 import numpy as np
+
+# i have opinions
 import pandas as pd
 from nomad.atomutils import Formula
 from nomad.datamodel.data import Schema
@@ -88,17 +90,19 @@ class DTUTarget(CompositeSystem, Schema):
                     'lab_id',
                     'main_material',
                     'supplier_id',
+                    'target_number',
                     'purity',
+                    'bonded',
+                    'magkeeper_target',
                     'impurity_file',
                     'thickness',
-                    'magkeeper_target',
+                    'total_thickness',
                     'datetime',
                     'refill_or_mounting_date',
                     'time_used',
                     'description',
                     'main_phases',
                     'impurities',
-                    'composition',
                 ],
             )
         ),
@@ -142,12 +146,26 @@ class DTUTarget(CompositeSystem, Schema):
     )
     thickness = Quantity(
         type=np.float64,
-        default=0.00635,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm',
+            label='Material Thickness',
         ),
         unit='m',
+    )
+    total_thickness = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            label='Total Target Thickness',
+        ),
+        unit='m',
+    )
+    bonded = Quantity(
+        type=bool,
+        default=False,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
     magkeeper_target = Quantity(
         type=bool,
@@ -193,8 +211,31 @@ class DTUTarget(CompositeSystem, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+
         if self.impurity_file is None:
+            logger.warning('Missing impurity file')
             return super().normalize(archive, logger)
+
+        # Set default values for thickness and total_thickness based on bonded
+        default_total_thickness = 0.00635
+        default_thickness_bonded = 0.00335
+
+        if self.bonded is True:
+            # If total_thickness is None or 0, set to 6.35 mm
+            if not self.total_thickness:
+                self.total_thickness = default_total_thickness
+            # If thickness is None or 0, set to 3 mm
+            if not self.thickness:
+                self.thickness = default_thickness_bonded
+        if self.bonded is False:
+            # If thickness is None or 0, set to 6.35 mm
+            if not self.thickness:
+                self.thickness = default_total_thickness
+            # If total_thickness is None or 0, set to 6.35 mm
+            if not self.total_thickness:
+                self.total_thickness = default_total_thickness
+            # Ensure thickness equals total_thickness
+            self.thickness = self.total_thickness
 
         file_name: str = os.path.basename(self.impurity_file)
         file_info_list = os.path.splitext(file_name)[0].split('_')
