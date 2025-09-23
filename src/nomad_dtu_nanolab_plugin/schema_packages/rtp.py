@@ -1065,7 +1065,6 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     ),
                 )
                 samples.append(library)
-                file_name = f'{library.lab_id}.archive.json'
         if configuration.overwrite_libraries:
             time.sleep(5)  # to ensure that layers are processed before samples
         self.samples = [
@@ -1074,7 +1073,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 reference=create_archive(
                     library,
                     archive,
-                    file_name,
+                    f'{library.lab_id}.archive.json',
                     overwrite=configuration.overwrite_libraries,
                 ),
                 lab_id=library.lab_id,
