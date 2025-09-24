@@ -906,29 +906,34 @@ class DTUGasFlow(GasFlow, ArchiveSection):
             #     'data.molecular_formula': self.gas_name,
             # }
 
+            # query = {
+            #     'and': [
+            #         {
+            #             'search_quantities': {
+            #                 'id': (
+            #                     'data.in_use#'
+            #                     'nomad_dtu_nanolab_plugin.schema_packages.'
+            #                     'gas.DTUGasSupply'
+            #                 ),
+            #                 'str_value': 'true',
+            #             }
+            #         },
+            #         {
+            #             'search_quantities': {
+            #                 'id': (
+            #                     'data.molecular_formula#'
+            #                     'nomad_dtu_nanolab_plugin.schema_packages.'
+            #                     'gas.DTUGasSupply'
+            #                 ),
+            #                 'str_value': self.gas_name,
+            #             }
+            #         },
+            #     ]
+            # }
+
             query = {
-                'and': [
-                    {
-                        'search_quantities': {
-                            'id': (
-                                'data.in_use#'
-                                'nomad_dtu_nanolab_plugin.schema_packages.'
-                                'gas.DTUGasSupply'
-                            ),
-                            'str_value': 'true',
-                        }
-                    },
-                    {
-                        'search_quantities': {
-                            'id': (
-                                'data.molecular_formula#'
-                                'nomad_dtu_nanolab_plugin.schema_packages.'
-                                'gas.DTUGasSupply'
-                            ),
-                            'str_value': self.gas_name,
-                        }
-                    },
-                ]
+                'data.in_use#nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply': true,
+                'data.molecular_formula#nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply': self.gas_name,
             }
 
             search_result = search(
@@ -937,6 +942,7 @@ class DTUGasFlow(GasFlow, ArchiveSection):
                 pagination=MetadataPagination(page_size=1),
                 user_id=archive.metadata.main_author.user_id,
             )
+
             # if there is not strickly one bottle in use, we sent a warning
             if search_result.pagination.total == 0:
                 logger.warning(
