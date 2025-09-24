@@ -22,7 +22,6 @@ from typing import TYPE_CHECKING, Self
 
 import numpy as np
 import pandas as pd
-import true
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
     BrowserAdaptors,
@@ -929,7 +928,7 @@ class DTUGasFlow(GasFlow, ArchiveSection):
                 (
                     'data.in_use#'
                     'nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply'
-                ): true,
+                ): True,
                 (
                     'data.molecular_formula#'
                     'nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply'
