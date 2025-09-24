@@ -42,6 +42,10 @@ from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 #    DepositionParameters,
 # )
 
+# from nomad_dtu_nanolab_plugin.schema_packages.sputtering import (
+#    DepositionParameters,
+# )
+
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
@@ -336,7 +340,6 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
             for e, v in composition.items()
             if v
         ]
-
 
         super().normalize(archive, logger)
 
