@@ -935,7 +935,7 @@ class DTUGasFlow(GasFlow, ArchiveSection):
                 (
                     'data.in_use#'
                     'nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply'
-                ): true,
+                ): True,
                 (
                     'data.molecular_formula#'
                     'nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply'
