@@ -17,6 +17,7 @@
 #
 
 import json
+import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Self
 
@@ -2909,6 +2910,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             #     )
         if configuration.overwrite_libraries:
             time.sleep(5)  # to ensure that layers are processed before samples
+
         self.samples = [
             CompositeSystemReference(
                 name=f'Sample {sample_id}',
