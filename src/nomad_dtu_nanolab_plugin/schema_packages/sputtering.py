@@ -2913,7 +2913,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         self.samples = [
             CompositeSystemReference(
-                name=f'Sample {sample_id}',
+                name=f'Sample {library.lab_id}'.replace('_', ' '),
                 reference=create_archive(
                     library,
                     archive,
