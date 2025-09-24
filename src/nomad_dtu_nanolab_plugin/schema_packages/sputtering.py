@@ -925,8 +925,14 @@ class DTUGasFlow(GasFlow, ArchiveSection):
             # }
 
             query = {
-                'data.in_use#nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply': true,
-                'data.molecular_formula#nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply': self.gas_name,
+                (
+                    'data.in_use#'
+                    'nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply'
+                ): true,
+                (
+                    'data.molecular_formula#'
+                    'nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply'
+                ): self.gas_name,
             }
 
             search_result = search(
