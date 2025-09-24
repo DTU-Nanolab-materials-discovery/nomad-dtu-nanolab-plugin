@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "nomad parse",
+            "name": "nomad parse xrd",
             "type": "debugpy",
             "request": "launch",
             "cwd": "${workspaceFolder}",
@@ -15,6 +15,31 @@
                 ">",
                 "output.archive.json"
             ]
-        }
+        },
+        {
+            "name": "nomad parse sputtering",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/.pyenv/bin/nomad",
+            "justMyCode": false,
+            "args": [
+                "parse",
+                "--show-archive",
+                "tests/data/test_logfile.archive.yaml",
+            ]
+        },
+        {
+            "name": "nomad logfile test",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/.pyenv/bin/pytest",
+            "justMyCode": false,
+            "env": {
+                "_PYTEST_RAISE": "1"
+            },
+            "args": ["-svx", "tests/schema_packages/test_sputtering.py"]
+        },
     ]
 }
