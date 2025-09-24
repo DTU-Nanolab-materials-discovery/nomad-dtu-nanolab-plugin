@@ -17,12 +17,12 @@
 #
 
 import json
-import true
 from datetime import datetime
 from typing import TYPE_CHECKING, Self
 
 import numpy as np
 import pandas as pd
+import true
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
     BrowserAdaptors,
