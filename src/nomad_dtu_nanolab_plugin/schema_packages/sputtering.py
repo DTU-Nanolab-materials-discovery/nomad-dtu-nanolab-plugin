@@ -2497,18 +2497,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
             environment = self.generate_environment_log_data(step_params, key, logger)
 
-            new_gas_flows = []
-
-            # # generate the gas flows by removing the
-            # for single_gas_flow in environment.gas_flow:
-            #     # if the average flow is below 1, we unright the gas flow
-            #     flow_rate_values = single_gas_flow.flow_rate.value
-            #     magnitudes = [q.to('cm^3/minute').magnitude for q in flow_rate_values]
-            #     avg_flow = np.mean(magnitudes)
-            #     if avg_flow >= 1:
-            #         new_gas_flows.append(single_gas_flow)
-            # environment.gas_flow = new_gas_flows
-
             step.environment = environment
 
             if 'Deposition' in step.name:
@@ -2783,11 +2771,21 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         gas_flow = []
 
         for gas_name in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
-            if (
+            # Get the flow rate values
+            flow_rate_values = (
                 step_params.get(key, {}).get('environment', {})
                 .get('gas_flow', {}).get(gas_name, {})
-                .get('flow_rate', 0) < 1
-            ):
+                .get('flow_rate', {}).get('value', [0])
+            )
+            
+            # Calculate the average of the values
+            if isinstance(flow_rate_values, list) and len(flow_rate_values) > 0:
+                avg_flow_rate = sum(flow_rate_values) / len(flow_rate_values)
+            else:
+                avg_flow_rate = 0
+            
+            # Skip if average flow rate is below 1
+            if avg_flow_rate < 1:
                 continue
 
             single_gas_flow = DTUGasFlow()
@@ -2926,12 +2924,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             step: DTUSteps
             for gas_flow in step.environment.gas_flow:
                 gas_flow: DTUGasFlow
-                for g in gas_flow.gas_supply:
-                    if isinstance(g, DtuGasSupplyComponent):
-                        archive.workflow2.inputs.append(
-                            Link(name=f'Gas Supply: {g.name}', section=g.reference)
-                        )
-                        return
+                if gas_flow.gas_supply is None:
+                    continue
+                g = gas_flow.gas_supply
+                if isinstance(g, DtuGasSupplyComponent):
+                    archive.workflow2.inputs.append(
+                        Link(name=f'Gas Supply: {g.gas_name}', section=g.reference)
+                    )
+                    return
 
     def correct_platen_angle(
         self, archive: 'EntryArchive', logger: 'BoundLogger'
