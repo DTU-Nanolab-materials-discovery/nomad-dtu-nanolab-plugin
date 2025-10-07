@@ -17,6 +17,7 @@
 #
 
 import json
+import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Self
 
@@ -39,9 +40,7 @@ from nomad.datamodel.metainfo.basesections import (
     PureSubstanceSection,
 )
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
-from nomad.datamodel.metainfo.workflow import (
-    Link,
-)
+from nomad.datamodel.metainfo.workflow import Link
 from nomad.datamodel.results import Material, Results
 from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
 from nomad.units import ureg
@@ -106,9 +105,17 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
+    from nomad_dtu_nanolab_plugin.schema_packages import SputteringEntryPoint
+
 import os
 
-m_package = Package(name='DTU customised sputter Schemas')
+from nomad.config import config
+
+configuration: 'SputteringEntryPoint' = config.get_plugin_entry_point(
+    'nomad_dtu_nanolab_plugin.schema_packages:sputtering'
+)
+
+m_package = Package()
 
 
 class DtuSubstrateMounting(ArchiveSection):
@@ -893,36 +900,6 @@ class DTUGasFlow(GasFlow, ArchiveSection):
             and isinstance(archive.m_context, ServerContext)  # what does this do?
         ):
             from nomad.search import MetadataPagination, search
-
-            # query = {
-            #     'data.in_use': True,
-            #     'data.molecular_formula': self.gas_name,
-            # }
-
-            # query = {
-            #     'and': [
-            #         {
-            #             'search_quantities': {
-            #                 'id': (
-            #                     'data.in_use#'
-            #                     'nomad_dtu_nanolab_plugin.schema_packages.'
-            #                     'gas.DTUGasSupply'
-            #                 ),
-            #                 'str_value': 'true',
-            #             }
-            #         },
-            #         {
-            #             'search_quantities': {
-            #                 'id': (
-            #                     'data.molecular_formula#'
-            #                     'nomad_dtu_nanolab_plugin.schema_packages.'
-            #                     'gas.DTUGasSupply'
-            #                 ),
-            #                 'str_value': self.gas_name,
-            #             }
-            #         },
-            #     ]
-            # }
 
             query = {
                 (
@@ -2521,15 +2498,16 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             environment = self.generate_environment_log_data(step_params, key, logger)
 
             new_gas_flows = []
-            # generate the gas flows by removing the
-            for single_gas_flow in environment.gas_flow:
-                # if the average flow is below 1, we unright the gas flow
-                flow_rate_values = single_gas_flow.flow_rate.value
-                magnitudes = [q.to('cm^3/minute').magnitude for q in flow_rate_values]
-                avg_flow = np.mean(magnitudes)
-                if avg_flow >= 1:
-                    new_gas_flows.append(single_gas_flow)
-            environment.gas_flow = new_gas_flows
+
+            # # generate the gas flows by removing the
+            # for single_gas_flow in environment.gas_flow:
+            #     # if the average flow is below 1, we unright the gas flow
+            #     flow_rate_values = single_gas_flow.flow_rate.value
+            #     magnitudes = [q.to('cm^3/minute').magnitude for q in flow_rate_values]
+            #     avg_flow = np.mean(magnitudes)
+            #     if avg_flow >= 1:
+            #         new_gas_flows.append(single_gas_flow)
+            # environment.gas_flow = new_gas_flows
 
             step.environment = environment
 
@@ -2805,6 +2783,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         gas_flow = []
 
         for gas_name in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
+            if (
+                step_params.get(key, {}).get('environment', {})
+                .get('gas_flow', {}).get(gas_name, {})
+                .get('flow_rate', 0) < 1
+            ):
+                continue
+
             single_gas_flow = DTUGasFlow()
             single_gas_flow.flow_rate = VolumetricFlowRate()
             single_gas_flow.gas = PureSubstanceSection()
@@ -2829,8 +2814,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         return gas_flow
 
     def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        samples = []
-        substrate_mounting: DtuSubstrateMounting
+        libraries = []
+        # substrate_mounting: DtuSubstrateMounting
         for idx, substrate_mounting in enumerate(self.substrates):
             if substrate_mounting.substrate is None:
                 continue
@@ -2838,8 +2823,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 substrate_mounting.substrate.m_proxy_resolve()
             library = DTUCombinatorialLibrary()
             library.substrate = SubstrateReference(
-                reference=substrate_mounting.substrate
+                reference=substrate_mounting.substrate.m_proxy_value
             )
+            library.geometry = substrate_mounting.substrate.geometry
             sample_id = str(idx)
             if substrate_mounting.name is not None:
                 sample_id = substrate_mounting.name.replace(' ', '-')
@@ -2854,7 +2840,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 elemental_composition=composition,
                 lab_id=f'{library.lab_id}-Layer',
             )
-            layer_ref = create_archive(layer, archive, f'{layer.lab_id}.archive.json')
+            layer_ref = create_archive(
+                layer,
+                archive,
+                f'{layer.lab_id}.archive.json',
+                overwrite=configuration.overwrite_layers,
+            )
             library.layers = [
                 ThinFilmReference(
                     name='Main layer',
@@ -2878,16 +2869,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # )
             # TODO add more process parameters
 
-            library_ref = create_archive(
-                library, archive, f'{library.lab_id}.archive.json'
-            )
-            samples.append(
-                CompositeSystemReference(
-                    name=f'Sample {sample_id}',
-                    reference=library_ref,
-                    lab_id=library.lab_id,
-                )
-            )
+            libraries.append(library)
             # step: DTUSteps
             # for step in self.steps:
             #     if not step.creates_new_thin_film:
@@ -2904,8 +2886,22 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             #         reference=library_ref,
             #         lab_id=library.lab_id,
             #     )
+        if configuration.overwrite_libraries:
+            time.sleep(5)  # to ensure that layers are processed before samples
 
-        self.samples = samples
+        self.samples = [
+            CompositeSystemReference(
+                name=f'Sample {library.lab_id}'.replace('_', ' '),
+                reference=create_archive(
+                    library,
+                    archive,
+                    f'{library.lab_id}.archive.json',
+                    overwrite=configuration.overwrite_libraries,
+                ),
+                lab_id=library.lab_id,
+            )
+            for library in libraries
+        ]
 
     def add_target_to_workflow(self, archive: 'EntryArchive') -> None:
         """

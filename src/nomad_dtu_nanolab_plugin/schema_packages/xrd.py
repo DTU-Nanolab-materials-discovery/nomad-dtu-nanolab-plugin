@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU XRD measurement schema')
 
 
-class XRDMappingResult(MappingResult, XRDResult1D): #, PlotSection
+class XRDMappingResult(MappingResult, XRDResult1D):  # , PlotSection
     m_def = Section()
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -131,7 +131,10 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             fig2.add_trace(
                 go.Scatter(
                     x=result.two_theta.to('deg').magnitude,
-                    y=((result.intensity.magnitude+offset*i)*(i * offset+ offset)),
+                    y=(
+                        (result.intensity.magnitude + offset * i)
+                        * (i * offset + offset)
+                    ),
                     mode='lines',
                     name=result.name,
                     hoverlabel=dict(namelength=-1),
@@ -165,8 +168,6 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
                 figure=plot_json2,
             )
         )
-
-
 
     def write_xrd_data(
         self,
@@ -206,19 +207,19 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
                 y_absolute=xrd_dict.get('Y', None)[0],
             )
 
-            #fig3 = go.Figure()
+            # fig3 = go.Figure()
 
-            #fig3.add_trace(
+            # fig3.add_trace(
             #    go.Scatter(
             #        x=xrd_dict.get('2Theta', None),
             #        y=xrd_dict.get('intensity', None),
             #        mode='lines',
             #        name=result.name,
             #    )
-            #)
+            # )
 
             # Update layout
-            #fig3.update_layout(
+            # fig3.update_layout(
             #    title='XRD Patterns stacked',
             #    xaxis_title='2<i>θ</i> / °',
             #    yaxis_title='Intensity',
@@ -232,21 +233,21 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             #        fixedrange=False,
             #        type='log',
             #    ),
-            #)
+            # )
 
-            #plot_json3 = fig3.to_plotly_json()
-            #plot_json3['config'] = dict(
+            # plot_json3 = fig3.to_plotly_json()
+            # plot_json3['config'] = dict(
             #    scrollZoom=False,
-            #)
+            # )
 
             # there is some problem here but what is the solution?
-            #result.figures = []
-            #result.figures.append(
-            #PlotlyFigure(
+            # result.figures = []
+            # result.figures.append(
+            # PlotlyFigure(
             #    label='Patterns',
             #    figure=plot_json3,
             #    )
-            #)
+            # )
             result.normalize(archive, logger)
             results.append(result)
 

@@ -112,12 +112,12 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
 
         template_notebook = replace_analysis_id(source_notebook, 'THE_ANALYSIS_ID')
         if template_notebook is None:
-            logger.error('Standard Analysis query block is not found in the notebook.')
+            logger.warn('Standard Analysis query block is not found in the notebook.')
             return self.template_notebook
 
         new_notebook_path = archive.metadata.mainfile.split('.')[0] + '.ipynb'
         if archive.m_context.raw_path_exists(new_notebook_path):
-            logger.error(f'Notebook {new_notebook_path} already exists.')
+            logger.warn(f'Notebook {new_notebook_path} already exists.')
             return self.template_notebook
 
         with archive.m_context.raw_file(new_notebook_path, 'w') as dest_file:
@@ -181,7 +181,7 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
     def create_notebook(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         filename = archive.metadata.mainfile.split('.')[0] + '.ipynb'
         if archive.m_context.raw_path_exists(filename):
-            logger.error(f'Notebook {filename} already exists.')
+            logger.warn(f'Notebook {filename} already exists.')
             return
         self.notebook = filename
         user = 'Unknown user'
@@ -285,12 +285,12 @@ analysis.save()"""
             source_notebook, archive.metadata.entry_id
         )
         if template_notebook is None:
-            logger.error('Standard Analysis query block is not found in the notebook.')
+            logger.warn('Standard Analysis query block is not found in the notebook.')
             return
 
         new_notebook_path = archive.metadata.mainfile.split('.')[0] + '.ipynb'
         if archive.m_context.raw_path_exists(new_notebook_path):
-            logger.error(f'Notebook {new_notebook_path} already exists.')
+            logger.warn(f'Notebook {new_notebook_path} already exists.')
             return
 
         with archive.m_context.raw_file(new_notebook_path, 'w') as dest_file:
