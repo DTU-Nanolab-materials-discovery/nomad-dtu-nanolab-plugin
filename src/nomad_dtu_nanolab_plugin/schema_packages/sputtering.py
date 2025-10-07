@@ -2773,17 +2773,20 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         for gas_name in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
             # Get the flow rate values
             flow_rate_values = (
-                step_params.get(key, {}).get('environment', {})
-                .get('gas_flow', {}).get(gas_name, {})
-                .get('flow_rate', {}).get('value', [0])
+                step_params.get(key, {})
+                .get('environment', {})
+                .get('gas_flow', {})
+                .get(gas_name, {})
+                .get('flow_rate', {})
+                .get('value', [0])
             )
-            
+
             # Calculate the average of the values
             if isinstance(flow_rate_values, list) and len(flow_rate_values) > 0:
                 avg_flow_rate = sum(flow_rate_values) / len(flow_rate_values)
             else:
                 avg_flow_rate = 0
-            
+
             # Skip if average flow rate is below 1
             if avg_flow_rate < 1:
                 continue
