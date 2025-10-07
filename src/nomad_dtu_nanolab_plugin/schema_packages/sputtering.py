@@ -901,36 +901,6 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         ):
             from nomad.search import MetadataPagination, search
 
-            # query = {
-            #     'data.in_use': True,
-            #     'data.molecular_formula': self.gas_name,
-            # }
-
-            # query = {
-            #     'and': [
-            #         {
-            #             'search_quantities': {
-            #                 'id': (
-            #                     'data.in_use#'
-            #                     'nomad_dtu_nanolab_plugin.schema_packages.'
-            #                     'gas.DTUGasSupply'
-            #                 ),
-            #                 'str_value': 'true',
-            #             }
-            #         },
-            #         {
-            #             'search_quantities': {
-            #                 'id': (
-            #                     'data.molecular_formula#'
-            #                     'nomad_dtu_nanolab_plugin.schema_packages.'
-            #                     'gas.DTUGasSupply'
-            #                 ),
-            #                 'str_value': self.gas_name,
-            #             }
-            #         },
-            #     ]
-            # }
-
             query = {
                 (
                     'data.in_use#'
@@ -2528,15 +2498,16 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             environment = self.generate_environment_log_data(step_params, key, logger)
 
             new_gas_flows = []
-            # generate the gas flows by removing the
-            for single_gas_flow in environment.gas_flow:
-                # if the average flow is below 1, we unright the gas flow
-                flow_rate_values = single_gas_flow.flow_rate.value
-                magnitudes = [q.to('cm^3/minute').magnitude for q in flow_rate_values]
-                avg_flow = np.mean(magnitudes)
-                if avg_flow >= 1:
-                    new_gas_flows.append(single_gas_flow)
-            environment.gas_flow = new_gas_flows
+
+            # # generate the gas flows by removing the
+            # for single_gas_flow in environment.gas_flow:
+            #     # if the average flow is below 1, we unright the gas flow
+            #     flow_rate_values = single_gas_flow.flow_rate.value
+            #     magnitudes = [q.to('cm^3/minute').magnitude for q in flow_rate_values]
+            #     avg_flow = np.mean(magnitudes)
+            #     if avg_flow >= 1:
+            #         new_gas_flows.append(single_gas_flow)
+            # environment.gas_flow = new_gas_flows
 
             step.environment = environment
 
@@ -2812,6 +2783,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         gas_flow = []
 
         for gas_name in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
+            if (
+                step_params.get(key, {}).get('environment', {})
+                .get('gas_flow', {}).get(gas_name, {})
+                .get('flow_rate', 0) < 1
+            ):
+                continue
+
             single_gas_flow = DTUGasFlow()
             single_gas_flow.flow_rate = VolumetricFlowRate()
             single_gas_flow.gas = PureSubstanceSection()
