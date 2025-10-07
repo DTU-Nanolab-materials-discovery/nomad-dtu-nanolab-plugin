@@ -44,7 +44,7 @@ class DTUGasSupply(CompositeSystem, Schema):
     in_use = Quantity(
         type=bool,
         a_eln={'component': 'BoolEditQuantity'},
-        default=True,
+        default=False,
         description='Indicates whether the gas supply is currently in use.',
     )
     molecular_formula = Quantity(
