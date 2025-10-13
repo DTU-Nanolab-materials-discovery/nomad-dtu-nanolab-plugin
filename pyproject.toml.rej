@@ -1,0 +1,9 @@
+diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
+@@ -82,6 +82,7 @@ select = [
+ 
+ ignore = [
+     "F403", # 'from module import *' used; unable to detect undefined names
++    "PLC0415", # `import` should be at the top-level of a file
+ ]
+ 
+ fixable = ["ALL"]
