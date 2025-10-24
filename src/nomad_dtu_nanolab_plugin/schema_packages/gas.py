@@ -50,6 +50,11 @@ class DTUGasSupply(CompositeSystem, Schema):
     molecular_formula = Quantity(
         type=str,
         a_eln={'component': 'StringEditQuantity'},
+        description=(
+            'The molecular formula of the gas, in lower case (Ex: '
+            'h2s for 10% H2S in Ar, ar for Ar). This ensure functionning '
+            'referencing.'
+        )
     )
     molecular_mass = Quantity(
         type=np.float64,
