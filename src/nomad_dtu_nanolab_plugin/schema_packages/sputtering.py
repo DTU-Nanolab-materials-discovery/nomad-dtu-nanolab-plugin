@@ -2187,14 +2187,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # Checking that the value exists
         if value is None:
-            logger.warning(f'Missing {params_str}: Could not set {subsection_str}')
+            logger.info(f'Missing {params_str}: Could not set {subsection_str}')
             return
         # We check if the value is a TimeDelta object and convert it to seconds
         if isinstance(value, pd._libs.tslibs.timedeltas.Timedelta):
             try:
                 value = value.total_seconds()
             except AttributeError:
-                logger.warning(f'{params_str}.total_seconds method is invalid')
+                logger.info(f'{params_str}.total_seconds method is invalid')
                 return
             value = ureg.Quantity(value, 'second')
         elif unit is not None:
@@ -2202,13 +2202,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 try:
                     value = ureg.Quantity(value, unit)
                 except Exception as e:
-                    logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
+                    logger.info(f'Failed to convert {params_str} to {unit}: {e}')
                     return
             else:
                 try:
                     value = ureg.Quantity(value, unit)
                 except Exception as e:
-                    logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
+                    logger.info(f'Failed to convert {params_str} to {unit}: {e}')
                     return
         # Traverse the path to set the nested attribute
         try:
@@ -2217,7 +2217,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 obj = getattr(obj, attr)
             setattr(obj, output_keys[-1], value)
         except Exception as e:
-            logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
+            logger.info(f'Failed to set {params_str} to {subsection_str}: {e}')
 
     def generate_general_log_data(self, params: dict, logger: 'BoundLogger') -> Self:
         """
@@ -2924,7 +2924,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                             section=gas_supply_ref
                         )
                     )
-                    
+
     def correct_platen_angle(
         self, archive: 'EntryArchive', logger: 'BoundLogger'
     ) -> None:
