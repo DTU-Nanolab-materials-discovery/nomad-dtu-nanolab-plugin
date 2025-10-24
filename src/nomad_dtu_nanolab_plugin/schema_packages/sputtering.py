@@ -1142,7 +1142,7 @@ class SourceOverview(ArchiveSection):
             'label': 'Accumulated power (Energy)',
         },
         unit='kW*h',
-        description='The end of the deposition target accumulated power ',
+        description='The accumulated power the target has been exposed to at the end of the deposition',
     )  # TODO check unit
     target_id = SubSection(
         section_def=DTUTargetReference,
@@ -2865,9 +2865,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 substrate_mounting.position_y
             )
 
-            # library.process_parameter_overview.deposition_parameters = (
-            #    self.deposition_parameters
-            # )
             # TODO add more process parameters
 
             libraries.append(library)
