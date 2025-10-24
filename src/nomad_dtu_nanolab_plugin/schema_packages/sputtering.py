@@ -1124,7 +1124,10 @@ class SourceOverview(ArchiveSection):
             'label': 'Accumulated power (Energy)',
         },
         unit='kW*h',
-        description='The accumulated power the target has been exposed to at the end of the deposition',
+        description=(
+            'The accumulated power the target has been exposed to at the end of '
+            'the deposition'
+        ),
     )  # TODO check unit
     target_id = SubSection(
         section_def=DTUTargetReference,

@@ -38,7 +38,6 @@ from nomad_measurements.utils import create_archive
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
-
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
