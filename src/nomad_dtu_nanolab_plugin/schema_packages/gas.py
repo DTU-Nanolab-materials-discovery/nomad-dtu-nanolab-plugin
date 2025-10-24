@@ -54,7 +54,7 @@ class DTUGasSupply(CompositeSystem, Schema):
             'The molecular formula of the gas, in lower case (Ex: '
             'h2s for 10% H2S in Ar, ar for Ar). This ensure functionning '
             'referencing.'
-        )
+        ),
     )
     molecular_mass = Quantity(
         type=np.float64,

@@ -2905,25 +2905,23 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         """
         Method to add the bottles to the workflow2.inputs list.
         """
-        
+
         # Collect all unique gas supply references from steps
         unique_gas_supplies = {}  # Dict automatically handles uniqueness
-        
+
         for step in self.steps:
             step: DTUSteps
             for gas_flow in step.environment.gas_flow:
                 gas_flow: DTUGasFlow
                 if gas_flow.gas_supply_reference is not None:
-                    unique_gas_supplies[gas_flow.gas_name] = gas_flow.gas_supply_reference
-                    
-        
+                    unique_gas_supplies[gas_flow.gas_name] = (
+                        gas_flow.gas_supply_reference
+                    )
+
         # Add only those that aren't already in workflow inputs
         for gas_name, gas_supply_ref in unique_gas_supplies.items():
             archive.workflow2.inputs.append(
-                Link(
-                    name=f'Gas Supply: {gas_name}',
-                    section=gas_supply_ref
-                )
+                Link(name=f'Gas Supply: {gas_name}', section=gas_supply_ref)
             )
 
     def correct_platen_angle(
