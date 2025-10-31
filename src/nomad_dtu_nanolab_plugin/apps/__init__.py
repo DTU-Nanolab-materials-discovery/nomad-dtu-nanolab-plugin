@@ -1,3 +1,4 @@
+import yaml
 from nomad.config.models.plugins import AppEntryPoint
 from nomad.config.models.ui import (
     App,
@@ -549,8 +550,318 @@ samples = AppEntryPoint(
                 label='Main author',
             ),
         ],
+        menu=Menu(
+            size=MenuSizeEnum.XS,
+            items=[
+                Menu(
+                    title='Deposition',
+                    size=MenuSizeEnum.XXL,
+                    items=[
+                        MenuItemTerms(
+                            title='Material space',
+                            search_quantity=(
+                                f'data.deposition.material_space#{combi_samples_schema}'
+                            ),
+                            width=6,
+                            options=10,
+                            show_input=True,
+                        ),
+                        MenuItemTerms(
+                            title='Operator',
+                            search_quantity=(
+                                f'data.deposition.operator#{combi_samples_schema}'
+                            ),
+                            width=6,
+                            options=10,
+                            show_input=True,
+                        ),
+                        MenuItemTerms(
+                            title='Method',
+                            search_quantity=(
+                                f'data.deposition.method#{combi_samples_schema}'
+                            ),
+                            show_input=True,
+                        ),
+                        MenuItemHistogram(
+                            title='Pressure',
+                            x=Axis(
+                                search_quantity=(
+                                    f'data.deposition.pressure#{combi_samples_schema}'
+                                ),
+                                scale='linear',
+                                unit='mbar',
+                            ),
+                        ),
+                        MenuItemHistogram(
+                            title='Temperature',
+                            x=Axis(
+                                search_quantity=(
+                                    f'data.deposition.temperature#{combi_samples_schema}'
+                                ),
+                                scale='linear',
+                                unit='degC',
+                            ),
+                        ),
+                        MenuItemHistogram(
+                            title='Time',
+                            x=Axis(
+                                search_quantity=(
+                                    f'data.deposition.time#{combi_samples_schema}'
+                                ),
+                                scale='linear',
+                                unit='minute',
+                            ),
+                        ),
+                    ],
+                ),
+                Menu(
+                    title='Composition',
+                    size=MenuSizeEnum.XXL,
+                    items=[
+                        MenuItemPeriodicTable(
+                            title='Elements',
+                            quantity='results.material.elements',
+                        ),
+                        *[
+                            MenuItemHistogram(
+                                title=f'{element} atomic fraction',
+                                x=Axis(
+                                    search_quantity=(
+                                        f'data.composition.{element}#'
+                                        f'{combi_samples_schema}'
+                                    ),
+                                    scale='linear',
+                                ),
+                            )
+                            for element in [
+                                'O',
+                                'S',
+                                'P',
+                                'Cu',
+                                'Sn',
+                                'N',
+                                'In',
+                                'Ba',
+                                'Zr',
+                                'Sb',
+                                'Ag',
+                            ]
+                        ],
+                    ],
+                ),
+                Menu(
+                    title='Properties',
+                    size=MenuSizeEnum.XXL,
+                    items=[
+                        MenuItemHistogram(
+                            title='Band gap',
+                            x=Axis(
+                                search_quantity=(
+                                    f'data.band_gap.value#{combi_samples_schema}'
+                                ),
+                                scale='linear',
+                                unit='eV',
+                            ),
+                            width=9,
+                        ),
+                        MenuItemTerms(
+                            title='Interpolation',
+                            search_quantity=(
+                                f'data.band_gap.interpolation#{combi_samples_schema}'
+                            ),
+                            width=3,
+                            show_input=True,
+                        ),
+                        MenuItemHistogram(
+                            title='Thickness',
+                            x=Axis(
+                                search_quantity=(
+                                    f'data.thickness.value#{combi_samples_schema}'
+                                ),
+                                scale='linear',
+                                unit='nm',
+                            ),
+                            width=9,
+                        ),
+                        MenuItemTerms(
+                            title='Interpolation',
+                            search_quantity=(
+                                f'data.thickness.interpolation#{combi_samples_schema}'
+                            ),
+                            width=3,
+                            show_input=True,
+                        ),
+                        MenuItemHistogram(
+                            title='Absorption coefficient',
+                            x=Axis(
+                                search_quantity=(
+                                    f'data.absorption_coefficient.mean_absorption_above'
+                                    f'_edge#{combi_samples_schema}'
+                                ),
+                                scale='linear',
+                                unit='cm^-1',
+                            ),
+                            width=9,
+                        ),
+                        MenuItemTerms(
+                            title='Interpolation',
+                            search_quantity=(
+                                f'data.absorption_coefficient.interpolation#{combi_samples_schema}'
+                            ),
+                            width=3,
+                            show_input=True,
+                        ),
+                    ],
+                ),
+            ],
+        ),
         filters_locked={
             'entry_type': 'DTUCombinatorialSample',
+        },
+        dashboard={
+            'widgets': yaml.safe_load(
+                """
+- type: scatter_plot
+  autorange: true
+  size: 10000
+  markers:
+    color:
+      search_quantity: data.deposition.material_space#nomad_dtu_nanolab_plugin.schema_packages.sample.DTUCombinatorialSample
+  y:
+    search_quantity: data.composition.P#nomad_dtu_nanolab_plugin.schema_packages.sample.DTUCombinatorialSample
+  x:
+    search_quantity: data.composition.S#nomad_dtu_nanolab_plugin.schema_packages.sample.DTUCombinatorialSample
+  title: Phosphosulfide space
+  layout:
+    xxl:
+      minH: 3
+      minW: 3
+      h: 9
+      w: 16
+      y: 0
+      x: 0
+    xl:
+      minH: 3
+      minW: 3
+      h: 9
+      w: 13
+      y: 0
+      x: 0
+    lg:
+      minH: 3
+      minW: 3
+      h: 8
+      w: 10
+      y: 0
+      x: 0
+    md:
+      minH: 3
+      minW: 3
+      h: 7
+      w: 7
+      y: 0
+      x: 0
+    sm:
+      minH: 3
+      minW: 3
+      h: 6
+      w: 8
+      y: 0
+      x: 0
+- type: scatter_plot
+  autorange: true
+  size: 1000
+  markers:
+    color:
+      search_quantity: data.deposition.temperature#nomad_dtu_nanolab_plugin.schema_packages.sample.DTUCombinatorialSample
+      unit: degree_Celsius
+      title: Deposition temperature
+  y:
+    search_quantity: data.thickness.value#nomad_dtu_nanolab_plugin.schema_packages.sample.DTUCombinatorialSample
+    unit: nm
+    title: Thickness
+  x:
+    search_quantity: data.deposition.time#nomad_dtu_nanolab_plugin.schema_packages.sample.DTUCombinatorialSample
+    unit: minute
+    title: Deposition time
+  layout:
+    xxl:
+      minH: 3
+      minW: 3
+      h: 9
+      w: 16
+      y: 0
+      x: 20
+    xl:
+      minH: 3
+      minW: 3
+      h: 9
+      w: 13
+      y: 0
+      x: 17
+    lg:
+      minH: 3
+      minW: 3
+      h: 8
+      w: 10
+      y: 0
+      x: 14
+    md:
+      minH: 3
+      minW: 3
+      h: 7
+      w: 7
+      y: 0
+      x: 11
+    sm:
+      minH: 3
+      minW: 3
+      h: 3
+      w: 12
+      y: 6
+      x: 0
+- type: terms
+  show_input: true
+  scale: linear
+  search_quantity: data.deposition.material_space#nomad_dtu_nanolab_plugin.schema_packages.sample.DTUCombinatorialSample
+  layout:
+    xxl:
+      minH: 4
+      minW: 4
+      h: 9
+      w: 4
+      y: 0
+      x: 13
+    xl:
+      minH: 4
+      minW: 4
+      h: 9
+      w: 4
+      y: 0
+      x: 13
+    lg:
+      minH: 4
+      minW: 4
+      h: 8
+      w: 4
+      y: 0
+      x: 10
+    md:
+      minH: 4
+      minW: 4
+      h: 7
+      w: 4
+      y: 0
+      x: 7
+    sm:
+      minH: 4
+      minW: 4
+      h: 6
+      w: 4
+      y: 0
+      x: 8
+"""  # noqa: E501
+            )
         },
     ),
 )

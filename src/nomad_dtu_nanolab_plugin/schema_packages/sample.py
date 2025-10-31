@@ -94,6 +94,10 @@ class Deposition(SampleProperty):
         type=str,
         description='The name of the operator who created the sample.',
     )
+    method = Quantity(
+        type=MEnum('Sputtering', 'Rapid Thermal Processing', 'Other'),
+        description='The deposition method used to create the sample.',
+    )
 
 
 class XrdPeak(ArchiveSection):
@@ -328,7 +332,7 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
         self.elemental_composition = [
             ElementalComposition(element=e, atomic_fraction=v)
             for e, v in composition.items()
-            if v
+            if e in chemical_symbols and v
         ]
 
         super().normalize(archive, logger)
