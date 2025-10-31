@@ -644,9 +644,9 @@ samples = AppEntryPoint(
                                 'Ba',
                                 'Zr',
                                 'Sb',
-                                'Ag'
+                                'Ag',
                             ]
-                        ]
+                        ],
                     ],
                 ),
                 Menu(
@@ -712,7 +712,7 @@ samples = AppEntryPoint(
                             show_input=True,
                         ),
                     ],
-                )
+                ),
             ],
         ),
         filters_locked={
@@ -720,7 +720,7 @@ samples = AppEntryPoint(
         },
         dashboard={
             'widgets': yaml.safe_load(
-"""
+                """
 - type: scatter_plot
   autorange: true
   size: 10000
@@ -862,6 +862,6 @@ samples = AppEntryPoint(
       x: 8
 """  # noqa: E501
             )
-        }
+        },
     ),
 )
