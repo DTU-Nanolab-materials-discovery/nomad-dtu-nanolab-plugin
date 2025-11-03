@@ -14,13 +14,15 @@ from nomad.datamodel.metainfo.annotations import (
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
+from nomad_measurements.mapping.schema import (
+    MappingResult,
+)
 from nomad_measurements.utils import merge_sections
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    MappingMeasurement,
-    MappingResult,
+    DtuNanolabMeasurement,
 )
 
 if TYPE_CHECKING:
@@ -260,7 +262,7 @@ class PLMetadata(ArchiveSection):
         super().normalize(archive, logger)
 
 
-class DTUPLMeasurement(MappingMeasurement, PlotSection, Schema):
+class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='XRD Measurement',

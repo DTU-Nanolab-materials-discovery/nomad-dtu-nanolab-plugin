@@ -1,49 +1,33 @@
 name: install-and-test-workflow
-env:
-  UV_SYSTEM_PYTHON: true
+
 on: [push]
+
 jobs:
   install-and-test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python_version: ["3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python ${{matrix.python_version}}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{matrix.python_version}}
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-      - name: Install dependencies
-        run: |
-          uv pip install '.[dev]' 
-          uv pip install coverage coveralls
-      - name: Test with pytest
-        run: |
-          python -m coverage run -m pytest -sv
-      - name: Submit to coveralls
-        continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          coveralls --service=github
+    - uses: actions/checkout@v4
+    - name: Install uv and set the python version
+      uses: astral-sh/setup-uv@v5
+      with:
+          python-version: 3.12
+    - name: Install dependencies
+      run: |
+        uv sync --all-extras
+    - name: Test with pytest
+      run: |
+        uv run --with coverage coverage run -m pytest -sv
+    - name: Submit to coveralls
+      continue-on-error: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        uv run --with coveralls coveralls --service=github
 
   ruff-linting:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: chartboost/ruff-action@v1
-        with:
-          args: "check ."
-
-  ruff-formatting:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: chartboost/ruff-action@v1
-        with:
-          args: "format . --check"
+      - uses: astral-sh/ruff-action@v3
+      - run: ruff check .
+      - run: ruff format --check .
