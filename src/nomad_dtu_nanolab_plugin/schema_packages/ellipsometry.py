@@ -9,12 +9,14 @@ from nomad.datamodel.metainfo.annotations import (
 )
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
+from nomad_measurements.mapping.schema import (
+    MappingResult,
+)
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    MappingMeasurement,
-    MappingResult,
+    DtuNanolabMeasurement,
 )
 
 if TYPE_CHECKING:
@@ -65,7 +67,7 @@ class EllipsometryMetadata(Schema):
         super().normalize(archive, logger)
 
 
-class DTUEllipsometryMeasurement(MappingMeasurement, PlotSection, Schema):
+class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='XRD Measurement',

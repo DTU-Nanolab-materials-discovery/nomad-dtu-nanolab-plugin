@@ -15,14 +15,16 @@ from nomad.datamodel.metainfo.annotations import (
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
+from nomad_measurements.mapping.schema import (
+    MappingResult,
+    RectangularSampleAlignment,
+)
 from nomad_measurements.utils import merge_sections
 from scipy.interpolate import griddata
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    MappingMeasurement,
-    MappingResult,
-    RectangularSampleAlignment,
+    DtuNanolabMeasurement,
 )
 
 if TYPE_CHECKING:
@@ -118,7 +120,7 @@ class DTUSampleAlignment(RectangularSampleAlignment):
     )
 
 
-class EDXMeasurement(MappingMeasurement, PlotSection, Schema):
+class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='EDX Measurement',
