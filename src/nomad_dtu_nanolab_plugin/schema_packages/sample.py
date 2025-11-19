@@ -176,8 +176,13 @@ class Thickness(SampleProperty):
 
 
 class CrystalStructure(SampleProperty):
+    space_group_nbr = Quantity(
+        type=MEnum([no for no in range(1, 231)]),
+        description='The space group number (1-230)',
+    )
     space_group = Quantity(
         type=MEnum([Spacegroup(no).symbol for no in range(1, 231)]),
+        description='The space group symbol',
     )
     a = Quantity(
         type=np.float64,
@@ -209,6 +214,29 @@ class CrystalStructure(SampleProperty):
         description='The angle gamma of the crystal structure.',
         unit='degree',
     )
+    def normalize(self, archive, logger):
+        """
+        Normalizes the crystal structure by ensuring that both
+        space group number and symbol are set.
+
+        If only one of the space group number or symbol is provided, the other
+        is derived using the ASE Spacegroup class.
+
+        Parameters
+        ----------
+        archive : Archive
+            The archive object being normalized.
+        logger : Logger
+            Logger for recording normalization events or warnings.
+        """
+        super().normalize(archive, logger)
+
+        if self.space_group_nbr and not self.space_group:
+            self.space_group = Spacegroup(self.space_group_nbr).symbol
+        elif self.space_group and not self.space_group_nbr:
+            space_groups = {Spacegroup(no).symbol: no for no in range(1, 231)}
+            self.space_group_nbr = space_groups.get(self.space_group)
+
 
 
 class XrdData(SampleProperty):
