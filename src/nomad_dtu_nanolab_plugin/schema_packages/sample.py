@@ -214,6 +214,7 @@ class CrystalStructure(SampleProperty):
         description='The angle gamma of the crystal structure.',
         unit='degree',
     )
+
     def normalize(self, archive, logger):
         """
         Normalizes the crystal structure by ensuring that both
@@ -236,7 +237,6 @@ class CrystalStructure(SampleProperty):
         elif self.space_group and not self.space_group_nbr:
             space_groups = {Spacegroup(no).symbol: no for no in range(1, 231)}
             self.space_group_nbr = space_groups.get(self.space_group)
-
 
 
 class XrdData(SampleProperty):
