@@ -177,7 +177,7 @@ class Thickness(SampleProperty):
 
 class CrystalStructure(SampleProperty):
     space_group_nbr = Quantity(
-        type=MEnum([no for no in range(1, 231)]),
+        type=int,
         description='The space group number (1-230)',
     )
     space_group = Quantity(
@@ -231,6 +231,13 @@ class CrystalStructure(SampleProperty):
             Logger for recording normalization events or warnings.
         """
         super().normalize(archive, logger)
+
+        if not self.space_group_nbr > 0 and not self.space_group_nbr < 231:
+            logger.warning(
+                f'Invalid space group number {self.space_group_nbr}. '
+                'It should be between 1 and 230.'
+            )
+            return
 
         if self.space_group_nbr and not self.space_group:
             self.space_group = Spacegroup(self.space_group_nbr).symbol
