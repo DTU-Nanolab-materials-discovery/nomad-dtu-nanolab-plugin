@@ -1340,6 +1340,51 @@ class SulfurCrackerPressure(ArchiveSection):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
         unit='kg/(m*s^2)',
     )
+    sulfur_flow = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm^3/minute'},
+        unit='m^3/s',
+        description="""
+            Flow of sulfur
+        """
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `SulfurCrackerPressure` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        super().normalize(archive, logger)
+
+        def sulfur_pressure_to_flow(pressure_quant):
+            """
+            Convert sulfur partial pressure to sulfur flow.
+
+            Args:
+                pressure_quant: Quantity of sulfur partial pressure in 'kg/(m*s^2)'
+
+            Expression:
+                sulfur flow rate [sccm] = 2.8E4 * sulfur partial pressure [Torr]
+
+            Returns:
+                Quantity of sulfur flow in 'cm^3/s'
+            """
+            if pressure_quant is None:
+                return None
+
+            #pressure in torr
+            p_torr = pressure_quant.to('torr').magnitude
+            #flow in sccm
+            flow = 2.8E4 * p_torr  # in sccm
+
+            return flow * ureg('cm^3/minute')
+
+        if self.sulfur_flow is None and self.sulfur_partial_pressure is not None:
+            self.sulfur_flow = sulfur_pressure_to_flow(self.sulfur_partial_pressure)
 
 
 class DepositionParameters(ArchiveSection):
@@ -1946,6 +1991,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         unit='kg/(m*s^2)',
         description='The base pressure of the chamber before deposition.',
     )
+    sulfur_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'torr'},
+        unit='kg/(m*s^2)',
+        description='The sulfur partial pressure, as estimated or measured.',
+    )
     target_image_before = Quantity(
         type=str,
         a_eln={
@@ -2060,6 +2111,28 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     temperature_ramp_down = SubSection(
         section_def=TempRampDown,
     )
+
+    def write_sulfur_pressure(self, logger: 'BoundLogger') -> None:
+        """
+        Helper method to write the sulfur partial pressure to the
+        sulfur_cracker_pressure section.
+
+        Args:
+            logger (BoundLogger): A structlog logger.
+        """
+
+        if self.sulfur_partial_pressure is not None:
+            if self.sulfur_cracker_pressure is None:
+                self.sulfur_cracker_pressure = SulfurCrackerPressure()
+            self.sulfur_cracker_pressure.sulfur_partial_pressure = (
+                self.sulfur_partial_pressure
+            )
+            self.sulfur_cracker_pressure.normalize(None, logger)
+        else:
+            logger.info(
+                'sulfur_partial_pressure is None: '
+                'Could not set sulfur_cracker_pressure.sulfur_partial_pressure'
+            )
 
     def plot_plotly_chamber_config(self, logger: 'BoundLogger') -> dict:
         plots = {}
@@ -3035,6 +3108,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # call the plotting function from self to show all the plots from the
         # plots list in the entry
         self.plot(plots, archive, logger)
+
+        #write the sulfur pressure from DTUSputtering into the nested level
+        self.write_sulfur_pressure()
 
         # create combinatorial libraries if the parsing has been successful
         if self.deposition_parameters is not None:
