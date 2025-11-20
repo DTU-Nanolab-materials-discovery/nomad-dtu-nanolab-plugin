@@ -1346,7 +1346,7 @@ class SulfurCrackerPressure(ArchiveSection):
         unit='m^3/s',
         description="""
             Flow of sulfur
-        """
+        """,
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -1376,10 +1376,10 @@ class SulfurCrackerPressure(ArchiveSection):
             if pressure_quant is None:
                 return None
 
-            #pressure in torr
+            # pressure in torr
             p_torr = pressure_quant.to('torr').magnitude
-            #flow in sccm
-            flow = 2.8E4 * p_torr  # in sccm
+            # flow in sccm
+            flow = 2.8e4 * p_torr  # in sccm
 
             return flow * ureg('cm^3/minute')
 
@@ -3109,7 +3109,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # plots list in the entry
         self.plot(plots, archive, logger)
 
-        #write the sulfur pressure from DTUSputtering into the nested level
+        # write the sulfur pressure from DTUSputtering into the nested level
         self.write_sulfur_pressure()
 
         # create combinatorial libraries if the parsing has been successful
