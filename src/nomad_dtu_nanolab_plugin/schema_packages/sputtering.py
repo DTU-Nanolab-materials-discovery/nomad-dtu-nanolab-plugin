@@ -1337,7 +1337,7 @@ class SulfurCrackerPressure(ArchiveSection):
     m_def = Section()
     sulfur_partial_pressure = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'torr'},
         unit='kg/(m*s^2)',
     )
     sulfur_flow = Quantity(
