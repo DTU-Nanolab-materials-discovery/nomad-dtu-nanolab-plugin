@@ -3110,7 +3110,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         self.plot(plots, archive, logger)
 
         # write the sulfur pressure from DTUSputtering into the nested level
-        self.write_sulfur_pressure()
+        self.write_sulfur_pressure(logger)
 
         # create combinatorial libraries if the parsing has been successful
         if self.deposition_parameters is not None:
