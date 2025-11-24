@@ -875,7 +875,6 @@ class DTUGasFlow(GasFlow, ArchiveSection):
         """
         super().normalize(archive, logger)
 
-        # TODO add a normalizer to find the right bottle
         from nomad.datamodel.context import ServerContext
 
         if (
@@ -1128,7 +1127,7 @@ class SourceOverview(ArchiveSection):
             'The accumulated power the target has been exposed to at the end of '
             'the deposition'
         ),
-    )  # TODO check unit
+    )
     target_id = SubSection(
         section_def=DTUTargetReference,
         description='A reference to the target used.',

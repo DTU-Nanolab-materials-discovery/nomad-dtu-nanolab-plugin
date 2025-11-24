@@ -6179,7 +6179,7 @@ def map_params_to_nomad(params, gun_list):
                     [
                         ['deposition', gun, 'target_usage'],
                         ['deposition_parameters', gun, 'target_usage'],
-                        'kW*h',  # TODO test that
+                        'kW*h',
                     ],
                     [
                         ['deposition', gun, 'avg_output_power'],
