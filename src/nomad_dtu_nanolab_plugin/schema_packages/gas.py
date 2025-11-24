@@ -52,7 +52,7 @@ class DTUGasSupply(CompositeSystem, Schema):
         a_eln={'component': 'StringEditQuantity'},
         description=(
             'The molecular formula of the gas, in lower case (Ex: '
-            'h2s for 10% H2S in Ar, ar for Ar). This ensure functionning '
+            'h2s for 10% H2S in Ar, ar for Ar). This ensure functioning'
             'referencing.'
         ),
     )
