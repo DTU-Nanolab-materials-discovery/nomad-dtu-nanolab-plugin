@@ -2112,8 +2112,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     )
 
     def write_sulfur_pressure(
-            self, archive: 'EntryArchive', logger: 'BoundLogger'
-            ) -> None:
+        self, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
         """
         Helper method to write the sulfur partial pressure to the
         sulfur_cracker_pressure section.
