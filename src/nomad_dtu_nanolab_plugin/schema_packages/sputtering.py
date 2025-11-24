@@ -2112,13 +2112,17 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         section_def=TempRampDown,
     )
 
-    def write_sulfur_pressure(self, logger: 'BoundLogger') -> None:
+    def write_sulfur_pressure(
+            self, archive: 'EntryArchive', logger: 'BoundLogger'
+            ) -> None:
         """
         Helper method to write the sulfur partial pressure to the
         sulfur_cracker_pressure section.
 
         Args:
             logger (BoundLogger): A structlog logger.
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
         """
 
         if self.sulfur_partial_pressure is not None:
@@ -2127,7 +2131,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             self.sulfur_cracker_pressure.sulfur_partial_pressure = (
                 self.sulfur_partial_pressure
             )
-            self.sulfur_cracker_pressure.normalize(None, logger)
+            self.sulfur_cracker_pressure.normalize(archive, logger)
         else:
             logger.info(
                 'sulfur_partial_pressure is None: '
@@ -3110,7 +3114,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         self.plot(plots, archive, logger)
 
         # write the sulfur pressure from DTUSputtering into the nested level
-        self.write_sulfur_pressure(logger)
+        self.write_sulfur_pressure(archive, logger)
 
         # create combinatorial libraries if the parsing has been successful
         if self.deposition_parameters is not None:
