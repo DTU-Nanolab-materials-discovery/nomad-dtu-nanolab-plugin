@@ -45,7 +45,9 @@ if TYPE_CHECKING:
     from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
         DtuNanolabMeasurement,
     )
-    from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
+    from nomad_dtu_nanolab_plugin.schema_packages.sputtering import (
+        DTUSputtering,
+    )
 
 m_package = Package()
 
@@ -420,6 +422,10 @@ class ProcessParameterOverview(ArchiveSection):
         unit='m',
     )
 
+    # deposition_parameters = SubSection(  # FAULTY LINE TODO
+    # section_def=DepositionParameters,
+    # )
+
 
 class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
     m_def = Section(
@@ -429,7 +435,6 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
 
     process_parameter_overview = SubSection(
         section_def=ProcessParameterOverview,
-        description='An overview of the process parameters used to create the library.',
     )
 
     geometry = SubSection(

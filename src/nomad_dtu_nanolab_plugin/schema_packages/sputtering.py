@@ -834,19 +834,35 @@ class DTUGasFlow(GasFlow, ArchiveSection):
     """
 
     m_def = Section()
-    gas_supply = Quantity(
-        type=DTUGasSupply,
-    )
+
     gas_name = Quantity(
         type=str,
         a_eln={'component': 'StringEditQuantity', 'label': 'Gas name'},
         description='The name of the gas.',
     )
-    used_gas_supply = Quantity(
-        type=CompositeSystem,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
-        description='Reference to the gas supply used.',
+
+    gas_supply_reference = Quantity(
+        type=DTUGasSupply,
+        description='The gas supply used.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.ReferenceEditQuantity,
+        ),
     )
+
+    def set_gas_properties(self) -> None:
+        """
+        Set the properties of the gas based on the used gas supply.
+        """
+        self.gas = PureSubstanceSection()
+        self.gas.name = self.gas_supply_reference.name
+        self.gas.iupac_name = self.gas_supply_reference.iupac_name
+        self.gas.molecular_formula = self.gas_supply_reference.molecular_formula
+        self.gas.molecular_mass = self.gas_supply_reference.molecular_mass
+        self.gas.inchi = self.gas_supply_reference.inchi
+        self.gas.inchi_key = self.gas_supply_reference.inchi_key
+        self.gas.smile = self.gas_supply_reference.smiles
+        self.gas.canonical_smile = self.gas_supply_reference.canonical_smiles
+        self.gas.cas_number = self.gas_supply_reference.cas_number
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -858,18 +874,56 @@ class DTUGasFlow(GasFlow, ArchiveSection):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        if self.used_gas_supply is None:
-            return
-        self.gas_name = self.used_gas_supply.name
-        self.gas.name = self.used_gas_supply.name
-        self.gas.iupac_name = self.used_gas_supply.iupac_name
-        self.gas.molecular_formula = self.used_gas_supply.molecular_formula
-        self.gas.molecular_mass = self.used_gas_supply.molecular_mass
-        self.gas.inchi = self.used_gas_supply.inchi
-        self.gas.inchi_key = self.used_gas_supply.inchi_key
-        self.gas.smile = self.used_gas_supply.smiles
-        self.gas.canonical_smile = self.used_gas_supply.canonical_smiles
-        self.gas.cas_number = self.used_gas_supply.cas_number
+
+        from nomad.datamodel.context import ServerContext
+
+        if (
+            self.gas_supply_reference is None
+            and self.gas_name is not None
+            and isinstance(archive.m_context, ServerContext)  # what does this do?
+        ):
+            from nomad.search import MetadataPagination, search
+
+            query = {
+                (
+                    'data.in_use#'
+                    'nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply'
+                ): True,
+                (
+                    'data.molecular_formula#'
+                    'nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply'
+                ): self.gas_name,
+            }
+
+            search_result = search(
+                owner='all',
+                query=query,
+                pagination=MetadataPagination(page_size=1),
+                user_id=archive.metadata.main_author.user_id,
+            )
+
+            # if there is not strickly one bottle in use, we sent a warning
+            if search_result.pagination.total == 0:
+                logger.warning(
+                    f'No in use {self.gas_name} found. '
+                    f'Please check the gas bottles inventory.'
+                )
+            # if there is only one bottle in use, we set the used_gas_supply
+            elif search_result.pagination.total == 1:
+                entry_id = search_result.data[0]['entry_id']
+                upload_id = search_result.data[0]['upload_id']
+                self.gas_supply_reference = (
+                    f'../uploads/{upload_id}/archive/{entry_id}#data'
+                )
+            else:
+                logger.warning(
+                    f'Found multiple ({search_result.pagination.total}) in use '
+                    f'{self.gas_name} bottles. Only one bottle should be in use '
+                    f'at a time. Please check the gas bottles inventory.'
+                )
+
+        if self.gas_supply_reference is not None:
+            self.set_gas_properties()
 
 
 class DtuTemperature(TimeSeries):
@@ -1060,6 +1114,19 @@ class SourceOverview(ArchiveSection):
         type=str,
         a_eln={'component': 'StringEditQuantity', 'label': 'Target material'},
         description='The material of the target.',
+    )
+    target_usage = Quantity(
+        type=np.float64,
+        a_eln={
+            'component': 'NumberEditQuantity',
+            'defaultDisplayUnit': 'kW*h',
+            'label': 'Accumulated power (Energy)',
+        },
+        unit='kW*h',
+        description=(
+            'The accumulated power the target has been exposed to at the end of '
+            'the deposition'
+        ),
     )
     target_id = SubSection(
         section_def=DTUTargetReference,
@@ -1269,9 +1336,54 @@ class SulfurCrackerPressure(ArchiveSection):
     m_def = Section()
     sulfur_partial_pressure = Quantity(
         type=np.float64,
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mbar'},
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'torr'},
         unit='kg/(m*s^2)',
     )
+    sulfur_flow = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'cm^3/minute'},
+        unit='m^3/s',
+        description="""
+            Flow of sulfur
+        """,
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `SulfurCrackerPressure` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        super().normalize(archive, logger)
+
+        def sulfur_pressure_to_flow(pressure_quant):
+            """
+            Convert sulfur partial pressure to sulfur flow.
+
+            Args:
+                pressure_quant: Quantity of sulfur partial pressure in 'kg/(m*s^2)'
+
+            Expression:
+                sulfur flow rate [sccm] = 2.8E4 * sulfur partial pressure [Torr]
+
+            Returns:
+                Quantity of sulfur flow in 'cm^3/s'
+            """
+            if pressure_quant is None:
+                return None
+
+            # pressure in torr
+            p_torr = pressure_quant.to('torr').magnitude
+            # flow in sccm
+            flow = 2.8e4 * p_torr  # in sccm
+
+            return flow * ureg('cm^3/minute')
+
+        if self.sulfur_flow is None and self.sulfur_partial_pressure is not None:
+            self.sulfur_flow = sulfur_pressure_to_flow(self.sulfur_partial_pressure)
 
 
 class DepositionParameters(ArchiveSection):
@@ -1316,6 +1428,12 @@ class DepositionParameters(ArchiveSection):
         a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
         unit='s',
         description='The total deposition time.',
+    )
+    platen_rotation = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'degree'},
+        unit='rad',
+        description='The platen rotation angle during the deposition.',
     )
     sputter_pressure = Quantity(
         type=np.float64,
@@ -1872,6 +1990,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         unit='kg/(m*s^2)',
         description='The base pressure of the chamber before deposition.',
     )
+    sulfur_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'torr'},
+        unit='kg/(m*s^2)',
+        description='The sulfur partial pressure, as estimated or measured.',
+    )
     target_image_before = Quantity(
         type=str,
         a_eln={
@@ -1986,6 +2110,32 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
     temperature_ramp_down = SubSection(
         section_def=TempRampDown,
     )
+
+    def write_sulfur_pressure(
+        self, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
+        """
+        Helper method to write the sulfur partial pressure to the
+        sulfur_cracker_pressure section.
+
+        Args:
+            logger (BoundLogger): A structlog logger.
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+        """
+
+        if self.sulfur_partial_pressure is not None:
+            if self.sulfur_cracker_pressure is None:
+                self.sulfur_cracker_pressure = SulfurCrackerPressure()
+            self.sulfur_cracker_pressure.sulfur_partial_pressure = (
+                self.sulfur_partial_pressure
+            )
+            self.sulfur_cracker_pressure.normalize(archive, logger)
+        else:
+            logger.info(
+                'sulfur_partial_pressure is None: '
+                'Could not set sulfur_cracker_pressure.sulfur_partial_pressure'
+            )
 
     def plot_plotly_chamber_config(self, logger: 'BoundLogger') -> dict:
         plots = {}
@@ -2113,14 +2263,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # Checking that the value exists
         if value is None:
-            logger.warning(f'Missing {params_str}: Could not set {subsection_str}')
+            logger.info(f'Missing {params_str}: Could not set {subsection_str}')
             return
         # We check if the value is a TimeDelta object and convert it to seconds
         if isinstance(value, pd._libs.tslibs.timedeltas.Timedelta):
             try:
                 value = value.total_seconds()
             except AttributeError:
-                logger.warning(f'{params_str}.total_seconds method is invalid')
+                logger.info(f'{params_str}.total_seconds method is invalid')
                 return
             value = ureg.Quantity(value, 'second')
         elif unit is not None:
@@ -2128,13 +2278,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 try:
                     value = ureg.Quantity(value, unit)
                 except Exception as e:
-                    logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
+                    logger.info(f'Failed to convert {params_str} to {unit}: {e}')
                     return
             else:
                 try:
                     value = ureg.Quantity(value, unit)
                 except Exception as e:
-                    logger.warning(f'Failed to convert {params_str} to {unit}: {e}')
+                    logger.info(f'Failed to convert {params_str} to {unit}: {e}')
                     return
         # Traverse the path to set the nested attribute
         try:
@@ -2143,7 +2293,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 obj = getattr(obj, attr)
             setattr(obj, output_keys[-1], value)
         except Exception as e:
-            logger.warning(f'Failed to set {params_str} to {subsection_str}: {e}')
+            logger.info(f'Failed to set {params_str} to {subsection_str}: {e}')
 
     def generate_general_log_data(self, params: dict, logger: 'BoundLogger') -> Self:
         """
@@ -2161,10 +2311,14 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         gun_list = ['magkeeper3', 'magkeeper4', 'taurus']
 
-        # Mapping the params to the respective sections
+        # Mapping the params to the respective sections:
+        # mapping refers to linking a (nested) location in the param dictionnary
+        # to a (nested) location in the DTUSputtering class, together with an info on
+        # the unit of the incomming value (if applicable)
         param_nomad_map = map_params_to_nomad(params, gun_list)
 
         # Initializing a temporary class objects
+
         sputtering = DTUSputtering()
         sputtering.samples = []
         sputtering.steps = []
@@ -2176,6 +2330,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         sputtering.temperature_ramp_down = TempRampDown()
 
         for gun in gun_list:
+            # check if the gun has been used during the deposition
             if params['deposition'].get(gun, {}).get('enabled', False):
                 # Create a SourceOverview object and set it to the relevant attribute
                 source_overview = SourceOverview()
@@ -2185,22 +2340,37 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 target_reference = DTUTargetReference()
                 setattr(source_overview, 'target_id', target_reference)
 
+        # check if the S cracker has been used and initiate it if so
         if params['deposition'].get('s_cracker', {}).get('enabled', False):
             sputtering.deposition_parameters.s_cracker = SCrackerOverview()
 
         sputtering.end_of_process = EndOfProcess()
 
         # Looping through the param_nomad_map
+        # here we unpack the map to get the
+        #   #1. the path in the param dict of the incomming data
+        #   #2. the path in the nomad DTUSputtering class where the data should go
+        #   #3. the unit of the value from the param dict
+
+        # Ex:
+        # [
+        #     ['deposition', 'avg_temp_1'],  #1
+        #     ['deposition_parameters', 'deposition_temperature'],  #2
+        #     'degC',  #3
+        # ],
         for input_keys, output_keys, unit in param_nomad_map:
+            # we wrap everything into a config dict
             config = {
-                'input_dict': params,
-                'input_keys': input_keys,
-                'output_obj': sputtering,
+                'input_dict': params,  # the params dict from where the data comes
+                'input_keys': input_keys,  # 1
+                'output_obj': sputtering,  # the target object where we write the data
                 'output_obj_name': 'sputtering',
-                'output_keys': output_keys,
-                'unit': unit,
-                'logger': logger,
+                'output_keys': output_keys,  # 2
+                'unit': unit,  # 3
+                'logger': logger,  # a logger
             }
+            # call write_data with the config dict
+            # data will perform the writing operation
             self.write_data(config)
 
         # Special case for the adjusted instrument parameters
@@ -2211,6 +2381,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             )
         sputtering.instruments = [instrument_reference]
 
+        # Generating the target ramp up, presput and deprate measurement using another
+        # generate_ function nested into the generate_general_log_data
+        # function. the generate_source_up_presput_deprate_log_data uses
+        # a very similar logic as the all the other generate_ functions
         targets_ramp_up, targets_presput, targets_deprate = (
             self.generate_source_up_presput_deprate_log_data(params, logger)
         )
@@ -2221,6 +2395,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         sputtering.source_deprate.extend(targets_deprate)
 
+        # if the depositon was interrupted (this an info that we get from the params
+        # dict, we put a flag on this sputtering process
         if params['deposition']['interrupted']:
             sputtering.flags.append(DtuFlag(flag='INTERRUPTED_DEPOSITION'))
 
@@ -2242,6 +2418,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 )
 
                 # Looping through the source_ramp_up_param_nomad_map
+                # see generate_general_log_data comments for more info on the logic
                 for input_keys, output_keys, unit in source_ramp_up_param_nomad_map:
                     config = {
                         'input_dict': params,
@@ -2284,6 +2461,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 )
 
                 # Looping through the source_deprate_param_nomad_map
+                #
                 for input_keys, output_keys, unit in source_deprate_param_nomad_map:
                     config = {
                         'input_dict': params,
@@ -2331,6 +2509,8 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             step_param_nomad_map = map_step_params_to_nomad(key)
 
             # Looping through the step_param_nomad_map
+            # see generate_general_log_data comments for more info on the logic
+
             for input_keys, output_keys, unit in step_param_nomad_map:
                 config = {
                     'input_dict': step_params,
@@ -2652,6 +2832,26 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         gas_flow = []
 
         for gas_name in ['ar', 'n2', 'o2', 'ph3', 'nh3', 'h2s']:
+            # Get the flow rate values
+            flow_rate_values = (
+                step_params.get(key, {})
+                .get('environment', {})
+                .get('gas_flow', {})
+                .get(gas_name, {})
+                .get('flow_rate', {})
+                .get('value', [0])
+            )
+
+            # Calculate the average of the values
+            if isinstance(flow_rate_values, list) and len(flow_rate_values) > 0:
+                avg_flow_rate = sum(flow_rate_values) / len(flow_rate_values)
+            else:
+                avg_flow_rate = 0
+
+            # Skip if average flow rate is below 1
+            if avg_flow_rate < 1:
+                continue
+
             single_gas_flow = DTUGasFlow()
             single_gas_flow.flow_rate = VolumetricFlowRate()
             single_gas_flow.gas = PureSubstanceSection()
@@ -2677,7 +2877,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         libraries = []
-        substrate_mounting: DtuSubstrateMounting
+        # substrate_mounting: DtuSubstrateMounting
         for idx, substrate_mounting in enumerate(self.substrates):
             if substrate_mounting.substrate is None:
                 continue
@@ -2717,6 +2917,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             ]
 
             library.process_parameter_overview = ProcessParameterOverview()
+
             # we write some important process parameters to the library
             library.process_parameter_overview.position_x = (
                 substrate_mounting.position_x
@@ -2724,13 +2925,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             library.process_parameter_overview.position_y = (
                 substrate_mounting.position_y
             )
-            library.process_parameter_overview.rotation = substrate_mounting.rotation
-            library.process_parameter_overview.width = (
-                substrate_mounting.substrate.geometry.width
-            )
-            library.process_parameter_overview.length = (
-                substrate_mounting.substrate.geometry.length
-            )
+
             # TODO add more process parameters
 
             libraries.append(library)
@@ -2752,9 +2947,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             #     )
         if configuration.overwrite_libraries:
             time.sleep(5)  # to ensure that layers are processed before samples
+
         self.samples = [
             CompositeSystemReference(
-                name=f'Sample {sample_id}',
+                name=f'Sample {library.lab_id}'.replace('_', ' '),
                 reference=create_archive(
                     library,
                     archive,
@@ -2768,7 +2964,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     def add_target_to_workflow(self, archive: 'EntryArchive') -> None:
         """
-        Temporary method to add the target to the workflow2.inputs list.
+        Method to add the target to the workflow2.inputs list.
         """
         for step in self.steps:
             step: DTUSteps
@@ -2781,13 +2977,36 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                         )
                         return
 
+    def add_gas_supply_to_workflow(self, archive: 'EntryArchive') -> None:
+        """
+        Method to add the bottles to the workflow2.inputs list.
+        """
+
+        # Collect all unique gas supply references from steps
+        unique_gas_supplies = {}  # Dict automatically handles uniqueness
+
+        for step in self.steps:
+            step: DTUSteps
+            for gas_flow in step.environment.gas_flow:
+                gas_flow: DTUGasFlow
+                if gas_flow.gas_supply_reference is not None:
+                    unique_gas_supplies[gas_flow.gas_name] = (
+                        gas_flow.gas_supply_reference
+                    )
+
+        # Add only those that aren't already in workflow inputs
+        for gas_name, gas_supply_ref in unique_gas_supplies.items():
+            archive.workflow2.inputs.append(
+                Link(name=f'Gas Supply: {gas_name}', section=gas_supply_ref)
+            )
+
     def correct_platen_angle(
         self, archive: 'EntryArchive', logger: 'BoundLogger'
     ) -> None:
         """Method to correct the platen angle if the datetime is after 2025-05-08.
-        This is a temporary fix to correct the angle of the platen after the
+        This is a fix to correct the angle of the platen after the
         8th of May 2025, where the angles are shifted by 120 degrees relative
-        to the old angle.
+        to the old angle, as a result of a Maintenance on the sputter chamber.
         """
         if self.datetime is not None:
             dt = self.datetime
@@ -2804,6 +3023,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                         self.instruments[0].platen_rotation + 120 * ureg('degree')
                     ) % (360 * ureg('degree'))
                     self.instruments[0].platen_rotation = new_angle.to('degree')
+                    self.deposition_parameters.platen_rotation = new_angle.to('degree')
             else:
                 logger.warning(
                     'No angle correction is done since the data is before the 8th'
@@ -2826,25 +3046,40 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             self.lab_id = sample_id
         # Openning the log file
         with archive.m_context.raw_file(self.log_file, 'r') as log:
+            # reading the csv logfile
             log_df = read_logfile(log.name)
+            # formatting the logfiles (finding out which power supply is connected to
+            # which source, harmonizing some column names)
             formated_log_df, _ = format_logfile(log_df)
+            # calling the read_events master function that extracts events from the log
+            # file based on conditions and a dict of all the events (deposition, ...),
+            # and a couple dictionary of process derived parameters: one master
+            # parameter dict and one step dict
             events_plot, params, step_params = read_events(log_df)
+
+        # if the parsing has not failed
         if params is not None:
-            # Writing logfile data to the respective sections
+            # we write logfile data from the master parameter dict to the
+            # respective sections
             sputtering = self.generate_general_log_data(params, logger)
 
         if step_params is not None and sputtering is not None:
+            # we write logfile data from the step parameter dict to the steps section
             steps = self.generate_step_log_data(step_params, archive, logger)
             sputtering.steps.extend(steps)
 
         # Merging the sputtering object with self
+
         if self.overwrite:
+            # If we are overwriting, it means that we favour data incomming from the
+            # logfile parsing over the data that is already there in the entry
             merge_sections(sputtering, self, logger)
             for _, prop in self.m_def.all_properties.items():
                 if sputtering.m_is_set(prop):
                     self.m_set(prop, None)
                     self.m_set(prop, sputtering.m_get(prop))
         else:
+            # if not, we favour data that is already in the entry
             merge_sections(self, sputtering, logger)
 
         # Run the nomalizer of the environment subsection
@@ -2858,8 +3093,10 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         self.correct_platen_angle(archive, logger)
 
         # Triggering the plotting of multiple plots
+
         self.figures = []
 
+        # Generating the plot using the master plotting function
         plots = generate_plots(
             formated_log_df,
             events_plot,
@@ -2867,10 +3104,18 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             self.lab_id,
         )
 
+        # Updating the plots with two plots displaying out the samples are mounted
+        # relative to the platen and relative to the chamber during deposition
         plots.update(self.plot_plotly_chamber_config(logger))
 
+        # call the plotting function from self to show all the plots from the
+        # plots list in the entry
         self.plot(plots, archive, logger)
 
+        # write the sulfur pressure from DTUSputtering into the nested level
+        self.write_sulfur_pressure(archive, logger)
+
+        # create combinatorial libraries if the parsing has been successful
         if self.deposition_parameters is not None:
             self.add_libraries(archive, logger)
 
@@ -2885,11 +3130,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         """
         # Analysing log file
         if self.log_file and self.process_log_file:
+            # call to the master function that parses the logfile
             self.parse_log_file(archive, logger)
 
         archive.workflow2 = None
         super().normalize(archive, logger)
         self.add_target_to_workflow(archive)
+        self.add_gas_supply_to_workflow(archive)
         archive.workflow2.inputs.extend(
             [
                 Link(name=f'Substrate: {substrate.name}', section=substrate.substrate)

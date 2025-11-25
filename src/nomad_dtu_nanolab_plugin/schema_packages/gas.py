@@ -41,9 +41,20 @@ class DTUGasSupply(CompositeSystem, Schema):
         categories=[DTUNanolabCategory],
         label='Gas Supply',
     )
+    in_use = Quantity(
+        type=bool,
+        a_eln={'component': 'BoolEditQuantity'},
+        default=False,
+        description='Indicates whether the gas supply is currently in use.',
+    )
     molecular_formula = Quantity(
         type=str,
         a_eln={'component': 'StringEditQuantity'},
+        description=(
+            'The molecular formula of the gas, in lower case (Ex: '
+            'h2s for 10% H2S in Ar, ar for Ar). This ensure functioning'
+            'referencing.'
+        ),
     )
     molecular_mass = Quantity(
         type=np.float64,
