@@ -49,6 +49,12 @@ if TYPE_CHECKING:
         DTUSputtering,
     )
 
+# Constants
+MAX_SPACE_GROUP_NUMBER = 230  # 1-230 space groups, so range goes to 231
+SPACE_GROUP_SYMBOL_TO_NUMBER = {
+    Spacegroup(no).symbol: no for no in range(1, MAX_SPACE_GROUP_NUMBER + 1)
+}  # Map of space group symbols to numbers
+
 m_package = Package()
 
 
@@ -178,8 +184,15 @@ class Thickness(SampleProperty):
 
 
 class CrystalStructure(SampleProperty):
+    space_group_nbr = Quantity(
+        type=int,
+        description='The space group number (1-230)',
+    )
     space_group = Quantity(
-        type=MEnum([Spacegroup(no).symbol for no in range(1, 231)]),
+        type=MEnum(
+            [Spacegroup(no).symbol for no in range(1, MAX_SPACE_GROUP_NUMBER + 1)]
+        ),
+        description='The space group symbol',
     )
     a = Quantity(
         type=np.float64,
@@ -211,6 +224,41 @@ class CrystalStructure(SampleProperty):
         description='The angle gamma of the crystal structure.',
         unit='degree',
     )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        Normalizes the crystal structure by ensuring that both
+        space group number and symbol are set.
+
+        If only one of the space group number or symbol is provided, the other
+        is derived using the ASE Spacegroup class.
+
+        Parameters
+        ----------
+        archive : Archive
+            The archive object being normalized.
+        logger : Logger
+            Logger for recording normalization events or warnings.
+        """
+        super().normalize(archive, logger)
+
+        if self.space_group_nbr and not self.space_group:
+            if 1 <= self.space_group_nbr <= MAX_SPACE_GROUP_NUMBER:
+                self.space_group = Spacegroup(self.space_group_nbr).symbol
+            else:
+                logger.warning(
+                    f'Invalid space group number {self.space_group_nbr}. '
+                    'It should be between 1 and 230.'
+                )
+        elif self.space_group and not self.space_group_nbr:
+            space_group_nbr_temp = SPACE_GROUP_SYMBOL_TO_NUMBER.get(self.space_group)
+            if space_group_nbr_temp:
+                self.space_group_nbr = space_group_nbr_temp
+            else:
+                logger.warning(
+                    f'Invalid space group symbol {self.space_group}. '
+                    'It does not correspond to any known space group.'
+                )
 
 
 class XrdData(SampleProperty):
