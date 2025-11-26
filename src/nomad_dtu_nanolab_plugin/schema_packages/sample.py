@@ -48,9 +48,9 @@ if TYPE_CHECKING:
     from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
 
 # Constants
-MAX_SPACE_GROUP_NUMBER = 231  # 1-230 space groups, so range goes to 231
+MAX_SPACE_GROUP_NUMBER = 230  # 1-230 space groups, so range goes to 231
 SPACE_GROUP_SYMBOL_TO_NUMBER = {
-    Spacegroup(no).symbol: no for no in range(1, MAX_SPACE_GROUP_NUMBER)
+    Spacegroup(no).symbol: no for no in range(1, MAX_SPACE_GROUP_NUMBER + 1)
 }  # Map of space group symbols to numbers
 
 m_package = Package()
@@ -187,7 +187,9 @@ class CrystalStructure(SampleProperty):
         description='The space group number (1-230)',
     )
     space_group = Quantity(
-        type=MEnum([Spacegroup(no).symbol for no in range(1, MAX_SPACE_GROUP_NUMBER)]),
+        type=MEnum(
+            [Spacegroup(no).symbol for no in range(1, MAX_SPACE_GROUP_NUMBER + 1)]
+        ),
         description='The space group symbol',
     )
     a = Quantity(
@@ -239,7 +241,7 @@ class CrystalStructure(SampleProperty):
         super().normalize(archive, logger)
 
         if self.space_group_nbr and not self.space_group:
-            if 1 <= self.space_group_nbr < MAX_SPACE_GROUP_NUMBER:
+            if 1 <= self.space_group_nbr <= MAX_SPACE_GROUP_NUMBER:
                 self.space_group = Spacegroup(self.space_group_nbr).symbol
             else:
                 logger.warning(
