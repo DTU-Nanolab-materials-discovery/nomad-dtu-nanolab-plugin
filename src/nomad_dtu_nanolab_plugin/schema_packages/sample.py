@@ -49,6 +49,9 @@ if TYPE_CHECKING:
 
 # Constants
 MAX_SPACE_GROUP_NUMBER = 231  # 1-230 space groups, so range goes to 231
+SPACE_GROUP_SYMBOL_TO_NUMBER = {
+    Spacegroup(no).symbol: no for no in range(1, MAX_SPACE_GROUP_NUMBER)
+} # Map of space group symbols to numbers
 
 m_package = Package()
 
@@ -235,24 +238,23 @@ class CrystalStructure(SampleProperty):
         """
         super().normalize(archive, logger)
 
-        if (
-            not self.space_group_nbr > 0
-            and not self.space_group_nbr < MAX_SPACE_GROUP_NUMBER
-        ):
-            logger.warning(
-                f'Invalid space group number {self.space_group_nbr}. '
-                'It should be between 1 and 230.'
-            )
-            return
-
         if self.space_group_nbr and not self.space_group:
-            self.space_group = Spacegroup(self.space_group_nbr).symbol
+            if 1 <= self.space_group_nbr < MAX_SPACE_GROUP_NUMBER:
+                self.space_group = Spacegroup(self.space_group_nbr).symbol
+            else:
+                logger.warning(
+                    f'Invalid space group number {self.space_group_nbr}. '
+                    'It should be between 1 and 230.'
+                )
         elif self.space_group and not self.space_group_nbr:
-            space_groups = {
-                Spacegroup(no).symbol: no for no in range(1, MAX_SPACE_GROUP_NUMBER)
-            }
-            self.space_group_nbr = space_groups.get(self.space_group)
-
+            space_group_nbr_temp = SPACE_GROUP_SYMBOL_TO_NUMBER.get(self.space_group)
+            if space_group_nbr_temp:
+                self.space_group_nbr = space_group_nbr_temp
+            else:
+                logger.warning(
+                    f'Invalid space group symbol {self.space_group}. '
+                    'It does not correspond to any known space group.'
+                )
 
 class XrdData(SampleProperty):
     diffraction_intensity = Quantity(
