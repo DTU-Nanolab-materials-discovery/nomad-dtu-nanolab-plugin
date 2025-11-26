@@ -51,7 +51,7 @@ if TYPE_CHECKING:
 MAX_SPACE_GROUP_NUMBER = 231  # 1-230 space groups, so range goes to 231
 SPACE_GROUP_SYMBOL_TO_NUMBER = {
     Spacegroup(no).symbol: no for no in range(1, MAX_SPACE_GROUP_NUMBER)
-} # Map of space group symbols to numbers
+}  # Map of space group symbols to numbers
 
 m_package = Package()
 
@@ -255,6 +255,7 @@ class CrystalStructure(SampleProperty):
                     f'Invalid space group symbol {self.space_group}. '
                     'It does not correspond to any known space group.'
                 )
+
 
 class XrdData(SampleProperty):
     diffraction_intensity = Quantity(
