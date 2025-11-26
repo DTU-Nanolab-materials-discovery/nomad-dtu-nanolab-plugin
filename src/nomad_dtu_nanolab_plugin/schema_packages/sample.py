@@ -218,7 +218,7 @@ class CrystalStructure(SampleProperty):
         unit='degree',
     )
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         Normalizes the crystal structure by ensuring that both
         space group number and symbol are set.
