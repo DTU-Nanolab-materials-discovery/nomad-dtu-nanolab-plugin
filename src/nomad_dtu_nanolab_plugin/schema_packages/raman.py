@@ -68,7 +68,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `RTMeasurement` class.
+        The normalizer for the `RamanMeasurement` class.
         """
 
         if self.location is None:
