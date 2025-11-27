@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
-m_package = Package(name='DTU EDX measurement schema')
+m_package = Package(name='DTU RT measurement schema')
 
 
 class RTResult(MappingResult):
