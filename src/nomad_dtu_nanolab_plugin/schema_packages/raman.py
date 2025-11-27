@@ -72,7 +72,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         """
 
         if self.location is None:
-            self.location = 'DTU Nanolab RT Measurement'
+            self.location = 'DTU Nanolab Raman Measurement'
 
         super().normalize(archive, logger)
 
