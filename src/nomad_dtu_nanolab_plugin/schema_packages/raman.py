@@ -62,7 +62,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
     def plot(self) -> None:
         """
-        add a plot of the RT results.
+        Add a plot of the Raman measurement results.
         """
         pass
 
