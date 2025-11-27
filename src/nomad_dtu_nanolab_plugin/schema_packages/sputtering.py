@@ -1119,10 +1119,10 @@ class SourceOverview(ArchiveSection):
         type=np.float64,
         a_eln={
             'component': 'NumberEditQuantity',
-            'defaultDisplayUnit': 'kW*h',
+            'defaultDisplayUnit': 'kilowatt*hour',
             'label': 'Accumulated power (Energy)',
         },
-        unit='kW*h',
+        unit='kilowatt*hour',
         description=(
             'The accumulated power the target has been exposed to at the end of '
             'the deposition'
