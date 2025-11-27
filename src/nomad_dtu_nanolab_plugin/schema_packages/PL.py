@@ -265,7 +265,7 @@ class PLMetadata(ArchiveSection):
 class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
-        label='XRD Measurement',
+        label='PL Measurement',
     )
     pl_data_file = Quantity(
         type=str,
