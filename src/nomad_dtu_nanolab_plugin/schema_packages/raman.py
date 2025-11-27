@@ -28,7 +28,7 @@ class RamanResult(MappingResult):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        the results section of the RT measurement.
+        The results section for the Raman measurement.
         """
         super().normalize(archive, logger)
         # TODO: Add code for calculating the relative positions of the measurements.
