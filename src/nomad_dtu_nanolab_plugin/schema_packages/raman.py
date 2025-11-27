@@ -1,26 +1,15 @@
-import re
-from collections import defaultdict
 from typing import TYPE_CHECKING
 
-import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
-from ase.data import chemical_symbols
-from nomad.datamodel.data import ArchiveSection, Schema
+from nomad.datamodel.data import Schema
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
-    ELNAnnotation,
-    ELNComponentEnum,
 )
-from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
-from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
-from nomad.units import ureg
+from nomad.datamodel.metainfo.plot import PlotSection
+from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad_measurements.mapping.schema import (
     MappingResult,
     RectangularSampleAlignment,
 )
-from nomad_measurements.utils import merge_sections
-from scipy.interpolate import griddata
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
@@ -34,10 +23,6 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU EDX measurement schema')
 
 
-
-
-
-
 class RamanResult(MappingResult):
     m_def = Section()
 
@@ -47,15 +32,12 @@ class RamanResult(MappingResult):
         """
         super().normalize(archive, logger)
         # TODO: Add code for calculating the relative positions of the measurements.
- 
 
 
 class DTUSampleAlignment(RectangularSampleAlignment):
     m_def = Section(
         description='The alignment of the sample on the stage.',
     )
-
-
 
 
 class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
@@ -68,7 +50,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
         a_eln={'component': 'FileEditQuantity', 'label': 'Raman file'},
     )
-    
+
     results = SubSection(
         section_def=RamanResult,
         repeats=True,
@@ -83,8 +65,6 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         add a plot of the RT results.
         """
         pass
-        
-        
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """

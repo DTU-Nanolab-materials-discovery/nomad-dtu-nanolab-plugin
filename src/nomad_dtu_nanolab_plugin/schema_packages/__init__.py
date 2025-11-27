@@ -156,10 +156,12 @@ class XPSEntryPoint(SchemaPackageEntryPoint):
 
         return m_package
 
+
 xps = XPSEntryPoint(
     name='XPS',
     description='Schema package defined for XPS measurements.',
 )
+
 
 class PLEntryPoint(SchemaPackageEntryPoint):
     def load(self):
@@ -167,10 +169,12 @@ class PLEntryPoint(SchemaPackageEntryPoint):
 
         return m_package
 
+
 pl = PLEntryPoint(
     name='PL',
     description='Schema package defined for PL measurements.',
 )
+
 
 class EllipsometryEntryPoint(SchemaPackageEntryPoint):
     def load(self):
@@ -178,10 +182,12 @@ class EllipsometryEntryPoint(SchemaPackageEntryPoint):
 
         return m_package
 
+
 ellipsometry = EllipsometryEntryPoint(
     name='Ellipsometry',
     description='Schema package defined for Ellipsometry measurements.',
 )
+
 
 class RTEntryPoint(SchemaPackageEntryPoint):
     def load(self):
@@ -189,16 +195,19 @@ class RTEntryPoint(SchemaPackageEntryPoint):
 
         return m_package
 
+
 rt = RTEntryPoint(
     name='RT',
     description='Schema package defined for RT measurements.',
 )
+
 
 class RamanEntryPoint(SchemaPackageEntryPoint):
     def load(self):
         from nomad_dtu_nanolab_plugin.schema_packages.raman import m_package
 
         return m_package
+
 
 raman = RamanEntryPoint(
     name='Raman',
