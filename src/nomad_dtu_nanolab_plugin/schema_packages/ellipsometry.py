@@ -70,7 +70,7 @@ class EllipsometryMetadata(Schema):
 class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
-        label='XRD Measurement',
+        label='Ellipsometry Measurement',
     )
     native_file = Quantity(
         type=str,
