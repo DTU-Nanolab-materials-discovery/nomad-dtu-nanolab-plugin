@@ -4334,7 +4334,10 @@ def quick_plot(df, Y, **kwargs):
     fig.update_layout(
         legend=dict(
             bgcolor='rgba(0,0,0,0)',  # Transparent legend background
-        )
+        ),
+        xaxis=dict(fixedrange=False),
+        yaxis=dict(fixedrange=False),
+        dragmode='zoom',
     )
 
     # Add vertical lines to separate the plots
