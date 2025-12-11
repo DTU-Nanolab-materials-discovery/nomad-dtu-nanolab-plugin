@@ -5060,7 +5060,8 @@ def generate_overview_plot(data, logfile_name, events):
 
     # Update layout to include the shapes
     overview_plot.update_layout(
-        shapes=overview_plot.layout.shapes + tuple(overview_plot.layout.shapes)
+        shapes=overview_plot.layout.shapes + tuple(overview_plot.layout.shapes),
+        xaxis=dict(autorange=True),
     )
 
     # Add annotations to the legend
