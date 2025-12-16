@@ -222,7 +222,7 @@ class DtuSubstrateMounting(ArchiveSection):
         if self.substrate is None and isinstance(
             self.substrate_batch, DTUSubstrateBatch
         ):
-            substrate = self.substrate_batch.next_not_used_in(DTUSputtering)
+            substrate = self.substrate_batch.next_not_used_in([DTUSputtering])
             self.substrate = substrate
         if self.position_x is None or self.position_y is None or self.rotation is None:
             positions = {

@@ -180,8 +180,9 @@ class DTUSubstrateBatch(Collection, Schema):
     )
 
     def next_used_in(
-        self, entry_type: type[Schema], negate: bool = False
+        self, entry_types: list[type[Schema]], negate: bool = False
     ) -> DTUSubstrate:
+        """ """
         from nomad.search import MetadataPagination, search
 
         ref: DTUSubstrateReference
@@ -193,10 +194,10 @@ class DTUSubstrateBatch(Collection, Schema):
             substrate = ref.reference
             query = {
                 'section_defs.definition_qualified_name:all': [
-                    entry_type.m_def.qualified_name()
+                    entry_type.m_def.qualified_name() for entry_type in entry_types
                 ],
-                'entry_references.target_entry_id:all': [substrate.m_parent.entry_id],
             }
+            query['entry_references.target_entry_id:all'] = substrate.m_parent.entry_id
             search_result = search(
                 owner='all',
                 query=query,
@@ -209,8 +210,8 @@ class DTUSubstrateBatch(Collection, Schema):
                 return substrate
         return None
 
-    def next_not_used_in(self, entry_type: type[Schema]) -> DTUSubstrate:
-        return self.next_used_in(entry_type, negate=True)
+    def next_not_used_in(self, entry_types: list[type[Schema]]) -> DTUSubstrate:
+        return self.next_used_in(entry_types, negate=True)
 
     def generate_geometry(self) -> Geometry:
         """
