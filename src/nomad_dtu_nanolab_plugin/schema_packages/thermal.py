@@ -1,28 +1,31 @@
+from typing import TYPE_CHECKING
+
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.metainfo.metainfo import Package, Section, Quantity, SubSection
 from nomad.datamodel.metainfo.annotations import (
-    BrowserAdaptors,
-    BrowserAnnotation,
     ELNAnnotation,
     ELNComponentEnum,
-    Filter,
     SectionProperties,
 )
+from nomad.metainfo.metainfo import MProxy, Package, Quantity, Section, SubSection
+from nomad_material_processing.vapor_deposition.pvd.thermal import ThermalEvaporation
+
+from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
     DTUCombinatorialLibrary,
-    DtuLibraryReference,
 )
 from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
 from nomad_dtu_nanolab_plugin.schema_packages.substrate import (
     DTUSubstrate,
     DTUSubstrateBatch,
 )
-from nomad_material_processing.vapor_deposition.pvd.thermal import ThermalEvaporation
 
-from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+if TYPE_CHECKING:
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
 
 m_package = Package()
+
 
 #################### DEFINE INPUT_SAMPLES (SUBSECTION) ######################
 class DtuThermalEvaporationMounting(ArchiveSection):
@@ -48,7 +51,7 @@ class DtuThermalEvaporationMounting(ArchiveSection):
     )
     name = Quantity(
         type=str,
-        description='The name of the input sample/substrate that is used.' \
+        description='The name of the input sample/substrate that is used.'
         ' This is generated automatically.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.StringEditQuantity,
@@ -57,7 +60,7 @@ class DtuThermalEvaporationMounting(ArchiveSection):
     input_sample = Quantity(
         type=(DTUCombinatorialLibrary, DTUSubstrateBatch),
         description='The substrate batch or input sample (combinatorial library) '
-        'or that is used as starting point for the evaporation process.' \
+        'or that is used as starting point for the evaporation process.'
         'This is user input.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.ReferenceEditQuantity,
@@ -65,7 +68,7 @@ class DtuThermalEvaporationMounting(ArchiveSection):
     )
     substrate = Quantity(
         type=DTUSubstrate,
-        description='The substrate used from the selected substrate batch. ' \
+        description='The substrate used from the selected substrate batch. '
         'This is generated automatically.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.ReferenceEditQuantity,
@@ -73,23 +76,23 @@ class DtuThermalEvaporationMounting(ArchiveSection):
     )
     relative_position = Quantity(
         type=str,
-        description='The relative position of the input sample or substrates ' \
+        description='The relative position of the input sample or substrates '
         'on the evaporation platform.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
             props=dict(
                 suggestions=[
-                    'F', #front
-                    'B', #back
-                    'M', #middle
+                    'F',  # front
+                    'B',  # back
+                    'M',  # middle
                 ]
             ),
         ),
     )
     position_x = Quantity(
         type=np.float64,
-        description='The x-coordinate of the input sample or substrate ' \
-        'on the evaporation platform. This can be user input or ' \
+        description='The x-coordinate of the input sample or substrate '
+        'on the evaporation platform. This can be user input or '
         'automatically generated from relative position.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
@@ -99,8 +102,8 @@ class DtuThermalEvaporationMounting(ArchiveSection):
     )
     position_y = Quantity(
         type=np.float64,
-        description='The y-coordinate of the input sample or substrate on the ' \
-        'evaporation platform. This can be user input or automatically ' \
+        description='The y-coordinate of the input sample or substrate on the '
+        'evaporation platform. This can be user input or automatically '
         'generated from relative position.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
@@ -124,12 +127,13 @@ class DtuThermalEvaporationMounting(ArchiveSection):
         if self.substrate is None and isinstance(
             self.substrate_batch, DTUSubstrateBatch
         ):
-            #TODO and DtuThermalEvaporation. Change the query on next_not_used_in
-            substrate = self.substrate_batch.next_not_used_in(DTUSputtering)
+            substrate = self.substrate_batch.next_not_used_in(
+                [DTUSputtering, DtuThermalEvaporation]
+            )
             self.substrate = substrate
         if self.position_x is None or self.position_y is None:
             positions = {
-                'F': (-0.0125, 0.0125), #TODO confirm these positions
+                'F': (-0.0125, 0.0125),  # TODO confirm these positions
                 'B': (0.0125, 0.0125),
                 'M': (-0.0125, -0.0125),
             }
@@ -143,6 +147,7 @@ class DtuThermalEvaporationMounting(ArchiveSection):
                 f'y{self.position_y.to("cm").magnitude:.1f}'
             ).replace('.', 'p')
 
+
 #################### THERMAL EVAPORATION PROCESS OVERVIEW (SUBSECTION) ################
 class ThermalEvaporationOverview(ArchiveSection):
     """
@@ -153,7 +158,7 @@ class ThermalEvaporationOverview(ArchiveSection):
         a_eln=ELNAnnotation(
             properties=SectionProperties(
                 order=[
-                    'material_space', #TODO add the other quantities here
+                    'material_space',  # TODO add the other quantities here
                 ],
             )
         ),
@@ -167,7 +172,8 @@ class ThermalEvaporationOverview(ArchiveSection):
         description='The material space explored by the Thermal Evaporation process.',
     )
 
-    #TODO add more quantities here for the overview. Is there any calculation necessary?
+    # TODO add more quantities here for the overview. Is there any calculation
+    #  necessary?
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -181,6 +187,7 @@ class ThermalEvaporationOverview(ArchiveSection):
 
         super().normalize(archive, logger)
 
+
 class DtuThermalEvaporation(ThermalEvaporation, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
@@ -193,5 +200,6 @@ class DtuThermalEvaporation(ThermalEvaporation, Schema):
     overview = SubSection(
         section_def=ThermalEvaporationOverview,
     )
+
 
 m_package.__init_metainfo__()
