@@ -76,6 +76,7 @@ from nomad_dtu_nanolab_plugin.schema_packages.substrate import (
     DTUSubstrateBatch,
 )
 from nomad_dtu_nanolab_plugin.schema_packages.target import DTUTarget
+from nomad_dtu_nanolab_plugin.schema_packages.thermal import DtuThermalEvaporation
 from nomad_dtu_nanolab_plugin.sputter_log_reader import (
     GAS_FRACTION,
     Sample,
@@ -222,7 +223,9 @@ class DtuSubstrateMounting(ArchiveSection):
         if self.substrate is None and isinstance(
             self.substrate_batch, DTUSubstrateBatch
         ):
-            substrate = self.substrate_batch.next_not_used_in(DTUSputtering)
+            substrate = self.substrate_batch.next_not_used_in(
+                [DTUSputtering, DtuThermalEvaporation]
+            )
             self.substrate = substrate
         if self.position_x is None or self.position_y is None or self.rotation is None:
             positions = {
