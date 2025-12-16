@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 m_package = Package()
 
 
-#################### DEFINE INPUT_SAMPLES (SUBSECTION) ######################
+#################### DEFINE MOUNTING (SUBSECTION) ######################
 class DtuThermalEvaporationMounting(ArchiveSection):
     """
     Section containing information about the mounting of the substrates or combinatorial
@@ -39,8 +39,7 @@ class DtuThermalEvaporationMounting(ArchiveSection):
             properties=SectionProperties(
                 order=[
                     'name',
-                    'input_sample',
-                    'substrate_batch',
+                    'input_sample_substrate',
                     'substrate',
                     'relative_position',
                     'position_x',
@@ -57,7 +56,7 @@ class DtuThermalEvaporationMounting(ArchiveSection):
             component=ELNComponentEnum.StringEditQuantity,
         ),
     )
-    input_sample = Quantity(
+    input_sample_substrate = Quantity(
         type=(DTUCombinatorialLibrary, DTUSubstrateBatch),
         description='The substrate batch or input sample (combinatorial library) '
         'or that is used as starting point for the evaporation process.'
@@ -85,6 +84,8 @@ class DtuThermalEvaporationMounting(ArchiveSection):
                     'F',  # front
                     'B',  # back
                     'M',  # middle
+                    'L',  # left
+                    'R',  # right
                 ]
             ),
         ),
@@ -136,6 +137,8 @@ class DtuThermalEvaporationMounting(ArchiveSection):
                 'F': (-0.0125, 0.0125),  # TODO confirm these positions
                 'B': (0.0125, 0.0125),
                 'M': (-0.0125, -0.0125),
+                'L': (-0.0125, 0.0125),
+                'R': (0.0125, -0.0125),
             }
             if self.relative_position in positions:
                 self.position_x, self.position_y = positions[self.relative_position]
