@@ -1,12 +1,14 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
+from nomad.config import config
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
     SectionProperties,
 )
+
 from nomad.metainfo.metainfo import MProxy, Package, Quantity, Section, SubSection
 from nomad_material_processing.vapor_deposition.pvd.thermal import ThermalEvaporation
 
@@ -24,10 +26,17 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
-m_package = Package()
+    from nomad_dtu_nanolab_plugin.schema_packages import ThermalEntryPoint
 
 
-#################### DEFINE INPUT_SAMPLES (SUBSECTION) ######################
+configuration: 'ThermalEntryPoint' = config.get_plugin_entry_point(
+    'nomad_dtu_nanolab_plugin.schema_packages:thermal'
+)
+
+m_package = Package(name='DTU Thermal Evaporation Schema')
+
+
+#################### DEFINE MOUNTING (SUBSECTION) ######################
 class DtuThermalEvaporationMounting(ArchiveSection):
     """
     Section containing information about the mounting of the substrates or combinatorial
@@ -39,8 +48,7 @@ class DtuThermalEvaporationMounting(ArchiveSection):
             properties=SectionProperties(
                 order=[
                     'name',
-                    'input_sample',
-                    'substrate_batch',
+                    'input_sample_substrate',
                     'substrate',
                     'relative_position',
                     'position_x',
@@ -57,7 +65,7 @@ class DtuThermalEvaporationMounting(ArchiveSection):
             component=ELNComponentEnum.StringEditQuantity,
         ),
     )
-    input_sample = Quantity(
+    input_sample_substrate = Quantity(
         type=(DTUCombinatorialLibrary, DTUSubstrateBatch),
         description='The substrate batch or input sample (combinatorial library) '
         'or that is used as starting point for the evaporation process.'
@@ -82,9 +90,11 @@ class DtuThermalEvaporationMounting(ArchiveSection):
             component=ELNComponentEnum.EnumEditQuantity,
             props=dict(
                 suggestions=[
-                    'F',  # front
-                    'B',  # back
-                    'M',  # middle
+                    'T',  # top - front of the glovebox when deposition starts
+                    'B',  # bottom - back of the glovebox when deposition
+                    'M',  # middle - center of the platform when deposition starts
+                    'L',  # left - left of the platform when deposition starts
+                    'R',  # right - right of the platform when deposition starts
                 ]
             ),
         ),
@@ -133,9 +143,11 @@ class DtuThermalEvaporationMounting(ArchiveSection):
             self.substrate = substrate
         if self.position_x is None or self.position_y is None:
             positions = {
-                'F': (-0.0125, 0.0125),  # TODO confirm these positions
-                'B': (0.0125, 0.0125),
-                'M': (-0.0125, -0.0125),
+                'T': (0.075, 0.085),
+                'B': (0.075, 0.065),
+                'M': (0.075, 0.075),
+                'L': (0.065, 0.075),
+                'R': (0.085, 0.075),
             }
             if self.relative_position in positions:
                 self.position_x, self.position_y = positions[self.relative_position]
@@ -193,7 +205,9 @@ class DtuThermalEvaporation(ThermalEvaporation, Schema):
         categories=[DTUNanolabCategory],
         label='Bell Jar Evaporator',
     )
-    input_samples = SubSection(
+
+    ################################### SUBSECTIONS ################################
+    input_substrates_samples = SubSection(
         section_def=DtuThermalEvaporationMounting,
         repeats=True,
     )
