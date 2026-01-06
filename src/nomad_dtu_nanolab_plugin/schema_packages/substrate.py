@@ -179,6 +179,7 @@ class DTUSubstrateBatch(Collection, Schema):
         section_def=ReadableIdentifiers,
     )
 
+    # new methods for searching substrates in use
     def next_used_in(
         self, entry_types: list[type[Schema]], negate: bool = False
     ) -> DTUSubstrate:
