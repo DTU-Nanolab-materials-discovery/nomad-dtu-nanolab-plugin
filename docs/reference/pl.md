@@ -70,4 +70,4 @@ For [combinatorial libraries](samples.md):
 
 ## Schema Documentation
 
-{{ metainfo_package('nomad_dtu_nanolab_plugin.schema_packages.pl') }}
+{{ metainfo_package('nomad_dtu_nanolab_plugin.schema_packages.PL') }}

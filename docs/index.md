@@ -41,7 +41,7 @@ The explanation [section](explanation/explanation.md) provides background knowle
 
 ### Reference
 
-The reference [section](reference/references.md) includes all CLI commands and arguments, all configuration options,
+The reference [section](reference/index.md) includes all CLI commands and arguments, all configuration options,
 the possible schema annotations and their arguments, and a glossary of used terms.
 
 </div>
