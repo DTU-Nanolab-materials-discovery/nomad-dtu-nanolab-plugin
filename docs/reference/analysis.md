@@ -30,7 +30,7 @@ Jupyter analysis extends NOMAD's `Analysis` and `Activity` base classes, providi
 - **Provenance tracking**: From raw data through analysis to results
 - **Sharing**: Collaborators can see exactly how results were obtained
 - **Reanalysis**: Easy to rerun with different parameters
-- **Serachbility**: Analysis code can be serached in NOMAD
+- **Searchability**: Analysis code can be searched in NOMAD
 
 
 ## Related Schemas
