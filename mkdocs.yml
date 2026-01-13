@@ -16,6 +16,8 @@ nav:
   - Reference: reference/references.md
 plugins:
   - search
+  - macros:
+      module_name: docs/main
 theme:
   name: material
   palette:
