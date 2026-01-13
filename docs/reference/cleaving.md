@@ -61,4 +61,4 @@ For libraries with composition gradients (e.g., from multi-target [sputtering](s
 
 ## Schema Documentation
 
-{{ metainfo_package('nomad_dtu_nanolab_plugin.schema_packages.cleaving') }}
+{{ metainfo_package('nomad_dtu_nanolab_plugin.schema_packages.sample') }}

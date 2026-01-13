@@ -39,6 +39,7 @@ nav:
           - Jupyter Analysis: reference/analysis.md
 plugins:
   - search
+  - glightbox
   - macros:
       module_name: docs/main
 theme:
@@ -52,6 +53,13 @@ theme:
   favicon: assets/favicon.png
   features:
     - navigation.instant
+    - navigation.path
+    - navigation.footer
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
   custom_dir: docs/theme
 markdown_extensions:
   - attr_list
@@ -62,12 +70,15 @@ markdown_extensions:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - toc:
       permalink: True
   - pymdownx.arithmatex:
       generic: true
-  - attr_list
   - mkdocs-click
   - pymdownx.extra
 extra:
