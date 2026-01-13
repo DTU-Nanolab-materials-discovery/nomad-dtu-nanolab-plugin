@@ -37,7 +37,17 @@ dependencies = [
 Repository = "https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin"
 
 [project.optional-dependencies]
-dev = ["ruff", "pytest", "structlog"]
+dev = [
+    "ruff",
+    "pytest",
+    "structlog",
+    "mkdocs",
+    "mkdocs-material",
+    "pymdown-extensions",
+    "mkdocs-click",
+    "pytest-asyncio",
+]
+
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.

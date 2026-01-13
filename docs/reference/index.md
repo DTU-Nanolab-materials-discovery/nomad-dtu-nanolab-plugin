@@ -4,7 +4,7 @@ This section provides complete technical documentation for all data models in th
 
 ## Understanding the Data Organization
 
-The schemas are organized following practical lab workflows, built on a foundation from the [Basic Formal Ontology (BFO)](https://basic-formal-ontology.org/){:target="_blank" rel="noopener"}. Don't worry—you don't need to understand formal ontology to use these schemas! Here's what it means in practice:
+The schemas are organized following practical lab workflows, built from [NOMAD base sections](https://nomad-lab.eu/prod/v1/staging/docs/explanation/base_sections.html#datamodelmetainfobasesections) with a foundation from the [Basic Formal Ontology (BFO)](https://basic-formal-ontology.org/){:target="_blank" rel="noopener"}. Don't worry—you don't need to understand formal ontology to use these schemas! Here's what it means in practice:
 
 ### Entities: Physical Items in Your Lab
 
@@ -42,14 +42,14 @@ graph TB
         D[gas<br/>DTUGasSupply]
         E[instruments<br/>DTUInstrument]
     end
-    
+
     subgraph "Synthesis & Processing"
         F[sputtering<br/>DTUSputtering]
         G[rtp<br/>DtuRTP]
         H[thermal<br/>Thermal Evaporation]
         I[cleaving<br/>DTULibraryCleaving]
     end
-    
+
     subgraph "Characterization"
         J[basesections<br/>Base Measurement]
         K[xrd<br/>DTUXRDMeasurement]
@@ -60,11 +60,11 @@ graph TB
         P[raman<br/>RamanMeasurement]
         Q[rt<br/>RTMeasurement]
     end
-    
+
     subgraph "Data Analysis"
         R[analysis<br/>DtuJupyterAnalysis]
     end
-    
+
     style A fill:#e1f5ff
     style B fill:#e1f5ff
     style C fill:#e1f5ff
@@ -97,27 +97,27 @@ graph LR
         C[DTUGasSupply<br/>Process gases]
         D[DTUInstrument<br/>Sputter tool]
     end
-    
+
     subgraph "2. Synthesis"
         E[DTUSputtering<br/>Deposition process]
         F[DTUCombinatorialLibrary<br/>Material library]
     end
-    
+
     subgraph "3. Sample Preparation"
         G[DTULibraryCleaving<br/>Split library]
         H[DTUCombinatorialSample<br/>Individual samples]
     end
-    
+
     subgraph "4. Characterization"
         I[DTUXRDMeasurement<br/>Crystal structure]
         J[DTUXpsMeasurement<br/>Surface composition]
         K[DTUPLMeasurement<br/>Optical properties]
     end
-    
+
     subgraph "5. Analysis"
         L[DtuJupyterAnalysis<br/>Data processing]
     end
-    
+
     A -->|uses substrate from| E
     B -->|uses target| E
     C -->|uses gas| E
@@ -131,7 +131,7 @@ graph LR
     I -->|data fed to| L
     J -->|data fed to| L
     K -->|data fed to| L
-    
+
     style A fill:#e1f5ff
     style B fill:#e1f5ff
     style C fill:#e1f5ff
