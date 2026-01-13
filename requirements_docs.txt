@@ -1,4 +1,5 @@
 mkdocs
-mkdocs-material==8.1.1
+mkdocs-material>=9.0
 pymdown-extensions
 mkdocs-click
+mkdocs-macros-plugin>=1.0
