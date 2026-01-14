@@ -25,6 +25,9 @@ XRD measurements extend [BaseMeasurement](basesections.md), providing:
 5. **Store data**: Diffraction pattern, identified phases, lattice parameters
 6. **Link analysis**: Reference [Jupyter analysis](analysis.md) for peak fitting, phase ID, etc.
 
+!!! note "Measuring Sample Positions"
+    Measurements reference [sample positions](samples.md) defined by specific coordinates on [combinatorial libraries](samples.md). Multiple positions can be measured on a single library (intact or cleaved) to map structural properties across composition space.
+
 ## Common XRD Scan Types
 
 - **θ-2θ scan**: Phase identification, out-of-plane lattice parameter

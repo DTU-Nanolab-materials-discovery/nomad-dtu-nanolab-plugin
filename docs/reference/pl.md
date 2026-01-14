@@ -25,6 +25,9 @@ PL measurements extend [BaseMeasurement](basesections.md), providing:
 5. **Analysis**: Identify peaks, calculate bandgap, extract quantum efficiency
 6. **Temperature dependence** (optional): PL at multiple temperatures
 
+!!! note "Position-Based Mapping"
+    PL measurements are inherently position-aware, mapping optical properties to specific coordinates. Each measured position corresponds to a [sample position](samples.md) entry on [combinatorial libraries](samples.md), enabling composition-property correlations across gradient libraries. Multiple positions can be measured and their data aggregated to create property maps.
+
 ## What PL Tells You
 
 - **Bandgap energy**: Emission peak position relates to bandgap

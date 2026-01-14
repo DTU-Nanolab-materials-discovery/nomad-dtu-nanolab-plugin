@@ -1,14 +1,29 @@
 # Samples and Combinatorial Libraries
 
-Samples are the core materials you create and study in your research. At DTU Nanolab, the materials discovery workflow uses combinatorial libraries to efficiently explore material composition spaces.
+Samples represent specific measurement positions on combinatorial libraries. At DTU Nanolab, the materials discovery workflow uses combinatorial libraries with composition gradients to efficiently explore material composition spaces through position-based sampling.
+
+## Understanding Libraries vs. Sample Positions
+
+A **combinatorial library** is a physical substrate with composition gradients created by multi-target deposition. **Sample positions** are specific coordinates on this library where measurements are performed, each representing a distinct composition point.
+
+<div style="display: flex; justify-content: space-around; margin: 20px 0;">
+  <div style="text-align: center; flex: 1; margin: 0 10px;">
+    <img src="../assets/library-substrate.svg" alt="Combinatorial Library" style="max-width: 100%;" />
+    <p><em>Figure 1: A combinatorial library showing composition gradient across the substrate (e.g., from multi-target sputtering)</em></p>
+  </div>
+  <div style="text-align: center; flex: 1; margin: 0 10px;">
+    <img src="../assets/library-sample-positions.svg" alt="Sample Positions" style="max-width: 100%;" />
+    <p><em>Figure 2: Sample positions (dots) mapped across the library - each represents a specific composition for measurement</em></p>
+  </div>
+</div>
 
 ## Overview
 
 This schema package defines two main classes:
 
-- **DTUCombinatorialLibrary** - A single substrate with multiple material compositions deposited as gradients or patterns (e.g., from multi-target sputtering). The library can be cleaved into individual samples for parallel characterization.
+- **DTUCombinatorialLibrary** - A physical substrate with multiple material compositions deposited as gradients or patterns (e.g., from multi-target sputtering). The library can optionally be cleaved into smaller physical pieces for parallel processing.
 
-- **DTUCombinatorialSample** - Individual pieces created by cleaving a combinatorial library. Each sample represents a specific composition point and can be characterized independently.
+- **DTUCombinatorialSample** - A specific measurement position (coordinates) on a combinatorial library or cleaved piece. Each sample position represents a distinct composition point that can be characterized independently. Multiple sample positions can exist on a single library or cleaved piece.
 
 Both classes extend NOMAD's `CompositeSystem` entity, providing:
 
@@ -19,10 +34,15 @@ Both classes extend NOMAD's `CompositeSystem` entity, providing:
 
 ## Typical Usage
 
-1. **Create a library**: A [DTUSputtering](sputtering.md) process deposits materials on a [substrate](substrates.md), creating a `DTUCombinatorialLibrary`
-2. **Cleave the library**: A [DTULibraryCleaving](cleaving.md) process splits the library, creating multiple `DTUCombinatorialSample` entries
-3. **Characterize samples**: Each sample is referenced in [measurements](xrd.md) like XRD, XPS, PL, etc.
-4. **Track provenance**: The entire chain from substrate → sputtering → library → cleaving → sample → measurements is linked
+1. **Create a library**: A [DTUSputtering](sputtering.md) process deposits materials on a [substrate](substrates.md), creating a `DTUCombinatorialLibrary` with composition gradients
+2. **Map sample positions**: Define specific coordinates on the library as `DTUCombinatorialSample` entries, each representing a measurement point at a particular composition
+3. **Optional cleaving**: A [DTULibraryCleaving](cleaving.md) process can physically split the library into smaller pieces for parallel processing. Each cleaved piece can contain multiple sample positions
+4. **Characterize sample positions**: [Measurements](xrd.md) like XRD, XPS, PL reference specific sample positions by their coordinates. Multiple measurements across different positions enable composition-property mapping
+5. **Aggregate data**: When multiple measurements target different positions, data can be aggregated (with interpolation if needed) to create property maps across composition space
+6. **Track provenance**: The entire chain from substrate → sputtering → library → sample positions → measurements is linked
+
+!!! note "Sample Positions vs. Physical Pieces"
+    **Sample positions** are logical entities representing measurement coordinates. A single cleaved physical piece can contain multiple sample positions. Conversely, measurements may sample many positions across an intact or cleaved library.
 
 ## Related Schemas
 

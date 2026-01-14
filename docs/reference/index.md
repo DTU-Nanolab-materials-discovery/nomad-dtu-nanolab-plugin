@@ -100,21 +100,25 @@ graph LR
 
     subgraph "2. Synthesis"
         E[DTUSputtering<br/>Deposition process]
-        F[DTUCombinatorialLibrary<br/>Material library]
+        F[DTUCombinatorialLibrary<br/>Material library with<br/>composition gradient]
     end
 
-    subgraph "3. Sample Preparation"
-        G[DTULibraryCleaving<br/>Split library]
-        H[DTUCombinatorialSample<br/>Individual samples]
+    subgraph "3. Sample Position Mapping"
+        S[DTUCombinatorialSample<br/>Sample positions at<br/>specific coordinates]
     end
 
-    subgraph "4. Characterization"
+    subgraph "4. Optional Physical Cleaving"
+        G[DTULibraryCleaving<br/>Split into pieces]
+        H[Child Libraries<br/>Physical pieces containing<br/>multiple sample positions]
+    end
+
+    subgraph "5. Characterization"
         I[DTUXRDMeasurement<br/>Crystal structure]
         J[DTUXpsMeasurement<br/>Surface composition]
         K[DTUPLMeasurement<br/>Optical properties]
     end
 
-    subgraph "5. Analysis"
+    subgraph "6. Analysis"
         L[DtuJupyterAnalysis<br/>Data processing]
     end
 
@@ -123,11 +127,14 @@ graph LR
     C -->|uses gas| E
     D -->|performed on| E
     E -->|creates| F
-    F -->|input to| G
-    G -->|creates| H
-    H -->|measured in| I
-    H -->|measured in| J
-    H -->|measured in| K
+    F -->|defines positions on| S
+    F -.->|optional: split| G
+    G -.->|creates pieces| H
+    S -->|references coord on| F
+    S -.->|or on cleaved| H
+    S -->|measured at position| I
+    S -->|measured at position| J
+    S -->|measured at position| K
     I -->|data fed to| L
     J -->|data fed to| L
     K -->|data fed to| L
@@ -138,6 +145,7 @@ graph LR
     style D fill:#e1f5ff
     style E fill:#fff4e1
     style F fill:#e1f5ff
+    style S fill:#e1f5ff
     style G fill:#fff4e1
     style H fill:#e1f5ff
     style I fill:#ffe1f5
@@ -145,6 +153,12 @@ graph LR
     style K fill:#ffe1f5
     style L fill:#e1ffe1
 ```
+
+!!! note "Key Workflow Concepts"
+    - **Sample positions** (DTUCombinatorialSample) are defined by **coordinates** on libraries, not by physical cleaving
+    - **Cleaving** (optional) creates **physical pieces** (child libraries) for parallel processing
+    - **Measurements** reference sample positions by their coordinates, whether on intact libraries or cleaved pieces
+    - A single cleaved piece can contain **multiple sample positions** at different compositions
 
 ## Navigation Guide
 

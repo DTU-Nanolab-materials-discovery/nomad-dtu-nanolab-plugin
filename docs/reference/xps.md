@@ -25,6 +25,9 @@ XPS measurements extend [BaseMeasurement](basesections.md), providing:
 5. **Peak fitting**: Identify components, oxidation states, bonding environments
 6. **Quantification**: Calculate atomic percentages from peak areas
 
+!!! note "Surface Composition at Sample Positions"
+    XPS measurements target specific [sample positions](samples.md) defined by coordinates on [combinatorial libraries](samples.md). For composition gradient libraries, measuring multiple positions enables surface composition mapping across the parameter space. Cleaved pieces can be measured individually while maintaining their position coordinate references.
+
 ## What XPS Tells You
 
 - **Elemental composition**: What elements are present (except H, He)

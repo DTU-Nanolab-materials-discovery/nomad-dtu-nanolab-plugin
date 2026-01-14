@@ -1,12 +1,20 @@
 # Library Cleaving
 
-Library cleaving is the process of splitting a combinatorial library into individual samples for parallel characterization. Each cleaved piece represents a specific composition point in the material parameter space.
+Library cleaving is the process of physically splitting a combinatorial library into smaller pieces for parallel processing and characterization. Each cleaved piece (child library) can contain multiple sample positions representing different composition points.
+
+## Physical Pieces vs. Sample Positions
+
+**Important distinction:**
+
+- **Cleaving** creates **physical pieces** (child libraries) by cutting the substrate
+- **Sample positions** are **measurement coordinates** that can exist on intact libraries or cleaved pieces
+- A single cleaved piece typically contains **multiple sample positions** for characterization
 
 ## Overview
 
 This schema package defines:
 
-- **DTULibraryCleaving** - A sample preparation process that divides a [DTUCombinatorialLibrary](samples.md) into multiple [DTUCombinatorialSample](samples.md) pieces
+- **DTULibraryCleaving** - A sample preparation process that physically divides a [DTUCombinatorialLibrary](samples.md) into multiple smaller pieces (child libraries), each potentially containing several [sample positions](samples.md) for measurement
 
 The cleaving process extends NOMAD's `Process` and `Activity` base classes, providing:
 
@@ -26,13 +34,14 @@ The cleaving process extends NOMAD's `Process` and `Activity` base classes, prov
 
 ## Why Cleave Libraries?
 
-Combinatorial libraries enable efficient exploration of composition space, but characterization often requires:
+Combinatorial libraries enable efficient exploration of composition space. Cleaving into smaller physical pieces provides:
 
-- **Parallel measurements**: Multiple characterization tools simultaneously
-- **Destructive testing**: Some techniques consume or damage the sample
-- **Collaboration**: Sharing pieces with other researchers or labs
+- **Parallel measurements**: Multiple characterization tools can process different pieces simultaneously
+- **Destructive testing**: Some techniques consume or damage the material - cleaving preserves the rest of the library
+- **Collaboration**: Physical pieces can be shared with other researchers or labs
 - **Storage**: Smaller pieces are easier to store and catalog
-- **Flexibility**: Different areas can undergo different follow-up treatments
+- **Flexibility**: Different pieces can undergo different follow-up treatments (e.g., annealing, coating)
+- **Sample position preservation**: Each cleaved piece retains its original composition gradient and sample position coordinates
 
 ## Cleaving Strategies
 
@@ -41,21 +50,25 @@ Combinatorial libraries enable efficient exploration of composition space, but c
 - **Custom pattern**: Targeted sampling of interesting regions
 - **Position marking**: Clear labeling to maintain position/composition mapping
 
-## Composition Mapping
+## Composition Mapping and Sample Positions
 
 For libraries with composition gradients (e.g., from multi-target [sputtering](sputtering.md)):
 
 1. Measure composition at several points on intact library (e.g., [EDX](edx.md))
 2. Create composition gradient map
-3. Assign estimated composition to each cleaved sample based on position
-4. Verify compositions on selected samples after cleaving
+3. Define [sample positions](samples.md) at specific coordinates representing distinct compositions
+4. Cleave library into physical pieces if needed - sample positions remain defined by coordinates
+5. Verify compositions at selected sample positions after cleaving
+
+**Hierarchy:** Parent Library → Cleaved Pieces (physical/child libraries) → Sample Positions (coordinates) → Measurements
 
 ## Related Schemas
 
-- **Input entity**: [DTUCombinatorialLibrary](samples.md)
-- **Output entities**: Multiple [DTUCombinatorialSample](samples.md) entries
+- **Input entity**: [DTUCombinatorialLibrary](samples.md) (parent library)
+- **Output entities**: Multiple child [DTUCombinatorialLibrary](samples.md) entries (cleaved pieces)
+- **Sample positions**: [DTUCombinatorialSample](samples.md) entries reference coordinates on libraries or pieces
 - **Created from**: [Sputtering](sputtering.md), [Thermal Evaporation](thermal.md)
-- **Followed by**: [Characterization measurements](xrd.md) on individual samples
+- **Followed by**: [Characterization measurements](xrd.md) at specific sample positions
 
 ---
 
