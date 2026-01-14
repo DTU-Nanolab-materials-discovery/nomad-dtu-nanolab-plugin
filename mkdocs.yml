@@ -52,19 +52,13 @@ theme:
   logo: assets/nomad-plugin-logo.png
   favicon: assets/favicon.png
   features:
-    - navigation.tabs
-    - navigation.sections
-    - navigation.expand
-    - navigation.indexes
     - navigation.path
     - navigation.footer
     - navigation.top
-    - toc.follow
     - content.code.copy
     - content.code.annotate
   icon:
     repo: fontawesome/brands/github
-  custom_dir: docs/theme
 markdown_extensions:
   - attr_list
   - md_in_html
