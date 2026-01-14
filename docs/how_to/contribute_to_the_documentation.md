@@ -134,7 +134,7 @@ When documenting schemas in the reference section, include:
 2. Overview of main classes
 3. Typical usage workflow
 4. Related schemas
-5. Auto-generated API docs using `{{ metainfo_package('nomad_dtu_nanolab_plugin.schema_packages.package_name') }}`
+5. Auto-generated API docs using the `metainfo_package` macro with your schema package path
 
 See existing reference pages for examples.
 
