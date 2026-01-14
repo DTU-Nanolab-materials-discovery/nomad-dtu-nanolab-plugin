@@ -39,6 +39,7 @@ nav:
           - Jupyter Analysis: reference/analysis.md
 plugins:
   - search
+  - glightbox
   - macros:
       module_name: docs/main
 theme:
@@ -51,7 +52,6 @@ theme:
   logo: assets/nomad-plugin-logo.png
   favicon: assets/favicon.png
   features:
-    - navigation.instant
     - navigation.path
     - navigation.footer
     - navigation.top
@@ -59,7 +59,6 @@ theme:
     - content.code.annotate
   icon:
     repo: fontawesome/brands/github
-  custom_dir: docs/theme
 markdown_extensions:
   - attr_list
   - md_in_html
