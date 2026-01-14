@@ -27,8 +27,6 @@ Create analysis entries through an ELN form:
 
 ### Generated API Query Cell
 
-![API Query Cell](../assets/images/jupyter-analysis-api-query-cell.png)
-
 ```python
 from nomad.client import ArchiveQuery
 from nomad.config import client
@@ -54,7 +52,7 @@ graph TD
     C --> D[Notebook Generated with API Query]
     D --> E[Add Analysis Code]
     E --> F[Execute & Save Results]
-    
+
     style D fill:#e1f5e1
     style F fill:#e1f5e1
 ```
@@ -80,16 +78,16 @@ graph TB
         A1[Analysis with Code] --> A2[Convert to Template]
         A2 --> A3[ID → THE_ANALYSIS_ID]
     end
-    
+
     subgraph "Use Template"
         B1[New Analysis] --> B2[Reference Template]
         B2 --> B3[Select Libraries]
         B3 --> B4[Query Cell Updated]
         B4 --> B5[Analysis Code Preserved]
     end
-    
+
     A3 --> B2
-    
+
     style A3 fill:#ffe1cc
     style B5 fill:#e1f5e1
 ```
