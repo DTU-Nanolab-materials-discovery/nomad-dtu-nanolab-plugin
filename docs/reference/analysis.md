@@ -1,37 +1,126 @@
 # Jupyter Analysis
 
-Computational analysis and data processing workflows using Jupyter notebooks. This schema integrates Python-based analysis directly into NOMAD, enabling reproducible data processing with full provenance tracking.
+Python-based analysis workflows using Jupyter notebooks, integrated directly into NOMAD with full provenance tracking.
 
 ## Overview
 
-This schema package defines:
+Two complementary approaches for notebook-based analysis:
 
-- **DtuJupyterAnalysis** - Jupyter notebook-based analysis workflows with input data, code, and results
+- **DtuJupyterAnalysis** - Auto-generated notebooks that fetch data from selected NOMAD entries
+- **DtuJupyterAnalysisTemplate** - Reusable templates with complex analysis code that can be applied to different datasets
 
-Jupyter analysis extends NOMAD's `Analysis` and `Activity` base classes, providing:
+Both provide provenance tracking from samples through measurements to results.
 
-- Links to input [measurements](xrd.md) providing data
-- Jupyter notebook attachment or inline code
-- Analysis parameters and configuration
-- Results and visualizations
-- Full provenance from samples → measurements → analysis
+---
 
-## Typical Usage
+## Basic Jupyter Analysis
 
-1. **Reference inputs**: Link to [measurements](xrd.md) providing data to analyze
-2. **Attach notebook**: Upload or create a templated Jupyter notebook (.ipynb) with analysis code in NOMAD
-3. **Document parameters**: Any analysis settings, fitting parameters, thresholds
-4. **Store results**: Fitted parameters, figures, derived properties
-5. **Link back**: Reference analysis from measurement entries for bidirectional traceability
+Create analysis entries through an ELN form:
 
-## What Jupyter Analysis Enables
+- Select libraries/measurements using the `libraries` field
+- Check `generate_notebook` to auto-create a pre-filled Jupyter notebook
+- Generated notebook includes API query to fetch selected entries' data
 
-- **Reproducible analysis**: Code and data together in NOMAD
-- **Provenance tracking**: From raw data through analysis to results
-- **Sharing**: Collaborators can see exactly how results were obtained
-- **Reanalysis**: Easy to rerun with different parameters
-- **Searchability**: Analysis code can be searched in NOMAD
+### ELN Form Interface
 
+![ELN Form](../assets/images/jupyter-analysis-eln-form.png)
+
+### Generated API Query Cell
+
+```python
+from nomad.client import ArchiveQuery
+from nomad.config import client
+
+analysis_id = "THE_ANALYSIS_ID"
+a_query = ArchiveQuery(
+    query={'entry_id:any': [analysis_id]},
+    required='*',
+    url=client.url,
+)
+entry_list = a_query.download()
+analysis = entry_list[0].data
+```
+
+The `analysis_id` is automatically replaced with the actual entry ID when the notebook is generated.
+
+### Workflow
+
+```mermaid
+graph TD
+    A[Create Analysis Entry] --> B[Select Libraries]
+    B --> C[Enable generate_notebook]
+    C --> D[Notebook Generated with API Query]
+    D --> E[Add Analysis Code]
+    E --> F[Execute & Save Results]
+
+    style D fill:#e1f5e1
+    style F fill:#e1f5e1
+```
+
+---
+
+## Templated Jupyter Analysis
+
+Reusable templates for complex analysis code (visualizations, ML models, statistical analysis).
+
+### Key Concept
+
+Templates enable **reusing sophisticated analysis code with different data sources**:
+
+1. **Template Creation**: Convert existing analysis → Replace `analysis_id` with `"THE_ANALYSIS_ID"` placeholder → Store template
+2. **Template Instantiation**: Reference template → Select new libraries → Only API query cell is updated → All analysis code preserved
+
+### Template Workflow
+
+```mermaid
+graph TB
+    subgraph "Create Template"
+        A1[Analysis with Code] --> A2[Convert to Template]
+        A2 --> A3[ID → THE_ANALYSIS_ID]
+    end
+
+    subgraph "Use Template"
+        B1[New Analysis] --> B2[Reference Template]
+        B2 --> B3[Select Libraries]
+        B3 --> B4[Query Cell Updated]
+        B4 --> B5[Analysis Code Preserved]
+    end
+
+    A3 --> B2
+
+    style A3 fill:#ffe1cc
+    style B5 fill:#e1f5e1
+```
+
+### What Gets Templated
+
+| Component | Template | Instance |
+|-----------|----------|----------|
+| **API Query Cell** | `"THE_ANALYSIS_ID"` placeholder | Actual entry ID |
+| **Analysis Code** | Preserved | Preserved |
+| **Visualizations** | Preserved | Runs on new data |
+| **ML Models** | Preserved | Runs on new data |
+
+**Key**: Only the data source changes; all analysis logic is reused.
+
+### Use Cases
+
+- Complex visualizations (ternary plots, heatmaps) with consistent styling
+- ML inference with pre-trained models on new data
+- Standardized statistical analysis across sample sets
+- Publication-ready figures with uniform formatting
+
+---
+
+## Benefits
+
+- **Reproducible**: Code and data together in NOMAD
+- **Provenance**: Full traceability from raw data to results
+- **Reusable**: Templates standardize analysis across datasets
+- **Searchable**: Notebooks are searchable NOMAD entries
+- **Bidirectional linking**: Analysis ↔ source data connections
+
+---
 
 ## Related Schemas
 
