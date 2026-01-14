@@ -13,9 +13,34 @@ nav:
       - Contribute to this plugin: how_to/contribute_to_this_plugin.md
       - Contribute to the documentation: how_to/contribute_to_the_documentation.md
   - Explanation: explanation/explanation.md
-  - Reference: reference/references.md
+  - Reference:
+      - Overview: reference/index.md
+      - Lab Inventory & Items:
+          - Samples and Libraries: reference/samples.md
+          - Substrates: reference/substrates.md
+          - Targets: reference/targets.md
+          - Gas Supplies: reference/gas.md
+          - Instruments: reference/instruments.md
+      - Synthesis & Processing:
+          - Sputtering Deposition: reference/sputtering.md
+          - Rapid Thermal Processing: reference/rtp.md
+          - Thermal Evaporation: reference/thermal.md
+          - Library Cleaving: reference/cleaving.md
+      - Characterization:
+          - Base Measurement Infrastructure: reference/basesections.md
+          - X-ray Diffraction (XRD): reference/xrd.md
+          - X-ray Photoelectron Spectroscopy (XPS): reference/xps.md
+          - Energy-Dispersive X-ray (EDX): reference/edx.md
+          - Photoluminescence (PL): reference/pl.md
+          - Ellipsometry: reference/ellipsometry.md
+          - Raman Spectroscopy: reference/raman.md
+          - RT Measurements: reference/rt.md
+      - Data Analysis:
+          - Jupyter Analysis: reference/analysis.md
 plugins:
   - search
+  - macros:
+      module_name: docs/main
 theme:
   name: material
   palette:
@@ -27,6 +52,13 @@ theme:
   favicon: assets/favicon.png
   features:
     - navigation.instant
+    - navigation.path
+    - navigation.footer
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
   custom_dir: docs/theme
 markdown_extensions:
   - attr_list
@@ -37,12 +69,15 @@ markdown_extensions:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - toc:
       permalink: True
   - pymdownx.arithmatex:
       generic: true
-  - attr_list
   - mkdocs-click
   - pymdownx.extra
 extra:
