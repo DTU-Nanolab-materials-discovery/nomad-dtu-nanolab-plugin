@@ -224,3 +224,9 @@ Templates excel for:
 ## Schema Documentation
 
 {{ metainfo_package('nomad_dtu_nanolab_plugin.schema_packages.analysis') }}
+
+---
+
+## Schema Documentation
+
+{{ metainfo_package('nomad_dtu_nanolab_plugin.schema_packages.analysis') }}
