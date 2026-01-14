@@ -41,6 +41,7 @@ dev = [
     "ruff",
     "pytest",
     "structlog",
+    "nomad-docs",
     "mkdocs",
     "mkdocs-material",
     "pymdown-extensions",
