@@ -4,7 +4,7 @@ Materials characterization provides the experimental data needed to understand c
 
 ## Overview of Available Techniques
 
-The nomad-dtu-nanolab-plugin supports documentation for seven characterization techniques, organized by the type of information they provide:
+The nomad-dtu-nanolab-plugin supports documentation for several characterization techniques, organized by the type of information they provide:
 
 | Technique | Information Type | Key Properties Measured |
 |-----------|-----------------|------------------------|
