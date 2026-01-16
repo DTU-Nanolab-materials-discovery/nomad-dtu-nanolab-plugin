@@ -160,7 +160,7 @@ For lab-specific synthesis check-out the [nomad-processing plugin](https://githu
 
 #### Extend Measurements
 
-Add lab-specific parameters to standard techniques or adpat them. We adopted the mapping of our XRD from the [nomad-measurements plugin](https://github.com/FAIRmat-NFDI/nomad-measurements).
+Add lab-specific parameters to standard techniques or adapt them. We adopted the mapping of our XRD from the [nomad-measurements plugin](https://github.com/FAIRmat-NFDI/nomad-measurements).
 
 ```python
 from nomad_dtu_nanolab_plugin.schema_packages.xrd import DTUXRDMeasurement
