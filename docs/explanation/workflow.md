@@ -187,7 +187,7 @@ You perform **[measurement activities](data-model.md#measurements)** on several 
 
 Each measurement:
 
-- References the specific library and track coordinates
+- References the specific library and tracks coordinates
 - Links to the instrument used
 - Stores measurement parameters and results
 - Extends the common [BaseMeasurement](../reference/basesections.md) infrastructure
