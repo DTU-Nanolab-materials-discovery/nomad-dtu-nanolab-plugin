@@ -30,7 +30,7 @@ This multi-technique approach reveals relationships between composition, structu
 
 ### Sample Position Measurements
 
-All measurements in the plugin are typically performed mappiing [sample positions](combinatorial-libraries.md) on combinatorial libraries:
+All measurements in the plugin are typically performed mapping [sample positions](combinatorial-libraries.md) on combinatorial libraries:
 
 - Each measurement point tracks a specific coordinate on the library
 - Position-based measurements work whether library is intact or [cleaved](../reference/cleaving.md)
