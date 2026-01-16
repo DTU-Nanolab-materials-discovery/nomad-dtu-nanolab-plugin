@@ -10,9 +10,15 @@ nav:
   - How-to guides:
       - Install this Plugin: how_to/install_this_plugin.md
       - Use this Plugin: how_to/use_this_plugin.md
+      - Adapt for Your Lab: how_to/adapt-for-your-lab.md
       - Contribute to this plugin: how_to/contribute_to_this_plugin.md
       - Contribute to the documentation: how_to/contribute_to_the_documentation.md
-  - Explanation: explanation/explanation.md
+  - Explanation:
+      - Overview: explanation/index.md
+      - Data Model Philosophy: explanation/data-model.md
+      - Materials Discovery Workflow: explanation/workflow.md
+      - Combinatorial Libraries: explanation/combinatorial-libraries.md
+      - Characterization Techniques: explanation/characterization.md
   - Reference:
       - Overview: reference/index.md
       - Lab Inventory & Items:

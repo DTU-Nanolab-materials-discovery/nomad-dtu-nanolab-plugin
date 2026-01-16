@@ -31,22 +31,6 @@ The sputtering process extends NOMAD's `Process` and `Activity` base classes, pr
 - **Deposition control**: Time, rate, substrate rotation/motion for gradients
 - **Thermal management**: Substrate temperature, heating/cooling
 
-## Why Document Sputtering Details?
-
-Sputtering parameters directly determine film properties:
-
-- **Power affects**: Deposition rate, film stress, stoichiometry
-- **Pressure affects**: Mean free path, film density, morphology
-- **Gas composition affects**: Oxidation state, doping, crystallinity
-- **Substrate motion affects**: Composition gradients in combinatorial libraries
-
-Complete documentation enables:
-
-- Reproducibility of successful depositions
-- Understanding parameter-property relationships
-- Troubleshooting when results deviate
-- Training new lab members
-
 ## Related Schemas
 
 - **Input entities**: [Substrates](substrates.md), [Targets](targets.md), [Gas Supplies](gas.md)
