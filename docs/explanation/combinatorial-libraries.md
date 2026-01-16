@@ -64,7 +64,7 @@ When you cleave a library, you're **physically dividing the substrate**, not red
 
 ### Measurements Reference Libraries, and Track Positions
 
-When you do a mapping measurement on a library, you're measuring at a **specific coordinates (composition point)**:
+When you do a mapping measurement on a library, you're measuring at a **specific coordinates (composition point)**.
 
 ## The Data Model in Practice
 
