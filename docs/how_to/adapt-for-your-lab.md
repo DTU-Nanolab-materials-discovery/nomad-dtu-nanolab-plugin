@@ -156,7 +156,7 @@ Define your specific equipment:
 
 #### Add New Process Types
 
-For lab-specific synthesis check-out the [nomad-processing plugin](https://github.com/FAIRmat-NFDI/nomad-material-processing) for base clases and inspiration.
+For lab-specific synthesis check-out the [nomad-processing plugin](https://github.com/FAIRmat-NFDI/nomad-material-processing) for base classes and inspiration.
 
 #### Extend Measurements
 
