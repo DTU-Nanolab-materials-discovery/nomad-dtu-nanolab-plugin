@@ -1,6 +1,9 @@
 # Base Measurement Infrastructure
 
-This schema package defines the common infrastructure shared by all DTU Nanolab measurement types. Understanding the base measurement class helps you work consistently across different characterization techniques.
+This schema package defines the common infrastructure shared by all DTU Nanolab measurement types.
+
+!!! tip "Understanding the Architecture"
+    For an explanation of why the plugin uses a common base class and how it ensures consistency, see the [Data Model Philosophy](../explanation/data-model.md).
 
 ## Overview
 
@@ -40,26 +43,6 @@ All DTU measurements inherit these capabilities:
 - Automatic creation of NOMAD workflow entries
 - Links to synthesis processes that created the samples
 - Integration with analysis workflows
-
-## Why Use Standard Measurement Base?
-
-Using a common base class ensures:
-
-- **Consistency**: All measurements documented the same way
-- **Searchability**: Common fields indexed for easy finding
-- **Interoperability**: Measurements work seamlessly with NOMAD tools
-- **Automation**: Standard fields auto-populate when possible
-- **Analysis**: Easier to build analysis tools that work across techniques
-
-## Extending for New Techniques
-
-When adding a new characterization technique to the plugin:
-
-1. Extend `BaseMeasurement`
-2. Add technique-specific parameters
-3. Define result data structures
-4. Implement technique-specific parsing (if needed)
-5. Follow the patterns from existing measurements
 
 ## Related Schemas
 

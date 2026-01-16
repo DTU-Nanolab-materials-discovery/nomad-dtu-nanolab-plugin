@@ -1,6 +1,9 @@
 # X-ray Diffraction (XRD)
 
-X-ray Diffraction is a non-destructive technique for identifying crystal structures, phases, lattice parameters, crystallite sizes, and strain in materials. XRD is essential for understanding the structural properties of thin films and bulk materials.
+X-ray Diffraction is a non-destructive technique for identifying crystal structures, phases, lattice parameters, crystallite sizes, and strain in materials.
+
+!!! tip "Understanding XRD"
+    For an overview of what XRD tells you and how it compares to other characterization techniques, see the [Characterization Techniques](../explanation/characterization.md) explanation.
 
 ## Overview
 
@@ -27,23 +30,6 @@ XRD measurements extend [BaseMeasurement](basesections.md), providing:
 
 !!! note "Measuring Sample Positions"
     Measurements reference [sample positions](samples.md) defined by specific coordinates on [combinatorial libraries](samples.md). Multiple positions can be measured on a single library (intact or cleaved) to map structural properties across composition space.
-
-## Common XRD Scan Types
-
-- **θ-2θ scan**: Phase identification, out-of-plane lattice parameter
-- **Rocking curve (ω-scan)**: Crystalline quality, mosaicity
-- **φ-scan**: Texture, epitaxial relationships
-- **Reciprocal space map**: Strain, relaxation, composition
-- **Grazing incidence (GIXRD)**: Thin films, surface sensitivity
-
-## What XRD Tells You
-
-- **Phase identification**: Which crystal structures are present
-- **Lattice parameters**: Unit cell dimensions, composition estimation
-- **Crystallite size**: Grain size from peak broadening (Scherrer equation)
-- **Strain/stress**: Lattice distortion from peak positions
-- **Texture/orientation**: Preferred crystallographic directions
-- **Crystallinity**: Relative amounts of crystalline vs. amorphous material
 
 ## Key Parameters
 
