@@ -123,7 +123,7 @@ Define your specific equipment:
 **Map your lab workflow**:
 
 - What materials do you synthesize? (Define synthesis process schemas and adapt parsers to your files)
-- What measurements do you perform? (Keep/add characterization schemas and adapt parsers to oyout files)
+- What measurements do you perform? (Keep/add characterization schemas and adapt parsers to your files)
 - How do you organize samples? (Customize sample schemas)
 - What are your pain points? (Focus customization there)
 
