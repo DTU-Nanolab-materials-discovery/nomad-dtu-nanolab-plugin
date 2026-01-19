@@ -53,6 +53,7 @@ SAMPLES_TO_TEST = [
     # 'eugbe_0021_Zr_Recording Set 2025.02.07-10.03.37',
     # 'mittma_0029_Cu_Recording Set 2024.12.02-10.49.07',
     'eugbe_0026_Ag_Recording Set 2025.03.07-10.09.23',
+    'mittma_0004_Cu__H2S_an_PH3_250C_Recording Set 2024.04.19-08.46.26',
 ]
 
 # -----USEFUL DICTIONARIES AND LISTS-----
@@ -1867,9 +1868,10 @@ class Deposition_Event(Lf_Event):
             self.data[f'PC Source {source_number} Loaded Target'].iloc[0]
         )
         # the acumulated power is the last power recorded after the deposition
-        params[self.category][f'{SOURCE_NAME[str(source_number)]}']['target_usage'] = (
-            self.data[f'PC Source {source_number} Usage'].iloc[-1]
-        )
+        if f'PC Source {source_number} Usage' in self.data.columns:
+            params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
+                'target_usage'
+            ] = self.data[f'PC Source {source_number} Usage'].iloc[-1]
         return params, elements
 
     def get_platen_bias_params(self, params=None):
