@@ -1382,7 +1382,7 @@ class SulfurCrackerPressure(ArchiveSection):
 
             return flow * ureg('cm^3/minute')
 
-        if self.sulfur_flow is None and self.sulfur_partial_pressure is not None:
+        if self.sulfur_partial_pressure is not None:
             self.sulfur_flow = sulfur_pressure_to_flow(self.sulfur_partial_pressure)
 
 
