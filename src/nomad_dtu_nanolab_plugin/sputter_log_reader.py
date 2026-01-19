@@ -1871,7 +1871,7 @@ class Deposition_Event(Lf_Event):
         if f'PC Source {source_number} Usage' in self.data.columns:
             params[self.category][f'{SOURCE_NAME[str(source_number)]}'][
                 'target_usage'
-                ] = (self.data[f'PC Source {source_number} Usage'].iloc[-1])
+            ] = self.data[f'PC Source {source_number} Usage'].iloc[-1]
         return params, elements
 
     def get_platen_bias_params(self, params=None):
