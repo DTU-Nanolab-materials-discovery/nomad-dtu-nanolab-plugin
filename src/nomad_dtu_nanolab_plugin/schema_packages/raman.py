@@ -131,8 +131,16 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             mapping = MappingRamanMeas()
             # Read the data - get folder and filename from the file path
             import os
-            folder = os.path.dirname(file.name)
-            filename = os.path.basename(file.name)
+
+            # Handle file path - use file object's name attribute
+            file_path = file.name if hasattr(file, 'name') else self.raman_data_file
+            folder = os.path.dirname(file_path)
+            filename = os.path.basename(file_path)
+
+            # If folder is empty, use current directory
+            if not folder:
+                folder = '.'
+
             mapping.read_wdf_mapping(folder, [filename])
             # Write the data to results
             self.write_raman_data(mapping.raman_meas_list, archive, logger)
@@ -142,9 +150,16 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         fig = go.Figure()
         result: RamanResult
         for result in self.results:
+            # Fixed: raman_shift is stored as a list, not a Quantity
+            # If it's a Quantity, convert it; otherwise use it directly
+            if hasattr(result.raman_shift, 'magnitude'):
+                x_data = result.raman_shift.to('1/cm').magnitude
+            else:
+                x_data = result.raman_shift
+
             fig.add_trace(
                 go.Scatter(
-                    x=result.raman_shift.to('1/cm').magnitude,
+                    x=x_data,
                     y=result.intensity,
                     mode='lines',
                     name=result.name,

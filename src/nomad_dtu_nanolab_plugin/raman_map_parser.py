@@ -19,7 +19,6 @@ class MappingRamanMeas():
 
     def read_wdf_mapping(self, folder, filename_list):
         """Read WDF file and extract both Raman spectra and optical images"""
-        global reader
         for filename in filename_list:
             file_path = os.path.join(folder, filename)
             reader = WDFReader(file_path)
