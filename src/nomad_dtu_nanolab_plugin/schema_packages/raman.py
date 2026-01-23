@@ -142,6 +142,11 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 folder = '.'
 
             mapping.read_wdf_mapping(folder, [filename])
+            meas_name = filename.split(".")[0]
+            grid_path = os.path.join(folder, f"{meas_name}_optical_grid.png")
+            mapping.save_optical_images(folder, meas_name)
+            mapping.create_image_grid(save_path=grid_path)
+
             # Write the data to results
             self.write_raman_data(mapping.raman_meas_list, archive, logger)
 
