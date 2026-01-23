@@ -1,10 +1,12 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import plotly.graph_objects as go
 from nomad.datamodel.data import Schema
+from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import (
-    BrowserAnnotation,
+    ELNAnnotation,
+    ELNComponentEnum,
 )
 from nomad.datamodel.metainfo.plot import PlotSection, PlotlyFigure
 from nomad.metainfo import Package, Quantity, Section, SubSection
@@ -12,13 +14,15 @@ from nomad_measurements.mapping.schema import (
     MappingResult,
     RectangularSampleAlignment,
 )
+from nomad_measurements.utils import merge_sections
+from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.raman_map_parser import (
+    MappingRamanMeas,
+)
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
     DtuNanolabMeasurement,
-)
-from nomad_dtu_nanolab_plugin.schema_packages.raman_data_reader import (
-    MappingRamanMeas
 )
 
 if TYPE_CHECKING:
@@ -70,8 +74,10 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     )
     raman_data_file = Quantity(
         type=str,
-        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
-        a_eln={'component': 'FileEditQuantity', 'label': 'Raman file'},
+        description='Data file containing the Raman spectra',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+        ),
     )
 
     results = SubSection(
@@ -83,25 +89,53 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         description='The alignment of the sample.',
     )
 
-    def read_raman_data(self, archive: 'EntryArchive') -> None:
+    def write_raman_data(
+        self,
+        raman_meas_list: list[Any],
+        archive: 'EntryArchive',
+        logger: 'BoundLogger',
+    ) -> None:
+        """
+        Write method for populating the `RamanMeasurement` section from Raman data.
+
+        Args:
+            raman_meas_list (list): A list of RamanMeas objects from MappingRamanMeas.
+            archive (EntryArchive): The archive containing the section.
+            logger (BoundLogger): A structlog logger.
+        """
+        results = []
+
+        for meas in raman_meas_list:
+            result = RamanResult(
+                intensity=meas.data['intensity'].to_list(),
+                raman_shift=meas.data['wavenumber'].to_list(),
+                laser_wavelength=meas.laser_wavelength,
+                x_absolute=meas.x_pos,
+                y_absolute=meas.y_pos,
+                name=f'Raman at ({meas.x_pos:.2f} um, {meas.y_pos:.2f} um)',
+            )
+            result.normalize(archive, logger)
+            results.append(result)
+
+        raman = RamanMeasurement(
+            results=results,
+        )
+        merge_sections(self, raman, logger)
+
+    def read_raman_data(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         Read the Raman data from the provided file.
         """
         with archive.m_context.raw_file(self.raman_data_file) as file:
-            #initalize the mapping reader
+            # Initialize the mapping reader
             mapping = MappingRamanMeas()
-            #read the data
-            mapping.read_wdf_mapping(file)
-            #populate the results
-            for meas in mapping.raman_meas_list:
-                result = RamanResult()
-                result.name = f'Raman at ({meas.x_pos} um, {meas.y_pos} um)'
-                result.x_absolute = meas.ureg.Quantity(meas.x_pos, 'um')
-                result.y_absolute = meas.ureg.Quantity(meas.y_pos, 'um')
-                result.intensity = meas.data['intensity'].to_list()
-                result.raman_shift = meas.data['wavenumber'].to_list()
-                result.laser_wavelength = meas.ureg.Quantity(meas.laser_wavelength, 'nm')
-                self.results.append(result)
+            # Read the data - get folder and filename from the file path
+            import os
+            folder = os.path.dirname(file.name)
+            filename = os.path.basename(file.name)
+            mapping.read_wdf_mapping(folder, [filename])
+            # Write the data to results
+            self.write_raman_data(mapping.raman_meas_list, archive, logger)
 
 
     def plot(self) -> None:
@@ -161,7 +195,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 archive=archive,
                 logger=logger,
             )
-            self.read_raman_data(archive)
+            self.read_raman_data(archive, logger)
 
         super().normalize(archive, logger)
 
