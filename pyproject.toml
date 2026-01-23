@@ -31,8 +31,8 @@ dependencies = [
     "httpx<0.28",
     "nomad-analysis>=0.0.7",
     "openpyxl>3",
-    "py-wdf-reader",
-    
+    "renishawwire @ git+https://github.com/alchem0x2A/py-wdf-reader.git",
+
 ]
 
 [project.urls]
