@@ -1,10 +1,12 @@
 from typing import TYPE_CHECKING
 
+import numpy as np
+import plotly.graph_objects as go
 from nomad.datamodel.data import Schema
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
 )
-from nomad.datamodel.metainfo.plot import PlotSection
+from nomad.datamodel.metainfo.plot import PlotSection, PlotlyFigure
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad_measurements.mapping.schema import (
     MappingResult,
@@ -14,6 +16,9 @@ from nomad_measurements.mapping.schema import (
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
     DtuNanolabMeasurement,
+)
+from nomad_dtu_nanolab_plugin.schema_packages.raman_data_reader import (
+    MappingRamanMeas
 )
 
 if TYPE_CHECKING:
@@ -25,6 +30,24 @@ m_package = Package(name='DTU Raman measurement schema')
 
 class RamanResult(MappingResult):
     m_def = Section()
+
+    intensity = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        description='The Raman intensity at each wavenumber',
+    )
+
+    raman_shift = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='1/cm',
+        description='The Raman shift values in 1/cm',
+    )
+    laser_wavelength = Quantity(
+        type=np.dtype(np.float64),
+        unit='nm',
+        description='The wavelength of the laser used in the Raman measurement.',
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -60,11 +83,68 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         description='The alignment of the sample.',
     )
 
+    def read_raman_data(self, archive: 'EntryArchive') -> None:
+        """
+        Read the Raman data from the provided file.
+        """
+        with archive.m_context.raw_file(self.raman_data_file) as file:
+            #initalize the mapping reader
+            mapping = MappingRamanMeas()
+            #read the data
+            mapping.read_wdf_mapping(file)
+            #populate the results
+            for meas in mapping.raman_meas_list:
+                result = RamanResult()
+                result.name = f'Raman at ({meas.x_pos} um, {meas.y_pos} um)'
+                result.x_absolute = meas.ureg.Quantity(meas.x_pos, 'um')
+                result.y_absolute = meas.ureg.Quantity(meas.y_pos, 'um')
+                result.intensity = meas.data['intensity'].to_list()
+                result.raman_shift = meas.data['wavenumber'].to_list()
+                result.laser_wavelength = meas.ureg.Quantity(meas.laser_wavelength, 'nm')
+                self.results.append(result)
+
+
     def plot(self) -> None:
-        """
-        Add a plot of the Raman measurement results.
-        """
-        pass
+        fig = go.Figure()
+        result: RamanResult
+        for result in self.results:
+            fig.add_trace(
+                go.Scatter(
+                    x=result.raman_shift.to('1/cm').magnitude,
+                    y=result.intensity,
+                    mode='lines',
+                    name=result.name,
+                    hoverlabel=dict(namelength=-1),
+                )
+            )
+
+        # Update layout
+        fig.update_layout(
+            title='Raman Spectra',
+            xaxis_title='Raman Shift / 1/cm',
+            yaxis_title='Intensity',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                type='log',
+            ),
+        )
+
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(
+            scrollZoom=False,
+        )
+        self.figures.append(
+            PlotlyFigure(
+                label='Patterns',
+                figure=plot_json,
+            )
+        )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -73,6 +153,15 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         if self.location is None:
             self.location = 'DTU Nanolab Raman Measurement'
+
+        if self.raman_data_file:
+            self.add_sample_reference(
+                filename=self.raman_data_file,
+                measurement_type='Raman',
+                archive=archive,
+                logger=logger,
+            )
+            self.read_raman_data(archive)
 
         super().normalize(archive, logger)
 
