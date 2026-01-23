@@ -24,34 +24,34 @@ class MappingRamanMeas():
             reader = WDFReader(file_path)
 
             # Debug information
-            print(f"\n=== WDF File: {filename} ===")
-            print(f"Spectra shape: {reader.spectra.shape}")
-            print(f"Xdata shape: {reader.xdata.shape}")
-            if hasattr(reader, 'xpos') and hasattr(reader, 'ypos'):
-                print(f"Number of positions: {len(reader.xpos)}")
-                print(f"X positions: {reader.xpos[:5]}...")
-                print(f"Y positions: {reader.ypos[:5]}...")
+            #print(f"\n=== WDF File: {filename} ===")
+            #print(f"Spectra shape: {reader.spectra.shape}")
+            #print(f"Xdata shape: {reader.xdata.shape}")
+            #if hasattr(reader, 'xpos') and hasattr(reader, 'ypos'):
+            #    print(f"Number of positions: {len(reader.xpos)}")
+            #    print(f"X positions: {reader.xpos[:5]}...")
+            #    print(f"Y positions: {reader.ypos[:5]}...")
 
             # Get wavenumber data (should be 1D)
             wv_num = reader.xdata
 
             # Extract optical images first
             optical_images = self._extract_optical_images_from_reader(reader)
-            print(f"Extracted {len(optical_images)} optical images")
+            #print(f"Extracted {len(optical_images)} optical images")
 
             # Check if we have position data
             if hasattr(reader, 'xpos') and hasattr(reader, 'ypos') and len(reader.xpos) > 1:
                 # We have mapping data with positions
-                print(f"Processing {len(reader.xpos)} spectra...")
+                #print(f"Processing {len(reader.xpos)} spectra...")
 
                 # Handle 3D spectra array (e.g., 5x5x1015 grid)
                 spectra_array = reader.spectra
                 if len(spectra_array.shape) == 3:
                     # 3D array: reshape to 2D [position, wavenumber]
-                    print(f"Reshaping 3D spectra from {spectra_array.shape} to 2D")
+                    #print(f"Reshaping 3D spectra from {spectra_array.shape} to 2D")
                     original_shape = spectra_array.shape
                     spectra_array = spectra_array.reshape(-1, spectra_array.shape[-1])
-                    print(f"Reshaped to: {spectra_array.shape}")
+                    #print(f"Reshaped to: {spectra_array.shape}")
 
                 for i in range(len(reader.xpos)):
                     raman_meas = RamanMeas()
