@@ -168,7 +168,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             fig.add_trace(
                 go.Scatter(
                     x=x_data,
-                    y=result.intensity,
+                    y=np.log(result.intensity),
                     mode='lines',
                     name=result.name,
                     hoverlabel=dict(namelength=-1),
@@ -178,8 +178,8 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         # Update layout
         fig.update_layout(
             title='Raman Spectra',
-            xaxis_title='Raman Shift / 1/cm',
-            yaxis_title='Intensity',
+            xaxis_title='Raman Shift (1/cm)',
+            yaxis_title='Log Intensity',
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
@@ -188,7 +188,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             ),
             yaxis=dict(
                 fixedrange=False,
-                type='log',
+                type='linear',
             ),
         )
 
