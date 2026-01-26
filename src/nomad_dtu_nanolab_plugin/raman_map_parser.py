@@ -89,7 +89,7 @@ class MappingRamanMeas:
                         # 1D array: single spectrum
                         print(
                             'Warning: Only single spectrum found,',
-                            'but multiple positions exist'
+                            'but multiple positions exist',
                         )
                         intensity = spectra_array
 
@@ -278,7 +278,7 @@ class MappingRamanMeas:
                 print(
                     f'Spectrum {i}:',
                     f'pos=({raman_meas.x_pos:.2f}, {raman_meas.y_pos:.2f})',
-                    f'intensity_range={intensity_range}, n_points={len(plot_data)}'
+                    f'intensity_range={intensity_range}, n_points={len(plot_data)}',
                 )
 
             fig.add_trace(
@@ -413,15 +413,15 @@ class MappingRamanMeas:
 
 
 def main():
-    #global mapping
+    # global mapping
     folder = r'Z:\P110143-phosphosulfides-Andrea\Data\Samples\indiogo_0019_RTP\Raman'
     filename_list = [
         'indiogo_0019_RTP_hc_1x10s_P1_x20_map_0.wdf',
     ]
 
     meas_name = filename_list[0].split('.')[0]
-    #sample_list = meas_name.split('_')[:4]
-    #sample_name = '_'.join(sample_list)
+    # sample_list = meas_name.split('_')[:4]
+    # sample_name = '_'.join(sample_list)
 
     mapping = MappingRamanMeas()
 

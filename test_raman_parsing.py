@@ -33,12 +33,12 @@ try:
         print(f'     - Data points: {len(result.raman_shift)}')
         if i < NBR_SPECTRA:  # Show first few data points for first 2 spectra
             print(
-                "- Raman shift range:",
-                f"{min(result.raman_shift)} - {max(result.raman_shift)}"
+                '- Raman shift range:',
+                f'{min(result.raman_shift)} - {max(result.raman_shift)}',
             )
             print(
-                "- Intensity range:",
-                f"{min(result.intensity)} - {max(result.intensity)}"
+                '- Intensity range:',
+                f'{min(result.intensity)} - {max(result.intensity)}',
             )
 
     print(f'\nTotal results: {len(entry_archive.data.results)}')
