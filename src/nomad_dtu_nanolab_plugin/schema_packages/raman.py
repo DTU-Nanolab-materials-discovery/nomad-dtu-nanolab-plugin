@@ -24,6 +24,7 @@ from nomad_dtu_nanolab_plugin.raman_map_parser import (
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
     DtuNanolabMeasurement,
 )
+from nomad.units import ureg
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -106,13 +107,15 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         results = []
 
         for meas in raman_meas_list:
+            x_absolute = meas.x_pos * ureg('um')
+            y_absolute = meas.y_pos * ureg('um')
             result = RamanResult(
                 intensity=meas.data['intensity'].to_list(),
-                raman_shift=meas.data['wavenumber'].to_list(),
+                raman_shift=meas.data['wavenumber'].to_numpy() * ureg('1/cm'),
                 laser_wavelength=meas.laser_wavelength,
-                x_absolute=meas.x_pos,
-                y_absolute=meas.y_pos,
-                name=f'Raman at ({meas.x_pos:.2f} um, {meas.y_pos:.2f} um)',
+                x_absolute=x_absolute,
+                y_absolute=y_absolute,
+                name=f'Raman at ({x_absolute.to("mm").magnitude:.2f} mm, {y_absolute.to("mm").magnitude:.2f} mm)',
             )
             result.normalize(archive, logger)
             results.append(result)
@@ -142,10 +145,10 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 folder = '.'
 
             mapping.read_wdf_mapping(folder, [filename])
-            meas_name = filename.split(".")[0]
-            grid_path = os.path.join(folder, f"{meas_name}_optical_grid.png")
-            mapping.save_optical_images(folder, meas_name)
-            mapping.create_image_grid(save_path=grid_path)
+            #meas_name = filename.split(".")[0]
+            #grid_path = os.path.join(folder, f"{meas_name}_optical_grid.png")
+            #mapping.save_optical_images(folder, meas_name)
+            #mapping.create_image_grid(save_path=grid_path)
 
             # Write the data to results
             self.write_raman_data(mapping.raman_meas_list, archive, logger)
