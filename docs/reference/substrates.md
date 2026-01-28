@@ -19,15 +19,6 @@ Both extend NOMAD's `CompositeSystem` entity, providing lab ID tracking and refe
 3. **Track consumption**: Monitor which substrates have been used for which experiments
 4. **Batch analysis**: Identify if results correlate with specific substrate batches
 
-## Why Track Substrate Batches?
-
-Substrate quality can significantly affect material properties. Batch tracking helps you:
-
-- Identify batch-to-batch variations in results
-- Reorder from reliable suppliers
-- Troubleshoot unexpected results
-- Maintain detailed provenance for publications
-
 ## Related Schemas
 
 - **Used in**: [Sputtering](sputtering.md), [Thermal Evaporation](thermal.md)

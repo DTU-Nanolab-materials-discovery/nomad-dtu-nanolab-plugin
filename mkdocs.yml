@@ -1,8 +1,8 @@
-site_name: nomad-nomad-dtu-nanolab-plugin
+site_name: nomad-dtu-nanolab-plugin
 site_description: A plugin for the schemas, parsers,
 site_author: Lena Mittman
 
-repo_url: https://github.com/DTU-Nanolab-materials-discovery/nomad-nomad-dtu-nanolab-plugin
+repo_url: https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin
 
 nav:
   - Home: index.md
@@ -10,9 +10,15 @@ nav:
   - How-to guides:
       - Install this Plugin: how_to/install_this_plugin.md
       - Use this Plugin: how_to/use_this_plugin.md
+      - Adapt for Your Lab: how_to/adapt-for-your-lab.md
       - Contribute to this plugin: how_to/contribute_to_this_plugin.md
       - Contribute to the documentation: how_to/contribute_to_the_documentation.md
-  - Explanation: explanation/explanation.md
+  - Explanation:
+      - Overview: explanation/index.md
+      - Data Model Philosophy: explanation/data-model.md
+      - Materials Discovery Workflow: explanation/workflow.md
+      - Combinatorial Libraries: explanation/combinatorial-libraries.md
+      - Characterization Techniques: explanation/characterization.md
   - Reference:
       - Overview: reference/index.md
       - Lab Inventory & Items:
@@ -81,7 +87,7 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 extra:
   generator: false
-  homepage: https://nomad-lab.eu
+  homepage: https://dtu-nanolab-materials-discovery.github.io/
 use_directory_urls: false
 extra_css:
   - stylesheets/extra.css

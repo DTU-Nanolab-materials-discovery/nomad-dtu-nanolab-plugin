@@ -2,20 +2,8 @@
 
 Samples represent specific measurement positions on combinatorial libraries. At DTU Nanolab, the materials discovery workflow uses combinatorial libraries with composition gradients to efficiently explore material composition spaces through position-based sampling.
 
-## Understanding Libraries vs. Sample Positions
-
-A **combinatorial library** is a physical substrate with composition gradients created by multi-target deposition. **Sample positions** are specific coordinates on this library where measurements are performed, each representing a distinct composition point.
-
-<div style="display: flex; justify-content: space-around; margin: 20px 0;">
-  <div style="text-align: center; flex: 1; margin: 0 10px;">
-    <img src="../assets/library-substrate.svg" alt="Combinatorial Library" style="max-width: 100%;" />
-    <p><em>Figure 1: A combinatorial library showing composition gradient across the substrate (e.g., from multi-target sputtering)</em></p>
-  </div>
-  <div style="text-align: center; flex: 1; margin: 0 10px;">
-    <img src="../assets/library-sample-positions.svg" alt="Sample Positions" style="max-width: 100%;" />
-    <p><em>Figure 2: Sample positions (dots) mapped across the library - each represents a specific composition for measurement</em></p>
-  </div>
-</div>
+!!! tip "Understanding the Concepts"
+    For a deep dive into the distinction between physical library pieces and logical sample positions, see the [Combinatorial Libraries](../explanation/combinatorial-libraries.md) explanation.
 
 ## Overview
 
@@ -41,8 +29,6 @@ Both classes extend NOMAD's `CompositeSystem` entity, providing:
 5. **Aggregate data**: When multiple measurements target different positions, data can be aggregated (with interpolation if needed) to create property maps across composition space
 6. **Track provenance**: The entire chain from substrate → sputtering → library → sample positions → measurements is linked
 
-!!! note "Sample Positions vs. Physical Pieces"
-    **Sample positions** are logical entities representing measurement coordinates. A single cleaved physical piece can contain multiple sample positions. Conversely, measurements may sample many positions across an intact or cleaved library.
 
 ## Related Schemas
 
