@@ -191,7 +191,10 @@ class MappingRamanMeas:
         saved_filenames = []
         for i, raman_meas in enumerate(self.raman_meas_list):
             if raman_meas.image is not None:
-                filename = f'{filename_prefix}_point{i}_x{raman_meas.x_pos:.0f}_y{raman_meas.y_pos:.0f}.png'
+                filename = (
+                    f'{filename_prefix}_point{i}_'
+                    f'x{raman_meas.x_pos:.0f}_y{raman_meas.y_pos:.0f}.png'
+                )
                 img_path = os.path.join(folder, filename)
                 raman_meas.image.save(img_path)
                 saved_count += 1
@@ -336,16 +339,16 @@ class MappingRamanMeas:
         """Plot a 2D intensity map at a specific wavenumber"""
 
         if target_wavenumber is None:
-            # Find the wavenumber with the absolute maximum intensity 
+            # Find the wavenumber with the absolute maximum intensity
             # across all spectra (excluding 510-530 cm⁻¹ range
             # corresponding to the Si peak)
             max_intensity = 0
             target_wavenumber = 520  # default fallback (Si)
-            
+            range_Si = 10
             for raman_meas in self.raman_meas_list:
                 filtered = raman_meas.data[
-                    (raman_meas.data['wavenumber'] < 510) | 
-                    (raman_meas.data['wavenumber'] > 530)
+                    (raman_meas.data['wavenumber'] < target_wavenumber - range_Si)
+                    | (raman_meas.data['wavenumber'] > target_wavenumber + range_Si)
                 ]
                 if len(filtered) > 0:
                     current_max_idx = filtered['intensity'].idxmax()
@@ -477,7 +480,7 @@ def main():
     map_fig = mapping.plot_intensity_map(target_wavenumber=380, wavenumber_tolerance=2)
     map_fig.write_html(os.path.join(folder, f'{meas_name}_Raman_intensity_map.html'))
     map_fig.show()
-    
+
     # Example: Access individual images
     print('\n' + '=' * 60)
     print('EXAMPLE: ACCESSING INDIVIDUAL IMAGES')

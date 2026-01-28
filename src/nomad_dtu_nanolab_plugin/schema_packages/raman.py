@@ -119,7 +119,8 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         Args:
             raman_meas_list (list): A list of RamanMeas objects from MappingRamanMeas.
-            img_list (list): A list of image file names corresponding to the optical images.
+            img_list (list): A list of image file names corresponding
+            to the optical images.
             archive (EntryArchive): The archive containing the section.
             logger (BoundLogger): A structlog logger.
         """
@@ -169,35 +170,45 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 folder = '.'
 
             mapping.read_wdf_mapping(folder, [filename])
-            
+
             # Save images to the upload directory
             upload_folder = archive.m_context.upload_files.os_path
-            meas_name = filename.split(".")[0]
-            
+            meas_name = filename.split('.')[0]
+
             # Get the folder where raman_data_file is located (relative to upload)
             data_file_dir = os.path.dirname(self.raman_data_file)
             logger.debug(f'Data file directory: {data_file_dir}')
-            
+
             # Save images to same folder as data file
-            img_save_folder = os.path.join(upload_folder, data_file_dir) if data_file_dir else upload_folder
+            img_save_folder = (
+                os.path.join(upload_folder, data_file_dir)
+                if data_file_dir
+                else upload_folder
+            )
             logger.debug(f'Saving optical images to folder: {img_save_folder}')
 
             _, img_filenames = mapping.save_optical_images(img_save_folder, meas_name)
             logger.debug(f'Optical image filenames: {img_filenames}')
             # Create relative paths for the images
             img_list = [
-                os.path.join(data_file_dir, img_name) if data_file_dir and img_name else img_name
+                os.path.join(data_file_dir, img_name)
+                if data_file_dir and img_name
+                else img_name
                 for img_name in img_filenames
             ]
             logger.debug(f'Saved optical images: {img_list}')
-            
+
             # Create and save the optical image grid
             grid_path = os.path.join(img_save_folder, f'{meas_name}_optical_grid.png')
             logger.debug(f'Creating optical image grid at: {grid_path}')
             fig = mapping.create_image_grid(save_path=grid_path)
             # Store the relative path to the optical image grid
             if fig:
-                self.optical_image_grid = os.path.join(data_file_dir, f'{meas_name}_optical_grid.png') if data_file_dir else f'{meas_name}_optical_grid.png'
+                self.optical_image_grid = (
+                    os.path.join(data_file_dir, f'{meas_name}_optical_grid.png')
+                    if data_file_dir
+                    else f'{meas_name}_optical_grid.png'
+                )
                 logger.debug(f'Optical image grid saved as: {self.optical_image_grid}')
             else:
                 logger.debug('No optical images available to create grid.')
@@ -207,11 +218,8 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             fig_heatmap = mapping.plot_intensity_map()
 
             # Write the data to results
-            self.write_raman_data(
-                mapping.raman_meas_list, 
-                img_list,
-                archive, logger)
-            
+            self.write_raman_data(mapping.raman_meas_list, img_list, archive, logger)
+
             return fig_heatmap
 
     def plot(self) -> None:
@@ -303,5 +311,6 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         figure=fig_heatmap.to_plotly_json(),
                     )
                 )
+
 
 m_package.__init_metainfo__()
