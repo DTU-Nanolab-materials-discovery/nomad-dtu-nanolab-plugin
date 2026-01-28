@@ -18,6 +18,7 @@
 
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import plotly.graph_objects as go
 from fairmat_readers_xrd import read_rigaku_rasx
 from nomad.datamodel.data import Schema
@@ -127,16 +128,25 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
 
         fig2 = go.Figure()
 
-        result: XRDMappingResult
+        # Pre-calculate log intensities and cumulative offsets
+        log_intensities = []
+        offsets = [0]
+        cumulative_offset = 0
+
+        for result in self.results:
+            log_intensity = np.log10(
+                np.maximum(result.intensity.magnitude, 1e-10)
+            )
+            log_intensities.append(log_intensity)
+            cumulative_offset += log_intensity.max() - log_intensity.min()
+            offsets.append(cumulative_offset)
+
+        # Add traces with dynamically calculated offsets
         for i, result in enumerate(self.results):
-            offset = result.intensity.magnitude.min()
             fig2.add_trace(
                 go.Scatter(
                     x=result.two_theta.to('deg').magnitude,
-                    y=(
-                        (result.intensity.magnitude + offset * i)
-                        * (i * offset + offset)
-                    ),
+                    y=log_intensities[i] + offsets[i],
                     mode='lines',
                     name=result.name,
                     hoverlabel=dict(namelength=-1),
@@ -147,7 +157,7 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         fig2.update_layout(
             title='XRD Patterns stacked',
             xaxis_title='2<i>θ</i> / °',
-            yaxis_title='Intensity',
+            yaxis_title='Log(Intensity)',
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
@@ -156,7 +166,7 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
             ),
             yaxis=dict(
                 fixedrange=False,
-                type='log',
+                type='linear',
             ),
         )
 

@@ -1,17 +1,29 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import numpy as np
+import plotly.graph_objects as go
 from nomad.datamodel.data import Schema
+from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import (
+    BrowserAdaptors,
     BrowserAnnotation,
+    ELNAnnotation,
+    ELNComponentEnum,
 )
-from nomad.datamodel.metainfo.plot import PlotSection
+from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
+from nomad.units import ureg
 from nomad_measurements.mapping.schema import (
     MappingResult,
     RectangularSampleAlignment,
 )
+from nomad_measurements.utils import merge_sections
+from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.raman_map_parser import (
+    MappingRamanMeas,
+)
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
     DtuNanolabMeasurement,
 )
@@ -25,6 +37,31 @@ m_package = Package(name='DTU Raman measurement schema')
 
 class RamanResult(MappingResult):
     m_def = Section()
+
+    intensity = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        description='The Raman intensity at each wavenumber',
+    )
+
+    raman_shift = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='1/cm',
+        description='The Raman shift values in 1/cm',
+    )
+    laser_wavelength = Quantity(
+        type=np.dtype(np.float64),
+        unit='nm',
+        description='The wavelength of the laser used in the Raman measurement.',
+    )
+    optical_image = Quantity(
+        type=str,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+        ),
+        a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -47,24 +84,192 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     )
     raman_data_file = Quantity(
         type=str,
-        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
-        a_eln={'component': 'FileEditQuantity', 'label': 'Raman file'},
+        description='Data file containing the Raman spectra',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+        ),
     )
 
     results = SubSection(
         section_def=RamanResult,
         repeats=True,
     )
+    optical_image_grid = Quantity(
+        type=str,
+        description='Optical image of the measurement grid.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+        ),
+        a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
+    )
     sample_alignment = SubSection(
         section_def=DTUSampleAlignment,
         description='The alignment of the sample.',
     )
 
+    def write_raman_data(
+        self,
+        raman_meas_list: list[Any],
+        img_list: list[str],
+        archive: 'EntryArchive',
+        logger: 'BoundLogger',
+    ) -> None:
+        """
+        Write method for populating the `RamanMeasurement` section from Raman data.
+
+        Args:
+            raman_meas_list (list): A list of RamanMeas objects from MappingRamanMeas.
+            img_list (list): A list of image file names corresponding
+            to the optical images.
+            archive (EntryArchive): The archive containing the section.
+            logger (BoundLogger): A structlog logger.
+        """
+        results = []
+        logger.debug('Starting to write Raman data.')
+        logger.debug(f'Writing Raman data for {len(raman_meas_list)} measurements.')
+        logger.debug(f'Image list: {img_list}')
+        for meas, img_file in zip(raman_meas_list, img_list):
+            x_absolute = meas.x_pos * ureg('um')
+            y_absolute = meas.y_pos * ureg('um')
+            result = RamanResult(
+                intensity=meas.data['intensity'].to_list(),
+                raman_shift=meas.data['wavenumber'].to_numpy() * ureg('1/cm'),
+                laser_wavelength=meas.laser_wavelength,
+                optical_image=img_file,
+                x_absolute=x_absolute,
+                y_absolute=y_absolute,
+            )
+            result.normalize(archive, logger)
+            results.append(result)
+
+        raman = RamanMeasurement(
+            results=results,
+        )
+        merge_sections(self, raman, logger)
+
+    def read_raman_data(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        Read the Raman data from the provided file.
+        """
+        with archive.m_context.raw_file(self.raman_data_file) as file:
+            # Initialize the mapping reader
+            mapping = MappingRamanMeas()
+            # Read the data - get folder and filename from the file path
+            import os
+
+            # Handle file path - use file object's name attribute
+            file_path = file.name if hasattr(file, 'name') else self.raman_data_file
+            folder = os.path.dirname(file_path)
+            filename = os.path.basename(file_path)
+
+            logger.debug(f'Reading Raman data from file: {file_path}')
+            logger.debug(f'Folder: {folder}, Filename: {filename}')
+
+            # If folder is empty, use current directory
+            if not folder:
+                folder = '.'
+
+            mapping.read_wdf_mapping(folder, [filename])
+
+            # Save images to the upload directory
+            upload_folder = archive.m_context.upload_files.os_path
+            meas_name = filename.split('.')[0]
+
+            # Get the folder where raman_data_file is located (relative to upload)
+            data_file_dir = os.path.dirname(self.raman_data_file)
+            logger.debug(f'Data file directory: {data_file_dir}')
+
+            # Save images to same folder as data file
+            img_save_folder = (
+                os.path.join(upload_folder, data_file_dir)
+                if data_file_dir
+                else upload_folder
+            )
+            logger.debug(f'Saving optical images to folder: {img_save_folder}')
+
+            _, img_filenames = mapping.save_optical_images(img_save_folder, meas_name)
+            logger.debug(f'Optical image filenames: {img_filenames}')
+            # Create relative paths for the images
+            img_list = [
+                os.path.join(data_file_dir, img_name)
+                if data_file_dir and img_name
+                else img_name
+                for img_name in img_filenames
+            ]
+            logger.debug(f'Saved optical images: {img_list}')
+
+            # Create and save the optical image grid
+            grid_path = os.path.join(img_save_folder, f'{meas_name}_optical_grid.png')
+            logger.debug(f'Creating optical image grid at: {grid_path}')
+            fig = mapping.create_image_grid(save_path=grid_path)
+            # Store the relative path to the optical image grid
+            if fig:
+                self.optical_image_grid = (
+                    os.path.join(data_file_dir, f'{meas_name}_optical_grid.png')
+                    if data_file_dir
+                    else f'{meas_name}_optical_grid.png'
+                )
+                logger.debug(f'Optical image grid saved as: {self.optical_image_grid}')
+            else:
+                logger.debug('No optical images available to create grid.')
+
+            # Generate intensity map figure and add to figures
+            logger.debug('Generating Raman intensity map figure.')
+            fig_heatmap = mapping.plot_intensity_map()
+
+            # Write the data to results
+            self.write_raman_data(mapping.raman_meas_list, img_list, archive, logger)
+
+            return fig_heatmap
+
     def plot(self) -> None:
-        """
-        Add a plot of the Raman measurement results.
-        """
-        pass
+        fig = go.Figure()
+        result: RamanResult
+        for result in self.results:
+            # Fixed: raman_shift is stored as a list, not a Quantity
+            # If it's a Quantity, convert it; otherwise use it directly
+            if hasattr(result.raman_shift, 'magnitude'):
+                x_data = result.raman_shift.to('1/cm').magnitude
+            else:
+                x_data = result.raman_shift
+
+            fig.add_trace(
+                go.Scatter(
+                    x=x_data,
+                    y=np.log(result.intensity),
+                    mode='lines',
+                    name=result.name,
+                    hoverlabel=dict(namelength=-1),
+                )
+            )
+
+        # Update layout
+        fig.update_layout(
+            title='Raman Spectra',
+            xaxis_title='Raman Shift (1/cm)',
+            yaxis_title='Log Intensity',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                type='linear',
+            ),
+        )
+
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(
+            scrollZoom=False,
+        )
+        self.figures.append(
+            PlotlyFigure(
+                label='Patterns',
+                figure=plot_json,
+            )
+        )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -74,11 +279,38 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if self.location is None:
             self.location = 'DTU Nanolab Raman Measurement'
 
+        if self.raman_data_file:
+            self.add_sample_reference(
+                filename=self.raman_data_file,
+                measurement_type='Raman',
+                archive=archive,
+                logger=logger,
+            )
+            fig_heatmap = self.read_raman_data(archive, logger)
+
         super().normalize(archive, logger)
 
         self.figures = []
         if len(self.results) > 0:
             self.plot()
+            if fig_heatmap:
+                fig_heatmap.update_layout(
+                    template='plotly_white',
+                    hovermode='closest',
+                    dragmode='zoom',
+                    xaxis=dict(
+                        fixedrange=False,
+                    ),
+                    yaxis=dict(
+                        fixedrange=False,
+                    ),
+                )
+                self.figures.append(
+                    PlotlyFigure(
+                        label='Raman Intensity Map',
+                        figure=fig_heatmap.to_plotly_json(),
+                    )
+                )
 
 
 m_package.__init_metainfo__()
