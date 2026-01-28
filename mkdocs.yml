@@ -87,7 +87,7 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 extra:
   generator: false
-  homepage: https://nomad-lab.eu
+  homepage: https://dtu-nanolab-materials-discovery.github.io/
 use_directory_urls: false
 extra_css:
   - stylesheets/extra.css
