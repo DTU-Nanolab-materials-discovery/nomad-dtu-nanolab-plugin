@@ -332,8 +332,28 @@ class MappingRamanMeas:
             {'x_pos': x_positions, 'y_pos': y_positions, 'intensity': intensities}
         )
 
-    def plot_intensity_map(self, target_wavenumber, wavenumber_tolerance=5):
+    def plot_intensity_map(self, target_wavenumber=None, wavenumber_tolerance=5):
         """Plot a 2D intensity map at a specific wavenumber"""
+
+        if target_wavenumber is None:
+            # Find the wavenumber with the absolute maximum intensity 
+            # across all spectra (excluding 510-530 cm⁻¹ range
+            # corresponding to the Si peak)
+            max_intensity = 0
+            target_wavenumber = 520  # default fallback (Si)
+            
+            for raman_meas in self.raman_meas_list:
+                filtered = raman_meas.data[
+                    (raman_meas.data['wavenumber'] < 510) | 
+                    (raman_meas.data['wavenumber'] > 530)
+                ]
+                if len(filtered) > 0:
+                    current_max_idx = filtered['intensity'].idxmax()
+                    current_max_intensity = filtered.loc[current_max_idx, 'intensity']
+                    if current_max_intensity > max_intensity:
+                        max_intensity = current_max_intensity
+                        target_wavenumber = filtered.loc[current_max_idx, 'wavenumber']
+
         map_data = self.create_intensity_map(target_wavenumber, wavenumber_tolerance)
 
         # Create a pivot table for the heatmap
@@ -364,7 +384,6 @@ class MappingRamanMeas:
             yaxis_title='Y Position (μm)',
         )
 
-        fig.show()
         return fig
 
     def create_image_grid(self, save_path=None, spacing=(-0.4, 0.1)):
@@ -379,7 +398,7 @@ class MappingRamanMeas:
 
         if not measurements_with_images:
             print('No optical images available')
-            return
+            return None
 
         n_images = len(measurements_with_images)
         n_cols = 3
@@ -408,9 +427,7 @@ class MappingRamanMeas:
 
         if save_path:
             plt.savefig(save_path, dpi=150, bbox_inches='tight')
-            print(f'Grid saved to: {save_path}')
 
-        plt.show()
         return fig
 
 
@@ -444,7 +461,7 @@ def main():
     print('CREATING IMAGE GRID')
     print('=' * 60)
     grid_path = os.path.join(folder, f'{meas_name}_optical_grid.png')
-    mapping.create_image_grid(save_path=grid_path)
+    fig = mapping.create_image_grid(save_path=grid_path)
 
     # Plot all spectra
     print('\n' + '=' * 60)
@@ -459,7 +476,8 @@ def main():
     print('=' * 60)
     map_fig = mapping.plot_intensity_map(target_wavenumber=380, wavenumber_tolerance=2)
     map_fig.write_html(os.path.join(folder, f'{meas_name}_Raman_intensity_map.html'))
-
+    map_fig.show()
+    
     # Example: Access individual images
     print('\n' + '=' * 60)
     print('EXAMPLE: ACCESSING INDIVIDUAL IMAGES')
