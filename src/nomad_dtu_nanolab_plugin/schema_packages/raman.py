@@ -156,12 +156,25 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 folder = '.'
 
             mapping.read_wdf_mapping(folder, [filename])
-            # meas_name = filename.split(".")[0]
-            # grid_path = os.path.join(folder, f"{meas_name}_optical_grid.png")
-            # mapping.save_optical_images(folder, meas_name)
-            # mapping.create_image_grid(save_path=grid_path)
-
-            _, img_list = mapping.save_optical_images(folder, filename.split(".")[0])
+            
+            # Save images to the upload directory
+            upload_folder = archive.m_context.upload_files.os_path
+            meas_name = filename.split(".")[0]
+            
+            # Get the folder where raman_data_file is located (relative to upload)
+            data_file_dir = os.path.dirname(self.raman_data_file)
+            
+            # Save images to same folder as data file
+            img_save_folder = os.path.join(upload_folder, data_file_dir) if data_file_dir else upload_folder
+            
+            _, img_filenames = mapping.save_optical_images(img_save_folder, meas_name)
+            
+            # Create relative paths for the images
+            img_list = [
+                os.path.join(data_file_dir, img_name) if data_file_dir and img_name else img_name
+                for img_name in img_filenames
+            ]
+            
             # Write the data to results
             self.write_raman_data(
                 mapping.raman_meas_list, 
