@@ -188,17 +188,19 @@ class MappingRamanMeas:
         """Save all optical images to disk"""
 
         saved_count = 0
+        saved_filenames = []
         for i, raman_meas in enumerate(self.raman_meas_list):
             if raman_meas.image is not None:
-                img_path = os.path.join(
-                    folder,
-                    f'{filename_prefix}_point{i}_x{raman_meas.x_pos:.0f}_y{raman_meas.y_pos:.0f}.png',
-                )
+                filename = f'{filename_prefix}_point{i}_x{raman_meas.x_pos:.0f}_y{raman_meas.y_pos:.0f}.png'
+                img_path = os.path.join(folder, filename)
                 raman_meas.image.save(img_path)
                 saved_count += 1
+                saved_filenames.append(filename)
+            else:
+                saved_filenames.append(None)
 
         print(f'Saved {saved_count} optical images to {folder}')
-        return saved_count
+        return saved_count, saved_filenames
 
     def normalize_intensity(self, x_range: tuple = None):
         for raman_meas in self.raman_meas_list:

@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 from nomad.datamodel.data import Schema
 from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import (
+    BrowserAdaptors,
+    BrowserAnnotation,
     ELNAnnotation,
     ELNComponentEnum,
 )
@@ -53,6 +55,13 @@ class RamanResult(MappingResult):
         unit='nm',
         description='The wavelength of the laser used in the Raman measurement.',
     )
+    optical_image = Quantity(
+        type=str,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+        ),
+        a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -93,6 +102,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     def write_raman_data(
         self,
         raman_meas_list: list[Any],
+        img_list: list[str],
         archive: 'EntryArchive',
         logger: 'BoundLogger',
     ) -> None:
@@ -101,18 +111,20 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         Args:
             raman_meas_list (list): A list of RamanMeas objects from MappingRamanMeas.
+            img_list (list): A list of image file names corresponding to the optical images.
             archive (EntryArchive): The archive containing the section.
             logger (BoundLogger): A structlog logger.
         """
         results = []
 
-        for meas in raman_meas_list:
+        for meas, img_file in zip(raman_meas_list, img_list):
             x_absolute = meas.x_pos * ureg('um')
             y_absolute = meas.y_pos * ureg('um')
             result = RamanResult(
                 intensity=meas.data['intensity'].to_list(),
                 raman_shift=meas.data['wavenumber'].to_numpy() * ureg('1/cm'),
                 laser_wavelength=meas.laser_wavelength,
+                optical_image=img_file,
                 x_absolute=x_absolute,
                 y_absolute=y_absolute,
             )
@@ -149,8 +161,12 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             # mapping.save_optical_images(folder, meas_name)
             # mapping.create_image_grid(save_path=grid_path)
 
+            _, img_list = mapping.save_optical_images(folder, filename.split(".")[0])
             # Write the data to results
-            self.write_raman_data(mapping.raman_meas_list, archive, logger)
+            self.write_raman_data(
+                mapping.raman_meas_list, 
+                img_list,
+                archive, logger)
 
     def plot(self) -> None:
         fig = go.Figure()
