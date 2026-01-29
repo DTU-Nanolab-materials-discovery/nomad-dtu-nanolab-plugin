@@ -133,12 +133,14 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         offsets = [0]
         cumulative_offset = 0
 
+        OFFSET_FACTOR = 0.3  # Factor to control spacing between patterns
+
         for result in self.results:
-            log_intensity = np.log10(
-                np.maximum(result.intensity.magnitude, 1e-10)
-            )
+            log_intensity = np.log10(np.maximum(result.intensity.magnitude, 1e-10))
             log_intensities.append(log_intensity)
-            cumulative_offset += log_intensity.max() - log_intensity.min()
+            cumulative_offset += (
+                log_intensity.max() - log_intensity.min()
+            ) * OFFSET_FACTOR
             offsets.append(cumulative_offset)
 
         # Add traces with dynamically calculated offsets
