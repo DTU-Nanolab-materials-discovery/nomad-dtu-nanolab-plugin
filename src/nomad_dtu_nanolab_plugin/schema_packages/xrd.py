@@ -134,16 +134,17 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         cumulative_offset = 0
 
         OFFSET_FACTOR = 0.3  # Factor to control spacing between patterns
+        TT_RANGE = (10, 60)
 
         for result in self.results:
             log_intensity = np.log10(np.maximum(result.intensity.magnitude, 1e-10))
             log_intensities.append(log_intensity)
-            
+
             # Filter for 2theta range 10-60 degrees for offset calculation
             two_theta_deg = result.two_theta.to('deg').magnitude
-            mask = (two_theta_deg >= 10) & (two_theta_deg <= 60)
+            mask = (two_theta_deg >= TT_RANGE[0]) & (two_theta_deg <= TT_RANGE[1])
             log_intensity_filtered = log_intensity[mask]
-            
+
             cumulative_offset += (
                 log_intensity_filtered.max() - log_intensity_filtered.min()
             ) * OFFSET_FACTOR
