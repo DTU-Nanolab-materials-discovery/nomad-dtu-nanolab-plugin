@@ -467,7 +467,7 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         for img_file in image_files:
             # Extract spectrum number from filename
-            # Pattern: "SE Image - Before X" where X is the spectrum number
+            # Pattern: "SE Image - Before/After X" where X is the spectrum number
             match = re.search(r'(\d+)', img_file)
             if match:
                 spectrum_num = int(match.group(1))
