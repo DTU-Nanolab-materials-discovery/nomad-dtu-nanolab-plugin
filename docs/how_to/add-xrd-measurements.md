@@ -32,7 +32,7 @@ Organize your XRD data files. They should look like:
     - **Full quarter mapping**: Upload all points from one quarter
     - **Selected points**: Upload specific interesting positions only
     - **Individual points**: Upload single positions for quick checks
-    
+
     Quarters uploaded individually are recommended for organization.
 
 ## Step 2: Navigate to Your Upload
@@ -97,7 +97,7 @@ Scroll down to find the **"Data files"** field in the XRD measurement entry.
 
 !!! info "Processing"
     NOMAD processes each XRD file to extract:
-    
+
     - 2θ angle ranges
     - Intensity patterns
     - Measurement positions on the sample
@@ -156,7 +156,7 @@ If you measured multiple quarters, repeat this process for each:
 
 !!! tip "Organization Benefits"
     Separate entries per quarter:
-    
+
     - Keeps file counts manageable
     - Matches physical sample division
     - Enables quarter-specific analysis

@@ -85,7 +85,7 @@ Scroll down to find the **"EDX file"** field.
 
 !!! info "Processing Time"
     NOMAD processes the file and extracts:
-    
+
     - Measurement positions (x, y coordinates)
     - Elemental compositions (atomic %)
     - Relationships to the combinatorial library geometry
@@ -163,7 +163,7 @@ If you measured multiple quarters of your combinatorial library, repeat this ent
 
 !!! tip "Mapping Strategy"
     Quarters are commonly measured individually. This allows:
-    
+
     - Dedicating quarters to different techniques
     - Focusing EDX on interesting composition regions
     - Parallel processing of characterization

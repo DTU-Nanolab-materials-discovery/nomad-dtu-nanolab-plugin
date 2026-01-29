@@ -109,7 +109,7 @@ For **each** of the 5 substrates:
 2. **Select substrate batch**:
    - For **silicon**: Choose the specific batch from available options (multiple batches exist)
    - For **glass**: Only one glass option typically available
-   
+
    ![Substrate batch selection](../assets/nomad-upload-your-first-sputtering-manual-v1/image-009.png)
 
 3. **Choose position**:
@@ -118,7 +118,7 @@ For **each** of the 5 substrates:
    - **BL** - Back Left
    - **BR** - Back Right
    - **G** - Glass (center)
-   
+
    ![Position selection](../assets/nomad-upload-your-first-sputtering-manual-v1/image-010.png)
 
 4. **Click "Save"** - Critical! Save after configuring each substrate
@@ -142,7 +142,7 @@ The Lesker CSV logfile contains timestamped process parameters.
 
 !!! info "What happens during processing"
     NOMAD parses the logfile to extract:
-    
+
     - Deposition times and rates
     - Chamber pressure history
     - Target power settings

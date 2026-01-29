@@ -32,12 +32,12 @@ A pop-up window appears with:
 
 !!! tip "Naming Convention"
     Use descriptive, systematic names that include:
-    
+
     - Your username/initials
     - A sequential number
     - Material or process information
     - Specific identifiers (position, type, etc.)
-    
+
     Example: `amazing_researcher_0042_CuZn_BL_Sputtering`
 
 ### Step 3: Open the Schema Interface
@@ -96,13 +96,13 @@ Process
 
 !!! info "Subsection Types"
     **Single Instance Subsections**
-    
+
     - Allow only one instance
     - The "+" icon disappears after creation
     - Example: "Environment" - one environment per step
-    
+
     **Multiple Instance Subsections**
-    
+
     - Allow multiple instances
     - The "+" icon remains after creating instances
     - Example: "Steps" - multiple steps in a process
