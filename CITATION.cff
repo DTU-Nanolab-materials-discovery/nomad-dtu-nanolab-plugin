@@ -43,8 +43,8 @@ abstract: >-
   workflows. Developed for the Materials Discovery group at DTU Nanolab, this plugin
   implements FAIR data principles (Findable, Accessible, Interoperable, Reusable) for
   the entire experimental lifecycle from synthesis to characterization. The plugin
-  specializes schemas from the nomad-material-processing and nomad-measurements plugins,
-  implementing 17 specialized schema packages organized into entities (samples,
+  specializes schemas, from the nomad-material-processing and nomad-measurements plugins,
+  organized into entities (samples,
   substrates, targets, instruments, gases) and activities (synthesis processes,
   characterization measurements, and computational analyses). It enables systematic
   capture and linkage of data from multi-target sputtering deposition, rapid thermal
