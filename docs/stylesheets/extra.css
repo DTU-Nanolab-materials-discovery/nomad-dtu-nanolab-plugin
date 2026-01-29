@@ -35,6 +35,17 @@
     font-weight: 700;
 }
 
+/* Center the logo on the homepage */
+.md-typeset h1:has(img) {
+    text-align: center;
+    margin-bottom: 1.5em;
+}
+
+.md-typeset h1 img {
+    display: inline-block;
+    margin: 0 auto;
+}
+
 .youtube {
     position: relative;
     width: 100%;
@@ -66,4 +77,147 @@
 .home-grid h3 {
     margin-top: 0;
     font-weight: 700;
+}
+
+/* Framework grid - modern card styling inspired by PERLA */
+.framework-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-column-gap: 24px;
+    row-gap: 24px;
+    margin-top: 2em;
+    margin-bottom: 2em;
+}
+
+.framework-grid div {
+    border-radius: 8px;
+    padding: 24px;
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.framework-grid div:hover {
+    box-shadow: 0 4px 12px rgba(42, 76, 223, 0.15);
+    transform: translateY(-2px);
+}
+
+.framework-grid h3 {
+    margin-top: 0;
+    font-weight: 700;
+    color: #2A4CDF;
+}
+
+.framework-grid p {
+    color: #5f6368;
+    line-height: 1.6;
+}
+
+.framework-grid a {
+    color: #2A4CDF;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.framework-grid a:hover {
+    color: #008A67;
+    text-decoration: underline;
+}
+
+/* Action buttons styling */
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin: 1.5em 0;
+    padding: 0;
+}
+
+.action-button {
+    padding: 8px 16px !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    border-radius: 4px !important;
+    transition: all 0.2s ease !important;
+    text-align: center;
+    white-space: nowrap;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    gap: 6px;
+    min-height: 34px !important;
+    box-sizing: border-box !important;
+    vertical-align: middle !important;
+}
+
+.md-button--primary.action-button {
+    background-color: #2A4CDF !important;
+    color: white !important;
+    border: 1px solid #2A4CDF !important;
+}
+
+.md-button--primary.action-button:hover {
+    background-color: #1e3bb8 !important;
+    border-color: #1e3bb8 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(42, 76, 223, 0.25);
+}
+
+.md-button.action-button:not(.md-button--primary) {
+    background-color: #f5f5f5 !important;
+    color: #5f6368 !important;
+    border: 1px solid #d0d0d0 !important;
+}
+
+.md-button.action-button:not(.md-button--primary):hover {
+    background-color: #e8e8e8 !important;
+    color: #2A4CDF !important;
+    border-color: #2A4CDF !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(42, 76, 223, 0.15);
+}
+
+.action-button svg {
+    flex-shrink: 0;
+    display: block;
+    margin: 0;
+}
+
+/* Responsive design for smaller screens */
+@media screen and (max-width: 768px) {
+    .home-grid,
+    .framework-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .action-button {
+        width: 100%;
+    }
+}
+
+/* Screenshot styling with shadows */
+.screenshot {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 10%), 0 2px 4px -1px rgb(0 0 0 / 6%);
+    margin: 1em;
+    max-width: calc(100% - 2em) !important;
+    border-radius: 4px;
+}
+
+/* Center button alignment */
+.md-typeset .md-button.center,
+.md-typeset a.md-button.center {
+    display: block;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
 }
