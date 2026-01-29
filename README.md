@@ -1,93 +1,91 @@
-# nomad-nomad-dtu-nanolab-plugin
+# NOMAD DTU Nanolab Plugin
 
-A plugin for the schemas, parsers,
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-----
+A [NOMAD](https://nomad-lab.eu) plugin providing comprehensive data management infrastructure for high-throughput combinatorial materials discovery workflows.
 
-This `nomad`_ plugin was generated with `Cookiecutter`_ along with `@nomad`_'s `cookiecutter-nomad-plugin`_ template.
+## Overview
 
+The NOMAD DTU Nanolab Plugin implements FAIR data principles (Findable, Accessible, Interoperable, Reusable) for the entire experimental lifecycle from synthesis to characterization. Developed for the Materials Discovery group at [DTU Nanolab](https://www.dtu.dk/english/about/organization/institutter/energy/research/labs/nanolab), this plugin specializes schemas from the [nomad-material-processing](https://github.com/FAIRmat-NFDI/nomad-material-processing) and [nomad-measurements](https://github.com/FAIRmat-NFDI/nomad-measurements) plugins.
 
-### Install
+### Key Features
 
-You should create a virtual environment. You will need the `nomad-lab` package (and `pytest`).
-We recommend using Python 3.9.
+- **17 specialized schema packages** organized into entities (samples, substrates, targets, instruments, gases) and activities (synthesis, measurements, analyses)
+- **Synthesis processes**: Multi-target sputtering deposition, rapid thermal processing, thermal evaporation
+- **Characterization techniques**: XRD, XPS, EDX, photoluminescence, ellipsometry, Raman spectroscopy, resistivity-temperature measurements
+- **Combinatorial library support** with composition gradients and position-based sampling
+- **Automatic provenance tracking** and seamless workflow integration based on Basic Formal Ontology principles
 
-```sh
-python3.12 -m venv .pyenv
-source .pyenv/bin/activate
-pip install --upgrade pip
-pip install -e '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
+### Research Applications
+
+The plugin enables accelerated exploration of novel semiconductor materials for sustainable energy applications:
+
+- **Photovoltaics**: Next-generation solar cell materials (phosphosulfides, thiophosphates, selenium-based absorbers)
+- **Transparent Conductors**: p-type and n-type transparent conducting materials
+- **Sustainable Materials**: Earth-abundant, non-toxic alternatives to conventional semiconductors
+
+## Installation
+
+To use this plugin in your NOMAD Oasis, add it to the plugins table in the `pyproject.toml` file of your [NOMAD distribution repository](https://github.com/FAIRmat-NFDI/nomad-distro-template):
+
+```toml
+[project.optional-dependencies]
+plugins = [
+  "nomad-dtu-nanolab-plugin @ git+https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin.git@main"
+]
 ```
 
-**Note!**
-Until we have an official pypi NOMAD release with the plugins functionality. Make
-sure to include NOMAD's internal package registry (e.g. via `--index-url`).
+For production use, specify a version tag or commit hash instead of `@main`. See the [installation guide](https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/how_to/install_this_plugin/) for details.
+
+## Documentation
+
+**📚 Complete documentation:** [https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/](https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/)
+
+- **[Tutorial](https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/tutorial/tutorial/)**: Step-by-step guide through a complete combinatorial project
+- **[How-to Guides](https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/how_to/install_this_plugin/)**: Practical instructions for data upload and visualization
+- **[Explanation](https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/explanation/)**: Conceptual understanding of data model and workflow
+- **[Reference](https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/reference/)**: Complete technical schema documentation
+
+## Development
+
+### Setup
+
+Create a virtual environment with Python 3.9 or higher:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -e '.[dev]'
+```
 
 ### Testing
 
-You can run automated tests with `pytest`:
+Run automated tests:
 
 ```sh
 pytest -svx tests
 ```
 
-### Run linting
+### Code Quality
+
+Run linting and formatting:
 
 ```sh
 ruff check .
-```
-
-### Run auto-formatting
-
-This is entirely optional. To add this as a check in github actions pipeline, uncomment the `ruff-formatting` step in `./github/workflows/actions.yaml`.
-
-```sh
 ruff format .
 ```
 
-### Developing a NOMAD plugin
+## Citation
 
-Follow the [guide](https://nomad-lab.eu/prod/v1/staging/docs/howto/plugins/plugins.html) on how to develop NOMAD plugins.
+If you use this plugin in your research, please cite it using the metadata in [CITATION.cff](CITATION.cff).
 
-### Build the python package
+## Funding
 
-The `pyproject.toml` file contains everything that is necessary to turn the project
-into a pip installable python package. Run the python build tool to create a package distribution:
+This work was supported in part by a research grant (42140) from VILLUM FONDEN and co-funded by the European Union (ERC, IDOL, 101040153). This work was also supported by the NFDI consortium FAIRmat - Deutsche Forschungsgemeinschaft (DFG) - Project 460197019.
 
-```
-pip install build
-python -m build --sdist
-```
+## License
 
-You can install the package with pip:
+Distributed under the terms of the [MIT](LICENSE) license, the NOMAD DTU Nanolab Plugin is free and open source software.
 
-```
-pip install dist/nomad-nomad-dtu-nanolab-plugin-0.1.0
-```
-
-Read more about python packages, `pyproject.toml`, and how to upload packages to PyPI
-on the [PyPI documentation](https://packaging.python.org/en/latest/tutorials/packaging-projects/).
-
-### Documentation on Github pages
-
-To deploy documentation on Github pages, make sure to [enable GitHub pages via the repo settings](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-from-a-branch).
-
-To view the documentation locally, install the documentation related packages using:
-
-```sh
-pip install -r requirements_docs.txt
-```
-
-Run the documentation server:
-```sh
-mkdocs serve
-```
-
-### Template update
-
-We use cruft to update the project based on template changes. A `cruft-update.yml` is included in Github workflows to automatically check for updates and create pull requests to apply updates. Follow the [instructions](https://github.blog/changelog/2022-05-03-github-actions-prevent-github-actions-from-creating-and-approving-pull-requests/) on how to enable Github Actions to create pull requests.
-
-To run the check for updates locally, follow the instructions on [`cruft` website](https://cruft.github.io/cruft/#updating-a-project).
-
-### License
-Distributed under the terms of the `MIT`_ license, "nomad-nomad-dtu-nanolab-plugin" is free and open source software
