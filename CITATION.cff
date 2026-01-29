@@ -1,0 +1,71 @@
+cff-version: 1.2.0
+title: NOMAD DTU Nanolab Plugin
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Lena A.
+    family-names: Mittmann
+    orcid: 'https://orcid.org/0000-0001-6241-4303'
+  - given-names: Hampus
+    family-names: Näsström
+    orcid: 'https://orcid.org/0000-0002-3264-1692'
+  - given-names: Eugène
+    family-names: Bertin
+    orcid: 'https://orcid.org/0009-0008-2641-9658'
+  - given-names: Sarthak
+    family-names: Kapoor
+    orcid: 'https://orcid.org/0000-0002-1889-6998'
+  - given-names: Inês
+    family-names: Diogo
+  - given-names: Anat
+    family-names: Itzhak
+  - given-names: Alba
+    family-names: Pérez Millan
+  - given-names: Giulia
+    family-names: Dalmonte
+    orcid: 'https://orcid.org/0009-0001-4596-0174'
+  - given-names: Malthe Emil
+    family-names: Skytte
+  - given-names: Andrea
+    family-names: Crovetto
+    orcid: 'https://orcid.org/0000-0003-1499-8740'
+  - given-names: José A.
+    family-names: Márquez
+    orcid: 'https://orcid.org/0000-0002-8173-2566'
+# doi: TBA
+repository-code: 'https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin'
+url: 'https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/'
+abstract: >-
+  The NOMAD DTU Nanolab Plugin is a plugin for the NOMAD software that provides a comprehensive data
+  management infrastructure for high-throughput combinatorial materials discovery
+  workflows. Developed for the Materials Discovery group at DTU Nanolab, this plugin
+  implements FAIR data principles (Findable, Accessible, Interoperable, Reusable) for
+  the entire experimental lifecycle from synthesis to characterization. The plugin
+  specializes schemas from the nomad-material-processing and nomad-measurements plugins,
+  implementing 17 specialized schema packages organized into entities (samples,
+  substrates, targets, instruments, gases) and activities (synthesis processes,
+  characterization measurements, and computational analyses). It enables systematic
+  capture and linkage of data from multi-target sputtering deposition, rapid thermal
+  processing, and high-throughput characterization techniques including XRD, XPS, EDX,
+  photoluminescence, ellipsometry, Raman spectroscopy, and resistivity-temperature
+  measurements. The data model follows Basic Formal Ontology principles to ensure
+  consistent organization, automatic provenance tracking, and seamless workflow
+  integration. By mapping composition gradient libraries with position-based sampling,
+  the plugin facilitates accelerated exploration of novel semiconductor materials for
+  sustainable energy applications including photovoltaics and transparent conductors.
+license: MIT
+references:
+  - title: NOMAD Measurements Plugin
+    doi: 10.5281/zenodo.13789632
+    url: 'https://fairmat-nfdi.github.io/nomad-measurements/'
+    type: software
+  - title: NOMAD Material Processing Plugin
+    doi: 10.5281/zenodo.13786015
+    url: 'https://fairmat-nfdi.github.io/nomad-material-processing/'
+    type: software
+  - title: NOMAD
+    doi: 10.5281/zenodo.8366162
+    url: 'https://nomad-lab.eu/'
+    type: software
