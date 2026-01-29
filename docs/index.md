@@ -17,9 +17,9 @@ This plugin powers the data management infrastructure for the **Materials Discov
 ### 📚 Tutorial
 **Learning-oriented guides**
 
-TODO
+Follow our comprehensive step-by-step guide through a complete combinatorial materials discovery project: from sputtering deposition to data visualization.
 
-- [Tutorial](tutorial/tutorial.md)
+[Start the tutorial →](tutorial/tutorial.md){.md-button}
 
 </div>
 
@@ -28,13 +28,20 @@ TODO
 ### 📖 How-to Guides
 **Task-oriented instructions**
 
-Step-by-step instructions for a wide range of tasks:
+Practical guides for using the NOMAD Oasis deployment:
 
-- [Install this plugin](how_to/install_this_plugin.md)
-- [Use this plugin](how_to/use_this_plugin.md)
-- [Adapt for your lab](how_to/adapt-for-your-lab.md)
-- [Contribute to this plugin](how_to/contribute_to_this_plugin.md)
-- [Contribute to the documentation](how_to/contribute_to_the_documentation.md)
+**Data Upload:**
+- [Upload Sputtering Data](how_to/upload-sputtering-data.md)
+- [Add EDX Measurements](how_to/add-edx-measurements.md)
+- [Add XRD Measurements](how_to/add-xrd-measurements.md)
+- [Add RTP Data](how_to/add-rtp-data.md)
+- [Cleave Libraries](how_to/cleave-libraries.md)
+
+**Visualization & Analysis:**
+- [Plot Combinatorial EDX Data](how_to/plot-combinatorial-edx.md)
+- [Export High-Quality Figures](how_to/export-high-quality-figures.md)
+
+[View all guides →](how_to/install_this_plugin.md){.md-button}
 
 </div>
 

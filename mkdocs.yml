@@ -8,11 +8,24 @@ nav:
   - Home: index.md
   - Tutorial: tutorial/tutorial.md
   - How-to guides:
-      - Install this Plugin: how_to/install_this_plugin.md
-      - Use this Plugin: how_to/use_this_plugin.md
-      - Adapt for Your Lab: how_to/adapt-for-your-lab.md
-      - Contribute to this plugin: how_to/contribute_to_this_plugin.md
-      - Contribute to the documentation: how_to/contribute_to_the_documentation.md
+      - Getting Started:
+          - Install this Plugin: how_to/install_this_plugin.md
+          - Understanding Schemas: how_to/getting-started-with-schemas.md
+      - Data Upload & Management:
+          - Upload Sputtering Data: how_to/upload-sputtering-data.md
+          - Add EDX Measurements: how_to/add-edx-measurements.md
+          - Add XRD Measurements: how_to/add-xrd-measurements.md
+          - Add RTP Data: how_to/add-rtp-data.md
+          - Cleave Libraries: how_to/cleave-libraries.md
+      - Data Visualization & Analysis:
+          - Plot Combinatorial EDX Data: how_to/plot-combinatorial-edx.md
+          - Export High-Quality Figures: how_to/export-high-quality-figures.md
+      - Troubleshooting:
+          - Fix Jupyter Launch Issues: how_to/troubleshoot-jupyter.md
+      - Contributing:
+          - Adapt for Your Lab: how_to/adapt-for-your-lab.md
+          - Contribute to this plugin: how_to/contribute_to_this_plugin.md
+          - Contribute to the documentation: how_to/contribute_to_the_documentation.md
   - Explanation:
       - Overview: explanation/index.md
       - Data Model Philosophy: explanation/data-model.md
