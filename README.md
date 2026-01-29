@@ -2,6 +2,7 @@
 
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/)
 [![Tests](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/actions/workflows/actions.yml/badge.svg)](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/actions/workflows/actions.yml)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18417535.svg)](https://doi.org/10.5281/zenodo.18417535)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A [NOMAD](https://nomad-lab.eu) plugin providing comprehensive data management infrastructure for high-throughput combinatorial materials discovery workflows.
