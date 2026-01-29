@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 from ase.data import chemical_symbols
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
+    BrowserAdaptors,
     BrowserAnnotation,
     ELNAnnotation,
     ELNComponentEnum,
@@ -82,6 +83,13 @@ class EDXResult(MappingResult):
         section_def=EDXQuantification,
         repeats=True,
     )
+    electron_image = Quantity(
+        type=str,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+        ),
+        a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
+    )  # TODO: Add electron image handling in normalizer
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -130,6 +138,14 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
         a_eln={'component': 'FileEditQuantity', 'label': 'EDX file'},
     )
+    electron_image_files = Quantity(
+        type=str,
+        shape=['*'],
+        description='Data files containing the electron images.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+        ),
+    )  # TODO: Add electron image handling in normalizer
     avg_layer_thickness = Quantity(
         type=np.float64,
         description="""
@@ -414,6 +430,52 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         #             )
         #         )
 
+    def _extract_spectrum_number(self, spectrum_label: str) -> int | None:
+        """
+        Extract the spectrum number from a spectrum label.
+
+        Args:
+            spectrum_label (str): The spectrum label (e.g., "Spectrum 1")
+
+        Returns:
+            int | None: The spectrum number if found, None otherwise.
+        """
+        match = re.search(r'\d+', str(spectrum_label))
+        if match:
+            return int(match.group())
+        return None
+
+    def _create_image_mapping(self, logger: 'BoundLogger') -> dict[int, str]:
+        """
+        Create a mapping from spectrum numbers to image file paths.
+
+        Returns:
+            dict[int, str]: A dictionary mapping spectrum numbers to image paths.
+        """
+        image_mapping = {}
+
+        if not self.electron_image_files:
+            logger.debug('No electron image files provided.')
+            return image_mapping
+
+        # Ensure electron_image_files is a list
+        image_files = self.electron_image_files
+        if isinstance(image_files, str):
+            image_files = [image_files]
+
+        logger.debug(f'Available image files: {image_files}')
+
+        for img_file in image_files:
+            # Extract spectrum number from filename
+            # Pattern: "SE Image - Before X" where X is the spectrum number
+            match = re.search(r'(\d+)', img_file)
+            if match:
+                spectrum_num = int(match.group(1))
+                image_mapping[spectrum_num] = img_file
+                logger.debug(f'Mapped spectrum {spectrum_num} to image: {img_file}')
+
+        return image_mapping
+
     def write_edx_data(
         self,
         df_data: pd.DataFrame,
@@ -458,6 +520,10 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             label for label in df_data.columns if re.match(pattern, label)
         ]
 
+        # Create image mapping from spectrum numbers to file paths
+        image_mapping = self._create_image_mapping(logger)
+        logger.debug(f'Image mapping: {image_mapping}')
+
         results = []
         for _, row in df_data.iterrows():
             quantifications = []
@@ -480,6 +546,18 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 )
             elif self.avg_density is not None:
                 result.assumed_material_density = avg_density
+
+            # Associate electron image with result if available
+            if 'Spectrum Label' in df_data.columns:
+                spectrum_label = row['Spectrum Label']
+                spectrum_num = self._extract_spectrum_number(spectrum_label)
+
+                if spectrum_num is not None and spectrum_num in image_mapping:
+                    result.electron_image = image_mapping[spectrum_num]
+                    logger.debug(
+                        f'Associated spectrum {spectrum_num}'
+                        f'with image: {result.electron_image}'
+                    )
 
             result.normalize(archive, logger)
             results.append(result)
