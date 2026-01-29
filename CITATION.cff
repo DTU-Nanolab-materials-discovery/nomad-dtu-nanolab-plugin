@@ -35,7 +35,7 @@ authors:
   - given-names: José A.
     family-names: Márquez
     orcid: 'https://orcid.org/0000-0002-8173-2566'
-# doi: TBA
+doi: 10.5281/zenodo.18417535
 repository-code: 'https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin'
 url: 'https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/'
 abstract: >-
