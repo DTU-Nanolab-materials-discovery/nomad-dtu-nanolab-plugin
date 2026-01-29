@@ -124,6 +124,28 @@
     text-decoration: underline;
 }
 
+/* Buttons within framework grid cards */
+.framework-grid .md-button {
+    margin-top: 1em;
+    padding: 0.5em 1.2em;
+    background-color: #2A4CDF;
+    color: white !important;
+    border: 1px solid #2A4CDF;
+    border-radius: 4px;
+    font-weight: 500;
+    text-decoration: none !important;
+    display: inline-block;
+    transition: all 0.2s ease;
+}
+
+.framework-grid .md-button:hover {
+    background-color: #1e3bb8;
+    border-color: #1e3bb8;
+    box-shadow: 0 2px 8px rgba(42, 76, 223, 0.25);
+    transform: translateY(-1px);
+    text-decoration: none !important;
+}
+
 /* Action buttons styling */
 .action-buttons {
     display: flex;
