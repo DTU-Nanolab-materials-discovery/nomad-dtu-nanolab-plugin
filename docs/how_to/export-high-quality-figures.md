@@ -122,7 +122,7 @@ fig.show(config=PLOTLY_CONFIG)  # High quality!
 
 - ✅ Good for presentations and posters
 - ✅ Smaller file sizes with high scale factors
-- ✅ Widely compatible  
+- ✅ Widely compatible
 - ❌ Can pixelate when zoomed
 - ❌ Fixed resolution
 

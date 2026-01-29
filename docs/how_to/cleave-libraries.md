@@ -217,9 +217,9 @@ This enables:
 
 !!! important "Synchronize Physical and Digital"
     **In the lab**: Use a diamond scribe and mark pieces clearly
-    
+
     **In NOMAD**: Create child libraries matching your physical pieces
-    
+
     **Label pieces**: Mark physical samples to match NOMAD nomenclature
 
 ### Timing

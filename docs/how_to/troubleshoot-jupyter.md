@@ -24,7 +24,7 @@ Go to your NOMAD Oasis Jupyter authentication endpoint.
     ```
     https://your-nomad-oasis.domain/nomad-oasis/ui/api/v1/repo/users/me/jupyter
     ```
-    
+
     Replace `your-nomad-oasis.domain` with your actual NOMAD Oasis server address.
 
 Ask your NOMAD administrator or colleagues for the exact URL if you're unsure.

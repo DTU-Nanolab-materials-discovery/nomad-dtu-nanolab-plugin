@@ -32,19 +32,19 @@ NOMAD organizes your experimental data using **schemas** - structured templates 
 1. **Create a new upload** in NOMAD Oasis
 
 2. **Click the "Create from schema" button** (gray button in the upload interface)
-   
+
    ![Create from schema button](../assets/11-steps-introduction-how-to-access-your-nomad-schema-on-the-example-of-the-bell-jar-evaporator/image-001.png)
 
 3. **Fill in the entry details:**
    - In the text field, enter a descriptive process name
    - From the dropdown menu, select the appropriate schema (e.g., "Bell Jar Evaporator")
-   
+
    ![Schema selection dropdown](../assets/11-steps-introduction-how-to-access-your-nomad-schema-on-the-example-of-the-bell-jar-evaporator/image-003.png)
 
 4. **Navigate the schema interface:**
-   
+
    You'll see an interface with editable fields (shown in gray) and collapsible subsections.
-   
+
    ![Schema interface overview](../assets/11-steps-introduction-how-to-access-your-nomad-schema-on-the-example-of-the-bell-jar-evaporator/image-004.png)
 
 ### Working with Subsections
@@ -52,17 +52,17 @@ NOMAD organizes your experimental data using **schemas** - structured templates 
 Schemas contain **subsections** that organize related information. These are indicated by gray "+" icons.
 
 - **Click the "+" icon** next to a subsection (e.g., "Steps") to add details
-  
+
   ![Adding subsections](../assets/11-steps-introduction-how-to-access-your-nomad-schema-on-the-example-of-the-bell-jar-evaporator/image-005.png)
 
 - **Nested subsections** provide even more detail:
-  
+
   ![Nested subsections](../assets/11-steps-introduction-how-to-access-your-nomad-schema-on-the-example-of-the-bell-jar-evaporator/image-007.png)
 
 !!! info "Single vs. Multiple Instances"
     - **Single instance subsections**: The "+" icon disappears after creating one instance (e.g., "Environment")
     - **Multiple instance subsections**: The "+" icon remains, allowing you to add multiple entries (e.g., multiple "Steps")
-    
+
     ![Single vs multiple instances](../assets/11-steps-introduction-how-to-access-your-nomad-schema-on-the-example-of-the-bell-jar-evaporator/image-008.png)
 
 ### Viewing Multiple Instances
@@ -102,7 +102,7 @@ Before starting, locate your deposition logfile (CSV format from the Lesker syst
    - Click "Create from schema"
    - Select **"Sputtering"** from the built-in schemas
    - Enter the same deposition ID as the entry name
-   
+
    !!! warning "Important"
        The entry name becomes permanent (stored as a .json file), so double-check it before creating!
 
@@ -117,7 +117,7 @@ Before starting, locate your deposition logfile (CSV format from the Lesker syst
      - Select the substrate batch (multiple options for silicon, single option for glass)
      - Choose the position: FL (Front Left), FR (Front Right), BL (Back Left), BR (Back Right), or G (Glass)
      - **Click "Save" after each substrate**
-   
+
    ![Adding substrates](../assets/nomad-upload-your-first-sputtering-manual-v1/image-009.png)
    ![Substrate position selection](../assets/nomad-upload-your-first-sputtering-manual-v1/image-010.png)
 
@@ -126,7 +126,7 @@ Before starting, locate your deposition logfile (CSV format from the Lesker syst
 5. **Upload the Lesker CSV logfile:**
    - Drag and drop your logfile into the designated area
    - **Click "Save"**
-   
+
    ![Upload logfile](../assets/nomad-upload-your-first-sputtering-manual-v1/image-011.png)
 
 6. **Fill in additional process details:**
@@ -144,10 +144,10 @@ After processing, verify the upload created the correct number of entries:
 
 !!! success "Verification Check"
     You should have **(2 × number of substrates) + 1** entries total:
-    
+
     - 1 sputtering process entry
     - 2 entries per substrate (substrate batch + combinatorial library)
-    
+
     For example, with 5 substrates: (2 × 5) + 1 = **11 entries total**
 
 For complete details and troubleshooting, see the [Upload Sputtering Data](../how_to/upload-sputtering-data.md) guide.
@@ -211,7 +211,7 @@ After cleaving, you'll measure composition using Energy-Dispersive X-ray Spectro
    username_####_Material_Quarter_EDX
    ```
    Example: `amazing_researcher_0042_CuZn_BR_EDX`
-   
+
    ![Creating EDX entry](../assets/nomad-add-edx-data-manual-v1/image-003.png)
 
 ### Upload Your EDX Data
@@ -219,7 +219,7 @@ After cleaving, you'll measure composition using Energy-Dispersive X-ray Spectro
 5. **Upload the Excel file:**
    - In the "EDX file" field, upload your Excel file
    - **Click "Save"** (very important!)
-   
+
    ![Uploading EDX file](../assets/nomad-add-edx-data-manual-v1/image-005.png)
 
 ### Review and Clean Data
@@ -227,13 +227,13 @@ After cleaving, you'll measure composition using Energy-Dispersive X-ray Spectro
 6. **Scroll down to the "Results" subsection**
 
 7. **Review the auto-generated graphs** showing all measurement points
-   
+
    ![EDX results visualization](../assets/nomad-add-edx-data-manual-v1/image-007.png)
 
 8. **Remove bad data points** if needed:
    - Use the trash can icon to delete points where you hit substrate or non-film areas
    - **Click "Save"** after each deletion
-   
+
    ![Cleaning data points](../assets/nomad-add-edx-data-manual-v1/image-008.png)
 
 !!! tip "Multiple quarters"
@@ -255,13 +255,13 @@ Now for the exciting part - seeing composition data across your entire library! 
 
 3. **Choose the template:**
    - Select "Full Process Combinatorial Library EDX Plot v1 (By Eugène)"
-   
+
    ![Selecting Jupyter template](../assets/nomad-plot-full-combinatorial-library-edx-v1/image-003.png)
 
 ### Link Your Libraries
 
 4. **Scroll down to the "Libraries" section**
-   
+
    ![Libraries section](../assets/nomad-plot-full-combinatorial-library-edx-v1/image-004.png)
 
 5. **Add all four quarters:**
@@ -271,17 +271,17 @@ Now for the exciting part - seeing composition data across your entire library! 
      - `username_####_Material_BR`
      - `username_####_Material_FL`
      - `username_####_Material_FR`
-   
+
    !!! tip "Finding libraries"
        Use the "Only this upload" filter to quickly find your libraries
-   
+
    ![Adding libraries](../assets/nomad-plot-full-combinatorial-library-edx-v1/image-006.png)
 
 ### Generate and Run the Notebook
 
 6. **Activate notebook generation:**
    - Scroll up and toggle "Generate notebook"
-   
+
    ![Generate notebook toggle](../assets/nomad-plot-full-combinatorial-library-edx-v1/image-008.png)
 
 7. **Click "Save"** - the notebook will appear after normalization
@@ -290,7 +290,7 @@ Now for the exciting part - seeing composition data across your entire library! 
    - Click the arrow icon next to the notebook name
    - Select Python kernel if asked
    - Run all cells to generate your plots!
-   
+
    ![Launching Jupyter](../assets/nomad-plot-full-combinatorial-library-edx-v1/image-009.png)
 
 !!! success "Congratulations!"
