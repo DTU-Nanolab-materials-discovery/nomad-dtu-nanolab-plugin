@@ -1,5 +1,5 @@
 site_name: nomad-dtu-nanolab-plugin
-site_description: A plugin for the schemas, parsers,
+site_description: A plugin for the schemas, parsers, and workflows of the DTU Nanolab Materials Discovery group
 site_author: Lena Mittman
 
 repo_url: https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin
@@ -87,7 +87,7 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 extra:
   generator: false
-  homepage: https://dtu-nanolab-materials-discovery.github.io/
+  homepage: https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/
 use_directory_urls: false
 extra_css:
   - stylesheets/extra.css
