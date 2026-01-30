@@ -122,7 +122,7 @@ For **each** of the 5 substrates:
 4. **Click "Save"** - Critical! Save after configuring each substrate
 
 !!! warning "Save After Each Substrate"
-    Failing to save between substrates may result in data loss. The system doesn't auto-save in this interface. Make sure that each  substrate added to the sputtering entry references to different substrates from the batch you chose.
+    Failing to save between substrates may result in data loss. The system doesn't auto-save in this interface. Make sure that each substrate entry references a different substrate from the selected batch.
 
 ## Step 4: Upload the Logfile
 
