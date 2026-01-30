@@ -154,7 +154,7 @@ You can add additional files to provide complete documentation:
 
 2. **Drag and drop** files into the "Entry files" area:
    - Cracker warmup data (CSV file including the temperature profile of the Scracker temperature ramp up)
-   - Photos of the target before and after deposition, photo of the plasma during depositon and of the samples after deposition
+   - Photos of the target before and after deposition, photo of the plasma during deposition and of the samples after deposition
    - Optical raw spectra (from the Optix optical emission spectroscope)
    - RGA traces (processed spectra showing gas partial pressure vs. time)
    - Operation parameters for the Optix plasma (current and power type, DC or PDC)
