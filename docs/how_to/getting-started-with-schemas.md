@@ -38,7 +38,7 @@ A pop-up window appears with:
     - Material or process information
     - Specific identifiers (position, type, etc.)
 
-    Example: `amazing_researcher_0042_CuZn_BL_Sputtering`
+    Example: `amazingresearcher_0042_CuZn_BL_Sputtering`
 
 ### Step 3: Open the Schema Interface
 

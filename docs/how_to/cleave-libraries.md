@@ -48,7 +48,7 @@ username_####_Material(s)_Position_Breaking
 
 Examples:
 
-- `amazing_researcher_0042_CuZn_BL_Breaking`
+- `amazingresearcher_0042_CuZn_BL_Breaking`
 - `username_0123_BaZr_FR_Breaking`
 
 !!! tip"Naming Convention"
@@ -70,8 +70,8 @@ In the cleaving entry, you'll see a field to select the parent library.
 
 Examples:
 
-- `amazing_researcher_0042_CuZn_BL` (back left)
-- `amazing_researcher_0042_CuZn_BR` (back right)
+- `amazingresearcher_0042_CuZn_BL` (back left)
+- `amazingresearcher_0042_CuZn_BR` (back right)
 - etc.
 
 !!! info "Finding Your Library"
@@ -179,10 +179,10 @@ ParentName_QuarterID
 
 Examples:
 
-- `amazing_researcher_0042_CuZn_BL_Q1`
-- `amazing_researcher_0042_CuZn_BL_Q2`
-- `amazing_researcher_0042_CuZn_BL_Q3`
-- `amazing_researcher_0042_CuZn_BL_Q4`
+- `amazingresearcher_0042_CuZn_BL_Q1`
+- `amazingresearcher_0042_CuZn_BL_Q2`
+- `amazingresearcher_0042_CuZn_BL_Q3`
+- `amazingresearcher_0042_CuZn_BL_Q4`
 
 ## Understanding Positions
 

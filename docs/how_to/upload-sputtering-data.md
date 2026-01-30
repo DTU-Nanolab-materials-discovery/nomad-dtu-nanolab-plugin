@@ -28,8 +28,6 @@ Before starting, gather:
 
 2. Click **"New Upload"**
 
-   ![New upload button](../assets/nomad-upload-your-first-sputtering-manual-v1/image-001.png)
-
 ### 1.2 Name Your Upload
 
 Use your lab's naming convention for the deposition ID:
@@ -40,9 +38,9 @@ username_####_Material(s)
 
 Examples:
 
-- `amazing_researcher_0042_Cu`
-- `username_0123_BaZr`
-- `initials_0001_CuZnSnS`
+- `amazingresearcher_0042_Cu`
+- `username_0123_Ba-Zr`
+- `initials_0001_Ag`
 
 ![Naming the upload](../assets/nomad-upload-your-first-sputtering-manual-v1/image-003.png)
 
@@ -74,8 +72,6 @@ Collaboration is key! Share the upload with your research group:
 
 In your upload, click **"Create from schema"**.
 
-![Create from schema](../assets/nomad-upload-your-first-sputtering-manual-v1/image-005.png)
-
 ### 2.2 Select Sputtering Schema
 
 1. **Entry name**: Enter the same deposition ID you used for the upload
@@ -98,7 +94,7 @@ Substrates are the foundation of your combinatorial libraries. You'll typically 
 
 Click the **"+" icon** next to "Substrates" **five times** to create 5 substrate entries.
 
-![Adding substrates](../assets/nomad-upload-your-first-sputtering-manual-v1/image-008.png)
+   ![Creating substrates](../assets/nomad-upload-your-first-sputtering-manual-v1/image-007.png)
 
 ### 3.2 Configure Each Substrate
 
@@ -110,6 +106,8 @@ For **each** of the 5 substrates:
    - For **silicon**: Choose the specific batch from available options (multiple batches exist)
    - For **glass**: Only one glass option typically available
 
+
+   ![Choosing batch](../assets/nomad-upload-your-first-sputtering-manual-v1/image-008.png)
    ![Substrate batch selection](../assets/nomad-upload-your-first-sputtering-manual-v1/image-009.png)
 
 3. **Choose position**:
@@ -117,14 +115,14 @@ For **each** of the 5 substrates:
    - **FR** - Front Right
    - **BL** - Back Left
    - **BR** - Back Right
-   - **G** - Glass (center)
+   - **G** - Glass (Bottom Center)
 
    ![Position selection](../assets/nomad-upload-your-first-sputtering-manual-v1/image-010.png)
 
 4. **Click "Save"** - Critical! Save after configuring each substrate
 
 !!! warning "Save After Each Substrate"
-    Failing to save between substrates may result in data loss. The system doesn't auto-save in this interface.
+    Failing to save between substrates may result in data loss. The system doesn't auto-save in this interface. Make sure that each substrate entry references a different substrate from the selected batch.
 
 ## Step 4: Upload the Logfile
 
@@ -132,7 +130,7 @@ The Lesker CSV logfile contains timestamped process parameters.
 
 ### 4.1 Upload the File
 
-1. Locate the **logfile upload** field in the sputtering entry
+1. Locate the **Log file** field in the sputtering entry
 
 2. **Drag and drop** your CSV file, or click to browse
 
@@ -143,8 +141,7 @@ The Lesker CSV logfile contains timestamped process parameters.
 !!! info "What happens during processing"
     NOMAD parses the logfile to extract:
 
-    - Deposition times and rates
-    - Chamber pressure history
+    - Deposition parameters
     - Target power settings
     - Gas flows
     - Temperature profiles
@@ -156,11 +153,14 @@ You can add additional files to provide complete documentation:
 1. Navigate to the **"Files"** tab in your upload
 
 2. **Drag and drop** files into the "Entry files" area:
-   - Cracker warmup data
-   - Photos of the deposition
-   - Optical spectra
-   - RGA traces
-   - Any other relevant documentation
+   - Cracker warmup data (CSV file including the temperature profile of the Scracker temperature ramp up)
+   - Photos of the target before and after deposition, photo of the plasma during deposition and of the samples after deposition
+   - Optical raw spectra (from the Optix optical emission spectroscope)
+   - RGA traces (processed spectra showing gas partial pressure vs. time)
+   - Operation parameters for the Optix plasma (current and power type, DC or PDC)
+   - Flags can be added to the sputtering entry if a specific event has occurred and needs to be reported (unstable target, interrupted deposition, etc)
+   - Any other relevant documentation can be added in the description field, or as files in the corresponding upload
+
 
 ![Adding additional files](../assets/nomad-upload-your-first-sputtering-manual-v1/image-012.png)
 
@@ -177,8 +177,8 @@ Fill in these fields:
 
 - **Cracker warmup file**: Upload or reference if used
 - **Platen ID**: Select A or B (which heater platen was used)
-- **Base pressure**: Enter value with unit (typically mTorr or Pa)
-- **Process comments**: Copy notes from your lab notebook
+- **Base pressure**: If not already automatically extracted by the parser, enter value manually (typically 10^-7 torr)
+- **Process comments**: Copy notes from your lab notebook in the description field.
 
 ![Process details fields](../assets/nomad-upload-your-first-sputtering-manual-v1/image-013.png)
 
@@ -187,8 +187,7 @@ Fill in these fields:
 If available, add:
 
 - **Process photos**: Images of the chamber, samples, or setup
-- **Optix spectra**: Optical thickness measurements during deposition
-- **RGA file**: Residual gas analysis data
+- **Description**: Any additional information that does not fit anywhere else
 
 ### 5.3 Save Your Work
 
@@ -196,7 +195,7 @@ Click **"Save"** at the top of the page to commit all changes.
 
 ## Step 6: Verify the Upload
 
-After processing completes (typically 1-2 minutes), verify your upload created the correct entries.
+After processing completes (typically 10s), verify your upload created the correct entries.
 
 ### 6.1 Expected Entry Count
 
@@ -204,29 +203,19 @@ The upload should contain **exactly (2 × number of substrates) + 1 entries**:
 
 - **1 sputtering process entry** - The main deposition record
 - **2 entries per substrate**:
-  - Substrate batch entry
   - Combinatorial library entry (the deposited film on that substrate)
+  - Layer entry
 
 **Example calculations:**
 
 - 5 substrates: (2 × 5) + 1 = **11 entries** ✓
 - 4 substrates: (2 × 4) + 1 = **9 entries** ✓
 
-### 6.2 Check Entry Types
-
-Navigate to your upload's entry list and verify you see:
-
-- [x] 1 × Sputtering / Sputter Deposition
-- [x] 5 × Substrate Batch (one per substrate)
-- [x] 5 × Combinatorial Library (one per substrate)
-
-![Upload entries list](../assets/nomad-upload-your-first-sputtering-manual-v1/image-002.png)
-
-### 6.3 Verify Combinatorial Libraries
+### 6.2 Verify Combinatorial Libraries
 
 Each combinatorial library should:
 
-- Be named with the position: `DepositionID_Position` (e.g., `user_0042_Cu_BL`)
+- Be named based on the combination of the sputtering run name and the substrate location on the platen (e.g., `user_0042_Cu_BL`)
 - Link to the correct substrate batch
 - Reference the sputtering process
 - Show target composition and deposition parameters

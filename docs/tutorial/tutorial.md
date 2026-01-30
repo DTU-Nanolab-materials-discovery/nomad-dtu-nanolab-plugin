@@ -84,14 +84,14 @@ Now let's apply what you've learned to upload a real sputtering deposition. This
 
 Before starting, locate your deposition logfile (CSV format from the Lesker system). You'll also need to know:
 
-- Deposition ID (e.g., `username_0001_Material`)
+- Deposition ID (e.g., `username_0001_Cu`)
 - Substrate positions (FL, FR, BL, BR for silicon; G for glass)
 - Substrate batch numbers
 - Base pressure and other process parameters
 
 ### Create the Upload
 
-1. **Create a new upload** and name it with your deposition ID (e.g., `amazing_researcher_0042_CuZn`)
+1. **Create a new upload** and name it with your deposition ID (e.g., `username_0001_Cu`)
 
 2. **Share with your group:**
    - Click the "Edit upload members" icon (two people icon)
@@ -106,7 +106,6 @@ Before starting, locate your deposition logfile (CSV format from the Lesker syst
    !!! warning "Important"
        The entry name becomes permanent (stored as a .json file), so double-check it before creating!
 
-   ![Creating sputtering entry](../assets/nomad-upload-your-first-sputtering-manual-v1/image-007.png)
 
 ### Add Substrates
 
@@ -116,8 +115,9 @@ Before starting, locate your deposition logfile (CSV format from the Lesker syst
      - Click on it to open the configuration
      - Select the substrate batch (multiple options for silicon, single option for glass)
      - Choose the position: FL (Front Left), FR (Front Right), BL (Back Left), BR (Back Right), or G (Glass)
-     - **Click "Save" after each substrate**
+     - **IMPORTANT: Click "Save" after each substrate definition (after choosing batch and position)**
 
+   ![Creating substrates](../assets/nomad-upload-your-first-sputtering-manual-v1/image-007.png)
    ![Adding substrates](../assets/nomad-upload-your-first-sputtering-manual-v1/image-009.png)
    ![Substrate position selection](../assets/nomad-upload-your-first-sputtering-manual-v1/image-010.png)
 
@@ -146,7 +146,7 @@ After processing, verify the upload created the correct number of entries:
     You should have **(2 × number of substrates) + 1** entries total:
 
     - 1 sputtering process entry
-    - 2 entries per substrate (substrate batch + combinatorial library)
+    - 2 entries per substrate (layer + combinatorial library)
 
     For example, with 5 substrates: (2 × 5) + 1 = **11 entries total**
 
@@ -164,7 +164,7 @@ Your silicon substrates contain composition gradients that need to be divided fo
    ```
    username_####_Material-Material_Position_Breaking
    ```
-   Example: `amazing_researcher_0042_Cu-Zn_BL_Breaking`
+   Example: `amazingresearcher_0042_Cu-Zn_BL_Breaking`
 
 3. **Select the parent library:**
    - Choose the combinatorial library you want to cleave (e.g., Back Left position)
@@ -210,7 +210,7 @@ After cleaving, you'll measure composition using Energy-Dispersive X-ray Spectro
    ```
    username_####_Material_Quarter_EDX
    ```
-   Example: `amazing_researcher_0042_CuZn_BR_EDX`
+   Example: `amazingresearcher_0042_CuZn_BR_EDX`
 
    ![Creating EDX entry](../assets/nomad-add-edx-data-manual-v1/image-003.png)
 

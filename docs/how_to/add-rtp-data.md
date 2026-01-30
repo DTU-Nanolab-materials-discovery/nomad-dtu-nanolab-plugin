@@ -35,7 +35,7 @@ Before starting, you need:
    ```
    username_####_RTP
    ```
-   Example: `amazing_researcher_0042_RTP`
+   Example: `amazingresearcher_0042_RTP`
 
 3. **Share with group**:
    - Click "Edit upload members"
@@ -178,7 +178,7 @@ Count how many separate samples were processed in this RTP run.
 For each input sample:
 
 1. Give it a **name** - Use the cleaved material library name
-   - Example: `amazing_researcher_0042_CuZn_BL`
+   - Example: `amazingresearcher_0042_CuZn_BL`
 
 2. **Choose from the list** - Select the existing combinatorial library from your sputtering upload
    - Use filters to find it quickly
