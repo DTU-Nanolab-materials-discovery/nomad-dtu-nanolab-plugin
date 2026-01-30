@@ -271,6 +271,83 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
         )
 
+        fig2 = go.Figure()
+
+        # Pre-calculate log intensities and cumulative offsets
+        log_intensities = []
+        offsets = [0]
+        cumulative_offset = 0
+
+        OFFSET_FACTOR = 0.3  # Factor to control spacing between patterns
+        RAMAN_RANGE_EXCL = (510, 530)  # Exclude this range for offset calculation
+
+        for result in self.results:
+            if hasattr(result.raman_shift, 'magnitude'):
+                raman_shift_data = result.raman_shift.to('1/cm').magnitude
+            else:
+                raman_shift_data = result.raman_shift
+
+            log_intensity = np.log10(np.maximum(result.intensity, 1e-10))
+            log_intensities.append(log_intensity)
+
+            # Filter to exclude the specified Raman shift range for offset calculation
+            mask = (raman_shift_data < RAMAN_RANGE_EXCL[0]) | (
+                raman_shift_data > RAMAN_RANGE_EXCL[1]
+            )
+            log_intensity_filtered = log_intensity[mask]
+
+            cumulative_offset += (
+                log_intensity_filtered.max() - log_intensity_filtered.min()
+            ) * OFFSET_FACTOR
+            offsets.append(cumulative_offset)
+
+        # Add traces with dynamically calculated offsets
+        for i, result in enumerate(self.results):
+            if hasattr(result.raman_shift, 'magnitude'):
+                x_data = result.raman_shift.to('1/cm').magnitude
+            else:
+                x_data = result.raman_shift
+
+            fig2.add_trace(
+                go.Scatter(
+                    x=x_data,
+                    y=log_intensities[i] + offsets[i],
+                    mode='lines',
+                    name=result.name,
+                    hoverlabel=dict(namelength=-1),
+                )
+            )
+
+        # Update layout
+        fig2.update_layout(
+            title='Raman Spectra stacked',
+            xaxis_title='Raman Shift (1/cm)',
+            yaxis_title='Log(Intensity)',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                type='linear',
+            ),
+        )
+
+        plot_json2 = fig2.to_plotly_json()
+        plot_json2['config'] = dict(
+            scrollZoom=False,
+        )
+        self.figures.append(
+            PlotlyFigure(
+                label='Stacked Patterns',
+                figure=plot_json2,
+            )
+        )
+
+
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `RamanMeasurement` class.
