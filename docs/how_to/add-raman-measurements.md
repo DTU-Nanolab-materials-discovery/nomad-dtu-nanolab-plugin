@@ -132,8 +132,9 @@ To align the Raman coordinate system with your sample, specify the positions of 
    - Y coordinate: Enter the stage Y position of the bottom-right corner
 
 !!! tip "Finding Corner Positions"
-    - Generally, during Raman measurement, the origin of Raman was adjusted to the bottom left of the sample, therefore the top-left X, and bottom-right Y are both approximately 0 (assuming the sample was well aligned) amd the top-left Y and bottom-right X are respectively the height and width of you sample
-
+    - In most Raman measurements, the stage origin (X = 0, Y = 0) is set at the bottom-left corner of the sample.
+    - For a well-aligned sample, the top-left X coordinate and the bottom-right Y coordinate are both close to 0.
+    - The top-left Y coordinate should be approximately equal to the sample height, and the bottom-right X coordinate should be approximately equal to the sample width.
 ### 5.4 Save the Alignment
 
 **Click "Save"** after entering all alignment parameters.
