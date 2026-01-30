@@ -35,7 +35,7 @@ Before starting, you need:
    ```
    username_####_RTP
    ```
-   Example: `amazing_researcher_0042_RTP`
+   Example: `amazingresearcher_0042_RTP`
 
 3. **Share with group**:
    - Click "Edit upload members"
