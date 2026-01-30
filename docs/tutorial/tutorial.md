@@ -164,7 +164,7 @@ Your silicon substrates contain composition gradients that need to be divided fo
    ```
    username_####_Material-Material_Position_Breaking
    ```
-   Example: `amazing_researcher_0042_Cu-Zn_BL_Breaking`
+   Example: `amazingresearcher_0042_Cu-Zn_BL_Breaking`
 
 3. **Select the parent library:**
    - Choose the combinatorial library you want to cleave (e.g., Back Left position)
