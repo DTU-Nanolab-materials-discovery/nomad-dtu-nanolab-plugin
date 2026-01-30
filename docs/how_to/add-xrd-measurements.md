@@ -59,7 +59,7 @@ username_####_Material_Quarter_XRD
 
 Examples:
 
-- `amazing_researcher_0042_CuZn_BL_XRD` (back left quarter)
+- `amazingresearcher_0042_CuZn_BL_XRD` (back left quarter)
 - `username_0123_BaZr_FR_XRD` (front right quarter)
 
 **Select the schema:**

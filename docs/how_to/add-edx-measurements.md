@@ -51,7 +51,7 @@ username_####_Material_Quarter_EDX
 
 Examples:
 
-- `amazing_researcher_0042_CuZn_BR_EDX` (back right quarter)
+- `amazingresearcher_0042_CuZn_BR_EDX` (back right quarter)
 - `username_0123_BaZr_FL_EDX` (front left quarter)
 
 **Select the schema:**

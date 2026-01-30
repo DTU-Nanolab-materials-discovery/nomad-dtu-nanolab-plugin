@@ -44,7 +44,7 @@ Click **"Create from schema"** in your upload.
    ```
    username_####_Material_EDX_Visualization
    ```
-   Example: `amazing_researcher_0042_CuZn_EDX_Full_Library`
+   Example: `amazingresearcher_0042_CuZn_EDX_Full_Library`
 
 2. **Schema**: Select **"Jupyter Analysis"** from built-in schemas
 

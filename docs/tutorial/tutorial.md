@@ -210,7 +210,7 @@ After cleaving, you'll measure composition using Energy-Dispersive X-ray Spectro
    ```
    username_####_Material_Quarter_EDX
    ```
-   Example: `amazing_researcher_0042_CuZn_BR_EDX`
+   Example: `amazingresearcher_0042_CuZn_BR_EDX`
 
    ![Creating EDX entry](../assets/nomad-add-edx-data-manual-v1/image-003.png)
 
