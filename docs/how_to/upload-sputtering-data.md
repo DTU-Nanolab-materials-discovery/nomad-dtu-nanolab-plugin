@@ -187,7 +187,7 @@ Fill in these fields:
 If available, add:
 
 - **Process photos**: Images of the chamber, samples, or setup
-- **Description**: Any aditional information that does not fit anywhere else
+- **Description**: Any additional information that does not fit anywhere else
 
 ### 5.3 Save Your Work
 
