@@ -158,7 +158,7 @@ You can add additional files to provide complete documentation:
    - Optical raw spectra (from the Optix optical emission spectroscope)
    - RGA traces (processed spectra showing gas partial pressure vs. time)
    - Operation parameters for the Optix plasma (current and power type, DC or PDC)
-   - Flags can be added to the sputtering entry if a specific event has occured and needs to be reported (unstable target, interrupted deposition, etc)
+   - Flags can be added to the sputtering entry if a specific event has occurred and needs to be reported (unstable target, interrupted deposition, etc)
    - Any other relevant documentation can be added in the description field, or as files in the corresponding upload
 
 
