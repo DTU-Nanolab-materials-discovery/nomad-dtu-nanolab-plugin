@@ -215,7 +215,7 @@ The upload should contain **exactly (2 × number of substrates) + 1 entries**:
 
 Each combinatorial library should:
 
-- Be named based on the combination of the sputtering run name and the subtrate location on the platen (e.g., `user_0042_Cu_BL`)
+- Be named based on the combination of the sputtering run name and the substrate location on the platen (e.g., `user_0042_Cu_BL`)
 - Link to the correct substrate batch
 - Reference the sputtering process
 - Show target composition and deposition parameters
