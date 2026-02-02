@@ -18,6 +18,7 @@ from nomad_measurements.mapping.schema import (
     MappingResult,
 )
 from nomad_measurements.utils import merge_sections
+from scipy.interpolate import griddata
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -157,15 +158,26 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             logger (BoundLogger): A structlog logger.
 
         Returns:
-            pd.DataFrame: DataFrame with columns 'X (cm)' and 'Thickness # 1'
+            pd.DataFrame: DataFrame with thickness data
         """
         if not self.thickness_file:
             logger.warning('No thickness file provided.')
             return pd.DataFrame()
 
         with archive.m_context.raw_file(self.thickness_file) as file:
-            df = pd.read_csv(file.name, sep='\t', skiprows=1)
+            # Read the file, skipping the first header line
+            # Important: index_col=False to prevent first column from being used as index
+            df = pd.read_csv(file.name, sep='\t', skiprows=1, index_col=False)
+            
+            # Remove any empty rows (rows where all values are NaN)
+            df = df.dropna(how='all')
+            
+            # Remove trailing empty columns (columns that are all NaN)
+            df = df.dropna(axis=1, how='all')
+            
             logger.debug(f'Read thickness file with shape: {df.shape}')
+            logger.debug(f'Thickness file columns: {df.columns.tolist()}')
+            
             return df
 
     def read_n_and_k_file(
@@ -194,7 +206,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 f.readline()  # Skip first line ("Optical Constants")
                 header_line = f.readline().strip()  # Read second line with column names
 
-            df = pd.read_csv(file.name, sep='\t', skiprows=1)
+            # Read the data, skipping first line (skiprows=1 means use line 2 as header)
+            # Important: index_col=False to prevent first column from being used as index
+            df = pd.read_csv(file.name, sep='\t', skiprows=1, index_col=False)
 
             # Check if first column is "Energy (eV)" and convert to wavelength (nm)
             first_col_name = header_line.split('\t')[0]
@@ -202,13 +216,18 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 logger.debug('Detected Energy (eV) column, converting to wavelength (nm)')
                 # Convert energy (eV) to wavelength (nm) using λ = 1239.84 / E
                 df.iloc[:, 0] = 1239.84 / df.iloc[:, 0]
-                logger.debug('Converted energy to wavelength')
+                # After conversion, wavelength should be in descending order from the ascending energy
+                # We need to reverse the entire dataframe to have wavelength in ascending order
+                df = df.iloc[::-1].reset_index(drop=True)
+                logger.debug('Converted energy to wavelength and reversed order for ascending wavelength')
             elif first_col_name == 'Wavelength (nm)':
                 logger.debug('Detected Wavelength (nm) column, no conversion needed')
             else:
                 logger.warning(f'Unknown spectral unit in header: {first_col_name}')
 
             logger.debug(f'Read n and k file with shape: {df.shape}')
+            logger.debug(f'Wavelength range: {df.iloc[0, 0]:.2f} - {df.iloc[-1, 0]:.2f} nm')
+            
             return df
 
     def write_ellipsometry_data(
@@ -232,6 +251,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         # Get wavelength column (first column)
         wavelength = nk_df.iloc[:, 0].to_numpy() * ureg('nm')
+        logger.debug(f'Extracted {len(wavelength)} wavelength points')
 
         # Parse the n and k columns to extract position and values
         # Columns are named like 'n: (-1.8,0)', 'k: (-1.8,0)', etc.
@@ -250,62 +270,78 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         logger.debug(f'Found {len(positions)} positions in n and k file.')
 
         # Create a mapping from position to thickness
-        # Handle three cases: (X, Thickness), (Y, Thickness), or (X, Y, Thickness)
         thickness_map = {}
         if not thickness_df.empty:
             num_cols = thickness_df.shape[1]
+            logger.debug(f'Thickness file has {num_cols} columns')
+            
             if num_cols == 2:
-                # Single coordinate case - determine if it's X or Y
-                # Check first position from n_k data to determine which coordinate varies
-                first_pos_str = list(positions.keys())[0]
-                first_pos_tuple = eval(first_pos_str)
-                x_varies = any(eval(p)[0] != first_pos_tuple[0] for p in positions.keys())
-                y_varies = any(eval(p)[1] != first_pos_tuple[1] for p in positions.keys())
-
-                if x_varies and not y_varies:
-                    # X coordinate in file, Y is constant (assume 0)
-                    for _, row in thickness_df.iterrows():
-                        x_pos = row.iloc[0]
-                        thickness_val = row.iloc[1]
-                        thickness_map[(x_pos, 0.0)] = thickness_val
-                    logger.debug('Detected 1D thickness map with X coordinate')
-                elif y_varies and not x_varies:
-                    # Y coordinate in file, X is constant (assume 0)
-                    for _, row in thickness_df.iterrows():
-                        y_pos = row.iloc[0]
-                        thickness_val = row.iloc[1]
-                        thickness_map[(0.0, y_pos)] = thickness_val
-                    logger.debug('Detected 1D thickness map with Y coordinate')
-                else:
-                    # Both vary or neither varies - assume X coordinate
-                    for _, row in thickness_df.iterrows():
-                        x_pos = row.iloc[0]
-                        thickness_val = row.iloc[1]
-                        thickness_map[(x_pos, 0.0)] = thickness_val
-                    logger.debug('Detected 1D thickness map, assuming X coordinate')
-            elif num_cols >= 3:
-                # 2D case: X, Y, and Z (thickness) columns
+                # 1D thickness data: (X, Thickness) or (Y, Thickness)
+                # Determine which coordinate varies by checking the n&k positions
+                first_pos = list(positions.keys())[0]
+                first_x, first_y = eval(first_pos)
+                
+                # Check if X varies (different X values in positions)
+                x_values = set()
+                y_values = set()
+                for pos_str in positions.keys():
+                    x, y = eval(pos_str)
+                    x_values.add(x)
+                    y_values.add(y)
+                
+                x_varies = len(x_values) > 1
+                y_varies = len(y_values) > 1
+                
+                logger.debug(f'X varies: {x_varies}, Y varies: {y_varies}')
+                logger.debug(f'Unique X values: {sorted(x_values)}')
+                logger.debug(f'Unique Y values: {sorted(y_values)}')
+                
+                # Build thickness map
                 for _, row in thickness_df.iterrows():
-                    x_pos = row.iloc[0]
-                    y_pos = row.iloc[1]
-                    thickness_val = row.iloc[2]
+                    coord = float(row.iloc[0])
+                    thickness_val = float(row.iloc[1])
+                    
+                    if x_varies and not y_varies:
+                        # X coordinate varies, Y is constant
+                        y_const = list(y_values)[0]
+                        thickness_map[(coord, y_const)] = thickness_val
+                    elif y_varies and not x_varies:
+                        # Y coordinate varies, X is constant  
+                        x_const = list(x_values)[0]
+                        thickness_map[(x_const, coord)] = thickness_val
+                    else:
+                        # Assume X varies (most common case)
+                        thickness_map[(coord, 0.0)] = thickness_val
+                
+                logger.debug(f'Created 1D thickness map with {len(thickness_map)} entries')
+                
+            elif num_cols >= 3:
+                # 2D thickness data: (X, Y, Thickness)
+                for _, row in thickness_df.iterrows():
+                    x_pos = float(row.iloc[0])
+                    y_pos = float(row.iloc[1])
+                    thickness_val = float(row.iloc[2])
                     thickness_map[(x_pos, y_pos)] = thickness_val
-                logger.debug('Detected 2D thickness map (X, Y, Thickness)')
+                
+                logger.debug(f'Created 2D thickness map with {len(thickness_map)} entries')
 
         # Create a result for each position
         for pos_str, cols in positions.items():
             # Parse position (e.g., '(-1.8,0)' -> x=-1.8, y=0)
             try:
                 pos_tuple = eval(pos_str)  # Safe here as we control the format
-                x_pos = pos_tuple[0]
-                y_pos = pos_tuple[1]
+                x_pos = float(pos_tuple[0])
+                y_pos = float(pos_tuple[1])
             except Exception as e:
                 logger.warning(f'Could not parse position {pos_str}: {e}')
                 continue
 
-            # Get n and k values
+            # Get n and k values - IMPORTANT: use .to_numpy() to get clean numpy arrays
             n_values = nk_df[cols['n_col']].to_numpy()
             k_values = nk_df[cols['k_col']].to_numpy()
+            
+            logger.debug(f'Position {pos_str}: n range [{n_values.min():.3f}, {n_values.max():.3f}], '
+                        f'k range [{k_values.min():.6f}, {k_values.max():.6f}]')
 
             # Create spectra
             spectra = EllipsometrySpectra(
@@ -314,8 +350,25 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 k=k_values,
             )
 
-            # Get thickness for this position using (x, y) tuple lookup
-            thickness_nm = thickness_map.get((x_pos, y_pos), None)
+            # Get thickness for this position using fuzzy matching
+            thickness_nm = None
+            tolerance = 0.01  # Tolerance for coordinate matching (1 cm = 10 mm)
+            
+            # Try exact match first
+            if (x_pos, y_pos) in thickness_map:
+                thickness_nm = thickness_map[(x_pos, y_pos)]
+                logger.debug(f'Exact thickness match for {pos_str}: {thickness_nm:.2f} nm')
+            else:
+                # Try fuzzy match (within tolerance)
+                for (x_thick, y_thick), thick_val in thickness_map.items():
+                    if abs(x_thick - x_pos) < tolerance and abs(y_thick - y_pos) < tolerance:
+                        thickness_nm = thick_val
+                        logger.debug(f'Fuzzy thickness match for {pos_str} with ({x_thick}, {y_thick}): {thickness_nm:.2f} nm')
+                        break
+            
+            if thickness_nm is None:
+                logger.warning(f'No thickness found for position {pos_str} at ({x_pos}, {y_pos})')
+
             thickness_m = thickness_nm * ureg('nm') if thickness_nm is not None else None
 
             # Create result
@@ -365,13 +418,13 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     y=k,
                     mode='lines',
                     name=f'k @ {position}',
-                    line=dict(dash='dash'),
+                    #line=dict(dash='dash'), #remove dashed line for better visibility
                 ))
 
         fig.update_layout(
             title='Optical Constants (n and k)',
             xaxis_title='Wavelength (nm)',
-            yaxis_title='Value',
+            yaxis_title='n, k',
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
@@ -389,32 +442,121 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         )
 
         # Plot thickness map if we have thickness data
-        thickness_data = [(r.x_absolute.to('cm').magnitude, r.thickness.to('nm').magnitude)
-                          for r in self.results if r.thickness is not None]
+        # For 1D data: line plot
+        # For 2D data: heatmap or contour plot
+        thickness_data = []
+        for r in self.results:
+            if r.thickness is not None:
+                thickness_data.append({
+                    'x': r.x_absolute.to('mm').magnitude,
+                    'y': r.y_absolute.to('mm').magnitude,
+                    'thickness': r.thickness.to('nm').magnitude
+                })
+        
         if thickness_data:
-            x_vals, thickness_vals = zip(*thickness_data)
-            fig2 = go.Figure()
-            fig2.add_trace(go.Scatter(
-                x=x_vals,
-                y=thickness_vals,
-                mode='lines+markers',
-                name='Thickness',
-            ))
-            fig2.update_layout(
-                title='Thickness vs Position',
-                xaxis_title='X Position (cm)',
-                yaxis_title='Thickness (nm)',
-                template='plotly_white',
-                hovermode='closest',
-                dragmode='zoom',
-                xaxis=dict(fixedrange=False),
-                yaxis=dict(fixedrange=False),
-            )
+            # Check if it's 1D or 2D data
+            x_vals = [d['x'] for d in thickness_data]
+            y_vals = [d['y'] for d in thickness_data]
+            thickness_vals = [d['thickness'] for d in thickness_data]
+            
+            unique_x = len(set(x_vals))
+            unique_y = len(set(y_vals))
+            
+            if unique_x == 1 or unique_y == 1:
+                # 1D data - line plot
+                if unique_x == 1:
+                    # Y varies
+                    fig2 = go.Figure()
+                    fig2.add_trace(go.Scatter(
+                        x=y_vals,
+                        y=thickness_vals,
+                        mode='lines+markers',
+                        name='Thickness',
+                    ))
+                    fig2.update_layout(
+                        title='Thickness vs Y Position',
+                        xaxis_title='Y Position (mm)',
+                        yaxis_title='Thickness (nm)',
+                        template='plotly_white',
+                        hovermode='closest',
+                        dragmode='zoom',
+                        xaxis=dict(fixedrange=False),
+                        yaxis=dict(fixedrange=False),
+                    )
+                else:
+                    # X varies
+                    fig2 = go.Figure()
+                    fig2.add_trace(go.Scatter(
+                        x=x_vals,
+                        y=thickness_vals,
+                        mode='lines+markers',
+                        name='Thickness',
+                    ))
+                    fig2.update_layout(
+                        title='Thickness vs X Position',
+                        xaxis_title='X Position (mm)',
+                        yaxis_title='Thickness (nm)',
+                        template='plotly_white',
+                        hovermode='closest',
+                        dragmode='zoom',
+                        xaxis=dict(fixedrange=False),
+                        yaxis=dict(fixedrange=False),
+                    )
+            else:
+                # 2D data - heatmap with scatter overlay (like EDX)
+                # Create a grid for the heatmap
+                xi = np.linspace(min(x_vals), max(x_vals), 100)
+                yi = np.linspace(min(y_vals), max(y_vals), 100)
+                xi, yi = np.meshgrid(xi, yi)
+                zi = griddata((x_vals, y_vals), thickness_vals, (xi, yi), method='linear')
+
+                # Create a heatmap
+                heatmap = go.Heatmap(
+                    x=xi[0],
+                    y=yi[:, 0],
+                    z=zi,
+                    colorscale='Viridis',
+                    colorbar=dict(title='Thickness (nm)'),
+                )
+
+                # Create a scatter plot overlay
+                scatter = go.Scatter(
+                    x=x_vals,
+                    y=y_vals,
+                    mode='markers',
+                    marker=dict(
+                        size=15,
+                        color=thickness_vals,
+                        colorscale='Viridis',
+                        showscale=False,
+                        line=dict(
+                            width=2,
+                            color='DarkSlateGrey',
+                        ),
+                    ),
+                    customdata=thickness_vals,
+                    hovertemplate='<b>Thickness:</b> %{customdata:.1f} nm',
+                )
+
+                # Combine heatmap and scatter plot
+                fig2 = go.Figure(data=[heatmap, scatter])
+                
+                fig2.update_layout(
+                    title='Thickness Colormap',
+                    xaxis_title='X Position (mm)',
+                    yaxis_title='Y Position (mm)',
+                    template='plotly_white',
+                    hovermode='closest',
+                    dragmode='zoom',
+                    xaxis=dict(fixedrange=False),
+                    yaxis=dict(fixedrange=False),
+                )
+            
             plot_json2 = fig2.to_plotly_json()
             plot_json2['config'] = dict(scrollZoom=False)
             self.figures.append(
                 PlotlyFigure(
-                    label='Thickness',
+                    label='Thickness Map',
                     figure=plot_json2,
                 )
             )
