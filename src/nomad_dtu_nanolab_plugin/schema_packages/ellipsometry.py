@@ -273,14 +273,15 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         positions = {}
         for col in nk_df.columns[1:]:
             if col.startswith('n: '):
-                # Extract position from column name
                 pos_str = col.split('n: ')[1]
                 if pos_str not in positions:
-                    positions[pos_str] = {'n_col': col}
+                    positions[pos_str] = {}
+                positions[pos_str]['n_col'] = col
             elif col.startswith('k: '):
                 pos_str = col.split('k: ')[1]
-                if pos_str in positions:
-                    positions[pos_str]['k_col'] = col
+                if pos_str not in positions:
+                    positions[pos_str] = {}
+                positions[pos_str]['k_col'] = col
 
         logger.debug(f'Found {len(positions)} positions in n and k file.')
 
