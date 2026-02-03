@@ -93,14 +93,6 @@ class EllipsometryMappingResult(MappingResult, Schema):
         ),
     )
 
-    absolute_mse = Quantity(
-        type=np.float64,
-        description='The Absolute Mean Squared Error',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-        ),
-    )
-
     e_inf = Quantity(
         type=np.float64,
         description='The high-frequency dielectric constant (E Inf)',
@@ -209,7 +201,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             # Read the file, skipping the first header line
             # Important: index_col=False to prevent first column from being
             # used as index
-            df = pd.read_csv(file.name, sep='\t', skiprows=1, index_col=False)
+            df = pd.read_csv(file.name, sep='\t', skiprows=0, index_col=False)
 
             # Remove any empty rows (rows where all values are NaN)
             df = df.dropna(how='all')
@@ -331,22 +323,20 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             logger.debug(f'Thickness file has {thickness_df.shape[1]} columns')
             logger.debug(f'Thickness file columns: {thickness_df.columns.tolist()}')
 
-            # Build thickness map with all parameters
+            # Build thickness map with all parameters using explicit column names
             for _, row in thickness_df.iterrows():
-                x_pos = float(row.iloc[0])  # X (cm)
-                y_pos = float(row.iloc[1])  # Y (cm)
-                mse = float(row.iloc[2])  # MSE
-                abs_mse = float(row.iloc[3])  # Absolute MSE
-                roughness_nm = float(row.iloc[4])  # Roughness (nm)
-                thickness_nm = float(row.iloc[5])  # Thickness # 1 (nm)
-                e_inf = float(row.iloc[6])  # E Inf
-                ir_amp = float(row.iloc[7])  # IR Amp
+                x_pos = float(row['X (cm)'])
+                y_pos = float(row['Y (cm)'])
+                mse = float(row['MSE'])
+                roughness_nm = float(row['Roughness (nm)'])
+                thickness_nm = float(row['Thickness # 1 (nm)'])
+                e_inf = float(row['E Inf'])
+                ir_amp = float(row['IR Amp'])
 
                 thickness_map[(x_pos, y_pos)] = {
                     'thickness': thickness_nm,
                     'roughness': roughness_nm,
                     'mse': mse,
-                    'absolute_mse': abs_mse,
                     'e_inf': e_inf,
                     'ir_amp': ir_amp,
                 }
@@ -417,20 +407,13 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 )
 
             # Convert to appropriate units
-            thickness_m = (
-                thickness_data['thickness'] * ureg('nm')
-                if thickness_data is not None
-                else None
+            thickness_nm = (
+                thickness_data['thickness'] if thickness_data is not None else None
             )
-            roughness_m = (
-                thickness_data['roughness'] * ureg('nm')
-                if thickness_data is not None
-                else None
+            roughness_nm = (
+                thickness_data['roughness'] if thickness_data is not None else None
             )
             mse = thickness_data['mse'] if thickness_data is not None else None
-            absolute_mse = (
-                thickness_data['absolute_mse'] if thickness_data is not None else None
-            )
             e_inf = thickness_data['e_inf'] if thickness_data is not None else None
             ir_amp = thickness_data['ir_amp'] if thickness_data is not None else None
 
@@ -439,10 +422,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 position=pos_str,
                 x_absolute=x_pos * ureg('cm'),
                 y_absolute=y_pos * ureg('cm'),
-                thickness=thickness_m,
-                roughness=roughness_m,
+                thickness=thickness_nm * ureg('nm'),
+                roughness=roughness_nm * ureg('nm'),
                 mse=mse,
-                absolute_mse=absolute_mse,
                 e_inf=e_inf,
                 ir_amp=ir_amp,
                 spectra=[spectra],
