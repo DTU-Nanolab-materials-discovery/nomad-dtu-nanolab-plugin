@@ -1,0 +1,8 @@
+data:
+  m_def: nomad_dtu_nanolab_plugin.schema_packages.raman.DTUEllipsometryMeasurement
+
+  n_and_k_file:
+    eugbe_0009_RTP_hc_SiO2_map_nk_vs_energy.txt
+  thickness_file:
+    eugbe_0009_RTP_hc_SiO2_map_thickness.txt
+

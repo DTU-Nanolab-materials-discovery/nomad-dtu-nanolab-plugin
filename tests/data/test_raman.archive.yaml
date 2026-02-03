@@ -1,12 +1,4 @@
 data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.raman.RamanMeasurement
-#  sample_alignment:
-#    m_def: nomad_measurements.mapping.schema.RectangularSampleAlignment
-#    width: 0.05
-#    height: 0.05
-#    x_upper_left: -0.0225
-#    y_upper_left: 0.0225
-#    x_lower_right: 0.0275
-#    y_lower_right: -0.0275
   raman_data_file:
     indiogo_0019_RTP_hc_1x10s_P1_x20_map_0.wdf
