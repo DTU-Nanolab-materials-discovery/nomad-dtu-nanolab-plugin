@@ -326,7 +326,8 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         # Create a mapping from position to thickness and other parameters
         thickness_map = {}
         if not thickness_df.empty:
-            # Expected columns: X (cm), Y (cm), MSE, Absolute MSE, Roughness (nm), Thickness # 1 (nm)
+            # Expected columns: X (cm), Y (cm), MSE, Absolute MSE,
+            # Roughness (nm), Thickness # 1 (nm)
             logger.debug(f'Thickness file has {thickness_df.shape[1]} columns')
             logger.debug(f'Thickness file columns: {thickness_df.columns.tolist()}')
 
@@ -340,7 +341,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 thickness_nm = float(row.iloc[5])  # Thickness # 1 (nm)
                 e_inf = float(row.iloc[6])  # E Inf
                 ir_amp = float(row.iloc[7])  # IR Amp
-                
+
                 thickness_map[(x_pos, y_pos)] = {
                     'thickness': thickness_nm,
                     'roughness': roughness_nm,
@@ -350,9 +351,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     'ir_amp': ir_amp,
                 }
 
-            logger.debug(
-                f'Created thickness map with {len(thickness_map)} entries'
-            )
+            logger.debug(f'Created thickness map with {len(thickness_map)} entries')
 
         # Create a result for each position
         for pos_str, cols in positions.items():
@@ -391,7 +390,8 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             if (x_pos, y_pos) in thickness_map:
                 thickness_data = thickness_map[(x_pos, y_pos)]
                 logger.debug(
-                    f'Exact match for {pos_str}: thickness={thickness_data["thickness"]:.2f} nm, '
+                    f'Exact match for {pos_str}: '
+                    f'thickness={thickness_data["thickness"]:.2f} nm, '
                     f'roughness={thickness_data["roughness"]:.2f} nm, '
                     f'MSE={thickness_data["mse"]:.4f}'
                 )
@@ -405,24 +405,32 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         thickness_data = data
                         logger.debug(
                             f'Fuzzy match for {pos_str} with '
-                            f'({x_thick}, {y_thick}): thickness={thickness_data["thickness"]:.2f} nm'
+                            f'({x_thick}, {y_thick}): '
+                            f'thickness={thickness_data["thickness"]:.2f} nm'
                         )
                         break
 
             if thickness_data is None:
                 logger.warning(
-                    f'No thickness data found for position {pos_str} at ({x_pos}, {y_pos})'
+                    f'No thickness data found for position {pos_str} '
+                    f'at ({x_pos}, {y_pos})'
                 )
 
             # Convert to appropriate units
             thickness_m = (
-                thickness_data['thickness'] * ureg('nm') if thickness_data is not None else None
+                thickness_data['thickness'] * ureg('nm')
+                if thickness_data is not None
+                else None
             )
             roughness_m = (
-                thickness_data['roughness'] * ureg('nm') if thickness_data is not None else None
+                thickness_data['roughness'] * ureg('nm')
+                if thickness_data is not None
+                else None
             )
             mse = thickness_data['mse'] if thickness_data is not None else None
-            absolute_mse = thickness_data['absolute_mse'] if thickness_data is not None else None
+            absolute_mse = (
+                thickness_data['absolute_mse'] if thickness_data is not None else None
+            )
             e_inf = thickness_data['e_inf'] if thickness_data is not None else None
             ir_amp = thickness_data['ir_amp'] if thickness_data is not None else None
 
@@ -630,6 +638,132 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 PlotlyFigure(
                     label='Thickness Map',
                     figure=plot_json2,
+                )
+            )
+
+        # Plot roughness map if we have roughness data
+        roughness_data = []
+        for r in self.results:
+            if r.roughness is not None:
+                roughness_data.append(
+                    {
+                        'x': r.x_absolute.to('mm').magnitude,
+                        'y': r.y_absolute.to('mm').magnitude,
+                        'roughness': r.roughness.to('nm').magnitude,
+                    }
+                )
+
+        if roughness_data:
+            # Check if it's 1D or 2D data
+            x_vals_r = [d['x'] for d in roughness_data]
+            y_vals_r = [d['y'] for d in roughness_data]
+            roughness_vals = [d['roughness'] for d in roughness_data]
+
+            unique_x_r = len(set(x_vals_r))
+            unique_y_r = len(set(y_vals_r))
+
+            if unique_x_r == 1 or unique_y_r == 1:
+                # 1D data - line plot
+                if unique_x_r == 1:
+                    # Y varies
+                    fig3 = go.Figure()
+                    fig3.add_trace(
+                        go.Scatter(
+                            x=y_vals_r,
+                            y=roughness_vals,
+                            mode='lines+markers',
+                            name='Roughness',
+                        )
+                    )
+                    fig3.update_layout(
+                        title='Roughness vs Y Position',
+                        xaxis_title='Y Position (mm)',
+                        yaxis_title='Roughness (nm)',
+                        template='plotly_white',
+                        hovermode='closest',
+                        dragmode='zoom',
+                        xaxis=dict(fixedrange=False),
+                        yaxis=dict(fixedrange=False),
+                    )
+                else:
+                    # X varies
+                    fig3 = go.Figure()
+                    fig3.add_trace(
+                        go.Scatter(
+                            x=x_vals_r,
+                            y=roughness_vals,
+                            mode='lines+markers',
+                            name='Roughness',
+                        )
+                    )
+                    fig3.update_layout(
+                        title='Roughness vs X Position',
+                        xaxis_title='X Position (mm)',
+                        yaxis_title='Roughness (nm)',
+                        template='plotly_white',
+                        hovermode='closest',
+                        dragmode='zoom',
+                        xaxis=dict(fixedrange=False),
+                        yaxis=dict(fixedrange=False),
+                    )
+            else:
+                # 2D data - heatmap with scatter overlay
+                # Create a grid for the heatmap
+                xi_r = np.linspace(min(x_vals_r), max(x_vals_r), 100)
+                yi_r = np.linspace(min(y_vals_r), max(y_vals_r), 100)
+                xi_r, yi_r = np.meshgrid(xi_r, yi_r)
+                zi_r = griddata(
+                    (x_vals_r, y_vals_r), roughness_vals, (xi_r, yi_r), method='linear'
+                )
+
+                # Create a heatmap
+                heatmap_r = go.Heatmap(
+                    x=xi_r[0],
+                    y=yi_r[:, 0],
+                    z=zi_r,
+                    colorscale='Viridis',
+                    colorbar=dict(title='Roughness (nm)'),
+                )
+
+                # Create a scatter plot overlay
+                scatter_r = go.Scatter(
+                    x=x_vals_r,
+                    y=y_vals_r,
+                    mode='markers',
+                    marker=dict(
+                        size=15,
+                        color=roughness_vals,
+                        colorscale='Viridis',
+                        showscale=False,
+                        line=dict(
+                            width=2,
+                            color='DarkSlateGrey',
+                        ),
+                    ),
+                    customdata=roughness_vals,
+                    hovertemplate='<b>Roughness:</b> %{customdata:.1f} nm',
+                )
+
+                # Combine heatmap and scatter plot
+                fig3 = go.Figure(data=[heatmap_r, scatter_r])
+
+                fig3.update_layout(
+                    title='Roughness Colormap',
+                    xaxis_title='X Position (mm)',
+                    yaxis_title='Y Position (mm)',
+                    template='plotly_white',
+                    hovermode='closest',
+                    dragmode='zoom',
+                    xaxis=dict(fixedrange=False),
+                    yaxis=dict(fixedrange=False),
+                )
+
+            plot_json3 = fig3.to_plotly_json()
+            plot_json3['config'] = dict(scrollZoom=False)
+            self.figures.append(
+                PlotlyFigure(
+                    label='Roughness Map',
+                    figure=plot_json3,
                 )
             )
 
