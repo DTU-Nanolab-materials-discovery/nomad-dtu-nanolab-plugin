@@ -31,10 +31,6 @@ if TYPE_CHECKING:
 
 m_package = Package(name='DTU Ellipsometry measurement schema')
 
-# Constants for thickness file column counts
-THICKNESS_1D_COLUMNS = 2
-THICKNESS_2D_COLUMNS = 3
-
 
 class EllipsometrySpectra(ArchiveSection):
     m_def = Section()
@@ -76,6 +72,48 @@ class EllipsometryMappingResult(MappingResult, Schema):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='nm',
+        ),
+    )
+
+    roughness = Quantity(
+        type=np.float64,
+        unit='m',
+        description='The surface roughness at this position',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='nm',
+        ),
+    )
+
+    mse = Quantity(
+        type=np.float64,
+        description='The Mean Squared Error (MSE) of the fit',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+
+    absolute_mse = Quantity(
+        type=np.float64,
+        description='The Absolute Mean Squared Error',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+
+    e_inf = Quantity(
+        type=np.float64,
+        description='The high-frequency dielectric constant (E Inf)',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+
+    ir_amp = Quantity(
+        type=np.float64,
+        description='The infrared amplitude (IR Amp)',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
         ),
     )
 
@@ -285,65 +323,36 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         logger.debug(f'Found {len(positions)} positions in n and k file.')
 
-        # Create a mapping from position to thickness
+        # Create a mapping from position to thickness and other parameters
         thickness_map = {}
         if not thickness_df.empty:
-            num_cols = thickness_df.shape[1]
-            logger.debug(f'Thickness file has {num_cols} columns')
+            # Expected columns: X (cm), Y (cm), MSE, Absolute MSE, Roughness (nm), Thickness # 1 (nm)
+            logger.debug(f'Thickness file has {thickness_df.shape[1]} columns')
+            logger.debug(f'Thickness file columns: {thickness_df.columns.tolist()}')
 
-            if num_cols == THICKNESS_1D_COLUMNS:
-                # 1D thickness data: (X, Thickness) or (Y, Thickness)
-                # Determine which coordinate varies by checking the n&k positions
-                first_pos = list(positions.keys())[0]
-                first_x, first_y = eval(first_pos)
+            # Build thickness map with all parameters
+            for _, row in thickness_df.iterrows():
+                x_pos = float(row.iloc[0])  # X (cm)
+                y_pos = float(row.iloc[1])  # Y (cm)
+                mse = float(row.iloc[2])  # MSE
+                abs_mse = float(row.iloc[3])  # Absolute MSE
+                roughness_nm = float(row.iloc[4])  # Roughness (nm)
+                thickness_nm = float(row.iloc[5])  # Thickness # 1 (nm)
+                e_inf = float(row.iloc[6])  # E Inf
+                ir_amp = float(row.iloc[7])  # IR Amp
+                
+                thickness_map[(x_pos, y_pos)] = {
+                    'thickness': thickness_nm,
+                    'roughness': roughness_nm,
+                    'mse': mse,
+                    'absolute_mse': abs_mse,
+                    'e_inf': e_inf,
+                    'ir_amp': ir_amp,
+                }
 
-                # Check if X varies (different X values in positions)
-                x_values = set()
-                y_values = set()
-                for pos_str in positions.keys():
-                    x, y = eval(pos_str)
-                    x_values.add(x)
-                    y_values.add(y)
-
-                x_varies = len(x_values) > 1
-                y_varies = len(y_values) > 1
-
-                logger.debug(f'X varies: {x_varies}, Y varies: {y_varies}')
-                logger.debug(f'Unique X values: {sorted(x_values)}')
-                logger.debug(f'Unique Y values: {sorted(y_values)}')
-
-                # Build thickness map
-                for _, row in thickness_df.iterrows():
-                    coord = float(row.iloc[0])
-                    thickness_val = float(row.iloc[1])
-
-                    if x_varies and not y_varies:
-                        # X coordinate varies, Y is constant
-                        y_const = list(y_values)[0]
-                        thickness_map[(coord, y_const)] = thickness_val
-                    elif y_varies and not x_varies:
-                        # Y coordinate varies, X is constant
-                        x_const = list(x_values)[0]
-                        thickness_map[(x_const, coord)] = thickness_val
-                    else:
-                        # Assume X varies (most common case)
-                        thickness_map[(coord, 0.0)] = thickness_val
-
-                logger.debug(
-                    f'Created 1D thickness map with {len(thickness_map)} entries'
-                )
-
-            elif num_cols >= THICKNESS_2D_COLUMNS:
-                # 2D thickness data: (X, Y, Thickness)
-                for _, row in thickness_df.iterrows():
-                    x_pos = float(row.iloc[0])
-                    y_pos = float(row.iloc[1])
-                    thickness_val = float(row.iloc[2])
-                    thickness_map[(x_pos, y_pos)] = thickness_val
-
-                logger.debug(
-                    f'Created 2D thickness map with {len(thickness_map)} entries'
-                )
+            logger.debug(
+                f'Created thickness map with {len(thickness_map)} entries'
+            )
 
         # Create a result for each position
         for pos_str, cols in positions.items():
@@ -374,38 +383,48 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 k=k_values,
             )
 
-            # Get thickness for this position using fuzzy matching
-            thickness_nm = None
+            # Get thickness and other parameters for this position using fuzzy matching
+            thickness_data = None
             tolerance = 0.01  # Tolerance for coordinate matching (1 cm = 10 mm)
 
             # Try exact match first
             if (x_pos, y_pos) in thickness_map:
-                thickness_nm = thickness_map[(x_pos, y_pos)]
+                thickness_data = thickness_map[(x_pos, y_pos)]
                 logger.debug(
-                    f'Exact thickness match for {pos_str}: {thickness_nm:.2f} nm'
+                    f'Exact match for {pos_str}: thickness={thickness_data["thickness"]:.2f} nm, '
+                    f'roughness={thickness_data["roughness"]:.2f} nm, '
+                    f'MSE={thickness_data["mse"]:.4f}'
                 )
             else:
                 # Try fuzzy match (within tolerance)
-                for (x_thick, y_thick), thick_val in thickness_map.items():
+                for (x_thick, y_thick), data in thickness_map.items():
                     if (
                         abs(x_thick - x_pos) < tolerance
                         and abs(y_thick - y_pos) < tolerance
                     ):
-                        thickness_nm = thick_val
+                        thickness_data = data
                         logger.debug(
-                            f'Fuzzy thickness match for {pos_str} with '
-                            f'({x_thick}, {y_thick}): {thickness_nm:.2f} nm'
+                            f'Fuzzy match for {pos_str} with '
+                            f'({x_thick}, {y_thick}): thickness={thickness_data["thickness"]:.2f} nm'
                         )
                         break
 
-            if thickness_nm is None:
+            if thickness_data is None:
                 logger.warning(
-                    f'No thickness found for position {pos_str} at ({x_pos}, {y_pos})'
+                    f'No thickness data found for position {pos_str} at ({x_pos}, {y_pos})'
                 )
 
+            # Convert to appropriate units
             thickness_m = (
-                thickness_nm * ureg('nm') if thickness_nm is not None else None
+                thickness_data['thickness'] * ureg('nm') if thickness_data is not None else None
             )
+            roughness_m = (
+                thickness_data['roughness'] * ureg('nm') if thickness_data is not None else None
+            )
+            mse = thickness_data['mse'] if thickness_data is not None else None
+            absolute_mse = thickness_data['absolute_mse'] if thickness_data is not None else None
+            e_inf = thickness_data['e_inf'] if thickness_data is not None else None
+            ir_amp = thickness_data['ir_amp'] if thickness_data is not None else None
 
             # Create result
             result = EllipsometryMappingResult(
@@ -413,6 +432,11 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 x_absolute=x_pos * ureg('cm'),
                 y_absolute=y_pos * ureg('cm'),
                 thickness=thickness_m,
+                roughness=roughness_m,
+                mse=mse,
+                absolute_mse=absolute_mse,
+                e_inf=e_inf,
+                ir_amp=ir_amp,
                 spectra=[spectra],
             )
             result.normalize(archive, logger)
