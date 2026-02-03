@@ -1,9 +1,22 @@
+"""Schema definitions for spectroscopic ellipsometry measurements.
+
+This module provides NOMAD schema classes for storing and visualizing ellipsometry
+measurement data from J.A. Woollam CompleteEASE software. It handles:
+- Optical constants (n, k) as a function of wavelength
+- Film thickness and surface roughness mapping
+- Fit quality metrics (MSE)
+- Dielectric function parameters (epsilon_inf, ir_pole_amp)
+
+The data is imported from tab-separated text files exported from CompleteEASE,
+including n&k optical constants and thickness/fit parameter maps.
+"""
+
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
-from nomad.datamodel.data import ArchiveSection, Schema
+from nomad.datamodel.data import Schema
 from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
@@ -32,28 +45,25 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU Ellipsometry measurement schema')
 
 
-class EllipsometrySpectra(ArchiveSection):
-    m_def = Section()
+class EllipsometryMappingResult(MappingResult):
+    """Results from a single ellipsometry measurement position.
 
-    wavelength = Quantity(
-        type=np.dtype(np.float64),
-        shape=['*'],
-        unit='nm',
-        description='The wavelength values in nm',
-    )
-    n = Quantity(
-        type=np.dtype(np.float64),
-        shape=['*'],
-        description='The refractive index n',
-    )
-    k = Quantity(
-        type=np.dtype(np.float64),
-        shape=['*'],
-        description='The extinction coefficient k',
-    )
+    This class stores the optical constants (n, k), film properties (thickness,
+    roughness), and fit parameters (MSE, dielectric constants) for one spatial
+    position in an ellipsometry mapping measurement.
 
+    Attributes:
+        position: String representation of the (x, y) measurement coordinates
+        thickness: Film thickness at this position
+        roughness: Surface roughness at this position
+        mse: Mean squared error of the model fit
+        epsilon_inf: High-frequency dielectric constant from the model
+        ir_pole_amp: Infrared oscillator amplitude from the model
+        wavelength: Array of wavelength values
+        n: Array of refractive index values
+        k: Array of extinction coefficient values
+    """
 
-class EllipsometryMappingResult(MappingResult, Schema):
     m_def = Section()
 
     position = Quantity(
@@ -87,32 +97,52 @@ class EllipsometryMappingResult(MappingResult, Schema):
 
     mse = Quantity(
         type=np.float64,
-        description='The Mean Squared Error (MSE) of the fit',
+        description=(
+            'The Mean Squared Error (MSE) of the fit, a measure of the '
+            'goodness-of-fit between the model and experimental data'
+        ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
         ),
     )
 
-    e_inf = Quantity(
+    epsilon_inf = Quantity(
         type=np.float64,
-        description='The high-frequency dielectric constant (E Inf)',
+        description=(
+            'The high-frequency dielectric constant (ε∞), representing the'
+            "material's relative permittivity at optical frequencies"
+        ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
         ),
     )
 
-    ir_amp = Quantity(
+    ir_pole_amp = Quantity(
         type=np.float64,
-        description='The infrared amplitude (IR Amp)',
+        description=(
+            'The infrared pole amplitude, representing the strength of the'
+            'infrared oscillator in the dielectric function model'
+        ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
         ),
     )
 
-    spectra = SubSection(
-        section_def=EllipsometrySpectra,
-        repeats=True,
-        description='The ellipsometry spectra (n and k)',
+    wavelength = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='nm',
+        description='The wavelength values in nm',
+    )
+    n = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        description='The refractive index n',
+    )
+    k = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        description='The extinction coefficient k',
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -133,7 +163,7 @@ class EllipsometryMetadata(Schema):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `PLMetadata` class.
+        Normalizer for the `EllipsometryMetadata` class.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
@@ -145,6 +175,31 @@ class EllipsometryMetadata(Schema):
 
 
 class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
+    """Main schema for spectroscopic ellipsometry measurements.
+
+    This class represents a complete ellipsometry measurement session, which may
+    include data from multiple spatial positions. It handles data import from
+    J.A. Woollam CompleteEASE export files and creates interactive visualizations
+    of optical constants, thickness maps, and roughness maps.
+
+    The measurement data is imported from two types of exported text files:
+    1. n_and_k_file: Contains wavelength-dependent optical constants for each position
+    2. thickness_file: Contains film thickness, roughness, and fit parameters
+
+    The class automatically:
+    - Parses the exported data files
+    - Matches data from different files by spatial position
+    - Creates interactive Plotly visualizations (1D line plots or 2D heatmaps)
+    - Links to the sample being measured
+
+    Attributes:
+        native_file: The raw SESNAP file from the instrument (not currently parsed)
+        n_and_k_file: Exported optical constants file from CompleteEASE
+        thickness_file: Exported thickness and fit parameters file from CompleteEASE
+        metadata: Measurement metadata (reserved for future use)
+        results: List of results from each measured position
+    """
+
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Ellipsometry Measurement',
@@ -158,6 +213,12 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
         a_eln={'component': 'FileEditQuantity', 'label': 'exported n and k text file'},
+        description=(
+            'The exported n and k text file from the CompleteEASE software'
+            'from Woolam, containing wavelength, n, and k values for each position'
+            '(see https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/'
+            'for details on the data export procedure)'
+        ),
     )
     thickness_file = Quantity(
         type=str,
@@ -166,6 +227,12 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             'component': 'FileEditQuantity',
             'label': 'exported thickness text file',
         },
+        description=(
+            'The exported thickness text file from the CompleteEASE software'
+            'from Woolam, containing thickness and other parameters for each position'
+            '(see https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/'
+            'for details on the data export procedure)'
+        ),
     )
     metadata = SubSection(
         section_def=EllipsometryMetadata,
@@ -234,19 +301,21 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             return pd.DataFrame()
 
         with archive.m_context.raw_file(self.n_and_k_file) as file:
-            # Read the header to check if first column is energy or wavelength
-            # Files have 2-line header: "Optical Constants" then the actual column names
+            # CompleteEASE exports n&k files with a 2-line header:
+            # Line 1: "Optical Constants"
+            # Line 2: Column names (either "Energy (eV)" or "Wavelength (nm)"
+            #         + position columns)
             with open(file.name) as f:
                 f.readline()  # Skip first line ("Optical Constants")
                 header_line = f.readline().strip()  # Read second line with column names
 
-            # Read the data, skipping first line (skiprows=1 means
-            # use line 2 as header)
-            # Important: index_col=False to prevent first column from being
-            # used as index
+            # Read the data file as tab-separated values
+            # skiprows=1: Use line 2 as header (skip "Optical Constants" title)
+            # index_col=False: Prevent pandas from using first column as row index
             df = pd.read_csv(file.name, sep='\t', skiprows=1, index_col=False)
 
-            # Check if first column is "Energy (eV)" and convert to wavelength (nm)
+            # CompleteEASE can export spectral data as either energy or wavelength
+            # Check first column and convert energy to wavelength if needed
             first_col_name = header_line.split('\t')[0]
             if first_col_name == 'Energy (eV)':
                 logger.debug(
@@ -298,47 +367,56 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         wavelength = nk_df.iloc[:, 0].to_numpy() * ureg('nm')
         logger.debug(f'Extracted {len(wavelength)} wavelength points')
 
-        # Parse the n and k columns to extract position and values
-        # Columns are named like 'n: (-1.8,0)', 'k: (-1.8,0)', etc.
+        # Parse the n and k columns to extract position information
+        # CompleteEASE names columns as 'n: (x,y)' and 'k: (x,y)' where (x,y)
+        # are the stage coordinates in cm. We extract these to match with
+        # thickness data.
+        # Example columns: 'n: (-1.8,0)', 'k: (-1.8,0)', 'n: (-1.6,0)', ...
+        # Dictionary: position_string -> {'n_col': ..., 'k_col': ...}
         positions = {}
-        for col in nk_df.columns[1:]:
+        for col in nk_df.columns[1:]:  # Skip first column (wavelength/energy)
             if col.startswith('n: '):
-                pos_str = col.split('n: ')[1]
+                pos_str = col.split('n: ')[1]  # Extract '(x,y)' part
                 if pos_str not in positions:
                     positions[pos_str] = {}
                 positions[pos_str]['n_col'] = col
             elif col.startswith('k: '):
-                pos_str = col.split('k: ')[1]
+                pos_str = col.split('k: ')[1]  # Extract '(x,y)' part
                 if pos_str not in positions:
                     positions[pos_str] = {}
                 positions[pos_str]['k_col'] = col
 
         logger.debug(f'Found {len(positions)} positions in n and k file.')
 
-        # Create a mapping from position to thickness and other parameters
+        # Create a mapping from position coordinates to thickness and fit
+        # parameters. This allows us to merge data from the two separate
+        # export files.
+        # Dictionary: (x, y) -> {'thickness': ..., 'roughness': ..., ...}
         thickness_map = {}
         if not thickness_df.empty:
-            # Expected columns: X (cm), Y (cm), MSE, Absolute MSE,
-            # Roughness (nm), Thickness # 1 (nm)
+            # Expected columns from CompleteEASE thickness export:
+            # 'X (cm)', 'Y (cm)', 'MSE', 'Absolute MSE', 'Roughness (nm)',
+            # 'Thickness # 1 (nm)', 'E Inf', 'IR Amp', etc.
             logger.debug(f'Thickness file has {thickness_df.shape[1]} columns')
             logger.debug(f'Thickness file columns: {thickness_df.columns.tolist()}')
 
-            # Build thickness map with all parameters using explicit column names
+            # Build a lookup table indexed by (x, y) coordinates
+            # This enables matching thickness data with n&k data by position
             for _, row in thickness_df.iterrows():
                 x_pos = float(row['X (cm)'])
                 y_pos = float(row['Y (cm)'])
                 mse = float(row['MSE'])
                 roughness_nm = float(row['Roughness (nm)'])
                 thickness_nm = float(row['Thickness # 1 (nm)'])
-                e_inf = float(row['E Inf'])
-                ir_amp = float(row['IR Amp'])
+                epsilon_inf = float(row['E Inf'])
+                ir_pole_amp = float(row['IR Amp'])
 
                 thickness_map[(x_pos, y_pos)] = {
                     'thickness': thickness_nm,
                     'roughness': roughness_nm,
                     'mse': mse,
-                    'e_inf': e_inf,
-                    'ir_amp': ir_amp,
+                    'epsilon_inf': epsilon_inf,
+                    'ir_pole_amp': ir_pole_amp,
                 }
 
             logger.debug(f'Created thickness map with {len(thickness_map)} entries')
@@ -365,18 +443,13 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 f'k range [{k_values.min():.6f}, {k_values.max():.6f}]'
             )
 
-            # Create spectra
-            spectra = EllipsometrySpectra(
-                wavelength=wavelength,
-                n=n_values,
-                k=k_values,
-            )
-
-            # Get thickness and other parameters for this position using fuzzy matching
+            # Match thickness data to n&k data by position coordinates
+            # Use fuzzy matching to handle potential floating-point rounding differences
+            # between the two export files
             thickness_data = None
-            tolerance = 0.01  # Tolerance for coordinate matching (1 cm = 10 mm)
+            tolerance = 0.01  # Tolerance in cm (0.1 mm) for coordinate matching
 
-            # Try exact match first
+            # Try exact coordinate match first
             if (x_pos, y_pos) in thickness_map:
                 thickness_data = thickness_map[(x_pos, y_pos)]
                 logger.debug(
@@ -414,8 +487,12 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 thickness_data['roughness'] if thickness_data is not None else None
             )
             mse = thickness_data['mse'] if thickness_data is not None else None
-            e_inf = thickness_data['e_inf'] if thickness_data is not None else None
-            ir_amp = thickness_data['ir_amp'] if thickness_data is not None else None
+            epsilon_inf = (
+                thickness_data['epsilon_inf'] if thickness_data is not None else None
+            )
+            ir_pole_amp = (
+                thickness_data['ir_pole_amp'] if thickness_data is not None else None
+            )
 
             # Create result
             result = EllipsometryMappingResult(
@@ -425,9 +502,11 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 thickness=thickness_nm * ureg('nm'),
                 roughness=roughness_nm * ureg('nm'),
                 mse=mse,
-                e_inf=e_inf,
-                ir_amp=ir_amp,
-                spectra=[spectra],
+                epsilon_inf=epsilon_inf,
+                ir_pole_amp=ir_pole_amp,
+                wavelength=wavelength,
+                n=n_values,
+                k=k_values,
             )
             result.normalize(archive, logger)
             results.append(result)
@@ -440,21 +519,188 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         )
         merge_sections(self, ellipsometry, logger)
 
+    def _create_parameter_map(
+        self,
+        parameter_name: str,
+        parameter_label: str,
+        unit: str = 'nm',
+    ) -> PlotlyFigure | None:
+        """
+        Create a spatial map plot for any parameter from the ellipsometry results.
+
+        This helper method creates either a 1D line plot (for line scans) or a 2D
+        heatmap with scatter overlay (for area maps) depending on the dimensionality
+        of the measurement grid. The plot type is automatically determined by analyzing
+        the unique x and y coordinates.
+
+        Args:
+            parameter_name: The name of the parameter attribute in results
+                (e.g., 'thickness', 'roughness', 'mse')
+            parameter_label: The label to display in plot titles and axes
+                (e.g., 'Thickness', 'Roughness', 'Mean Squared Error')
+            unit: The unit to display in axis labels and hover text (default: 'nm')
+
+        Returns:
+            PlotlyFigure: An interactive plot if data exists for the parameter
+            None: If no data is available for the parameter
+        """
+        # Collect parameter values and coordinates from all measurement positions
+        param_data = []
+        for r in self.results:
+            param_value = getattr(r, parameter_name, None)
+            if param_value is not None:
+                param_data.append(
+                    {
+                        'x': r.x_absolute.to('mm').magnitude,
+                        'y': r.y_absolute.to('mm').magnitude,
+                        'value': param_value.to(unit).magnitude,
+                    }
+                )
+
+        if not param_data:
+            return None
+
+        # Extract coordinate and value arrays for plotting
+        x_vals = [d['x'] for d in param_data]
+        y_vals = [d['y'] for d in param_data]
+        values = [d['value'] for d in param_data]
+
+        # Determine dimensionality by counting unique coordinates
+        # This tells us if we have a line scan (1D) or area map (2D)
+        unique_x = len(set(x_vals))  # Number of distinct x positions
+        unique_y = len(set(y_vals))  # Number of distinct y positions
+
+        if unique_x == 1 or unique_y == 1:
+            # 1D data - create a line plot with markers
+            if unique_x == 1:
+                # Y varies
+                fig = go.Figure()
+                fig.add_trace(
+                    go.Scatter(
+                        x=y_vals,
+                        y=values,
+                        mode='lines+markers',
+                        name=parameter_label,
+                    )
+                )
+                fig.update_layout(
+                    title=f'{parameter_label} vs Y Position',
+                    xaxis_title='Y Position (mm)',
+                    yaxis_title=f'{parameter_label} ({unit})',
+                    template='plotly_white',
+                    hovermode='closest',
+                    dragmode='zoom',
+                    xaxis=dict(fixedrange=False),
+                    yaxis=dict(fixedrange=False),
+                )
+            else:
+                # X varies
+                fig = go.Figure()
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_vals,
+                        y=values,
+                        mode='lines+markers',
+                        name=parameter_label,
+                    )
+                )
+                fig.update_layout(
+                    title=f'{parameter_label} vs X Position',
+                    xaxis_title='X Position (mm)',
+                    yaxis_title=f'{parameter_label} ({unit})',
+                    template='plotly_white',
+                    hovermode='closest',
+                    dragmode='zoom',
+                    xaxis=dict(fixedrange=False),
+                    yaxis=dict(fixedrange=False),
+                )
+        else:
+            # 2D data - create a heatmap with scatter overlay
+            # Generate a regular interpolation grid for smooth heatmap visualization
+            # The actual measurement points are shown as scatter markers on top
+            xi = np.linspace(min(x_vals), max(x_vals), 100)  # 100 points in x
+            yi = np.linspace(min(y_vals), max(y_vals), 100)  # 100 points in y
+            xi, yi = np.meshgrid(xi, yi)  # Create 2D grid
+            # Interpolate irregular measurement points onto regular grid
+            # using linear interpolation
+            zi = griddata((x_vals, y_vals), values, (xi, yi), method='linear')
+
+            # Create a heatmap
+            heatmap = go.Heatmap(
+                x=xi[0],
+                y=yi[:, 0],
+                z=zi,
+                colorscale='Viridis',
+                colorbar=dict(title=f'{parameter_label} ({unit})'),
+            )
+
+            # Create a scatter plot overlay
+            scatter = go.Scatter(
+                x=x_vals,
+                y=y_vals,
+                mode='markers',
+                marker=dict(
+                    size=15,
+                    color=values,
+                    colorscale='Viridis',
+                    showscale=False,
+                    line=dict(
+                        width=2,
+                        color='DarkSlateGrey',
+                    ),
+                ),
+                customdata=values,
+                hovertemplate=f'<b>{parameter_label}:</b> %{{customdata:.1f}} {unit}',
+            )
+
+            # Combine heatmap and scatter plot
+            fig = go.Figure(data=[heatmap, scatter])
+
+            fig.update_layout(
+                title=f'{parameter_label} Colormap',
+                xaxis_title='X Position (mm)',
+                yaxis_title='Y Position (mm)',
+                template='plotly_white',
+                hovermode='closest',
+                dragmode='zoom',
+                xaxis=dict(fixedrange=False),
+                yaxis=dict(fixedrange=False),
+            )
+
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+        return PlotlyFigure(
+            label=f'{parameter_label} Map',
+            figure=plot_json,
+        )
+
     def plot(self) -> None:
         """
-        Create plots for the ellipsometry data.
+        Generate all interactive Plotly visualizations for the ellipsometry data.
+
+        Creates three types of plots:
+        1. Optical constants (n and k) vs wavelength for all positions
+        2. Thickness spatial map (1D or 2D depending on measurement grid)
+        3. Roughness spatial map (1D or 2D depending on measurement grid)
+        4. MSE (fit quality) spatial map (1D or 2D depending on measurement grid)
+
+        All plots are interactive with zoom, pan, and hover capabilities.
         """
         if not self.results:
             return
 
-        # Plot n and k spectra
+        # ===== Plot 1: Optical Constants (n and k) vs Wavelength =====
+        # Create a multi-trace plot showing n and k for all measurement positions
         fig = go.Figure()
         for result in self.results:
-            if result.spectra:
-                spectrum = result.spectra[0]
-                wavelength = spectrum.wavelength.to('nm').magnitude
-                n = spectrum.n
-                k = spectrum.k
+            if (
+                result.wavelength is not None
+                and result.n is not None
+                and result.k is not None
+            ):
+                wavelength = result.wavelength.to('nm').magnitude
+                n = result.n
+                k = result.k
                 position = result.position
 
                 fig.add_trace(
@@ -486,7 +732,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             yaxis=dict(fixedrange=False),
         )
 
+        # Configure and store the optical constants plot
         plot_json = fig.to_plotly_json()
+        # Disable scroll zoom for better UX
         plot_json['config'] = dict(scrollZoom=False)
         self.figures.append(
             PlotlyFigure(
@@ -495,269 +743,40 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
         )
 
-        # Plot thickness map if we have thickness data
-        # For 1D data: line plot
-        # For 2D data: heatmap or contour plot
-        thickness_data = []
-        for r in self.results:
-            if r.thickness is not None:
-                thickness_data.append(
-                    {
-                        'x': r.x_absolute.to('mm').magnitude,
-                        'y': r.y_absolute.to('mm').magnitude,
-                        'thickness': r.thickness.to('nm').magnitude,
-                    }
-                )
+        # ===== Plot 2: Thickness Spatial Map =====
+        # Use the helper method to create a thickness map (1D or 2D)
+        thickness_fig = self._create_parameter_map('thickness', 'Thickness', 'nm')
+        if thickness_fig:
+            self.figures.append(thickness_fig)
 
-        if thickness_data:
-            # Check if it's 1D or 2D data
-            x_vals = [d['x'] for d in thickness_data]
-            y_vals = [d['y'] for d in thickness_data]
-            thickness_vals = [d['thickness'] for d in thickness_data]
+        # ===== Plot 3: Roughness Spatial Map =====
+        # Create a roughness map (1D or 2D)
+        roughness_fig = self._create_parameter_map('roughness', 'Roughness', 'nm')
+        if roughness_fig:
+            self.figures.append(roughness_fig)
 
-            unique_x = len(set(x_vals))
-            unique_y = len(set(y_vals))
-
-            if unique_x == 1 or unique_y == 1:
-                # 1D data - line plot
-                if unique_x == 1:
-                    # Y varies
-                    fig2 = go.Figure()
-                    fig2.add_trace(
-                        go.Scatter(
-                            x=y_vals,
-                            y=thickness_vals,
-                            mode='lines+markers',
-                            name='Thickness',
-                        )
-                    )
-                    fig2.update_layout(
-                        title='Thickness vs Y Position',
-                        xaxis_title='Y Position (mm)',
-                        yaxis_title='Thickness (nm)',
-                        template='plotly_white',
-                        hovermode='closest',
-                        dragmode='zoom',
-                        xaxis=dict(fixedrange=False),
-                        yaxis=dict(fixedrange=False),
-                    )
-                else:
-                    # X varies
-                    fig2 = go.Figure()
-                    fig2.add_trace(
-                        go.Scatter(
-                            x=x_vals,
-                            y=thickness_vals,
-                            mode='lines+markers',
-                            name='Thickness',
-                        )
-                    )
-                    fig2.update_layout(
-                        title='Thickness vs X Position',
-                        xaxis_title='X Position (mm)',
-                        yaxis_title='Thickness (nm)',
-                        template='plotly_white',
-                        hovermode='closest',
-                        dragmode='zoom',
-                        xaxis=dict(fixedrange=False),
-                        yaxis=dict(fixedrange=False),
-                    )
-            else:
-                # 2D data - heatmap with scatter overlay (like EDX)
-                # Create a grid for the heatmap
-                xi = np.linspace(min(x_vals), max(x_vals), 100)
-                yi = np.linspace(min(y_vals), max(y_vals), 100)
-                xi, yi = np.meshgrid(xi, yi)
-                zi = griddata(
-                    (x_vals, y_vals), thickness_vals, (xi, yi), method='linear'
-                )
-
-                # Create a heatmap
-                heatmap = go.Heatmap(
-                    x=xi[0],
-                    y=yi[:, 0],
-                    z=zi,
-                    colorscale='Viridis',
-                    colorbar=dict(title='Thickness (nm)'),
-                )
-
-                # Create a scatter plot overlay
-                scatter = go.Scatter(
-                    x=x_vals,
-                    y=y_vals,
-                    mode='markers',
-                    marker=dict(
-                        size=15,
-                        color=thickness_vals,
-                        colorscale='Viridis',
-                        showscale=False,
-                        line=dict(
-                            width=2,
-                            color='DarkSlateGrey',
-                        ),
-                    ),
-                    customdata=thickness_vals,
-                    hovertemplate='<b>Thickness:</b> %{customdata:.1f} nm',
-                )
-
-                # Combine heatmap and scatter plot
-                fig2 = go.Figure(data=[heatmap, scatter])
-
-                fig2.update_layout(
-                    title='Thickness Colormap',
-                    xaxis_title='X Position (mm)',
-                    yaxis_title='Y Position (mm)',
-                    template='plotly_white',
-                    hovermode='closest',
-                    dragmode='zoom',
-                    xaxis=dict(fixedrange=False),
-                    yaxis=dict(fixedrange=False),
-                )
-
-            plot_json2 = fig2.to_plotly_json()
-            plot_json2['config'] = dict(scrollZoom=False)
-            self.figures.append(
-                PlotlyFigure(
-                    label='Thickness Map',
-                    figure=plot_json2,
-                )
-            )
-
-        # Plot roughness map if we have roughness data
-        roughness_data = []
-        for r in self.results:
-            if r.roughness is not None:
-                roughness_data.append(
-                    {
-                        'x': r.x_absolute.to('mm').magnitude,
-                        'y': r.y_absolute.to('mm').magnitude,
-                        'roughness': r.roughness.to('nm').magnitude,
-                    }
-                )
-
-        if roughness_data:
-            # Check if it's 1D or 2D data
-            x_vals_r = [d['x'] for d in roughness_data]
-            y_vals_r = [d['y'] for d in roughness_data]
-            roughness_vals = [d['roughness'] for d in roughness_data]
-
-            unique_x_r = len(set(x_vals_r))
-            unique_y_r = len(set(y_vals_r))
-
-            if unique_x_r == 1 or unique_y_r == 1:
-                # 1D data - line plot
-                if unique_x_r == 1:
-                    # Y varies
-                    fig3 = go.Figure()
-                    fig3.add_trace(
-                        go.Scatter(
-                            x=y_vals_r,
-                            y=roughness_vals,
-                            mode='lines+markers',
-                            name='Roughness',
-                        )
-                    )
-                    fig3.update_layout(
-                        title='Roughness vs Y Position',
-                        xaxis_title='Y Position (mm)',
-                        yaxis_title='Roughness (nm)',
-                        template='plotly_white',
-                        hovermode='closest',
-                        dragmode='zoom',
-                        xaxis=dict(fixedrange=False),
-                        yaxis=dict(fixedrange=False),
-                    )
-                else:
-                    # X varies
-                    fig3 = go.Figure()
-                    fig3.add_trace(
-                        go.Scatter(
-                            x=x_vals_r,
-                            y=roughness_vals,
-                            mode='lines+markers',
-                            name='Roughness',
-                        )
-                    )
-                    fig3.update_layout(
-                        title='Roughness vs X Position',
-                        xaxis_title='X Position (mm)',
-                        yaxis_title='Roughness (nm)',
-                        template='plotly_white',
-                        hovermode='closest',
-                        dragmode='zoom',
-                        xaxis=dict(fixedrange=False),
-                        yaxis=dict(fixedrange=False),
-                    )
-            else:
-                # 2D data - heatmap with scatter overlay
-                # Create a grid for the heatmap
-                xi_r = np.linspace(min(x_vals_r), max(x_vals_r), 100)
-                yi_r = np.linspace(min(y_vals_r), max(y_vals_r), 100)
-                xi_r, yi_r = np.meshgrid(xi_r, yi_r)
-                zi_r = griddata(
-                    (x_vals_r, y_vals_r), roughness_vals, (xi_r, yi_r), method='linear'
-                )
-
-                # Create a heatmap
-                heatmap_r = go.Heatmap(
-                    x=xi_r[0],
-                    y=yi_r[:, 0],
-                    z=zi_r,
-                    colorscale='Viridis',
-                    colorbar=dict(title='Roughness (nm)'),
-                )
-
-                # Create a scatter plot overlay
-                scatter_r = go.Scatter(
-                    x=x_vals_r,
-                    y=y_vals_r,
-                    mode='markers',
-                    marker=dict(
-                        size=15,
-                        color=roughness_vals,
-                        colorscale='Viridis',
-                        showscale=False,
-                        line=dict(
-                            width=2,
-                            color='DarkSlateGrey',
-                        ),
-                    ),
-                    customdata=roughness_vals,
-                    hovertemplate='<b>Roughness:</b> %{customdata:.1f} nm',
-                )
-
-                # Combine heatmap and scatter plot
-                fig3 = go.Figure(data=[heatmap_r, scatter_r])
-
-                fig3.update_layout(
-                    title='Roughness Colormap',
-                    xaxis_title='X Position (mm)',
-                    yaxis_title='Y Position (mm)',
-                    template='plotly_white',
-                    hovermode='closest',
-                    dragmode='zoom',
-                    xaxis=dict(fixedrange=False),
-                    yaxis=dict(fixedrange=False),
-                )
-
-            plot_json3 = fig3.to_plotly_json()
-            plot_json3['config'] = dict(scrollZoom=False)
-            self.figures.append(
-                PlotlyFigure(
-                    label='Roughness Map',
-                    figure=plot_json3,
-                )
-            )
+        # ===== Plot 4: MSE (Fit Quality) Spatial Map =====
+        # Create a map showing the quality of the model fit at each position
+        # Lower MSE values indicate better fits
+        mse_fig = self._create_parameter_map('mse', 'Mean Squared Error', '')
+        if mse_fig:
+            self.figures.append(mse_fig)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        The normalize function of the `DTUEllipsometryMeasurement` section.
+        Normalize and process the ellipsometry measurement data.
+
+        This method is called automatically by NOMAD during data ingestion. It:
+        1. Links the measurement to the sample being measured
+        2. Reads and parses the exported data files (if not already processed)
+        3. Generates interactive visualizations
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger (BoundLogger): A structlog logger.
+                normalized.
+            logger (BoundLogger): A structlog logger for debugging and info messages.
         """
+        # Link to the sample being measured using filename from any available file
         filename = None
         if self.native_file:
             filename = self.native_file
@@ -768,7 +787,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if filename:
             self.add_sample_reference(filename, 'Ellipsometry', archive, logger)
 
-        # Read and write data if files are provided and results are empty
+        # Import and process data files if they haven't been processed yet
         if (self.n_and_k_file or self.thickness_file) and not self.results:
             thickness_df = self.read_thickness_file(archive, logger)
             nk_df = self.read_n_and_k_file(archive, logger)
