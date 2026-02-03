@@ -141,11 +141,16 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     electron_image_files = Quantity(
         type=str,
         shape=['*'],
-        description='Data files containing the electron images.',
+        description="""
+            Data files containing the electron images. Images are automatically mapped
+            to their respective spectra by extracting numbers from image filenames and
+            matching them with the spectrum numbers from the 'Spectrum Label' column
+            in the EDX data file (e.g., 'SE Image 1.png' matches 'Spectrum 1').
+        """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
         ),
-    )  # TODO: Add electron image handling in normalizer
+    )
     avg_layer_thickness = Quantity(
         type=np.float64,
         description="""
