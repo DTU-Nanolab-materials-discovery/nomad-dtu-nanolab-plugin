@@ -430,21 +430,6 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         #             )
         #         )
 
-    def _extract_spectrum_number(self, spectrum_label: str) -> int | None:
-        """
-        Extract the spectrum number from a spectrum label.
-
-        Args:
-            spectrum_label (str): The spectrum label (e.g., "Spectrum 1")
-
-        Returns:
-            int | None: The spectrum number if found, None otherwise.
-        """
-        match = re.search(r'\d+', str(spectrum_label))
-        if match:
-            return int(match.group())
-        return None
-
     def _create_image_mapping(self, logger: 'BoundLogger') -> dict[int, str]:
         """
         Create a mapping from spectrum numbers to image file paths.
@@ -550,7 +535,8 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             # Associate electron image with result if available
             if 'Spectrum Label' in df_data.columns:
                 spectrum_label = row['Spectrum Label']
-                spectrum_num = self._extract_spectrum_number(spectrum_label)
+                match = re.search(r'\d+', str(spectrum_label))
+                spectrum_num = int(match.group()) if match else None
 
                 if spectrum_num is not None and spectrum_num in image_mapping:
                     result.electron_image = image_mapping[spectrum_num]
