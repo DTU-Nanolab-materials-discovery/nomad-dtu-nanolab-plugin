@@ -321,7 +321,7 @@ After uploading ellipsometry data, verify:
 **Solutions**:
 
 - Verify files are in plain text (`.txt`) format
-- Check file size (should be < 5 MB typically)
+- Check file size (should be ≤ 5 MB typically)
 - Ensure files aren't corrupted
 - Try opening files in a text editor to verify content
 - Re-export from CompleteEASE
