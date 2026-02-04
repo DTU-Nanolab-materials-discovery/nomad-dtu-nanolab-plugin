@@ -28,7 +28,7 @@ The sputtering process extends NOMAD's `Process` and `Activity` base classes, pr
 
 The sputtering parser automatically processes machine log files and extracts relevant process information through a multi-step workflow:
 
-1. **Data Logging**: During depositon, more than 100 machine signals (pressure gauges, powers, flows, etc.) are logged through time using the native software of the sputtering tool (Lesker Eklipse). Relevant logged quantities include:
+1. **Data Logging**: During deposition, more than 100 machine signals (pressure gauges, powers, flows, etc.) are logged through time using the native software of the sputtering tool (Lesker Eklipse). Relevant logged quantities include:
    - Chamber pressure
    - Flow rates of reactive and non-reactive gases
    - Status of the S cracker
