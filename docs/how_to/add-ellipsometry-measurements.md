@@ -53,7 +53,7 @@ Before starting, you need:
 ![Fit parameters window](../assets/ellipsometry/fit-parameters.png)
 
 !!! tip "Quality Check"
-    Review the MSE values - lower values indicate better fits. Typical values should be < 10 for good fits.
+    Review the MSE values - lower values indicate better fits. Typical values should be ≤ 10 for good fits.
 
 ### 1.5 Export n&k Data
 
