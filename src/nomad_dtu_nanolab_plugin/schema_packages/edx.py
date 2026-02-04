@@ -133,10 +133,15 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         categories=[DTUNanolabCategory],
         label='EDX Measurement',
     )
+
     edx_data_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
         a_eln={'component': 'FileEditQuantity', 'label': 'EDX file'},
+        description="""
+            The csv file containing the analysis of the EDX measurement using
+            the LayerProbe software. Contains quantification results and alignment data.
+        """,
     )
     electron_image_files = Quantity(
         type=str,
@@ -150,6 +155,14 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
         ),
+    )
+    native_file_zip = Quantity(
+        type=str,
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
+        a_eln={'component': 'FileEditQuantity', 'label': 'Native data archive'},
+        description="""
+            A zip archive containing the native data files from the EDX measurement.
+        """,
     )
     avg_layer_thickness = Quantity(
         type=np.float64,
@@ -370,70 +383,6 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     figure=plot_json,
                 )
             )
-
-        # for i in range(len(quantifications) - 1):
-        #     for j in range(i + 1, len(quantifications)):
-        #         # Create a grid for the heatmap
-        #         comp_data = quantifications[i] / quantification[j]
-        #         xi = np.linspace(min(x), max(x), 100)
-        #         yi = np.linspace(min(y), max(y), 100)
-        #         xi, yi = np.meshgrid(xi, yi)
-        #         zi = griddata((x, y), comp_data, (xi, yi), method='linear')
-
-        #         # Create a scatter plot
-        #         scatter = go.Scatter(
-        #             x=x,
-        #             y=y,
-        #             mode='markers',
-        #             marker=dict(
-        #                 size=15,
-        #                 color=comp_data,  # Set color to atomic fraction values
-        #                 colorscale='Viridis',  # Choose a colorscale
-        #                 # colorbar=dict(title=f'{q} Atomic Fraction'),  # Add colorbar
-        #                 showscale=False,  # Hide the colorbar for the scatter plot
-        #                 line=dict(
-        #                     width=2,  # Set the width of the border
-        #                     color='DarkSlateGrey',  # Set the color of the border
-        #                 ),
-        #             ),
-        #             customdata=comp_data,  # Add atomic fraction data to customdata
-        #             hovertemplate=(
-        #                 f'<b>Atomic fraction of {i}/{j}:</b> %{{customdata}}'
-        #             ),
-        #         )
-
-        #         # Create a heatmap
-        #         heatmap = go.Heatmap(
-        #             x=xi[0],
-        #             y=yi[:, 0],
-        #             z=zi,
-        #             colorscale='Viridis',
-        #             colorbar=dict(title=f'{i}/{j} Atomic Fraction'),
-        #         )
-
-        #         # Combine scatter plot and heatmap
-        #         fig = go.Figure(data=[heatmap, scatter])
-
-        #         # Update layout
-        #         fig.update_layout(
-        #             title=f'{i}/{j} Atomic Fraction Colormap',
-        #             xaxis_title='X Position (mm)',
-        #             yaxis_title='Y Position (mm)',
-        #             template='plotly_white',
-        #             hovermode='closest',
-        #             dragmode='zoom',
-        #         )
-
-        #         plot_json = fig.to_plotly_json()
-        #         plot_json['config'] = dict(
-        #             scrollZoom=False,
-        #         )
-        #         self.figures.append(
-        #             PlotlyFigure(
-        #                 label=f'{i}/{j} Atomic Fraction',
-        #                 figure=plot_json,
-        #             )
-        #         )
 
     def _create_image_mapping(self, logger: 'BoundLogger') -> dict[int, str]:
         """
