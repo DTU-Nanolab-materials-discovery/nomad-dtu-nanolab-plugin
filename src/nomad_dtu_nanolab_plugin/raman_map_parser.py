@@ -767,7 +767,7 @@ class MappingRamanMeas:
         )
 
         fig.update_layout(
-            title=f'Raman Intensity Map at {target_wavenumber} cm⁻¹',
+            title=f'Raman Intensity Map at {target_wavenumber:.2f} cm⁻¹',
             xaxis_title='X Position (μm)',
             yaxis_title='Y Position (μm)',
         )
