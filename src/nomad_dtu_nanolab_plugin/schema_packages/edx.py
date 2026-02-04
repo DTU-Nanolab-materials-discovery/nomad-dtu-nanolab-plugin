@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 from ase.data import chemical_symbols
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
+    BrowserAdaptors,
     BrowserAnnotation,
     ELNAnnotation,
     ELNComponentEnum,
@@ -82,6 +83,13 @@ class EDXResult(MappingResult):
         section_def=EDXQuantification,
         repeats=True,
     )
+    electron_image = Quantity(
+        type=str,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+        ),
+        a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
+    )  # TODO: Add electron image handling in normalizer
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -125,10 +133,36 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         categories=[DTUNanolabCategory],
         label='EDX Measurement',
     )
+
     edx_data_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
         a_eln={'component': 'FileEditQuantity', 'label': 'EDX file'},
+        description="""
+            The csv file containing the analysis of the EDX measurement using
+            the LayerProbe software. Contains quantification results and alignment data.
+        """,
+    )
+    electron_image_files = Quantity(
+        type=str,
+        shape=['*'],
+        description="""
+            Data files containing the electron images. Images are automatically mapped
+            to their respective spectra by extracting numbers from image filenames and
+            matching them with the spectrum numbers from the 'Spectrum Label' column
+            in the EDX data file (e.g., 'SE Image 1.png' matches 'Spectrum 1').
+        """,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+        ),
+    )
+    native_file_zip = Quantity(
+        type=str,
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
+        a_eln={'component': 'FileEditQuantity', 'label': 'Native data archive'},
+        description="""
+            A zip archive containing the native data files from the EDX measurement.
+        """,
     )
     avg_layer_thickness = Quantity(
         type=np.float64,
@@ -350,69 +384,36 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 )
             )
 
-        # for i in range(len(quantifications) - 1):
-        #     for j in range(i + 1, len(quantifications)):
-        #         # Create a grid for the heatmap
-        #         comp_data = quantifications[i] / quantification[j]
-        #         xi = np.linspace(min(x), max(x), 100)
-        #         yi = np.linspace(min(y), max(y), 100)
-        #         xi, yi = np.meshgrid(xi, yi)
-        #         zi = griddata((x, y), comp_data, (xi, yi), method='linear')
+    def _create_image_mapping(self, logger: 'BoundLogger') -> dict[int, str]:
+        """
+        Create a mapping from spectrum numbers to image file paths.
 
-        #         # Create a scatter plot
-        #         scatter = go.Scatter(
-        #             x=x,
-        #             y=y,
-        #             mode='markers',
-        #             marker=dict(
-        #                 size=15,
-        #                 color=comp_data,  # Set color to atomic fraction values
-        #                 colorscale='Viridis',  # Choose a colorscale
-        #                 # colorbar=dict(title=f'{q} Atomic Fraction'),  # Add colorbar
-        #                 showscale=False,  # Hide the colorbar for the scatter plot
-        #                 line=dict(
-        #                     width=2,  # Set the width of the border
-        #                     color='DarkSlateGrey',  # Set the color of the border
-        #                 ),
-        #             ),
-        #             customdata=comp_data,  # Add atomic fraction data to customdata
-        #             hovertemplate=(
-        #                 f'<b>Atomic fraction of {i}/{j}:</b> %{{customdata}}'
-        #             ),
-        #         )
+        Returns:
+            dict[int, str]: A dictionary mapping spectrum numbers to image paths.
+        """
+        image_mapping = {}
 
-        #         # Create a heatmap
-        #         heatmap = go.Heatmap(
-        #             x=xi[0],
-        #             y=yi[:, 0],
-        #             z=zi,
-        #             colorscale='Viridis',
-        #             colorbar=dict(title=f'{i}/{j} Atomic Fraction'),
-        #         )
+        if not self.electron_image_files:
+            logger.debug('No electron image files provided.')
+            return image_mapping
 
-        #         # Combine scatter plot and heatmap
-        #         fig = go.Figure(data=[heatmap, scatter])
+        # Ensure electron_image_files is a list
+        image_files = self.electron_image_files
+        if isinstance(image_files, str):
+            image_files = [image_files]
 
-        #         # Update layout
-        #         fig.update_layout(
-        #             title=f'{i}/{j} Atomic Fraction Colormap',
-        #             xaxis_title='X Position (mm)',
-        #             yaxis_title='Y Position (mm)',
-        #             template='plotly_white',
-        #             hovermode='closest',
-        #             dragmode='zoom',
-        #         )
+        logger.debug(f'Available image files: {image_files}')
 
-        #         plot_json = fig.to_plotly_json()
-        #         plot_json['config'] = dict(
-        #             scrollZoom=False,
-        #         )
-        #         self.figures.append(
-        #             PlotlyFigure(
-        #                 label=f'{i}/{j} Atomic Fraction',
-        #                 figure=plot_json,
-        #             )
-        #         )
+        for img_file in image_files:
+            # Extract spectrum number from filename
+            # Pattern: "SE Image - Before/After X" where X is the spectrum number
+            match = re.search(r'(\d+)', img_file)
+            if match:
+                spectrum_num = int(match.group(1))
+                image_mapping[spectrum_num] = img_file
+                logger.debug(f'Mapped spectrum {spectrum_num} to image: {img_file}')
+
+        return image_mapping
 
     def write_edx_data(
         self,
@@ -458,6 +459,10 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             label for label in df_data.columns if re.match(pattern, label)
         ]
 
+        # Create image mapping from spectrum numbers to file paths
+        image_mapping = self._create_image_mapping(logger)
+        logger.debug(f'Image mapping: {image_mapping}')
+
         results = []
         for _, row in df_data.iterrows():
             quantifications = []
@@ -480,6 +485,19 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 )
             elif self.avg_density is not None:
                 result.assumed_material_density = avg_density
+
+            # Associate electron image with result if available
+            if 'Spectrum Label' in df_data.columns:
+                spectrum_label = row['Spectrum Label']
+                match = re.search(r'\d+', str(spectrum_label))
+                spectrum_num = int(match.group()) if match else None
+
+                if spectrum_num is not None and spectrum_num in image_mapping:
+                    result.electron_image = image_mapping[spectrum_num]
+                    logger.debug(
+                        f'Associated spectrum {spectrum_num}'
+                        f'with image: {result.electron_image}'
+                    )
 
             result.normalize(archive, logger)
             results.append(result)
