@@ -259,7 +259,8 @@ After adding EDX measurements:
 
 1. **[Plot Combinatorial EDX Data](plot-combinatorial-edx.md)** - Visualize the full library
 2. **[Add XRD Measurements](add-xrd-measurements.md)** - Add structural characterization
-3. **[Add Other Characterization](../reference/index.md)** - XPS, PL, Ellipsometry, etc.
+3. **[Add Ellipsometry Measurements](add-ellipsometry-measurements.md)** - Add optical properties
+4. **[Add Other Characterization](../reference/index.md)** - XPS, PL, Raman, etc.
 
 ## Related Resources
 
