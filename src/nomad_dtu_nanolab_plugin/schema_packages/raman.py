@@ -525,6 +525,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         OFFSET_FACTOR = 0.3  # Factor to control spacing between patterns
         RAMAN_RANGE_EXCL = (510, 530)  # Exclude this range for offset calculation
+        RAMAN_RAYLEIGH_PEAK_FILTER = 80  # Filter to exclude the region around 0 cm-1
 
         for result in self.results:
             if hasattr(result.raman_shift, 'magnitude'):
@@ -539,9 +540,15 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             mask = (raman_shift_data < RAMAN_RANGE_EXCL[0]) | (
                 raman_shift_data > RAMAN_RANGE_EXCL[1]
             )
+            # also exclude the Rayleigh peak region
+            mask &= raman_shift_data > RAMAN_RAYLEIGH_PEAK_FILTER
+
+            #apply mask
             log_intensity_filtered = log_intensity[mask]
 
-            cumulative_offset += log_intensity_filtered.max() * OFFSET_FACTOR
+            cumulative_offset += (
+                log_intensity_filtered.max() - log_intensity_filtered.min()
+            ) * OFFSET_FACTOR
             offsets.append(cumulative_offset)
 
         # Add traces with dynamically calculated offsets
