@@ -222,7 +222,7 @@ After uploading EDX data, verify:
 **Solutions**:
 
 - Verify file is in Excel format (.xlsx or .xls)
-- Check file size isn't too large (typically <5 MB)
+- Check file size isn't too large (typically ≤ 5 MB)
 - Ensure file isn't password-protected
 - Try opening in Excel to verify it's not corrupted
 - Re-export from your EDX analysis software

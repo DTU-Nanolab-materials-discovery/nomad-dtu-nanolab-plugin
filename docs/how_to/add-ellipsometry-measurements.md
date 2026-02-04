@@ -207,7 +207,7 @@ Check the plots for:
 
 - **Thickness uniformity** or expected gradients
 - **Reasonable n&k values** (n typically 1.5-4 for most materials)
-- **Low MSE values** (< 10 for good fits, shown in fit quality map)
+- **Low MSE values** (≤ 10 for good fits, shown in fit quality map)
 - **Consistent roughness** across the sample
 
 ## Step 6: Clean Invalid Data Points (If Needed)
@@ -272,7 +272,7 @@ After uploading ellipsometry data, verify:
 - [ ] Results subsection shows plots
 - [ ] Thickness values are reasonable (typically nm to hundreds of nm)
 - [ ] n&k values make physical sense
-- [ ] MSE values indicate good fits (< 10 preferred)
+- [ ] MSE values indicate good fits (≤ 10 preferred)
 - [ ] Invalid points removed (if any)
 - [ ] Final save completed
 
