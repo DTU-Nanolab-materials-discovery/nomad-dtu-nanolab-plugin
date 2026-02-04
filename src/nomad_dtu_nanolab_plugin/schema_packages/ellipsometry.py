@@ -549,11 +549,16 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         for r in self.results:
             param_value = getattr(r, parameter_name, None)
             if param_value is not None:
+                # Handle both Quantity objects (with units) and plain numbers
+                if isinstance(param_value, ureg.Quantity):
+                    value = param_value.to(unit).magnitude
+                else:
+                    value = float(param_value)
                 param_data.append(
                     {
                         'x': r.x_absolute.to('mm').magnitude,
                         'y': r.y_absolute.to('mm').magnitude,
-                        'value': param_value.to(unit).magnitude,
+                        'value': value,
                     }
                 )
 
