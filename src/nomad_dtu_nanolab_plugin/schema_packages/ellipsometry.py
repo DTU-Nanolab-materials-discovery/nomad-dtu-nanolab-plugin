@@ -276,9 +276,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             # Remove trailing empty columns (columns that are all NaN)
             df = df.dropna(axis=1, how='all')
 
-            logger.debug(f'Read thickness file with shape: {df.shape}')
-            logger.debug(f'Thickness file columns: {df.columns.tolist()}')
-
             return df
 
     def read_n_and_k_file(
@@ -318,9 +315,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             # Check first column and convert energy to wavelength if needed
             first_col_name = header_line.split('\t')[0]
             if first_col_name == 'Energy (eV)':
-                logger.debug(
-                    'Detected Energy (eV) column, converting to wavelength (nm)'
-                )
                 # Convert energy (eV) to wavelength (nm) using
                 # λ = 1239.84 / E
                 df.iloc[:, 0] = 1239.84 / df.iloc[:, 0]
@@ -328,19 +322,10 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 # from the ascending energy. We need to reverse the entire
                 # dataframe to have wavelength in ascending order
                 df = df.iloc[::-1].reset_index(drop=True)
-                logger.debug(
-                    'Converted energy to wavelength and reversed order '
-                    'for ascending wavelength'
-                )
             elif first_col_name == 'Wavelength (nm)':
-                logger.debug('Detected Wavelength (nm) column, no conversion needed')
+                pass
             else:
                 logger.warning(f'Unknown spectral unit in header: {first_col_name}')
-
-            logger.debug(f'Read n and k file with shape: {df.shape}')
-            logger.debug(
-                f'Wavelength range: {df.iloc[0, 0]:.2f} - {df.iloc[-1, 0]:.2f} nm'
-            )
 
             return df
 
@@ -361,11 +346,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             logger (BoundLogger): A structlog logger.
         """
         results = []
-        logger.debug('Starting to write ellipsometry data.')
 
         # Get wavelength column (first column)
         wavelength = nk_df.iloc[:, 0].to_numpy() * ureg('nm')
-        logger.debug(f'Extracted {len(wavelength)} wavelength points')
 
         # Parse the n and k columns to extract position information
         # CompleteEASE names columns as 'n: (x,y)' and 'k: (x,y)' where (x,y)
@@ -386,8 +369,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     positions[pos_str] = {}
                 positions[pos_str]['k_col'] = col
 
-        logger.debug(f'Found {len(positions)} positions in n and k file.')
-
         # Create a mapping from position coordinates to thickness and fit
         # parameters. This allows us to merge data from the two separate
         # export files.
@@ -397,8 +378,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             # Expected columns from CompleteEASE thickness export:
             # 'X (cm)', 'Y (cm)', 'MSE', 'Absolute MSE', 'Roughness (nm)',
             # 'Thickness # 1 (nm)', 'E Inf', 'IR Amp', etc.
-            logger.debug(f'Thickness file has {thickness_df.shape[1]} columns')
-            logger.debug(f'Thickness file columns: {thickness_df.columns.tolist()}')
 
             # Build a lookup table indexed by (x, y) coordinates
             # This enables matching thickness data with n&k data by position
@@ -419,8 +398,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     'ir_pole_amp': ir_pole_amp,
                 }
 
-            logger.debug(f'Created thickness map with {len(thickness_map)} entries')
-
         # Create a result for each position
         for pos_str, cols in positions.items():
             # Parse position (e.g., '(-1.8,0)' -> x=-1.8, y=0)
@@ -437,12 +414,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             n_values = nk_df[cols['n_col']].to_numpy()
             k_values = nk_df[cols['k_col']].to_numpy()
 
-            logger.debug(
-                f'Position {pos_str}: n range '
-                f'[{n_values.min():.3f}, {n_values.max():.3f}], '
-                f'k range [{k_values.min():.6f}, {k_values.max():.6f}]'
-            )
-
             # Match thickness data to n&k data by position coordinates
             # Use fuzzy matching to handle potential floating-point rounding differences
             # between the two export files
@@ -452,12 +423,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             # Try exact coordinate match first
             if (x_pos, y_pos) in thickness_map:
                 thickness_data = thickness_map[(x_pos, y_pos)]
-                logger.debug(
-                    f'Exact match for {pos_str}: '
-                    f'thickness={thickness_data["thickness"]:.2f} nm, '
-                    f'roughness={thickness_data["roughness"]:.2f} nm, '
-                    f'MSE={thickness_data["mse"]:.4f}'
-                )
             else:
                 # Try fuzzy match (within tolerance)
                 for (x_thick, y_thick), data in thickness_map.items():
@@ -466,11 +431,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         and abs(y_thick - y_pos) < tolerance
                     ):
                         thickness_data = data
-                        logger.debug(
-                            f'Fuzzy match for {pos_str} with '
-                            f'({x_thick}, {y_thick}): '
-                            f'thickness={thickness_data["thickness"]:.2f} nm'
-                        )
                         break
 
             if thickness_data is None:
@@ -510,8 +470,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
             result.normalize(archive, logger)
             results.append(result)
-
-        logger.debug(f'Created {len(results)} ellipsometry results.')
 
         # Merge results into this measurement
         ellipsometry = DTUEllipsometryMeasurement(
