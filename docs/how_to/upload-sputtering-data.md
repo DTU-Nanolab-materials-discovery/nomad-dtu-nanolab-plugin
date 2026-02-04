@@ -279,7 +279,8 @@ After successfully uploading sputtering data:
 1. **[Cleave Libraries](cleave-libraries.md)** - Divide substrates for different characterization
 2. **[Add EDX Measurements](add-edx-measurements.md)** - Upload composition data
 3. **[Add XRD Measurements](add-xrd-measurements.md)** - Upload structural data
-4. **[Add RTP Data](add-rtp-data.md)** - If you performed thermal processing
+4. **[Add Ellipsometry Measurements](add-ellipsometry-measurements.md)** - Upload optical properties
+5. **[Add RTP Data](add-rtp-data.md)** - If you performed thermal processing
 
 ## Related Resources
 

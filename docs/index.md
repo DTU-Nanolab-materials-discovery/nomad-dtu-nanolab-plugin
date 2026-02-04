@@ -35,6 +35,7 @@ Practical guides for using the NOMAD Oasis deployment:
 - [Add EDX Measurements](how_to/add-edx-measurements.md)
 - [Add Raman Measurements](how_to/add-raman-measurements.md)
 - [Add XRD Measurements](how_to/add-xrd-measurements.md)
+- [Add Ellipsometry Measurements](how_to/add-ellipsometry-measurements.md)
 - [Add RTP Data](how_to/add-rtp-data.md)
 - [Cleave Libraries](how_to/cleave-libraries.md)
 
