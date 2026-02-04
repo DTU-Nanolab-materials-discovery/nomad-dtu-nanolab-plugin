@@ -543,7 +543,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             # also exclude the Rayleigh peak region
             mask &= raman_shift_data > RAMAN_RAYLEIGH_PEAK_FILTER
 
-            #apply mask
+            # apply mask
             log_intensity_filtered = log_intensity[mask]
 
             cumulative_offset += (
