@@ -22,7 +22,7 @@ The cleaving process extends NOMAD's `Process` and `Activity` base classes, prov
 
 ## Cleaving and Annealing Workflow Integration
 
-Here, we showcase in the cleaving in relation to a Cleaving plus Anealing workflow
+This section demonstrates how cleaving integrates into a combined cleaving and annealing workflow.
 
 ### Hierarchical Sample Structure
 
