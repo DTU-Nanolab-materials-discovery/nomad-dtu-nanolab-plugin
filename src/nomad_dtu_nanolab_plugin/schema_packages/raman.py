@@ -237,12 +237,14 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     )
     raman_data_file = Quantity(
         type=str,
-        description='Data file containing the Raman spectra',
+        description=(
+            'Data file containing the Raman spectra. The expected format is '
+            'Renishaw WDF mapping file.'
+        ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
         ),
     )
-
     results = SubSection(
         section_def=RamanResult,
         repeats=True,
@@ -455,17 +457,6 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             - Offset calculated dynamically based on intensity range
             - Excludes Si peak region (510-530 cm⁻¹) from offset calculation
             - Better for visualizing peak evolution across positions
-
-        Offset Calculation:
-            - Offset = 0.3 × (max - min) of log intensity
-            - Cumulative: each spectrum shifts up from previous
-            - Si region excluded to avoid dominating offset
-
-        Safety Features:
-            - Small epsilon (1e-10) added before log to avoid log(0)
-            - Handles both Quantity and plain array for raman_shift
-            - Robust to missing or invalid data points
-
         Returns:
             None. Appends PlotlyFigure objects to self.figures list.
 
