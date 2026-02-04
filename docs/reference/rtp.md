@@ -62,7 +62,7 @@ The RTP parser automatically processes thermal treatment log files and extracts 
 
 ### Data Logging
 
-The logging of RTA-related signals includes thermal properties, process gases, and pressure data collection. This is achieved by combining the native software of the RTP tool (CX-Thermo) and the sputtering tool (Lesker Eklipse). Relevant logged quantities include:
+The logging of RTP-related signals includes thermal properties, process gases, and pressure data collection. This is achieved by combining the native software of the RTP tool (CX-Thermo) and the sputtering tool (Lesker Eklipse). Relevant logged quantities include:
 
 - Gas flow rates
 - Chamber pressure
