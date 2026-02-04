@@ -567,9 +567,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
             log_intensity_filtered = log_intensity[mask]
 
-            cumulative_offset += (
-                log_intensity_filtered.max() - log_intensity_filtered.min()
-            ) * OFFSET_FACTOR
+            cumulative_offset += log_intensity_filtered.max() * OFFSET_FACTOR
             offsets.append(cumulative_offset)
 
         # Add traces with dynamically calculated offsets
