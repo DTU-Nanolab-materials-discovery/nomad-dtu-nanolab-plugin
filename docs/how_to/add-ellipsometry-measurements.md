@@ -45,14 +45,12 @@ Before starting, you need:
 1. Go to **Analysis** → **Open Snapshot** → **Browse file system**
 2. Navigate to your measurement file and open it
 
-![CompleteEASE interface](../assets/ellipsometry-completeease.png)
-
 ### 1.4 Fit Data for All Points
 
 1. In the software, fit the ellipsometry data for all measured points
 2. Ensure all fits converge and show reasonable MSE (Mean Squared Error) values
 
-![Fit parameters window](../assets/ellipsometry-fit-window.png)
+![Fit parameters window](../assets/ellipsometry/fit-parameters.png)
 
 !!! tip "Quality Check"
     Review the MSE values - lower values indicate better fits. Typical values should be < 10 for good fits.
@@ -64,13 +62,14 @@ To export the refractive index (n) and extinction coefficient (k):
 1. **Right-click** into the fitting window
 2. Select **"Graph OCs Vs. Position"**
 3. Choose the optical constant type to graph:
-   - Select **n** (refractive index)
-   - Select **k** (extinction coefficient)
-   - Or select **e1 & e2** (dielectric constants) if needed
+   - Select **n & k** (complex refractive index)
 
-![Edit fit parameter dialog](../assets/ellipsometry-graph-selection.png)
+![Edit fit parameter dialog](../assets/ellipsometry/optical-constant-selection.png)
 
 4. **Right-click** into the plot that appears
+
+![n&k data plot](../assets/ellipsometry/nk-plot.png)
+
 5. Select **"Copy Data to Clipboard"**
 6. Paste the data into a new text file
 7. Save with naming convention: `username_####_Material_Quarter_nk.txt`
@@ -79,15 +78,13 @@ To export the refractive index (n) and extinction coefficient (k):
 
 This is your **n&k file** for uploading to NOMAD.
 
-![n&k data plot](../assets/ellipsometry-nk-plot.png)
-
 ### 1.6 Export Thickness Data
 
 To export thickness and other fit parameters:
 
 1. **Left-click** on **Thickness** in the fitting window (or other parameters like Roughness, E inf, etc.)
 
-![Thickness selection in fit window](../assets/ellipsometry-thickness-fit.png)
+![CompleteEASE interface with fit results](../assets/ellipsometry/completeease-interface.png)
 
 2. Click **"Copy Parameters to Clipboard"**
 3. Paste the data into a new text file
