@@ -382,10 +382,10 @@ Use the visualizations to:
 
 ### Fit quality (MSE):
 
-- **MSE < 5**: Excellent fit
+- **MSE &lt; 5**: Excellent fit
 - **MSE 5-10**: Good fit
 - **MSE 10-20**: Acceptable, may need review
-- **MSE > 20**: Poor fit, check model or measurement
+- **MSE &gt; 20**: Poor fit, check model or measurement
 
 ## Next Steps
 
