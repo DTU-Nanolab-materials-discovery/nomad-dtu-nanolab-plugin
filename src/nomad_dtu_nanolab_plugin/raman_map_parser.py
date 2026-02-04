@@ -187,8 +187,7 @@ class MappingRamanMeas:
                     # 3D array: reshape to 2D [position, wavenumber]
                     if verbose:
                         print(
-                            f'Reshaping spectra from {spectra_array.shape} '
-                            'to 2D array'
+                            f'Reshaping spectra from {spectra_array.shape} to 2D array'
                         )
                     # original_shape = spectra_array.shape
                     spectra_array = spectra_array.reshape(-1, spectra_array.shape[-1])
@@ -867,6 +866,7 @@ class MappingRamanMeas:
 
 #### CLI Interface using Click ##########
 
+
 @click.command()
 @click.option(
     '--file',
@@ -931,7 +931,7 @@ class MappingRamanMeas:
     is_flag=True,
     help='Enable verbose output with detailed progress information.',
 )
-def main(
+def main(  # noqa: PLR0913
     file,
     folder,
     filename,
@@ -979,24 +979,24 @@ def main(
 
         \b
         # Skip image saving and grid creation
-        python raman_map_parser.py --file ./data/sample.wdf --no-save-images --no-create-grid
+        python raman_map_parser.py --file ./sample.wdf --no-save-images --no-create-grid
     """
     # Validate input arguments
     if file is None and (folder is None or filename is None):
         raise click.UsageError(
             'You must specify either --file or both --folder and --filename'
         )
-    
+
     if file is not None and (folder is not None or filename is not None):
         raise click.UsageError(
             'Cannot use --file together with --folder/--filename. Choose one method.'
         )
-    
+
     # Extract folder and filename from full path if --file is used
     if file is not None:
         folder = os.path.dirname(file)
         filename = os.path.basename(file)
-    
+
     # Use output_dir if specified, otherwise use input folder
     output_folder = output_dir if output_dir else folder
 
@@ -1019,7 +1019,9 @@ def main(
 
     # Read WDF file (automatically extracts and stores images)
     if verbose:
-        click.echo(click.style('READING WDF FILE AND EXTRACTING DATA', fg='green', bold=True))
+        click.echo(
+            click.style('READING WDF FILE AND EXTRACTING DATA', fg='green', bold=True)
+        )
         click.echo('=' * 60)
     mapping.read_wdf_mapping(folder, filename_list, verbose=verbose)
 
@@ -1047,11 +1049,11 @@ def main(
     if verbose:
         click.echo(click.style('\nPLOTTING RAMAN SPECTRA', fg='green', bold=True))
         click.echo('=' * 60)
-    
+
     spectra_path = os.path.join(output_folder, f'{meas_name}_Raman_spectra.html')
     fig = mapping.plot_spectra(method='default', x_range=x_range, verbose=verbose)
     fig.write_html(spectra_path)
-    
+
     if verbose:
         click.echo(f'Saved spectra plot to: {spectra_path}')
 
@@ -1059,7 +1061,7 @@ def main(
     if verbose:
         click.echo(click.style('\nCREATING INTENSITY MAP', fg='green', bold=True))
         click.echo('=' * 60)
-    
+
     map_path = os.path.join(output_folder, f'{meas_name}_Raman_intensity_map.html')
     map_fig = mapping.plot_intensity_map(
         target_wavenumber=target_wavenumber,
@@ -1067,7 +1069,7 @@ def main(
         verbose=verbose,
     )
     map_fig.write_html(map_path)
-    
+
     if verbose:
         click.echo(f'Saved intensity map to: {map_path}')
 
