@@ -58,7 +58,7 @@ The sputtering parser automatically processes machine log files and extracts rel
 
 ![Sputtering workflow visualization](../assets/sputtering-workflow.png)
 
-*Default graphs obtained from parsing a log file through the sputtering entry. (a) Position of the different substrates on the platen during deposition, relative to the sources, namely the reactive toxic gas inlet (H2S + PH3) and the Cu target and other sputtering chamber landmark. (b) Position of the substrate during mounting, defining the orientation of base coordinate system for the combinatorial library. (c) Process timeline graph representing the extend in time of different process-relevant events, such as the moments where reactive gases were flown in the chamber (PH3 On, H2S on) or the moment of the deposition itself. (d) The DC self-bias developed by the Cu target during the deposition.*
+*Default graphs obtained from parsing a log file through the sputtering entry. (a) Position of the different substrates on the platen during deposition, relative to the sources, namely the reactive toxic gas inlet (H2S + PH3) and the Cu target and other sputtering chamber landmark. (b) Position of the substrate during mounting, defining the orientation of base coordinate system for the combinatorial library. (c) Process timeline graph representing the extent in time of different process-relevant events, such as the moments where reactive gases were flown in the chamber (PH3 On, H2S on) or the moment of the deposition itself. (d) The DC self-bias developed by the Cu target during the deposition.*
 
 ### Benefits of Automated Processing
 
