@@ -267,8 +267,9 @@ Use the visualizations to:
 After adding XRD measurements:
 
 1. **[Add EDX Measurements](add-edx-measurements.md)** - Correlate structure with composition
-2. **[Add Other Characterization](../reference/index.md)** - XPS, PL, Ellipsometry
-3. **[Jupyter Analysis](../reference/analysis.md)** - Create custom structure-property plots
+2. **[Add Ellipsometry Measurements](add-ellipsometry-measurements.md)** - Add optical properties
+3. **[Add Other Characterization](../reference/index.md)** - XPS, PL, Raman
+4. **[Jupyter Analysis](../reference/analysis.md)** - Create custom structure-property plots
 
 ## Related Resources
 

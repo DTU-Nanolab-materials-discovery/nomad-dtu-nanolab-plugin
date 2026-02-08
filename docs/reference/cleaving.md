@@ -19,6 +19,36 @@ The cleaving process extends NOMAD's `Process` and `Activity` base classes, prov
 - Position/composition mapping for each sample
 - Automated workflow integration
 
+
+## Cleaving and Annealing Workflow Integration
+
+This section demonstrates how cleaving integrates into a combined cleaving and annealing workflow.
+
+### Hierarchical Sample Structure
+
+To make the hierarchical sample structure operational, the annealing workflow was designed to capture and organize process data in line with the parent-child relationships created by virtual cleaving. This requirement guided the implementation of the RTP schema, which ensures that each annealing event is linked to the correct sample fragment while storing all relevant details from prior processing.
+
+### Complete Processing History
+
+The database keeps a complete record of thermal treatments, enabling experimentalists to:
+
+- **Link annealing conditions**: Directly connect temperature profiles and pressure to the resulting properties of each individual piece
+- **Trace origins**: Track where each piece originated within the parent library
+- **Review prior processing**: Access deposition details and other prior process steps
+- **Track property evolution**: Follow how properties evolved from the initial state to the annealed condition
+
+This comprehensive tracking enables deeper insights into material behavior and facilitates understanding of structure-property relationships.
+
+### Workflow Benefits
+
+The cleaving/annealing workflow extends the database's capabilities by:
+
+- **Linking thermal treatment data** to the hierarchical structure of combinatorial libraries
+- **Preserving processing history**: Each child fragment retains its full processing history through parent library references
+- **Enabling comparison**: Easy tracking, comparison, and analysis of property evolution across multiple processes
+- **Handling complexity**: Flexible design handles the wide range of situations that come up in real lab work
+- **Knowledge transfer**: Solutions established for one technique (sputtering) benefit implementation of new synthesis methods to track even more complex workflows
+
 ## Typical Usage
 
 1. **Select library**: Reference the [DTUCombinatorialLibrary](samples.md) to be divided
@@ -40,3 +70,4 @@ The cleaving process extends NOMAD's `Process` and `Activity` base classes, prov
 ## Schema Documentation
 
 {{ metainfo_package('nomad_dtu_nanolab_plugin.schema_packages.sample') }}
+
