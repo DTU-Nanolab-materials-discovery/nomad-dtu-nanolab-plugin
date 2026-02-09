@@ -362,9 +362,6 @@ xrd = AppEntryPoint(
         menu=Menu(
             size=MenuSizeEnum.XL,
             items=[
-                MenuItemPeriodicTable(
-                    quantity='results.material.elements',
-                ),
                 MenuItemTerms(
                     title='Sample ID',
                     search_quantity=f'data.samples.lab_id#{xrd_schema}',
