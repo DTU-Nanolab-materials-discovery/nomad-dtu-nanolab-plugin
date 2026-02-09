@@ -321,7 +321,7 @@ xrd = AppEntryPoint(
         path='xrd-measurements',
         category='Activities',
         description="""
-        Explore the different measurements.
+        Explore XRD measurements with detailed search and filtering capabilities.
         """,
         filters=Filters(
             include=[
@@ -335,16 +335,21 @@ xrd = AppEntryPoint(
                 label='XRD ID',
             ),
             Column(
+                search_quantity=f'data.datetime#{xrd_schema}',
+                selected=True,
+                label='Date and time',
+            ),
+            Column(
                 search_quantity=f'data.xrd_settings.source.xray_tube_voltage#{xrd_schema}',
                 selected=True,
-                label='X-ray tube voltage',
+                label='Tube voltage',
                 unit='kV',
                 format=Format(decimals=1),
             ),
             Column(
                 search_quantity=f'data.xrd_settings.source.xray_tube_current#{xrd_schema}',
                 selected=True,
-                label='X-ray tube current',
+                label='Tube current',
                 unit='mA',
                 format=Format(decimals=1),
             ),
@@ -355,12 +360,21 @@ xrd = AppEntryPoint(
             ),
         ],
         menu=Menu(
-            size=MenuSizeEnum.MD,
+            size=MenuSizeEnum.XL,
             items=[
+                MenuItemPeriodicTable(
+                    quantity='results.material.elements',
+                ),
                 MenuItemTerms(
                     title='Sample ID',
                     search_quantity=f'data.samples.lab_id#{xrd_schema}',
                     show_input=True,
+                ),
+                MenuItemHistogram(
+                    title='Measurement Date',
+                    x=Axis(
+                        search_quantity=f'data.datetime#{xrd_schema}',
+                    ),
                 ),
                 MenuItemTerms(
                     search_quantity='authors.name',
@@ -370,6 +384,62 @@ xrd = AppEntryPoint(
         ),
         filters_locked={
             'entry_type': 'DTUXRDMeasurement',
+        },
+        dashboard={
+            'widgets': [
+                {
+                    'type': 'histogram',
+                    'title': 'Measurements over Time',
+                    'show_input': False,
+                    'autorange': True,
+                    'nbins': 30,
+                    'x': {
+                        'search_quantity': f'data.datetime#{xrd_schema}',
+                    },
+                    'layout': {
+                        'xxl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 4,
+                            'w': 24,
+                            'y': 0,
+                            'x': 12,
+                        },
+                        'xl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 20,
+                            'y': 0,
+                            'x': 10,
+                        },
+                        'lg': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 16,
+                            'y': 0,
+                            'x': 8,
+                        },
+                        'md': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 12,
+                            'y': 0,
+                            'x': 6,
+                        },
+                        'sm': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 6,
+                            'y': 0,
+                            'x': 6,
+                        },
+                    },
+                },
+            ]
         },
     ),
 )
@@ -385,7 +455,7 @@ edx = AppEntryPoint(
         path='edx-measurements',
         category='Activities',
         description="""
-        Explore the different measurements.
+        Explore EDX measurements with compositional analysis and thickness data.
         """,
         filters=Filters(
             include=[
@@ -399,11 +469,23 @@ edx = AppEntryPoint(
                 label='EDX ID',
             ),
             Column(
+                search_quantity=f'data.datetime#{edx_schema}',
+                selected=True,
+                label='Date and time',
+            ),
+            Column(
                 search_quantity=f'data.avg_layer_thickness#{edx_schema}',
                 selected=True,
                 label='Average layer thickness',
                 unit='nm',
                 format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.avg_density#{edx_schema}',
+                selected=True,
+                label='Average density',
+                unit='g/cm^3',
+                format=Format(decimals=2),
             ),
             Column(
                 search_quantity='main_author.name',
@@ -430,6 +512,12 @@ edx = AppEntryPoint(
                         unit='nm',
                     ),
                 ),
+                MenuItemHistogram(
+                    title='Measurement Date',
+                    x=Axis(
+                        search_quantity=f'data.datetime#{edx_schema}',
+                    ),
+                ),
                 MenuItemTerms(
                     search_quantity='authors.name',
                     show_input=True,
@@ -453,7 +541,7 @@ analysis = AppEntryPoint(
         path='analysis',
         category='Activities',
         description="""
-        Explore the different Jupyter Notebooks and analysis results.
+        Explore Jupyter Notebooks and analysis results from the lab.
         """,
         filters=Filters(
             include=[
@@ -467,9 +555,9 @@ analysis = AppEntryPoint(
                 label='Analysis ID',
             ),
             Column(
-                search_quantity=f'data.notebook#{analysis_schema}',
+                search_quantity=f'data.name#{analysis_schema}',
                 selected=True,
-                label='Notebook',
+                label='Name',
             ),
             Column(
                 search_quantity=f'data.datetime#{analysis_schema}',
@@ -477,16 +565,281 @@ analysis = AppEntryPoint(
                 label='Date and time',
             ),
             Column(
+                search_quantity=f'data.notebook#{analysis_schema}',
+                selected=True,
+                label='Notebook',
+            ),
+            Column(
                 search_quantity='main_author.name',
                 selected=True,
                 label='Main author',
             ),
         ],
+        menu=Menu(
+            size=MenuSizeEnum.MD,
+            items=[
+                MenuItemTerms(
+                    title='Libraries',
+                    search_quantity=f'data.libraries.lab_id#{analysis_schema}',
+                    show_input=True,
+                ),
+                MenuItemHistogram(
+                    title='Analysis Date',
+                    x=Axis(
+                        search_quantity=f'data.datetime#{analysis_schema}',
+                    ),
+                ),
+                MenuItemTerms(
+                    search_quantity='authors.name',
+                    show_input=True,
+                ),
+            ],
+        ),
         filters_locked={
             'entry_type': 'DtuJupyterAnalysis',
         },
     ),
 )
+
+
+rtp_schema = 'nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTP'
+
+rtp = AppEntryPoint(
+    name='RTP app',
+    description='App for searching RTP processes.',
+    app=App(
+        label='RTP',
+        path='rtp',
+        category='Activities',
+        description="""
+        Explore the RTP (Rapid Thermal Processing) processes.
+        """,
+        search_quantities=SearchQuantities(
+            include=[
+                f'*#{rtp_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{rtp_schema}',
+                selected=True,
+                label='RTP ID',
+            ),
+            Column(
+                search_quantity=f'data.datetime#{rtp_schema}',
+                selected=True,
+                label='Date and time',
+            ),
+            Column(
+                search_quantity=f'data.overview.material_space#{rtp_schema}',
+                selected=True,
+                label='Material space',
+            ),
+            Column(
+                search_quantity=f'data.overview.annealing_temperature#{rtp_schema}',
+                selected=True,
+                label='Annealing temperature',
+                unit='degC',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.overview.annealing_time#{rtp_schema}',
+                selected=True,
+                label='Annealing time',
+                unit='minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.overview.annealing_pressure#{rtp_schema}',
+                selected=True,
+                label='Annealing pressure',
+                unit='torr',
+                format=Format(decimals=2),
+            ),
+            Column(
+                search_quantity=f'data.overview.annealing_ar_flow#{rtp_schema}',
+                selected=True,
+                label='Ar flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.overview.annealing_n2_flow#{rtp_schema}',
+                selected=True,
+                label='N2 flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.overview.annealing_h2s_in_ar_flow#{rtp_schema}',
+                selected=True,
+                label='H2S in Ar flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.overview.annealing_ph3_in_ar_flow#{rtp_schema}',
+                selected=True,
+                label='PH3 in Ar flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.overview.total_heating_time#{rtp_schema}',
+                selected=False,
+                label='Total heating time',
+                unit='minute',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity=f'data.overview.total_cooling_time#{rtp_schema}',
+                selected=False,
+                label='Total cooling time',
+                unit='minute',
+                format=Format(decimals=1),
+            ),
+        ],
+        menu=Menu(
+            title='Material',
+            size=MenuSizeEnum.XL,
+            items=[
+                MenuItemPeriodicTable(
+                    quantity='results.material.elements',
+                ),
+                MenuItemTerms(
+                    search_quantity='authors.name',
+                    show_input=True,
+                ),
+            ],
+        ),
+        filters_locked={
+            'entry_type': 'DtuRTP',
+        },
+        dashboard={
+            'widgets': [
+                {
+                    'type': 'histogram',
+                    'title': 'Annealing temperature',
+                    'show_input': False,
+                    'autorange': False,
+                    'nbins': 30,
+                    'y': {
+                        'scale': 'linear',
+                    },
+                    'x': {
+                        'search_quantity': (
+                            f'data.overview.annealing_temperature#{rtp_schema}'
+                        ),
+                        'unit': 'degree_Celsius',
+                        'title': 'Annealing temperature',
+                    },
+                    'layout': {
+                        'xxl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 4,
+                            'w': 18,
+                            'y': 0,
+                            'x': 0,
+                        },
+                        'xl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 15,
+                            'y': 0,
+                            'x': 0,
+                        },
+                        'lg': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 12,
+                            'y': 0,
+                            'x': 0,
+                        },
+                        'md': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 9,
+                            'y': 0,
+                            'x': 0,
+                        },
+                        'sm': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 6,
+                            'y': 0,
+                            'x': 0,
+                        },
+                    },
+                },
+                {
+                    'type': 'histogram',
+                    'title': 'Annealing time',
+                    'show_input': False,
+                    'autorange': False,
+                    'nbins': 30,
+                    'y': {
+                        'scale': 'linear',
+                    },
+                    'x': {
+                        'search_quantity': (
+                            f'data.overview.annealing_time#{rtp_schema}'
+                        ),
+                        'unit': 'minute',
+                        'title': 'Annealing time',
+                    },
+                    'layout': {
+                        'xxl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 4,
+                            'w': 18,
+                            'y': 0,
+                            'x': 18,
+                        },
+                        'xl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 15,
+                            'y': 0,
+                            'x': 15,
+                        },
+                        'lg': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 12,
+                            'y': 0,
+                            'x': 12,
+                        },
+                        'md': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 9,
+                            'y': 0,
+                            'x': 9,
+                        },
+                        'sm': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 6,
+                            'y': 0,
+                            'x': 6,
+                        },
+                    },
+                },
+            ]
+        },
+    ),
+)
+
 
 combi_samples_schema = (
     'nomad_dtu_nanolab_plugin.schema_packages.sample.DTUCombinatorialSample'
