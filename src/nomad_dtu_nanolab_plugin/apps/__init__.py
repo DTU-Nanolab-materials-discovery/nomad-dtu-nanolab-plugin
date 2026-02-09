@@ -700,9 +700,6 @@ rtp = AppEntryPoint(
             title='Material',
             size=MenuSizeEnum.XL,
             items=[
-                MenuItemPeriodicTable(
-                    quantity='results.material.elements',
-                ),
                 MenuItemTerms(
                     search_quantity='authors.name',
                     show_input=True,
