@@ -106,6 +106,12 @@ sputtering = AppEntryPoint(
                 MenuItemPeriodicTable(
                     quantity='results.material.elements',
                 ),
+                MenuItemHistogram(
+                    title='Process Date',
+                    x=Axis(
+                        search_quantity=f'data.datetime#{schema}',
+                    ),
+                ),
                 MenuItemTerms(
                     search_quantity='authors.name',
                     show_input=True,
@@ -382,62 +388,6 @@ xrd = AppEntryPoint(
         filters_locked={
             'entry_type': 'DTUXRDMeasurement',
         },
-        dashboard={
-            'widgets': [
-                {
-                    'type': 'histogram',
-                    'title': 'Measurements over Time',
-                    'show_input': False,
-                    'autorange': True,
-                    'nbins': 30,
-                    'x': {
-                        'search_quantity': f'data.datetime#{xrd_schema}',
-                    },
-                    'layout': {
-                        'xxl': {
-                            'minH': 3,
-                            'minW': 3,
-                            'h': 4,
-                            'w': 24,
-                            'y': 0,
-                            'x': 12,
-                        },
-                        'xl': {
-                            'minH': 3,
-                            'minW': 3,
-                            'h': 3,
-                            'w': 20,
-                            'y': 0,
-                            'x': 10,
-                        },
-                        'lg': {
-                            'minH': 3,
-                            'minW': 3,
-                            'h': 3,
-                            'w': 16,
-                            'y': 0,
-                            'x': 8,
-                        },
-                        'md': {
-                            'minH': 3,
-                            'minW': 3,
-                            'h': 3,
-                            'w': 12,
-                            'y': 0,
-                            'x': 6,
-                        },
-                        'sm': {
-                            'minH': 3,
-                            'minW': 3,
-                            'h': 3,
-                            'w': 6,
-                            'y': 0,
-                            'x': 6,
-                        },
-                    },
-                },
-            ]
-        },
     ),
 )
 
@@ -575,11 +525,6 @@ analysis = AppEntryPoint(
         menu=Menu(
             size=MenuSizeEnum.MD,
             items=[
-                MenuItemTerms(
-                    title='Libraries',
-                    search_quantity=f'data.libraries.lab_id#{analysis_schema}',
-                    show_input=True,
-                ),
                 MenuItemHistogram(
                     title='Analysis Date',
                     x=Axis(
@@ -700,6 +645,12 @@ rtp = AppEntryPoint(
             title='Material',
             size=MenuSizeEnum.XL,
             items=[
+                MenuItemHistogram(
+                    title='Process Date',
+                    x=Axis(
+                        search_quantity=f'data.datetime#{rtp_schema}',
+                    ),
+                ),
                 MenuItemTerms(
                     search_quantity='authors.name',
                     show_input=True,
