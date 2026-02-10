@@ -52,16 +52,6 @@ class EllipsometryMappingResult(MappingResult):
     roughness), and fit parameters (MSE, dielectric constants) for one spatial
     position in an ellipsometry mapping measurement.
 
-    Attributes:
-        position: String representation of the (x, y) measurement coordinates
-        thickness: Film thickness at this position
-        roughness: Surface roughness at this position
-        mse: Mean squared error of the model fit
-        epsilon_inf: High-frequency dielectric constant from the model
-        ir_pole_amp: Infrared oscillator amplitude from the model
-        wavelength: Array of wavelength values
-        n: Array of refractive index values
-        k: Array of extinction coefficient values
     """
 
     m_def = Section()
@@ -191,13 +181,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     - Matches data from different files by spatial position
     - Creates interactive Plotly visualizations (1D line plots or 2D heatmaps)
     - Links to the sample being measured
-
-    Attributes:
-        native_file: The raw SESNAP file from the instrument (not currently parsed)
-        n_and_k_file: Exported optical constants file from CompleteEASE
-        thickness_file: Exported thickness and fit parameters file from CompleteEASE
-        metadata: Measurement metadata (reserved for future use)
-        results: List of results from each measured position
     """
 
     m_def = Section(
