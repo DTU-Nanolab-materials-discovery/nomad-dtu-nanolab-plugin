@@ -23,7 +23,6 @@ License: See LICENSE file
 
 import os
 
-import click
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -862,6 +861,3 @@ class MappingRamanMeas:
             plt.savefig(save_path, dpi=150, bbox_inches='tight')
 
         return fig
-
-
-
