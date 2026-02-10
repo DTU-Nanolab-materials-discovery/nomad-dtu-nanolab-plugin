@@ -1,17 +1,62 @@
-from typing import TYPE_CHECKING
+"""NOMAD Schema for Raman Spectroscopy Mapping Measurements.
 
+This module defines the NOMAD schema for storing and processing Raman spectroscopy
+mapping data within the DTU Nanolab infrastructure. It integrates with the NOMAD
+metainfo system to provide standardized metadata capture, data processing, and
+visualization for Raman measurements.
+
+Key Features:
+    - Read Renishaw WDF mapping files
+    - Extract and store optical microscopy images
+    - Automatic sample reference linking
+    - Interactive Plotly visualizations (overlaid and stacked spectra, intensity maps)
+    - Integration with NOMAD ELN (Electronic Lab Notebook)
+    - Standardized metadata using NOMAD datamodel
+
+Schema Structure:
+    - RamanResult: Individual spectrum at a specific position
+    - RamanMeasurement: Collection of spectra from a mapping measurement
+    - DTUSampleAlignment: Sample positioning information
+
+Typical Workflow:
+    1. User uploads WDF file via NOMAD ELN
+    2. Schema parser extracts spectra and optical images
+    3. Results are normalized and linked to sample metadata
+    4. Interactive plots are automatically generated
+    5. Data is searchable and FAIR-compliant
+
+Author: DTU Nanolab
+Version: 1.0
+License: See LICENSE file
+"""
+
+import os
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+import plotly.graph_objects as go
 from nomad.datamodel.data import Schema
+from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import (
+    BrowserAdaptors,
     BrowserAnnotation,
+    ELNAnnotation,
+    ELNComponentEnum,
 )
-from nomad.datamodel.metainfo.plot import PlotSection
+from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
+from nomad.units import ureg
 from nomad_measurements.mapping.schema import (
     MappingResult,
     RectangularSampleAlignment,
 )
+from nomad_measurements.utils import merge_sections
+from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.raman_map_parser import (
+    MappingRamanMeas,
+)
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
     DtuNanolabMeasurement,
 )
@@ -24,61 +69,434 @@ m_package = Package(name='DTU Raman measurement schema')
 
 
 class RamanResult(MappingResult):
+    """Single Raman spectrum result at a specific spatial position.
+
+    Stores spectral data (intensity vs Raman shift) along with metadata about
+    the measurement position, laser parameters, and associated optical image.
+    Inherits from MappingResult to get standardized position handling and naming.
+    """
+
     m_def = Section()
 
+    intensity = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        description='The Raman intensity at each wavenumber',
+    )
+
+    raman_shift = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='1/cm',
+        description='The Raman shift values in 1/cm',
+    )
+    laser_wavelength = Quantity(
+        type=np.dtype(np.float64),
+        unit='nm',
+        description='The wavelength of the laser used in the Raman measurement.',
+    )
+    optical_image = Quantity(
+        type=str,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+        ),
+        a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
+    )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """Normalize the Raman result metadata.
+
+        Calls parent MappingResult normalizer to generate the result name from position
+        coordinates (e.g., "Stage x = 2.0 mm, y = 5.0 mm").
         """
-        The results section for the Raman measurement.
-        """
+
         super().normalize(archive, logger)
-        # TODO: Add code for calculating the relative positions of the measurements.
 
 
 class DTUSampleAlignment(RectangularSampleAlignment):
+    """Sample alignment information for rectangular mapping grids.
+
+    Defines the spatial relationship between measurement positions and the physical
+    sample. Used to convert between stage coordinates and sample coordinates.
+
+    Inherited from RectangularSampleAlignment:
+        - width (float with unit): Sample width
+        - height (float with unit): Sample height
+        - x_upper_left (float with unit): X-coordinate of upper-left corner
+        - y_upper_left (float with unit): Y-coordinate of upper-left corner
+        - x_lower_right (float with unit): X-coordinate of lower-right corner
+        - y_lower_right (float with unit): Y-coordinate of lower-right corner
+
+    Notes:
+        - Enables consistent positioning across different measurement techniques
+        - Currently optional; many measurements use absolute stage coordinates only
+    """
+
     m_def = Section(
         description='The alignment of the sample on the stage.',
     )
 
 
 class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
+    """Main schema for Raman mapping measurements.
+
+    Top-level section for a complete Raman mapping measurement, containing multiple
+    individual spectra (results), metadata, sample references, and auto-generated
+    visualizations. Implements NOMAD Schema interface for ELN integration.
+    """
+
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Raman Measurement',
     )
     raman_data_file = Quantity(
         type=str,
-        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
-        a_eln={'component': 'FileEditQuantity', 'label': 'Raman file'},
+        description=(
+            'Data file containing the Raman spectra. The expected format is '
+            'Renishaw WDF mapping file.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+        ),
     )
-
     results = SubSection(
         section_def=RamanResult,
         repeats=True,
+    )
+    optical_image_grid = Quantity(
+        type=str,
+        description='Optical image of the measurement grid.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+        ),
+        a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
     )
     sample_alignment = SubSection(
         section_def=DTUSampleAlignment,
         description='The alignment of the sample.',
     )
 
+    def write_raman_data(
+        self,
+        raman_meas_list: list[Any],
+        img_list: list[str],
+        archive: 'EntryArchive',
+        logger: 'BoundLogger',
+    ) -> None:
+        """Convert parsed Raman data into NOMAD result objects.
+
+        Takes raw data from the WDF parser (MappingRamanMeas) and creates
+        standardized RamanResult objects with proper units and metadata.
+
+        Processing Steps:
+            1. Iterate through each RamanMeas object
+            2. Convert positions to proper units (micrometers → meters)
+            3. Extract intensity and wavenumber arrays
+            4. Create RamanResult with all metadata
+            5. Normalize each result (generates name from position)
+            6. Merge results into this measurement section
+        """
+        results = []
+        for meas, img_file in zip(raman_meas_list, img_list):
+            x_absolute = meas.x_pos * ureg('um')
+            y_absolute = meas.y_pos * ureg('um')
+            result = RamanResult(
+                intensity=meas.data['intensity'].to_list(),
+                raman_shift=meas.data['wavenumber'].to_numpy() * ureg('1/cm'),
+                laser_wavelength=meas.laser_wavelength,
+                optical_image=img_file,
+                x_absolute=x_absolute,
+                y_absolute=y_absolute,
+            )
+            result.normalize(archive, logger)
+            results.append(result)
+
+        raman = RamanMeasurement(
+            results=results,
+        )
+        merge_sections(self, raman, logger)
+
+    def read_raman_data(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """Read and parse WDF file, extract spectra and optical images.
+
+        Main data extraction method that:
+        1. Opens the WDF file from upload context
+        2. Parses spectral data and positions using MappingRamanMeas
+        3. Extracts and saves optical microscopy images
+        4. Creates optical image grid for overview
+        5. Generates intensity map figure
+        6. Converts data to RamanResult objects
+        """
+        with archive.m_context.raw_file(self.raman_data_file) as file:
+            # Initialize the mapping reader
+            mapping = MappingRamanMeas()
+            # Read the data - get folder and filename from the file path
+
+            # Handle file path - use file object's name attribute
+            file_path = file.name if hasattr(file, 'name') else self.raman_data_file
+            folder = os.path.dirname(file_path)
+            filename = os.path.basename(file_path)
+
+            # If folder is empty, use current directory
+            if not folder:
+                folder = '.'
+
+            mapping.read_wdf_mapping(folder, [filename])
+
+            # Save images to the upload directory
+            # Handle both ClientContext (tests) and ServerContext (production)
+            from nomad.datamodel.context import ClientContext
+
+            if isinstance(archive.m_context, ClientContext):
+                # In test/client context, save to temp directory
+                import tempfile
+
+                upload_folder = tempfile.gettempdir()
+            else:
+                upload_folder = archive.m_context.upload_files.os_path
+
+            meas_name = filename.split('.')[0]
+
+            # Get the folder where raman_data_file is located (relative to upload)
+            data_file_dir = os.path.dirname(self.raman_data_file)
+
+            # Save images to same folder as data file
+            img_save_folder = (
+                os.path.join(upload_folder, data_file_dir)
+                if data_file_dir
+                else upload_folder
+            )
+
+            _, img_filenames = mapping.save_optical_images(img_save_folder, meas_name)
+            # Create relative paths for the images
+            img_list = [
+                os.path.join(data_file_dir, img_name)
+                if data_file_dir and img_name
+                else img_name
+                for img_name in img_filenames
+            ]
+
+            # Create and save the optical image grid
+            grid_path = os.path.join(img_save_folder, f'{meas_name}_optical_grid.png')
+            fig = mapping.create_image_grid(save_path=grid_path)
+            # Store the relative path to the optical image grid
+            if fig:
+                self.optical_image_grid = (
+                    os.path.join(data_file_dir, f'{meas_name}_optical_grid.png')
+                    if data_file_dir
+                    else f'{meas_name}_optical_grid.png'
+                )
+
+            # Generate intensity map figure and add to figures
+            fig_heatmap = mapping.plot_intensity_map()
+
+            # Write the data to results
+            self.write_raman_data(mapping.raman_meas_list, img_list, archive, logger)
+
+            return fig_heatmap
+
     def plot(self) -> None:
+        """Generate interactive Plotly visualizations of Raman data.
+
+        Creates two types of spectral plots and stores them in self.figures:
+        1. "Patterns": Overlaid spectra with log intensity scale
+        2. "Stacked Patterns": Offset spectra for easy visual comparison
+
+        Plot 1: Overlaid Spectra
+            - All spectra plotted on same scale
+            - Y-axis: log(intensity) to handle wide dynamic range
+            - Each spectrum labeled by position
+            - Useful for comparing peak positions
+
+        Plot 2: Stacked Spectra
+            - Spectra offset vertically for clarity
+            - Offset calculated dynamically based on intensity range
+            - Excludes Si peak region (510-530 cm⁻¹) from offset calculation
+            - Better for visualizing peak evolution across positions
+        Returns:
+            None. Appends PlotlyFigure objects to self.figures list.
         """
-        Add a plot of the Raman measurement results.
-        """
-        pass
+        fig = go.Figure()
+        result: RamanResult
+        for result in self.results:
+            # Fixed: raman_shift is stored as a list, not a Quantity
+            # If it's a Quantity, convert it; otherwise use it directly
+            if hasattr(result.raman_shift, 'magnitude'):
+                x_data = result.raman_shift.to('1/cm').magnitude
+            else:
+                x_data = result.raman_shift
+
+            # Add small epsilon to avoid log(0) warnings
+            intensity_safe = np.maximum(result.intensity, 1e-10)
+
+            fig.add_trace(
+                go.Scatter(
+                    x=x_data,
+                    y=np.log(intensity_safe),
+                    mode='lines',
+                    name=result.name,
+                    hoverlabel=dict(namelength=-1),
+                )
+            )
+
+        # Update layout
+        fig.update_layout(
+            title='Raman Spectra',
+            xaxis_title='Raman Shift (1/cm)',
+            yaxis_title='Log Intensity',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                type='linear',
+            ),
+        )
+
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(
+            scrollZoom=False,
+        )
+        self.figures.append(
+            PlotlyFigure(
+                label='Patterns',
+                figure=plot_json,
+            )
+        )
+
+        fig2 = go.Figure()
+
+        # Pre-calculate log intensities and cumulative offsets
+        log_intensities = []
+        offsets = [0]
+        cumulative_offset = 0
+
+        OFFSET_FACTOR = 0.3  # Factor to control spacing between patterns
+        RAMAN_RANGE_EXCL = (510, 530)  # Exclude this range for offset calculation
+        RAMAN_RAYLEIGH_PEAK_FILTER = 80  # Filter to exclude the region around 0 cm-1
+
+        for result in self.results:
+            if hasattr(result.raman_shift, 'magnitude'):
+                raman_shift_data = result.raman_shift.to('1/cm').magnitude
+            else:
+                raman_shift_data = result.raman_shift
+
+            log_intensity = np.log10(np.maximum(result.intensity, 1e-10))
+            log_intensities.append(log_intensity)
+
+            # Filter to exclude the specified Raman shift range for offset calculation
+            mask = (raman_shift_data < RAMAN_RANGE_EXCL[0]) | (
+                raman_shift_data > RAMAN_RANGE_EXCL[1]
+            )
+            # also exclude the Rayleigh peak region
+            mask &= raman_shift_data > RAMAN_RAYLEIGH_PEAK_FILTER
+
+            # apply mask
+            log_intensity_filtered = log_intensity[mask]
+
+            cumulative_offset += (
+                log_intensity_filtered.max() - log_intensity_filtered.min()
+            ) * OFFSET_FACTOR
+            offsets.append(cumulative_offset)
+
+        # Add traces with dynamically calculated offsets
+        for i, result in enumerate(self.results):
+            if hasattr(result.raman_shift, 'magnitude'):
+                x_data = result.raman_shift.to('1/cm').magnitude
+            else:
+                x_data = result.raman_shift
+
+            fig2.add_trace(
+                go.Scatter(
+                    x=x_data,
+                    y=log_intensities[i] + offsets[i],
+                    mode='lines',
+                    name=result.name,
+                    hoverlabel=dict(namelength=-1),
+                )
+            )
+
+        # Update layout
+        fig2.update_layout(
+            title='Raman Spectra stacked',
+            xaxis_title='Raman Shift (1/cm)',
+            yaxis_title='Log(Intensity)',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                type='linear',
+            ),
+        )
+
+        plot_json2 = fig2.to_plotly_json()
+        plot_json2['config'] = dict(
+            scrollZoom=False,
+        )
+        self.figures.append(
+            PlotlyFigure(
+                label='Stacked Patterns',
+                figure=plot_json2,
+            )
+        )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        """
-        The normalizer for the `RamanMeasurement` class.
+        """Main normalization pipeline for Raman measurements.
+
+        Executed automatically when entry is saved in NOMAD. Orchestrates the complete
+        data processing workflow from raw WDF file to searchable, visualized results.
+
+        Processing Pipeline:
+            1. Set default location if not provided
+            2. Link measurement to sample based on filename pattern
+            3. Parse WDF file and extract all data (read_raman_data)
+            4. Call parent normalizers for standard metadata
+            5. Generate interactive plots if results exist (plot)
+            6. Add intensity map to figures
         """
 
         if self.location is None:
             self.location = 'DTU Nanolab Raman Measurement'
+
+        if self.raman_data_file:
+            self.add_sample_reference(
+                filename=self.raman_data_file,
+                measurement_type='Raman',
+                archive=archive,
+                logger=logger,
+            )
+            fig_heatmap = self.read_raman_data(archive, logger)
 
         super().normalize(archive, logger)
 
         self.figures = []
         if len(self.results) > 0:
             self.plot()
+            if fig_heatmap:
+                fig_heatmap.update_layout(
+                    template='plotly_white',
+                    hovermode='closest',
+                    dragmode='zoom',
+                    xaxis=dict(
+                        fixedrange=False,
+                    ),
+                    yaxis=dict(
+                        fixedrange=False,
+                    ),
+                )
+                self.figures.append(
+                    PlotlyFigure(
+                        label='Raman Intensity Map',
+                        figure=fig_heatmap.to_plotly_json(),
+                    )
+                )
 
 
 m_package.__init_metainfo__()
