@@ -98,6 +98,13 @@ sputtering = AppEntryPoint(
                 unit='cm^3/minute',
                 format=Format(decimals=1),
             ),
+            Column(
+                search_quantity=f'data.sulfur_cracker_pressure.sulfur_flow#{schema}',
+                selected=True,
+                label='Sulfur flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
         ],
         menu=Menu(
             title='Material',
@@ -238,6 +245,65 @@ sputtering = AppEntryPoint(
                             'w': 6,
                             'y': 0,
                             'x': 6,
+                        },
+                    },
+                },
+                {
+                    'type': 'histogram',
+                    'title': 'Sputter pressure',
+                    'show_input': False,
+                    'autorange': False,
+                    'nbins': 30,
+                    'y': {
+                        'scale': 'linear',
+                    },
+                    'x': {
+                        'search_quantity': (
+                            f'data.deposition_parameters.sputter_pressure#{schema}'
+                        ),
+                        'unit': 'mtorr',
+                        'title': 'Sputter pressure',
+                    },
+                    'layout': {
+                        'xxl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 4,
+                            'w': 18,
+                            'y': 4,
+                            'x': 0,
+                        },
+                        'xl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 15,
+                            'y': 3,
+                            'x': 0,
+                        },
+                        'lg': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 12,
+                            'y': 3,
+                            'x': 0,
+                        },
+                        'md': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 9,
+                            'y': 3,
+                            'x': 0,
+                        },
+                        'sm': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 6,
+                            'y': 3,
+                            'x': 0,
                         },
                     },
                 },
@@ -479,20 +545,22 @@ edx = AppEntryPoint(
 
 
 analysis_schema = 'nomad_dtu_nanolab_plugin.schema_packages.analysis.DtuJupyterAnalysis'
+analysis_template_schema = 'nomad_dtu_nanolab_plugin.schema_packages.analysis.DtuJupyterAnalysisTemplate'
 
 analysis = AppEntryPoint(
-    name='Analysis app',
-    description='App for searching the performed analysis.',
+    name='Analysis and Templates app',
+    description='App for searching the performed analysis and templates.',
     app=App(
-        label='Analysis',
+        label='Analysis & Templates',
         path='analysis',
         category='Activities',
         description="""
-        Explore Jupyter Notebooks and analysis results from the lab.
+        Explore the different Jupyter Notebooks, analysis results and templates.
         """,
-        filters=Filters(
+        search_quantities=SearchQuantities(
             include=[
                 f'*#{analysis_schema}',
+                f'*#{analysis_template_schema}',
             ],
         ),
         columns=[
@@ -500,6 +568,11 @@ analysis = AppEntryPoint(
                 search_quantity=f'data.lab_id#{analysis_schema}',
                 selected=True,
                 label='Analysis ID',
+            ),
+            Column(
+                search_quantity='entry_type',
+                selected=True,
+                label='Entry Type',
             ),
             Column(
                 search_quantity=f'data.name#{analysis_schema}',
@@ -535,11 +608,13 @@ analysis = AppEntryPoint(
                     search_quantity='authors.name',
                     show_input=True,
                 ),
+                MenuItemTerms(
+                    title='Entry Type',
+                    search_quantity='entry_type',
+                    options=2,
+                ),
             ],
         ),
-        filters_locked={
-            'entry_type': 'DtuJupyterAnalysis',
-        },
     ),
 )
 
@@ -777,6 +852,65 @@ rtp = AppEntryPoint(
                             'w': 6,
                             'y': 0,
                             'x': 6,
+                        },
+                    },
+                },
+                {
+                    'type': 'histogram',
+                    'title': 'Annealing pressure',
+                    'show_input': False,
+                    'autorange': False,
+                    'nbins': 30,
+                    'y': {
+                        'scale': 'linear',
+                    },
+                    'x': {
+                        'search_quantity': (
+                            f'data.overview.annealing_pressure#{rtp_schema}'
+                        ),
+                        'unit': 'torr',
+                        'title': 'Annealing pressure',
+                    },
+                    'layout': {
+                        'xxl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 4,
+                            'w': 18,
+                            'y': 4,
+                            'x': 0,
+                        },
+                        'xl': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 15,
+                            'y': 3,
+                            'x': 0,
+                        },
+                        'lg': {
+                            'minH': 3,
+                            'minW': 3,
+                            'h': 3,
+                            'w': 12,
+                            'y': 3,
+                            'x': 0,
+                        },
+                        'md': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 9,
+                            'y': 3,
+                            'x': 0,
+                        },
+                        'sm': {
+                            'minH': 3,
+                            'minW': 6,
+                            'h': 3,
+                            'w': 6,
+                            'y': 3,
+                            'x': 0,
                         },
                     },
                 },
