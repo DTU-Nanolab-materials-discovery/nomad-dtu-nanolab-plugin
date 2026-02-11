@@ -545,7 +545,9 @@ edx = AppEntryPoint(
 
 
 analysis_schema = 'nomad_dtu_nanolab_plugin.schema_packages.analysis.DtuJupyterAnalysis'
-analysis_template_schema = 'nomad_dtu_nanolab_plugin.schema_packages.analysis.DtuJupyterAnalysisTemplate'
+analysis_template_schema = (
+    'nomad_dtu_nanolab_plugin.schema_packages.analysis.DtuJupyterAnalysisTemplate'
+)
 
 analysis = AppEntryPoint(
     name='Analysis and Templates app',
