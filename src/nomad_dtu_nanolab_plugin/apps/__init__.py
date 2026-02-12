@@ -567,9 +567,9 @@ analysis = AppEntryPoint(
         ),
         columns=[
             Column(
-                search_quantity=f'data.lab_id#{analysis_schema}',
+                search_quantity='results.eln.lab_ids',
                 selected=True,
-                label='Analysis ID',
+                label='Lab ID',
             ),
             Column(
                 search_quantity='entry_type',
@@ -577,19 +577,14 @@ analysis = AppEntryPoint(
                 label='Entry Type',
             ),
             Column(
-                search_quantity=f'data.name#{analysis_schema}',
+                search_quantity='entry_name',
                 selected=True,
                 label='Name',
             ),
             Column(
-                search_quantity=f'data.datetime#{analysis_schema}',
+                search_quantity='upload_create_time',
                 selected=True,
-                label='Date and time',
-            ),
-            Column(
-                search_quantity=f'data.notebook#{analysis_schema}',
-                selected=True,
-                label='Notebook',
+                label='Upload Time',
             ),
             Column(
                 search_quantity='main_author.name',
@@ -601,9 +596,9 @@ analysis = AppEntryPoint(
             size=MenuSizeEnum.MD,
             items=[
                 MenuItemHistogram(
-                    title='Analysis Date',
+                    title='Upload Date',
                     x=Axis(
-                        search_quantity=f'data.datetime#{analysis_schema}',
+                        search_quantity='upload_create_time',
                     ),
                 ),
                 MenuItemTerms(
@@ -617,6 +612,9 @@ analysis = AppEntryPoint(
                 ),
             ],
         ),
+        filters_locked={
+            'results.eln.sections': ['DtuJupyterAnalysis', 'DtuJupyterAnalysisTemplate'],
+        },
     ),
 )
 
