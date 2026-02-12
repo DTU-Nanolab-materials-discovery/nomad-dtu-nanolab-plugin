@@ -613,7 +613,10 @@ analysis = AppEntryPoint(
             ],
         ),
         filters_locked={
-            'results.eln.sections': ['DtuJupyterAnalysis', 'DtuJupyterAnalysisTemplate'],
+            'results.eln.sections': [
+                'DtuJupyterAnalysis',
+                'DtuJupyterAnalysisTemplate',
+            ],
         },
     ),
 )
