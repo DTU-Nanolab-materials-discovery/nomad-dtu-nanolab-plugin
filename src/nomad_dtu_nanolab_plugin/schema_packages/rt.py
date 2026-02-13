@@ -268,10 +268,10 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
 
                 measurement.results = results
 
-                # Link to sample using lab_id
+                # Link to sample using lab_id (optional - can be set manually later)
                 measurement.samples = [CompositeSystemReference(lab_id=library_id)]
 
-                # Create archive
+                # Create archive file for this measurement
                 measurement_ref = create_archive(
                     measurement,
                     archive,
