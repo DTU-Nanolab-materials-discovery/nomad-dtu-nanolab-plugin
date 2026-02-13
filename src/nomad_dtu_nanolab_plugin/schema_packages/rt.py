@@ -554,9 +554,9 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 positions.append((pos_x, pos_y))
                 
                 # Compute average for each spectrum configuration
-                for config_key in spectrum_configs:
+                for config_key, config_values in spectrum_configs.items():
                     avg_val = compute_avg_for_config(result, config_key)
-                    spectrum_configs[config_key].append(avg_val)
+                    config_values.append(avg_val)
         
         if positions:
             # Create heatmap for each unique spectrum configuration
@@ -589,7 +589,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         title = (
                             f'Avg. {spectrum_type} '
                             f'{self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm '
-                            f'(detector:{det_str}, sample:{samp_str}, '
+                            f'(detector: {det_str}, sample: {samp_str}, '
                             f'{pol_str})'
                         )
                         short_label = (
@@ -661,7 +661,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         title = (
                             f'Avg. {spectrum_type} '
                             f'{self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm '
-                            f'(detector:{det_str}, sample:{samp_str}, '
+                            f'(detector: {det_str}, sample: {samp_str}, '
                             f'{pol_str})'
                         )
                         short_label = (

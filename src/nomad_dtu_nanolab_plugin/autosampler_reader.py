@@ -56,6 +56,9 @@ ALPHA_THRESHOLD = 0.05
 #Minimum r value for the bandgap estimation using the intercept method
 MIN_R = 0.9
 
+# Number of parts expected in measurement label when split by "__"
+MEASUREMENT_LABEL_PARTS = 4
+
 # -----------------Classes------------------
 
 # class for single UV-vis-NIR measurement collected by 
@@ -76,7 +79,7 @@ class SingleMeasurement:
         self.config = {}  # Dictionary for config
 
         # Parse the measurement label if it has the correct format
-        if len(measurement_label.split("__")) == 4:
+        if len(measurement_label.split("__")) == MEASUREMENT_LABEL_PARTS:
             self.sample_name = self.measurement_label.split("__")[0]
             polarisation_angle = self.measurement_label.split("__")[1]
             self.metadata["PolarizationAngle"] = (
@@ -248,11 +251,19 @@ class MultiMeasurement:
             s_measurements = pol_measurements["s"]
             p_measurements = pol_measurements["p"]
             if len(s_measurements) == len(p_measurements):
-                for s_measurement, p_measurement in zip(s_measurements, p_measurements):
-                    avg_measurement = self._average_measurements(s_measurement, p_measurement)
+                for s_measurement, p_measurement in zip(
+                    s_measurements, p_measurements
+                ):
+                    avg_measurement = self._average_measurements(
+                        s_measurement, p_measurement
+                    )
                     averaged_measurements.append(avg_measurement)
             else:
-                print(f"Warning (point X={self.position_x}, Y={self.position_y}): Unequal number of s and p measurements")
+                print(
+                    f"Warning (point X={self.position_x}, "
+                    f"Y={self.position_y}): Unequal number of s and p "
+                    f"measurements"
+                )
 
         self.avg_sp_measurements = averaged_measurements
 
@@ -275,7 +286,8 @@ class MultiMeasurement:
             alpha = -ln(T/(1-R)^2)
             #only considers 1st front reflection and 1st back reflection
         method "infr" :
-            alpha = -ln(-(R^2+sqrt(R^4 + 4T^2R^2 - 4R^3 + 6R^2 - 4R + 1) - 2R - 1)/(2R^2T))
+            alpha = -ln(-(R^2+sqrt(R^4 + 4T^2R^2 - 4R^3 + 6R^2
+                          - 4R + 1) - 2R - 1)/(2R^2T))
             # considers all reflections
         """
         def format_R_T(R, T):
@@ -296,7 +308,9 @@ class MultiMeasurement:
             R, T = format_R_T(R, T)
             return -np.log(
                 -(
-                    R**2 + np.sqrt(R**4 + 4*T**2*R**2 - 4*R**3 + 6*R**2 - 4*R + 1) - 2*R - 1
+                    R**2 + np.sqrt(
+                        R**4 + 4*T**2*R**2 - 4*R**3 + 6*R**2 - 4*R + 1
+                    ) - 2*R - 1
                 )/(2*R**2*T)
             )
         #dictionary to store the methods
@@ -316,12 +330,17 @@ class MultiMeasurement:
         for key, measurements in rt_grouped_measurements.items():
             if len(measurements) != 1:
                 print(
-                    f"Warning (point X={self.position_x}, Y={self.position_y}): {len(measurements)} {key} measurements found"
-                    )
+                    f"Warning (point X={self.position_x}, "
+                    f"Y={self.position_y}): {len(measurements)} {key} "
+                    f"measurements found"
+                )
                 return
         #check that both R and T measurements are present
         if "T" not in rt_grouped_measurements or "R" not in rt_grouped_measurements:
-            print(f"Warning (point X={self.position_x}, Y={self.position_y}): T or R measurement missing")
+            print(
+                f"Warning (point X={self.position_x}, "
+                f"Y={self.position_y}): T or R measurement missing"
+            )
             return
         #filter the measurements to the specified wavelength range if provided
         if wv_start is not None and wv_end is not None:
@@ -398,7 +417,10 @@ class MultiMeasurement:
         #check that the alpha data is present, by chekcing  that one of the 
         # derived data dict key starts with alpha
         if 'alpha' not in self.derived_data:
-            print(f"Warning (point X={self.position_x}, Y={self.position_y}): Alpha data missing")
+            print(
+                f"Warning (point X={self.position_x}, "
+                f"Y={self.position_y}): Alpha data missing"
+            )
 
         alpha_df = self.derived_data["alpha"]
         alpha = alpha_df["alpha"]
@@ -419,7 +441,8 @@ class MultiMeasurement:
     def estimate_bandgap_inflection(
             self,
             max_energy=None,
-            window_size=WINDOW_SIZE_INTERCEPT,  # Ensure this is smaller than the length of the data
+            # Ensure this is smaller than the length of the data
+            window_size=WINDOW_SIZE_INTERCEPT,
             min_alpha=MIN_ALPHA_BANDGAP,
             edge_points_to_remove=None  # New parameter to control edge removal
             ):
@@ -430,7 +453,10 @@ class MultiMeasurement:
         """
         # Check that the alpha data is present
         if 'alpha' not in self.derived_data:
-            print(f"Warning (point X={self.position_x}, Y={self.position_y}): Alpha data missing")
+            print(
+                f"Warning (point X={self.position_x}, "
+                f"Y={self.position_y}): Alpha data missing"
+            )
             return
         
         alpha_df = self.derived_data["alpha"]
@@ -446,7 +472,8 @@ class MultiMeasurement:
         wavelength = filtered_data['Wavelength'].values  # Use wavelength directly
         alpha = filtered_data['alpha'].values
 
-        alpha[alpha < 1e-10] = 1e-10  # Avoid log or derivative issues
+        # Avoid log or derivative issues
+        alpha[alpha < T_THRESHOLD] = T_THRESHOLD
 
         # Handle NaN values in alpha
         alpha[np.isnan(alpha)] = 0
@@ -495,7 +522,8 @@ class MultiMeasurement:
             
             print(f"Info (point X={self.position_x}, Y={self.position_y}): "
                 f"Removed {edge_points_to_remove} points from each edge. "
-                f"Working with {len(wavelength_trimmed)} points instead of {len(wavelength)}.")
+                f"Working with {len(wavelength_trimmed)} points instead "
+                f"of {len(wavelength)}.")
         else:
             print(f"Warning (point X={self.position_x}, Y={self.position_y}): "
                 f"Not enough data points to remove edges safely. "
@@ -560,7 +588,8 @@ class MultiMeasurement:
         # are above a certain threshold, if they are we return NaN
         if np.all(smooth_alpha_trimmed > min_alpha):
             print(f"Warning (point X={self.position_x}, Y={self.position_y}): "
-                f"All smoothed alpha values are above {min_alpha}. Bandgap estimation impossible.")
+                f"All smoothed alpha values are above {min_alpha}. "
+                f"Bandgap estimation impossible.")
             bandgap_energy = np.nan
             bandgap_wavelength = np.nan
 
@@ -581,25 +610,36 @@ class MultiMeasurement:
         ):
         """
         this method is used to extract a bandgap based on the threshold method.
-        We simply take the first group of consecutive points (of size window_size) where the absorption
-        where the absorption coefficient is above a certain threshold, and we take the average of the
-        energy values of this group as the bandgap.
+        We simply take the first group of consecutive points (of size
+        window_size) where the absorption coefficient is above a certain
+        threshold, and we take the average of the energy values of this group
+        as the bandgap.
         the default takes as input the raw absorption coefficient, while the 
         'normalized' method takes the normalized absorption coefficient as input.
         """
         # Check that the alpha data is present
         if 'alpha' not in self.derived_data:
-            print(f"Warning (point X={self.position_x}, Y={self.position_y}): Alpha data missing")
+            print(
+                f"Warning (point X={self.position_x}, "
+                f"Y={self.position_y}): Alpha data missing"
+            )
             return
         
         if 'smoothed_alpha' not in self.derived_data:
-            print(f"Warning (point X={self.position_x}, Y={self.position_y}): Smoothed alpha data missing")
+            print(
+                f"Warning (point X={self.position_x}, "
+                f"Y={self.position_y}): Smoothed alpha data missing"
+            )
             return
         
         #if all the alpha values are above the threshold, we return np.nan
         # and print a warning
         if all(self.derived_data["smoothed_alpha"]['smoothed_alpha'] > min_alpha):
-            print(f"Warning (point X={self.position_x}, Y={self.position_y}): All alpha values are above the threshold. Bandgap estimation impossible.")
+            print(
+                f"Warning (point X={self.position_x}, "
+                f"Y={self.position_y}): All alpha values are above the "
+                f"threshold. Bandgap estimation impossible."
+            )
             self.derived_data['bandgap_threshold_energy'] = np.nan
             self.derived_data['bandgap_threshold_wavelength'] = np.nan
             return
@@ -611,7 +651,9 @@ class MultiMeasurement:
             alpha_df = self.derived_data["alpha"]
             alpha = alpha_df['alpha'].values
         else:
-            raise ValueError(f"Unknown method: {method}. Use 'normalized' or 'default'.")
+            raise ValueError(
+                f"Unknown method: {method}. Use 'normalized' or 'default'."
+            )
         
         energy = alpha_df['Energy'].values
 
@@ -626,14 +668,22 @@ class MultiMeasurement:
                 #if the very first window has all values above the threshold
                 # we say that the bandgap is np.nan
                 if i == 0:
-                    print(f"Warning (point X={self.position_x}, Y={self.position_y}): All alpha values are above the threshold. Bandgap estimation impossible.")
+                    print(
+                        f"Warning (point X={self.position_x}, "
+                        f"Y={self.position_y}): All alpha values are above the "
+                        f"threshold. Bandgap estimation impossible."
+                    )
                     E_g = np.nan
                 else: 
                     # Calculate the average energy value of the window
                     E_g = np.mean(E_window)
                 break
         else:
-            print(f"Warning (point X={self.position_x}, Y={self.position_y}): No suitable region found for bandgap estimation.")
+            print(
+                f"Warning (point X={self.position_x}, "
+                f"Y={self.position_y}): No suitable region found for "
+                f"bandgap estimation."
+            )
             E_g = np.nan
 
         # Store results in derived_data
@@ -658,7 +708,10 @@ class MultiMeasurement:
         """
         # Check that the alpha data is present
         if 'alpha' not in self.derived_data:
-            print(f"Warning (point X={self.position_x}, Y={self.position_y}): Alpha data missing")
+            print(
+                f"Warning (point X={self.position_x}, "
+                f"Y={self.position_y}): Alpha data missing"
+            )
             return
         
         alpha_df = self.derived_data["alpha"]
@@ -713,24 +766,38 @@ class MultiMeasurement:
                 best_fit = model
                 
         if best_fit is None:
-            print(f"Warning (point X={self.position_x}, Y={self.position_y}): No suitable region found for bandgap estimation (r>{min_r} and slope>{min_slope}).")
+            print(
+                f"Warning (point X={self.position_x}, "
+                f"Y={self.position_y}): No suitable region found for "
+                f"bandgap estimation (r>{min_r} and slope>{min_slope})."
+            )
             E_g = np.nan
             best_r = np.nan
             best_region = np.nan
             best_region_center = np.nan
         elif best_r < min_r:
-            print(f"Warning (point X={self.position_x}, Y={self.position_y}): Best region correlation coefficient below {min_r}. Bandgap estimation impossible.")
+            print(
+                f"Warning (point X={self.position_x}, "
+                f"Y={self.position_y}): Best region correlation "
+                f"coefficient below {min_r}. Bandgap estimation impossible."
+            )
             E_g = np.nan
         elif all(alpha > MIN_ALPHA_BANDGAP):
-            print(f"Warning (point X={self.position_x}, Y={self.position_y}): All alpha values are above {MIN_ALPHA_BANDGAP}. Bandgap estimation impossible.")
+            print(
+                f"Warning (point X={self.position_x}, "
+                f"Y={self.position_y}): All alpha values are above "
+                f"{MIN_ALPHA_BANDGAP}. Bandgap estimation impossible."
+            )
             E_g = np.nan
             best_r = np.nan
             best_region = np.nan
             best_region_center = np.nan
         else:
             # Extrapolate the best region to the x-axis
-            intercept = best_fit.intercept_  # y = mx + b, solve for x when y=0
-            E_g = -intercept / best_fit.coef_[0]  # Solve for E when y = 0 (intercept = 0)
+            # y = mx + b, solve for x when y=0
+            intercept = best_fit.intercept_
+            # Solve for E when y = 0 (intercept = 0)
+            E_g = -intercept / best_fit.coef_[0]
             
         # Store results in derived_data
         self.derived_data['intercept_best_r'] = best_r
@@ -750,7 +817,7 @@ class MultiMeasurement:
 
         return best_region, best_r
 
-    def standard_treatment(
+    def standard_treatment(  # noqa: PLR0913
             self,
             wv_start=WV_START,
             wv_end=WV_END,
@@ -804,7 +871,9 @@ def group_samples(collects):
 
     return samples
 
-def estimate_bandgap_tauc_map(map, window_size=WINDOW_SIZE_INTERCEPT, max_energy=MAX_ENERGY):
+def estimate_bandgap_tauc_map(
+    map, window_size=WINDOW_SIZE_INTERCEPT, max_energy=MAX_ENERGY
+):
     """
     Method to estimate the bandgap from the absorption plot
     using the intercept method. The main different with the estimate_bandgap_tauc
@@ -839,7 +908,8 @@ def estimate_bandgap_tauc_map(map, window_size=WINDOW_SIZE_INTERCEPT, max_energy
     print(f"Min region: {min_region}")
     print(f"Average best region: {best_region_avg}")
 
-    #TODO: fit the tauc data to a line in the average best region and find the intersection with the x-axis
+    # TODO: fit the tauc data to a line in the average best region and
+    # find the intersection with the x-axis
 
 
 def group_measurements_position(samples):
@@ -1024,7 +1094,8 @@ def print_methods(multi_meas_map):
     """
 
     methods = {}
-    #we only check the first point of the map (first entry of the map)  as the methods should be the same
+    # we only check the first point of the map (first entry of the map)
+    # as the methods should be the same
     first_key = list(multi_meas_map.keys())[0]
     first_measurement = multi_meas_map[first_key]
 
@@ -1121,166 +1192,3 @@ def plot_derived_data(multi_meas_map, quantity='alpha', x='Energy'):
     return fig, data_export
 
 
-
-# -----------------Main----------------------
-
-
-def main():
-    global measurements, samples, multi_measurements
-
-    #----USER INPUT----
-
-    auto_sampler_path = r'Z:\P110143-phosphosulfides-Andrea\Data\AutosamplerData'
-
-    folder_name = 'eugbe_250909'
-
-    data_filename = "eugbe_250909_data.csv"
-
-    config_filename = "eugbe_250909_grid.csv"
-
-    show_graphs = True  # Set to True if you want to display the graphs
-    save_graphs = True
-    export_data = True
-
-    #if you want to change the parameters for the bandgap estimation
-    # for a specific sample, you can add the sample name as a key
-    # and the parameters as a dictionary as the value
-        
-    # sample_parameters = {
-    #     'eugbe_0020_0025_Zr_G': {
-    #         'wv_start': 300,
-    #         'wv_end': 800,
-    #         'alpha_method': '1fr',
-    #         'tauc_method': 'direct',
-    #         'max_energy': 3.5,
-    #         'window_size': 20,  
-    #         'window_size_intercept': 20,
-    #         'window_size_threshold': 10,
-    #         'alpha_threshold': 0.1,
-    #         'min_r': 0.9
-    #     },
-    # }
-
-    sample_parameters = {
-        'anat_0012_Ba-Zr_G': {
-            'wv_start': 300,
-            'wv_end': 800,
-        },
-        # 'eugbe_0026_Ag_G': {
-        #     'wv_start': 300,
-        #     'wv_end': 800,
-        #     'alpha_method': '1fr',
-        #     'tauc_method': 'direct',
-        #     'max_energy': 3.5,
-        #     'window_size': 20,  
-        #     'window_size_intercept': 20,
-        #     'window_size_threshold': 10,
-        #     'alpha_threshold': 0.1,
-        #     'min_r': 0.9
-        # },
-    } 
-
-    #------PROCESSING------
-
-    file_path = os.path.join(auto_sampler_path, folder_name, data_filename)
-    config_path = os.path.join(auto_sampler_path, folder_name, config_filename)
-
-    measurements = parse_file(file_path, config_path)
-
-    graph_folder = os.path.join(auto_sampler_path, folder_name, 'graphs')
-    exported_data_folder = os.path.join(auto_sampler_path, folder_name, 'exported_data')
-
-    if config_path is None:  
-        return
-
-    samples = group_samples(measurements)
-    multi_measurements = group_measurements_position(samples)
-
-    print(f'Number of measurements: {len(measurements)}')
-
-    for sample_name, map_data in multi_measurements.items():
-        print(f'Sample Name: {sample_name}')
-        
-        if sample_name == 'Baseline':
-            continue
-
-        if sample_name in sample_parameters:
-            print(f"Parameters for {sample_name}: {sample_parameters[sample_name]}")
-            parameters = sample_parameters[sample_name]
-        
-        for position_key, multi_measurement in map_data.items():
-            if sample_name in sample_parameters:
-                # we unpack the parameters for the specific sample
-                multi_measurement.standard_treatment(**parameters)
-            else:
-                multi_measurement.standard_treatment()
-
-        heatmaps, heatmaps_data = make_heatmap(map_data)
-
-        methods = print_methods(map_data)
-
-        os.makedirs(os.path.join(graph_folder, sample_name), exist_ok=True)
-        os.makedirs(os.path.join(exported_data_folder, sample_name), exist_ok=True)
-  
-        #save the methods dict to a csv file in the exported data folder
-        
-        methods_df = pd.DataFrame.from_dict(methods, orient='index', columns=['param'])
-        methods_df.to_csv(os.path.join(exported_data_folder, sample_name, f"{sample_name}_methods.csv"))
-
-        for fig_name, fig in heatmaps.items():
-            if show_graphs:
-                fig.show()
-            if save_graphs:
-                fig.write_html(
-                    os.path.join(
-                        graph_folder,
-                        sample_name,
-                        f"{sample_name}_{fig_name}.html"
-                        )
-                    )
-        if export_data:
-            for data_name, data in heatmaps_data.items():
-                data.to_csv(
-                    os.path.join(
-                        exported_data_folder,
-                        sample_name,
-                        f"{sample_name}_{data_name}.csv"
-                        )
-                    )
-            
-        if any(key.startswith("alpha") for key in map_data[position_key].derived_data):
-            spectra_plots = {}
-            spectra_data = {}
-            
-            for quant in [
-                'R', 'T',
-                'alpha', 'tauc', 'smoothed_alpha',
-                'normalized_smoothed_alpha', 'normalized_alpha',
-                '1st_deriv_alpha', '2nd_deriv_alpha'
-                ]:
-                fig, data = plot_derived_data(map_data, quant)
-                if show_graphs:
-                    fig.show()
-                spectra_plots[quant] = fig
-                spectra_data[quant] = data
-                if save_graphs:
-                    fig.write_html(
-                        os.path.join(
-                            graph_folder,
-                            sample_name,
-                            f"{sample_name}_{quant}.html"
-                            )
-                        )
-                if export_data:
-                    data.to_csv(
-                        os.path.join(
-                            exported_data_folder,
-                            sample_name,
-                            f"{sample_name}_{quant}.csv"
-                            )
-                        )
-
-    print("Done!")
-
-if __name__ == "__main__":
-    main()
