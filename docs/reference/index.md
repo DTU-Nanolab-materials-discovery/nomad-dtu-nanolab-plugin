@@ -61,6 +61,14 @@ Measurement techniques for materials characterization:
 - **[Raman Spectroscopy](raman.md)** - Vibrational modes and material fingerprinting
 - **[RT Measurements](rt.md)** - Room temperature electrical and optical measurements
 
+### Characterization file formats
+| Method | Machine Supplier | Proprietary File | Manual export | Plugin Class | Comment |
+|--------|------------------|------------------|-----------------|--------------|---------|
+| **X-Ray Diffraction (XRD)** | Rigaku | [.rasx](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/ZnO_XRD_map/ZnO%20ALD%20training_001_1_0-000_0-000.rasx) | - | [`DTUXRDMeasurement`](xrd.md) | Each file is a single measurement |
+| **Energy Dispersive X-Ray Spectroscopy (EDX)** | ? | ? | [.xlsx](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/mittma_00012_FR.xlsx) | [`DTUEDXMeasurement`](edx.md) | The .xlsx contains the elemental composition data and corner positions |
+| **Raman Spectroscopy** | Renishaw | [.wdf](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/indiogo_0019_RTP_hc_1x10s_P1_x20_map_0.wdf) | - | [`DTURamanMeasurement`](raman.md) | - |
+| **Spectroscopic Ellipsometry** | J.A. Woollam | ? | [.txt](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/eugbe_0009_RTP_hc_SiO2_map_nk_vs_energy.txt) | [`DTUEllipsometryMeasurement`](ellipsometry.md) | - |
+
 ## Data Analysis
 
 Computational analysis and data processing:
