@@ -211,6 +211,10 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
 
             # Create a measurement archive for each library
             for library_id, position_data in library_data.items():
+                # Skip baseline samples
+                if library_id == 'Baseline':
+                    continue
+                
                 # Extract datetime from first measurement for uniqueness
                 first_multi_measurement = next(iter(position_data.values()))
                 collection_time = None
@@ -292,11 +296,11 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                 # Link to sample using lab_id (optional - can be set manually later)
                 measurement.samples = [CompositeSystemReference(lab_id=library_id)]
 
-                # Create archive file for this measurement
+                # Create archive file for this measurement with datetime identifier
                 measurement_ref = create_archive(
                     measurement,
                     archive,
-                    f'{library_id}_rt_measurement.archive.json',
+                    f'{library_id}_rt_measurement_{datetime_label}.archive.json',
                 )
 
                 measurements.append(
@@ -337,10 +341,10 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         
         Creates two types of plots:
         1. "R and T Spectra": All spectra overlaid
-        2. "Individual Spectrum Heatmaps": One spatial heatmap per unique spectrum configuration
-           (measurement type, detector angle, sample angle, polarization) showing average intensity (400-800 nm)
+        2. "Individual Configuration Heatmaps": One spatial heatmap per unique measurement configuration
+           (spectrum type, detector angle, sample angle, polarization) showing average intensity (400-800 nm)
         
-        The heatmaps are created for each distinct spectrum in the measurement.
+        Each unique configuration gets its own heatmap with measurement details in the title.
         """
         import plotly.graph_objs as go
         from nomad.datamodel.metainfo.plot import PlotlyFigure
@@ -423,7 +427,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
         )
         
-        # ===== Plot 2: Individual Spectrum Heatmaps =====
+        # ===== Plot 2: Individual Configuration Heatmaps =====
         # Collect all unique spectrum configurations present in the data
         # Each unique combination of (type, detector_angle, sample_angle, polarization) gets its own heatmap
         spectrum_configs = {}
@@ -500,48 +504,12 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 else:
                     pos_y = pos_y_attr
 
-                if not positions or positions[-1] != (pos_x, pos_y):
-                    # Only add position once
-                    if len(spectrum_configs) > 0 and len(positions) == 0:
-                        positions = []
-                
                 positions.append((pos_x, pos_y))
                 
                 # Compute average for each spectrum configuration
                 for config_key in spectrum_configs:
                     avg_val = compute_avg_for_config(result, config_key)
                     spectrum_configs[config_key].append(avg_val)
-        
-        # Remove duplicate positions (in case they were added multiple times)
-        if positions:
-            unique_positions = []
-            seen = set()
-            for config_key in spectrum_configs:
-                spectrum_configs[config_key] = []
-            
-            for result in self.results:
-                pos_x_attr = getattr(result, 'x_absolute', None)
-                pos_y_attr = getattr(result, 'y_absolute', None)
-
-                if pos_x_attr is not None and pos_y_attr is not None:
-                    if hasattr(pos_x_attr, 'magnitude'):
-                        pos_x = pos_x_attr.to('mm').magnitude
-                    else:
-                        pos_x = pos_x_attr
-
-                    if hasattr(pos_y_attr, 'magnitude'):
-                        pos_y = pos_y_attr.to('mm').magnitude
-                    else:
-                        pos_y = pos_y_attr
-
-                    unique_positions.append((pos_x, pos_y))
-                    
-                    # Compute average for each spectrum configuration
-                    for config_key in spectrum_configs:
-                        avg_val = compute_avg_for_config(result, config_key)
-                        spectrum_configs[config_key].append(avg_val)
-            
-            positions = unique_positions
         
         if positions:
             # Create heatmap for each unique spectrum configuration
@@ -647,7 +615,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 plot_json_line['config'] = dict(scrollZoom=False)
                 self.figures.append(
                     PlotlyFigure(
-                        label='All Spectra',
+                        label='All Configurations',
                         figure=plot_json_line,
                     )
                 )
