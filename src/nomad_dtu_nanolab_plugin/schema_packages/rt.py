@@ -146,7 +146,10 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
             'component': 'FileEditQuantity',
             'label': 'Data file (CSV with R/T spectra)',
         },
-        description='CSV file containing all R and T spectra for different samples and positions',
+        description=(
+            'CSV file containing all R and T spectra for different '
+            'samples and positions'
+        ),
     )
 
     config_file = Quantity(
@@ -186,7 +189,8 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
 
         if not self.data_file or not self.config_file:
             logger.warning(
-                'Both data_file and config_file are required for autosampler measurements.'
+                'Both data_file and config_file are required for '
+                'autosampler measurements.'
             )
             return
 
@@ -227,7 +231,11 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                     if hasattr(collection_time, 'strftime'):
                         datetime_label = collection_time.strftime('%Y%m%d_%H%M%S')
                     else:
-                        datetime_label = str(collection_time).replace(' ', '_').replace(':', '')
+                        datetime_label = (
+                            str(collection_time)
+                            .replace(' ', '_')
+                            .replace(':', '')
+                        )
                 else:
                     datetime_label = 'unknown'
                 
@@ -255,7 +263,9 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                     spectra = []
                     for single_meas in multi_measurement.measurements:
                         # Determine spectrum type from metadata
-                        meas_type = single_meas.metadata.get('MeasurementType', 'Unknown')
+                        meas_type = single_meas.metadata.get(
+                            'MeasurementType', 'Unknown'
+                        )
                         if meas_type == 'T':
                             spectrum_type = 'Transmission'
                         elif meas_type == 'R':
@@ -266,18 +276,23 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
 
                         spectrum = RTSpectrum(
                             spectrum_type=spectrum_type,
-                            wavelength=single_meas.data['Wavelength'].values * ureg('nm'),
+                            wavelength=(
+                                single_meas.data['Wavelength'].values
+                                * ureg('nm')
+                            ),
                             intensity=single_meas.data['Intensity'].values,
                         )
 
                         # Extract measurement geometry from metadata
                         if 'DetectorAngle' in single_meas.metadata:
                             spectrum.detector_angle = (
-                                float(single_meas.metadata['DetectorAngle']) * ureg('degree')
+                                float(single_meas.metadata['DetectorAngle'])
+                                * ureg('degree')
                             )
                         if 'SampleAngle' in single_meas.metadata:
                             spectrum.sample_angle = (
-                                float(single_meas.metadata['SampleAngle']) * ureg('degree')
+                                float(single_meas.metadata['SampleAngle'])
+                                * ureg('degree')
                             )
                         if 'Polarization' in single_meas.metadata:
                             spectrum.polarization = single_meas.metadata['Polarization']
@@ -314,7 +329,8 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
             self.steps = measurements
 
             logger.info(
-                f'Created {len(measurements)} RT measurement archives from autosampler data.'
+                f'Created {len(measurements)} RT measurement archives '
+                f'from autosampler data.'
             )
 
         except Exception as e:
@@ -351,11 +367,14 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         
         Creates two types of plots:
         1. "R and T Spectra": All spectra overlaid
-        2. "Individual Configuration Heatmaps": One spatial heatmap per unique measurement configuration
-           (spectrum type, detector angle, sample angle, polarization) showing average intensity 
-           over the wavelength range defined by WAVELENGTH_MIN-WAVELENGTH_MAX class constants.
+        2. "Individual Configuration Heatmaps": One spatial heatmap per
+           unique measurement configuration (spectrum type, detector angle,
+           sample angle, polarization) showing average intensity over the
+           wavelength range defined by WAVELENGTH_MIN-WAVELENGTH_MAX class
+           constants.
         
-        Each unique configuration gets its own heatmap with measurement details in the title.
+        Each unique configuration gets its own heatmap with measurement
+        details in the title.
         """
         import plotly.graph_objs as go
         from nomad.datamodel.metainfo.plot import PlotlyFigure
@@ -440,7 +459,8 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         
         # ===== Plot 2: Individual Configuration Heatmaps =====
         # Collect all unique spectrum configurations present in the data
-        # Each unique combination of (type, detector_angle, sample_angle, polarization) gets its own heatmap
+        # Each unique combination of (type, detector_angle, sample_angle,
+        # polarization) gets its own heatmap
         spectrum_configs = {}
         
         for result in self.results:
@@ -451,8 +471,16 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     sample_angle = getattr(spectrum, 'sample_angle', None)
                     polarization = getattr(spectrum, 'polarization', None)
                     
-                    det_val = detector_angle.to('degree').magnitude if detector_angle is not None else None
-                    samp_val = sample_angle.to('degree').magnitude if sample_angle is not None else None
+                    det_val = (
+                        detector_angle.to('degree').magnitude
+                        if detector_angle is not None
+                        else None
+                    )
+                    samp_val = (
+                        sample_angle.to('degree').magnitude
+                        if sample_angle is not None
+                        else None
+                    )
                     pol_val = polarization if polarization else 'unknown'
                     
                     config_key = (
@@ -478,9 +506,17 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 
                 # Match all configuration parameters
                 det_val = getattr(spectrum, 'detector_angle', None)
-                det_val = det_val.to('degree').magnitude if det_val is not None else None
+                det_val = (
+                    det_val.to('degree').magnitude
+                    if det_val is not None
+                    else None
+                )
                 samp_val = getattr(spectrum, 'sample_angle', None)
-                samp_val = samp_val.to('degree').magnitude if samp_val is not None else None
+                samp_val = (
+                    samp_val.to('degree').magnitude
+                    if samp_val is not None
+                    else None
+                )
                 pol_val = getattr(spectrum, 'polarization', None) or 'unknown'
                 
                 if (det_val == det_angle and samp_val == samp_angle and pol_val == pol):
@@ -538,12 +574,28 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         spectrum_type, det_angle, samp_angle, polarization = config_key
                         
                         # Build title with all measurement details
-                        det_str = f'{det_angle:.1f}°' if det_angle is not None else 'n/a'
-                        samp_str = f'{samp_angle:.1f}°' if samp_angle is not None else 'n/a'
+                        det_str = (
+                            f'{det_angle:.1f}°'
+                            if det_angle is not None
+                            else 'n/a'
+                        )
+                        samp_str = (
+                            f'{samp_angle:.1f}°'
+                            if samp_angle is not None
+                            else 'n/a'
+                        )
                         pol_str = polarization if polarization else 'n/a'
                         
-                        title = f'Avg. {spectrum_type} {self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm (detector:{det_str}, sample:{samp_str}, {pol_str})'
-                        short_label = f'{spectrum_type[0]} {det_str}_{samp_str}_{pol_str}'
+                        title = (
+                            f'Avg. {spectrum_type} '
+                            f'{self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm '
+                            f'(detector:{det_str}, sample:{samp_str}, '
+                            f'{pol_str})'
+                        )
+                        short_label = (
+                            f'{spectrum_type[0]} {det_str}_{samp_str}_'
+                            f'{pol_str}'
+                        )
                         
                         fig_map = go.Figure(data=go.Scatter(
                             x=pos_x_vals,
@@ -556,8 +608,14 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                                 showscale=True,
                                 colorbar=dict(title='%'),
                             ),
-                            text=[f'{v:.2f}%' if not np.isnan(v) else 'n/a' for v in values],
-                            hovertemplate='x: %{x} mm<br>y: %{y} mm<br>Value: %{text}<extra></extra>',
+                            text=[
+                                f'{v:.2f}%' if not np.isnan(v) else 'n/a'
+                                for v in values
+                            ],
+                            hovertemplate=(
+                                'x: %{x} mm<br>y: %{y} mm<br>'
+                                'Value: %{text}<extra></extra>'
+                            ),
                         ))
                         
                         fig_map.update_layout(
@@ -588,12 +646,28 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         spectrum_type, det_angle, samp_angle, polarization = config_key
                         
                         # Build title with all measurement details
-                        det_str = f'{det_angle:.1f}°' if det_angle is not None else 'n/a'
-                        samp_str = f'{samp_angle:.1f}°' if samp_angle is not None else 'n/a'
+                        det_str = (
+                            f'{det_angle:.1f}°'
+                            if det_angle is not None
+                            else 'n/a'
+                        )
+                        samp_str = (
+                            f'{samp_angle:.1f}°'
+                            if samp_angle is not None
+                            else 'n/a'
+                        )
                         pol_str = polarization if polarization else 'n/a'
                         
-                        title = f'Avg. {spectrum_type} {self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm (detector:{det_str}, sample:{samp_str}, {pol_str})'
-                        short_label = f'{spectrum_type[0]} {det_str}_{samp_str}_{pol_str}'
+                        title = (
+                            f'Avg. {spectrum_type} '
+                            f'{self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm '
+                            f'(detector:{det_str}, sample:{samp_str}, '
+                            f'{pol_str})'
+                        )
+                        short_label = (
+                            f'{spectrum_type[0]} {det_str}_{samp_str}_'
+                            f'{pol_str}'
+                        )
                         
                         # Get color based on spectrum type
                         color = color_map.get(spectrum_type, 'green')
@@ -606,7 +680,10 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                                 mode='lines+markers',
                                 line=dict(color=color),
                                 marker=dict(size=8),
-                                hovertemplate=f'{x_label}: %{{x}} mm<br>Intensity: %{{y:.2f}}%<extra></extra>',
+                                hovertemplate=(
+                                    f'{x_label}: %{{x}} mm<br>'
+                                    f'Intensity: %{{y:.2f}}%<extra></extra>'
+                                ),
                             )
                         )
                         
