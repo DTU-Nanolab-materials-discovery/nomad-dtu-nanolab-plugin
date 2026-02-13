@@ -60,7 +60,7 @@ class RTSpectrum(ArchiveSection):
     intensity = Quantity(
         type=np.dtype(np.float64),
         shape=['*'],
-        description='Intensity values (%R or %T).',
+        description='Intensity values (R or T as fraction 0-1).',
     )
 
     detector_angle = Quantity(
@@ -280,7 +280,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                                 single_meas.data['Wavelength'].values
                                 * ureg('nm')
                             ),
-                            intensity=single_meas.data['Intensity'].values,
+                            intensity=single_meas.data['Intensity'].values / 100.0,
                         )
 
                         # Extract measurement geometry from metadata
@@ -378,6 +378,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         """
         import plotly.graph_objs as go
         from nomad.datamodel.metainfo.plot import PlotlyFigure
+        from scipy.interpolate import griddata
         
         if not self.results:
             return
@@ -438,7 +439,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 )
         
         fig_spectra.update_layout(
-            title='Reflection and Transmission Spectra',
+            title='Reflection (solid) and Transmission (dot) Spectra',
             xaxis_title='Wavelength (nm)',
             yaxis_title='Intensity (%)',
             template='plotly_white',
@@ -597,26 +598,48 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             f'{pol_str}'
                         )
                         
-                        fig_map = go.Figure(data=go.Scatter(
+                        # Create interpolation grid for smooth heatmap
+                        xi = np.linspace(min(pos_x_vals), max(pos_x_vals), 100)
+                        yi = np.linspace(min(pos_y_vals), max(pos_y_vals), 100)
+                        xi, yi = np.meshgrid(xi, yi)
+                        zi = griddata(
+                            (pos_x_vals, pos_y_vals),
+                            values,
+                            (xi, yi),
+                            method='linear',
+                        )
+                        
+                        # Create heatmap trace
+                        heatmap = go.Heatmap(
+                            x=xi[0],
+                            y=yi[:, 0],
+                            z=zi,
+                            colorscale='Viridis',
+                            colorbar=dict(title=spectrum_type),
+                        )
+                        
+                        # Create scatter overlay for actual measurement points
+                        scatter = go.Scatter(
                             x=pos_x_vals,
                             y=pos_y_vals,
                             mode='markers',
                             marker=dict(
-                                size=20,
+                                size=15,
                                 color=values,
                                 colorscale='Viridis',
-                                showscale=True,
-                                colorbar=dict(title='%'),
+                                showscale=False,
+                                line=dict(width=2, color='DarkSlateGrey'),
                             ),
-                            text=[
-                                f'{v:.2f}%' if not np.isnan(v) else 'n/a'
-                                for v in values
-                            ],
+                            customdata=values,
                             hovertemplate=(
-                                'x: %{x} mm<br>y: %{y} mm<br>'
-                                'Value: %{text}<extra></extra>'
+                                '<b>Value:</b> %{customdata:.3f}<br>'
+                                '<b>X:</b> %{x:.2f} mm<br>'
+                                '<b>Y:</b> %{y:.2f} mm'
                             ),
-                        ))
+                        )
+                        
+                        # Combine heatmap and scatter
+                        fig_map = go.Figure(data=[heatmap, scatter])
                         
                         fig_map.update_layout(
                             title=title,
@@ -624,6 +647,9 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             yaxis_title='Y Position (mm)',
                             template='plotly_white',
                             hovermode='closest',
+                            dragmode='zoom',
+                            xaxis=dict(fixedrange=False),
+                            yaxis=dict(fixedrange=False),
                         )
                         
                         plot_json_map = fig_map.to_plotly_json()
@@ -682,7 +708,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                                 marker=dict(size=8),
                                 hovertemplate=(
                                     f'{x_label}: %{{x}} mm<br>'
-                                    f'Intensity: %{{y:.2f}}%<extra></extra>'
+                                    f'{spectrum_type}: %{{y:.3f}}<extra></extra>'
                                 ),
                             )
                         )
@@ -690,7 +716,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         fig_line.update_layout(
                             title=title,
                             xaxis_title=x_label,
-                            yaxis_title='Intensity (%)',
+                            yaxis_title=spectrum_type,
                             template='plotly_white',
                             hovermode='closest',
                             showlegend=False,
