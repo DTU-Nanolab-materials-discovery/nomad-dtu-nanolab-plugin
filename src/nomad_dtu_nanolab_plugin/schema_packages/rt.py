@@ -116,7 +116,6 @@ class RTResult(MappingResult):
         Normalizes the results data for the RT measurement.
         """
         super().normalize(archive, logger)
-        # TODO: Add code for calculating the relative positions of the measurements.
 
 
 class DTUSampleAlignment(RectangularSampleAlignment):
@@ -212,9 +211,24 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
 
             # Create a measurement archive for each library
             for library_id, position_data in library_data.items():
-                # Create RTMeasurement instance
+                # Extract datetime from first measurement for uniqueness
+                first_multi_measurement = next(iter(position_data.values()))
+                collection_time = None
+                if first_multi_measurement.measurements:
+                    first_measurement = first_multi_measurement.measurements[0]
+                    collection_time = first_measurement.metadata.get('Collection Time')
+                
+                # Format datetime for name uniqueness
+                if collection_time is not None:
+                    if hasattr(collection_time, 'strftime'):
+                        datetime_label = collection_time.strftime('%Y%m%d_%H%M%S')
+                    else:
+                        datetime_label = str(collection_time).replace(' ', '_').replace(':', '')
+                else:
+                    datetime_label = 'unknown'
+                
                 measurement = RTMeasurement(
-                    name=f'{library_id} RT Measurement',
+                    name=f'{library_id}_RT_{datetime_label}',
                 )
 
                 # Create results for each position
@@ -222,13 +236,15 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                 for position_key, multi_measurement in position_data.items():
                     result = RTResult(
                         name=f'Position {position_key}',
-                    )
 
-                    # Add position coordinates
+                    )
+                    # Set positions after creation (inherited from MappingResult)
                     if multi_measurement.position_x is not None:
-                        result.position_x = multi_measurement.position_x * ureg('mm')
+                        result.x_absolute = multi_measurement.position_x * ureg('mm')
+                        result.x_relative = multi_measurement.position_x * ureg('mm')
                     if multi_measurement.position_y is not None:
-                        result.position_y = multi_measurement.position_y * ureg('mm')
+                        result.y_absolute = multi_measurement.position_y * ureg('mm')
+                        result.y_relative = multi_measurement.position_y * ureg('mm')
 
                     # Create spectra from measurements
                     spectra = []
@@ -264,9 +280,14 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                         spectra.append(spectrum)
 
                     result.spectra = spectra
+                    
+                    # Verify positions were set correctly before adding to results
                     results.append(result)
 
                 measurement.results = results
+                
+                # Log positions from results after assignment
+                # Results are stored in the archive via create_archive
 
                 # Link to sample using lab_id (optional - can be set manually later)
                 measurement.samples = [CompositeSystemReference(lab_id=library_id)]
@@ -312,10 +333,324 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
     def plot(self) -> None:
         """
-        add a plot of the RT measurement results.
+        Create interactive Plotly visualizations of RT measurement data.
+        
+        Creates two types of plots:
+        1. "R and T Spectra": All spectra overlaid
+        2. "Individual Spectrum Heatmaps": One spatial heatmap per unique spectrum configuration
+           (measurement type, detector angle, sample angle, polarization) showing average intensity (400-800 nm)
+        
+        The heatmaps are created for each distinct spectrum in the measurement.
         """
-        # TODO: Implement plotting of R/T spectra
-        pass
+        import plotly.graph_objs as go
+        from nomad.datamodel.metainfo.plot import PlotlyFigure
+        
+        if not self.results:
+            return
+        
+        # ===== Plot 1: All R and T Spectra =====
+        fig_spectra = go.Figure()
+        
+        for result in self.results:
+            position_label = result.name or 'Unknown'
+            
+            for spectrum in result.spectra:
+                if spectrum.wavelength is None or spectrum.intensity is None:
+                    continue
+                
+                # Convert wavelength to nm if it's a Quantity
+                if hasattr(spectrum.wavelength, 'magnitude'):
+                    wavelength = spectrum.wavelength.to('nm').magnitude
+                else:
+                    wavelength = spectrum.wavelength
+                
+                intensity = spectrum.intensity
+                spectrum_type = spectrum.spectrum_type or 'Unknown'
+
+                detector_label = (
+                    f'{spectrum.detector_angle.to("degree").magnitude:g} deg'
+                    if getattr(spectrum, 'detector_angle', None) is not None
+                    else 'n/a'
+                )
+                sample_label = (
+                    f'{spectrum.sample_angle.to("degree").magnitude:g} deg'
+                    if getattr(spectrum, 'sample_angle', None) is not None
+                    else 'n/a'
+                )
+                polarization_label = spectrum.polarization or 'n/a'
+                
+                # Create trace label with position and type
+                trace_name = (
+                    f'{position_label}_{spectrum_type} '
+                    f'({detector_label}, {sample_label}, {polarization_label})'
+                )
+                
+                # Use different colors/styles for R vs T
+                line_style = dict()
+                if spectrum_type == 'Reflection':
+                    line_style['dash'] = 'solid'
+                elif spectrum_type == 'Transmission':
+                    line_style['dash'] = 'dot'
+                
+                fig_spectra.add_trace(
+                    go.Scatter(
+                        x=wavelength,
+                        y=intensity,
+                        mode='lines',
+                        name=trace_name,
+                        line=line_style,
+                        hoverlabel=dict(namelength=-1),
+                    )
+                )
+        
+        fig_spectra.update_layout(
+            title='Reflection and Transmission Spectra',
+            xaxis_title='Wavelength (nm)',
+            yaxis_title='Intensity (%)',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(fixedrange=False),
+            yaxis=dict(fixedrange=False),
+        )
+        
+        plot_json_spectra = fig_spectra.to_plotly_json()
+        plot_json_spectra['config'] = dict(scrollZoom=False)
+        self.figures.append(
+            PlotlyFigure(
+                label='R and T Spectra',
+                figure=plot_json_spectra,
+            )
+        )
+        
+        # ===== Plot 2: Individual Spectrum Heatmaps =====
+        # Collect all unique spectrum configurations present in the data
+        # Each unique combination of (type, detector_angle, sample_angle, polarization) gets its own heatmap
+        spectrum_configs = {}
+        
+        for result in self.results:
+            for spectrum in result.spectra:
+                if spectrum.spectrum_type:
+                    # Create a unique key for this spectrum configuration
+                    detector_angle = getattr(spectrum, 'detector_angle', None)
+                    sample_angle = getattr(spectrum, 'sample_angle', None)
+                    polarization = getattr(spectrum, 'polarization', None)
+                    
+                    det_val = detector_angle.to('degree').magnitude if detector_angle else None
+                    samp_val = sample_angle.to('degree').magnitude if sample_angle else None
+                    pol_val = polarization if polarization else 'unknown'
+                    
+                    config_key = (
+                        spectrum.spectrum_type,
+                        det_val,
+                        samp_val,
+                        pol_val
+                    )
+                    
+                    if config_key not in spectrum_configs:
+                        spectrum_configs[config_key] = []
+        
+        # Collect position and average data for each spectrum configuration
+        def compute_avg_for_config(result: RTResult, config_key: tuple) -> float:
+            """Compute average intensity for a specific spectrum configuration."""
+            wv_start = 400  # nm
+            wv_end = 800  # nm
+            spectrum_type, det_angle, samp_angle, pol = config_key
+            
+            for spectrum in result.spectra:
+                if spectrum.spectrum_type != spectrum_type:
+                    continue
+                
+                # Match all configuration parameters
+                det_val = getattr(spectrum, 'detector_angle', None)
+                det_val = det_val.to('degree').magnitude if det_val else None
+                samp_val = getattr(spectrum, 'sample_angle', None)
+                samp_val = samp_val.to('degree').magnitude if samp_val else None
+                pol_val = getattr(spectrum, 'polarization', None) or 'unknown'
+                
+                if (det_val == det_angle and samp_val == samp_angle and pol_val == pol):
+                    if spectrum.wavelength is None or spectrum.intensity is None:
+                        continue
+                    
+                    if hasattr(spectrum.wavelength, 'magnitude'):
+                        wavelength = spectrum.wavelength.to('nm').magnitude
+                    else:
+                        wavelength = spectrum.wavelength
+                    
+                    mask = (wavelength >= wv_start) & (wavelength <= wv_end)
+                    if np.any(mask):
+                        return float(np.mean(spectrum.intensity[mask]))
+            
+            return np.nan
+        
+        # Populate data for each configuration
+        positions = []
+        for result in self.results:
+            pos_x_attr = getattr(result, 'x_absolute', None)
+            pos_y_attr = getattr(result, 'y_absolute', None)
+
+            if pos_x_attr is not None and pos_y_attr is not None:
+                if hasattr(pos_x_attr, 'magnitude'):
+                    pos_x = pos_x_attr.to('mm').magnitude
+                else:
+                    pos_x = pos_x_attr
+
+                if hasattr(pos_y_attr, 'magnitude'):
+                    pos_y = pos_y_attr.to('mm').magnitude
+                else:
+                    pos_y = pos_y_attr
+
+                if not positions or positions[-1] != (pos_x, pos_y):
+                    # Only add position once
+                    if len(spectrum_configs) > 0 and len(positions) == 0:
+                        positions = []
+                
+                positions.append((pos_x, pos_y))
+                
+                # Compute average for each spectrum configuration
+                for config_key in spectrum_configs:
+                    avg_val = compute_avg_for_config(result, config_key)
+                    spectrum_configs[config_key].append(avg_val)
+        
+        # Remove duplicate positions (in case they were added multiple times)
+        if positions:
+            unique_positions = []
+            seen = set()
+            for config_key in spectrum_configs:
+                spectrum_configs[config_key] = []
+            
+            for result in self.results:
+                pos_x_attr = getattr(result, 'x_absolute', None)
+                pos_y_attr = getattr(result, 'y_absolute', None)
+
+                if pos_x_attr is not None and pos_y_attr is not None:
+                    if hasattr(pos_x_attr, 'magnitude'):
+                        pos_x = pos_x_attr.to('mm').magnitude
+                    else:
+                        pos_x = pos_x_attr
+
+                    if hasattr(pos_y_attr, 'magnitude'):
+                        pos_y = pos_y_attr.to('mm').magnitude
+                    else:
+                        pos_y = pos_y_attr
+
+                    unique_positions.append((pos_x, pos_y))
+                    
+                    # Compute average for each spectrum configuration
+                    for config_key in spectrum_configs:
+                        avg_val = compute_avg_for_config(result, config_key)
+                        spectrum_configs[config_key].append(avg_val)
+            
+            positions = unique_positions
+        
+        if positions:
+            # Create heatmap for each unique spectrum configuration
+            pos_x_vals = [p[0] for p in positions]
+            pos_y_vals = [p[1] for p in positions]
+            
+            # Check if we have a 2D grid or just a line
+            unique_x = len(set(pos_x_vals))
+            unique_y = len(set(pos_y_vals))
+            
+            if unique_x > 1 and unique_y > 1:
+                # 2D heatmap for each spectrum configuration
+                for config_key, values in spectrum_configs.items():
+                    if not all(np.isnan(values)):
+                        spectrum_type, det_angle, samp_angle, polarization = config_key
+                        
+                        # Build title with all measurement details
+                        det_str = f'{det_angle:.1f}°' if det_angle is not None else 'n/a'
+                        samp_str = f'{samp_angle:.1f}°' if samp_angle is not None else 'n/a'
+                        pol_str = polarization if polarization else 'n/a'
+                        
+                        title = f'{spectrum_type} (det: {det_str}, samp: {samp_str}, pol: {pol_str})'
+                        short_label = f'{spectrum_type[0]} {det_str}_{samp_str}_{pol_str}'
+                        
+                        fig_map = go.Figure(data=go.Scatter(
+                            x=pos_x_vals,
+                            y=pos_y_vals,
+                            mode='markers',
+                            marker=dict(
+                                size=20,
+                                color=values,
+                                colorscale='Viridis',
+                                showscale=True,
+                                colorbar=dict(title='%'),
+                            ),
+                            text=[f'{v:.2f}%' if not np.isnan(v) else 'n/a' for v in values],
+                            hovertemplate='x: %{x} mm<br>y: %{y} mm<br>Value: %{text}<extra></extra>',
+                        ))
+                        
+                        fig_map.update_layout(
+                            title=title,
+                            xaxis_title='X Position (mm)',
+                            yaxis_title='Y Position (mm)',
+                            template='plotly_white',
+                            hovermode='closest',
+                        )
+                        
+                        plot_json_map = fig_map.to_plotly_json()
+                        plot_json_map['config'] = dict(scrollZoom=False)
+                        self.figures.append(
+                            PlotlyFigure(
+                                label=short_label,
+                                figure=plot_json_map,
+                            )
+                        )
+            else:
+                # 1D line plot - one trace per spectrum configuration
+                fig_line = go.Figure()
+                
+                x_axis = pos_x_vals if unique_x > 1 else pos_y_vals
+                x_label = 'X Position (mm)' if unique_x > 1 else 'Y Position (mm)'
+                
+                # Add a trace for each spectrum configuration
+                color_map = {'Transmission': 'blue', 'Reflection': 'red'}
+                default_colors = ['green', 'orange', 'purple', 'brown', 'pink', 'gray', 'cyan', 'magenta']
+                color_idx = 0
+                
+                for config_key, values in spectrum_configs.items():
+                    if not all(np.isnan(values)):
+                        spectrum_type, det_angle, samp_angle, polarization = config_key
+                        
+                        # Build legend label
+                        det_str = f'{det_angle:.1f}°' if det_angle is not None else 'n/a'
+                        samp_str = f'{samp_angle:.1f}°' if samp_angle is not None else 'n/a'
+                        pol_str = polarization if polarization else 'n/a'
+                        
+                        trace_name = f'{spectrum_type} (det: {det_str}, samp: {samp_str}, pol: {pol_str})'
+                        
+                        # Get color from map or use default
+                        color = color_map.get(spectrum_type, default_colors[color_idx % len(default_colors)])
+                        if spectrum_type not in color_map:
+                            color_idx += 1
+                        
+                        fig_line.add_trace(
+                            go.Scatter(
+                                x=x_axis,
+                                y=values,
+                                mode='lines+markers',
+                                name=trace_name,
+                                line=dict(color=color),
+                            )
+                        )
+                
+                fig_line.update_layout(
+                    title='Average Spectra (400-800 nm)',
+                    xaxis_title=x_label,
+                    yaxis_title='Intensity (%)',
+                    template='plotly_white',
+                    hovermode='closest',
+                )
+                
+                plot_json_line = fig_line.to_plotly_json()
+                plot_json_line['config'] = dict(scrollZoom=False)
+                self.figures.append(
+                    PlotlyFigure(
+                        label='All Spectra',
+                        figure=plot_json_line,
+                    )
+                )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
