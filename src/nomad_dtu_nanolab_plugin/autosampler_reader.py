@@ -1,11 +1,12 @@
 #-------------Packages-------------------
 import csv
-import pandas as pd
-import re
-import numpy as np
-import plotly.graph_objects as go
 import os
-import scipy.signal as signal
+import re
+
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+from scipy import signal
 from sklearn.linear_model import LinearRegression
 
 # -----------------Globals-------------------
@@ -48,9 +49,7 @@ WINDOW_SIZE = 21
 #window size for the bandgap estimation using the intercept method
 WINDOW_SIZE_INTERCEPT = 10
 
-#
 WINDOW_SIZE_THRESHOLD = 10
-#
 ALPHA_THRESHOLD = 0.05
 
 
@@ -833,10 +832,8 @@ def estimate_bandgap_tauc_map(map, window_size=WINDOW_SIZE_INTERCEPT, max_energy
         if max_region is None:
             max_region = region[1]
             min_region = region[0]
-        if region[1] > max_region:
-            max_region = region[1]
-        if region[0] < min_region:
-            min_region = region[0]
+        max_region = max(max_region, region[1])
+        min_region = min(min_region, region[0])
 
     print(f"Max region: {max_region}")
     print(f"Min region: {min_region}")
@@ -985,7 +982,7 @@ def read_config_block(config_path, collects, uma_sequence_length):
 
 def parse_file(data_path, config_path=None):
 
-    with open(data_path, "r", encoding="utf-8") as file:
+    with open(data_path, encoding="utf-8") as file:
         reader = csv.reader(file)
 
         # Read header lines
@@ -1218,9 +1215,9 @@ def main():
             else:
                 multi_measurement.standard_treatment()
 
-        heatmaps, heatmaps_data = make_heatmap(multi_measurements[sample_name])
+        heatmaps, heatmaps_data = make_heatmap(map_data)
 
-        methods = print_methods(multi_measurements[sample_name])
+        methods = print_methods(map_data)
 
         os.makedirs(os.path.join(graph_folder, sample_name), exist_ok=True)
         os.makedirs(os.path.join(exported_data_folder, sample_name), exist_ok=True)
@@ -1251,7 +1248,7 @@ def main():
                         )
                     )
             
-        if any(key.startswith("alpha") for key in multi_measurements[sample_name][position_key].derived_data):
+        if any(key.startswith("alpha") for key in map_data[position_key].derived_data):
             spectra_plots = {}
             spectra_data = {}
             
@@ -1261,7 +1258,7 @@ def main():
                 'normalized_smoothed_alpha', 'normalized_alpha',
                 '1st_deriv_alpha', '2nd_deriv_alpha'
                 ]:
-                fig, data = plot_derived_data(multi_measurements[sample_name], quant)
+                fig, data = plot_derived_data(map_data, quant)
                 if show_graphs:
                     fig.show()
                 spectra_plots[quant] = fig

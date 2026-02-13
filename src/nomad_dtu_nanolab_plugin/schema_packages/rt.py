@@ -233,7 +233,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                 
                 measurement = RTMeasurement(
                     name=f'{library_id}_RT_{datetime_label}',
-                    data_file=self.data_file,
+                    data_file=f'{library_id}_RT_{datetime_label}'
                 )
 
                 # Create results for each position
@@ -327,6 +327,10 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         label='RT Measurement',
     )
 
+    # Wavelength bounds for averaging (in nm)
+    WAVELENGTH_MIN = 400
+    WAVELENGTH_MAX = 800
+
     data_file = Quantity(
         type=str,
         description='Reference to the source data file for sample identification.',
@@ -348,7 +352,8 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         Creates two types of plots:
         1. "R and T Spectra": All spectra overlaid
         2. "Individual Configuration Heatmaps": One spatial heatmap per unique measurement configuration
-           (spectrum type, detector angle, sample angle, polarization) showing average intensity (400-800 nm)
+           (spectrum type, detector angle, sample angle, polarization) showing average intensity 
+           over the wavelength range defined by WAVELENGTH_MIN-WAVELENGTH_MAX class constants.
         
         Each unique configuration gets its own heatmap with measurement details in the title.
         """
@@ -446,8 +451,8 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     sample_angle = getattr(spectrum, 'sample_angle', None)
                     polarization = getattr(spectrum, 'polarization', None)
                     
-                    det_val = detector_angle.to('degree').magnitude if detector_angle else None
-                    samp_val = sample_angle.to('degree').magnitude if sample_angle else None
+                    det_val = detector_angle.to('degree').magnitude if detector_angle is not None else None
+                    samp_val = sample_angle.to('degree').magnitude if sample_angle is not None else None
                     pol_val = polarization if polarization else 'unknown'
                     
                     config_key = (
@@ -463,8 +468,8 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         # Collect position and average data for each spectrum configuration
         def compute_avg_for_config(result: RTResult, config_key: tuple) -> float:
             """Compute average intensity for a specific spectrum configuration."""
-            wv_start = 400  # nm
-            wv_end = 800  # nm
+            wv_start = self.WAVELENGTH_MIN
+            wv_end = self.WAVELENGTH_MAX
             spectrum_type, det_angle, samp_angle, pol = config_key
             
             for spectrum in result.spectra:
@@ -473,9 +478,9 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 
                 # Match all configuration parameters
                 det_val = getattr(spectrum, 'detector_angle', None)
-                det_val = det_val.to('degree').magnitude if det_val else None
+                det_val = det_val.to('degree').magnitude if det_val is not None else None
                 samp_val = getattr(spectrum, 'sample_angle', None)
-                samp_val = samp_val.to('degree').magnitude if samp_val else None
+                samp_val = samp_val.to('degree').magnitude if samp_val is not None else None
                 pol_val = getattr(spectrum, 'polarization', None) or 'unknown'
                 
                 if (det_val == det_angle and samp_val == samp_angle and pol_val == pol):
@@ -537,7 +542,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         samp_str = f'{samp_angle:.1f}°' if samp_angle is not None else 'n/a'
                         pol_str = polarization if polarization else 'n/a'
                         
-                        title = f'{spectrum_type} (det: {det_str}, samp: {samp_str}, pol: {pol_str})'
+                        title = f'Avg. {spectrum_type} {self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm (detector:{det_str}, sample:{samp_str}, {pol_str})'
                         short_label = f'{spectrum_type[0]} {det_str}_{samp_str}_{pol_str}'
                         
                         fig_map = go.Figure(data=go.Scatter(
@@ -572,59 +577,56 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             )
                         )
             else:
-                # 1D line plot - one trace per spectrum configuration
-                fig_line = go.Figure()
-                
+                # 1D line plot - create separate plot for each spectrum configuration
                 x_axis = pos_x_vals if unique_x > 1 else pos_y_vals
                 x_label = 'X Position (mm)' if unique_x > 1 else 'Y Position (mm)'
                 
-                # Add a trace for each spectrum configuration
                 color_map = {'Transmission': 'blue', 'Reflection': 'red'}
-                default_colors = ['green', 'orange', 'purple', 'brown', 'pink', 'gray', 'cyan', 'magenta']
-                color_idx = 0
                 
                 for config_key, values in spectrum_configs.items():
                     if not all(np.isnan(values)):
                         spectrum_type, det_angle, samp_angle, polarization = config_key
                         
-                        # Build legend label
+                        # Build title with all measurement details
                         det_str = f'{det_angle:.1f}°' if det_angle is not None else 'n/a'
                         samp_str = f'{samp_angle:.1f}°' if samp_angle is not None else 'n/a'
                         pol_str = polarization if polarization else 'n/a'
                         
-                        trace_name = f'{spectrum_type} (det: {det_str}, samp: {samp_str}, pol: {pol_str})'
+                        title = f'Avg. {spectrum_type} {self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm (detector:{det_str}, sample:{samp_str}, {pol_str})'
+                        short_label = f'{spectrum_type[0]} {det_str}_{samp_str}_{pol_str}'
                         
-                        # Get color from map or use default
-                        color = color_map.get(spectrum_type, default_colors[color_idx % len(default_colors)])
-                        if spectrum_type not in color_map:
-                            color_idx += 1
+                        # Get color based on spectrum type
+                        color = color_map.get(spectrum_type, 'green')
                         
+                        fig_line = go.Figure()
                         fig_line.add_trace(
                             go.Scatter(
                                 x=x_axis,
                                 y=values,
                                 mode='lines+markers',
-                                name=trace_name,
                                 line=dict(color=color),
+                                marker=dict(size=8),
+                                hovertemplate=f'{x_label}: %{{x}} mm<br>Intensity: %{{y:.2f}}%<extra></extra>',
                             )
                         )
-                
-                fig_line.update_layout(
-                    title='Average Spectra (400-800 nm)',
-                    xaxis_title=x_label,
-                    yaxis_title='Intensity (%)',
-                    template='plotly_white',
-                    hovermode='closest',
-                )
-                
-                plot_json_line = fig_line.to_plotly_json()
-                plot_json_line['config'] = dict(scrollZoom=False)
-                self.figures.append(
-                    PlotlyFigure(
-                        label='All Configurations',
-                        figure=plot_json_line,
-                    )
-                )
+                        
+                        fig_line.update_layout(
+                            title=title,
+                            xaxis_title=x_label,
+                            yaxis_title='Intensity (%)',
+                            template='plotly_white',
+                            hovermode='closest',
+                            showlegend=False,
+                        )
+                        
+                        plot_json_line = fig_line.to_plotly_json()
+                        plot_json_line['config'] = dict(scrollZoom=False)
+                        self.figures.append(
+                            PlotlyFigure(
+                                label=short_label,
+                                figure=plot_json_line,
+                            )
+                        )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
