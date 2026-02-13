@@ -233,6 +233,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                 
                 measurement = RTMeasurement(
                     name=f'{library_id}_RT_{datetime_label}',
+                    data_file=self.data_file,
                 )
 
                 # Create results for each position
@@ -324,6 +325,11 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='RT Measurement',
+    )
+
+    data_file = Quantity(
+        type=str,
+        description='Reference to the source data file for sample identification.',
     )
 
     results = SubSection(
@@ -627,6 +633,9 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         if self.location is None:
             self.location = 'DTU Nanolab RT Measurement'
+
+        if self.data_file:
+            self.add_sample_reference(self.data_file, 'RT', archive, logger)
 
         super().normalize(archive, logger)
 
