@@ -413,10 +413,21 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         # ===== Plot 1: All R and T Spectra =====
         fig_spectra = go.Figure()
 
+        MAX_TRACES = 25  # Limit traces for performance
+        trace_count = 0
+        max_traces_reached = False
+
         for result in self.results:
+            if max_traces_reached:
+                break
+
             position_label = result.name or 'Unknown'
 
             for spectrum in result.spectra:
+                if trace_count >= MAX_TRACES:
+                    max_traces_reached = True
+                    break
+
                 if spectrum.wavelength is None or spectrum.intensity is None:
                     continue
 
@@ -464,11 +475,17 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         hoverlabel=dict(namelength=-1),
                     )
                 )
+                trace_count += 1
+
+        # Update title to indicate if traces were limited
+        title = 'Reflection (solid) and Transmission (dot) Spectra'
+        if max_traces_reached:
+            title += f' (showing first {MAX_TRACES} traces only)'
 
         fig_spectra.update_layout(
-            title='Reflection (solid) and Transmission (dot) Spectra',
+            title=title,
             xaxis_title='Wavelength (nm)',
-            yaxis_title='Intensity (%)',
+            yaxis_title='R, T (fraction)',
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
@@ -489,6 +506,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         # Collect all unique spectrum configurations present in the data
         # Each unique combination of (type, detector_angle, sample_angle,
         # polarization) gets its own heatmap
+
         spectrum_configs = {}
 
         for result in self.results:
