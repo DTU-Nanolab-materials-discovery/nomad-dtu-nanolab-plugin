@@ -138,5 +138,7 @@ def test_rt_autosampler_schema():
     # Check that we have the right libraries (order might vary)
     assert len(step_library_names) == len(expected_libraries)
     for expected_name in expected_libraries:
-        assert expected_name in step_library_names, f"Expected library {expected_name} not found in steps"
+        assert expected_name in step_library_names, (
+            f"Expected library {expected_name} not found in steps"
+        )
 
