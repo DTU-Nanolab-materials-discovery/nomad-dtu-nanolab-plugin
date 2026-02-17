@@ -193,7 +193,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
         spectra in the data file, (Ex: the first recorded spectrum of the
         data_file has been recorded at position X=5mm, Y=10mm on library
         "eugbe_0025_Zr_FL")
-        """
+        """,
     )
 
     raw_file = Quantity(
@@ -206,7 +206,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
         description="""
             Raw binary file from the Agilent Cary 7000 UMS instrument
             (for bookkeeping and data provenance). File extension is typically .bsw.
-        """
+        """,
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -235,9 +235,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
             # Parse files using autosampler_reader
             with archive.m_context.raw_file(self.data_file) as data_f:
                 with archive.m_context.raw_file(self.config_file) as config_f:
-                    collects = autosampler_reader.parse_file(
-                        data_f.name, config_f.name
-                    )
+                    collects = autosampler_reader.parse_file(data_f.name, config_f.name)
 
             # Group measurements by sample
             samples = autosampler_reader.group_samples(collects)
@@ -266,16 +264,14 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                         datetime_label = collection_time.strftime('%Y%m%d_%H%M%S')
                     else:
                         datetime_label = (
-                            str(collection_time)
-                            .replace(' ', '_')
-                            .replace(':', '')
+                            str(collection_time).replace(' ', '_').replace(':', '')
                         )
                 else:
                     datetime_label = 'unknown'
 
                 measurement = RTMeasurement(
                     name=f'{library_id}_RT_{datetime_label}',
-                    data_file=f'{library_id}_RT_{datetime_label}'
+                    data_file=f'{library_id}_RT_{datetime_label}',
                 )
 
                 # Create results for each position
@@ -283,7 +279,6 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                 for position_key, multi_measurement in position_data.items():
                     result = RTResult(
                         name=f'Position {position_key}',
-
                     )
                     # Set positions after creation (inherited from MappingResult)
                     if multi_measurement.position_x is not None:
@@ -312,23 +307,20 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                         spectrum = RTSpectrum(
                             spectrum_type=spectrum_type,
                             wavelength=(
-                                single_meas.data['Wavelength'].values
-                                * ureg('nm')
+                                single_meas.data['Wavelength'].values * ureg('nm')
                             ),
                             intensity=single_meas.data['Intensity'].values / 100.0,
                         )
 
                         # Extract measurement geometry from metadata
                         if 'DetectorAngle' in single_meas.metadata:
-                            spectrum.detector_angle = (
-                                float(single_meas.metadata['DetectorAngle'])
-                                * ureg('degree')
-                            )
+                            spectrum.detector_angle = float(
+                                single_meas.metadata['DetectorAngle']
+                            ) * ureg('degree')
                         if 'SampleAngle' in single_meas.metadata:
-                            spectrum.sample_angle = (
-                                float(single_meas.metadata['SampleAngle'])
-                                * ureg('degree')
-                            )
+                            spectrum.sample_angle = float(
+                                single_meas.metadata['SampleAngle']
+                            ) * ureg('degree')
                         if 'Polarization' in single_meas.metadata:
                             spectrum.polarization = single_meas.metadata['Polarization']
 
@@ -379,8 +371,8 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     )
 
     # Wavelength bounds for averaging (in nm). We choose the visible range.
-    WAVELENGTH_MIN = 400 #nm
-    WAVELENGTH_MAX = 800 #nm
+    WAVELENGTH_MIN = 400  # nm
+    WAVELENGTH_MAX = 800  # nm
 
     data_file = Quantity(
         type=str,
@@ -519,12 +511,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     )
                     pol_val = polarization if polarization else 'unknown'
 
-                    config_key = (
-                        spectrum.spectrum_type,
-                        det_val,
-                        samp_val,
-                        pol_val
-                    )
+                    config_key = (spectrum.spectrum_type, det_val, samp_val, pol_val)
 
                     if config_key not in spectrum_configs:
                         spectrum_configs[config_key] = []
@@ -543,19 +530,15 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 # Match all configuration parameters
                 det_val = getattr(spectrum, 'detector_angle', None)
                 det_val = (
-                    det_val.to('degree').magnitude
-                    if det_val is not None
-                    else None
+                    det_val.to('degree').magnitude if det_val is not None else None
                 )
                 samp_val = getattr(spectrum, 'sample_angle', None)
                 samp_val = (
-                    samp_val.to('degree').magnitude
-                    if samp_val is not None
-                    else None
+                    samp_val.to('degree').magnitude if samp_val is not None else None
                 )
                 pol_val = getattr(spectrum, 'polarization', None) or 'unknown'
 
-                if (det_val == det_angle and samp_val == samp_angle and pol_val == pol):
+                if det_val == det_angle and samp_val == samp_angle and pol_val == pol:
                     if spectrum.wavelength is None or spectrum.intensity is None:
                         continue
 
@@ -611,14 +594,10 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
                         # Build title with all measurement details
                         det_str = (
-                            f'{det_angle:.1f}°'
-                            if det_angle is not None
-                            else 'n/a'
+                            f'{det_angle:.1f}°' if det_angle is not None else 'n/a'
                         )
                         samp_str = (
-                            f'{samp_angle:.1f}°'
-                            if samp_angle is not None
-                            else 'n/a'
+                            f'{samp_angle:.1f}°' if samp_angle is not None else 'n/a'
                         )
                         pol_str = polarization if polarization else 'n/a'
 
@@ -629,8 +608,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             f'{pol_str})'
                         )
                         short_label = (
-                            f'{spectrum_type[0]} {det_str}_{samp_str}_'
-                            f'{pol_str}'
+                            f'{spectrum_type[0]} {det_str}_{samp_str}_{pol_str}'
                         )
 
                         # Create interpolation grid for smooth heatmap
@@ -708,14 +686,10 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
                         # Build title with all measurement details
                         det_str = (
-                            f'{det_angle:.1f}°'
-                            if det_angle is not None
-                            else 'n/a'
+                            f'{det_angle:.1f}°' if det_angle is not None else 'n/a'
                         )
                         samp_str = (
-                            f'{samp_angle:.1f}°'
-                            if samp_angle is not None
-                            else 'n/a'
+                            f'{samp_angle:.1f}°' if samp_angle is not None else 'n/a'
                         )
                         pol_str = polarization if polarization else 'n/a'
 
@@ -726,8 +700,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             f'{pol_str})'
                         )
                         short_label = (
-                            f'{spectrum_type[0]} {det_str}_{samp_str}_'
-                            f'{pol_str}'
+                            f'{spectrum_type[0]} {det_str}_{samp_str}_{pol_str}'
                         )
 
                         # Get color based on spectrum type
