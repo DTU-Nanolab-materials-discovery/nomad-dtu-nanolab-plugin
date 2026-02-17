@@ -26,7 +26,7 @@ T_THRESHOLD = 1e-10
 # to the maximum value
 MAX_ALPHA = 8
 
-# minumum alpha value for the bandgap estimation, if all the alpha values are
+# minimum alpha value for the bandgap estimation, if all the alpha values are
 # above this value, the bandgap estimation is not performed
 MIN_ALPHA_BANDGAP = 1
 
