@@ -1,6 +1,5 @@
 import os.path
 
-import pytest
 from nomad.client import normalize_all, parse
 
 
@@ -14,6 +13,13 @@ def test_rt_autosampler_schema():
     3. Each RTMeasurement contains the correct number of results (positions)
     4. Each result contains the expected R and T spectra
     """
+    # Constants for test validation
+    EXPECTED_LIBRARIES = 6  # Number of libraries (excluding Baseline)
+    POSITIONS_PER_LIBRARY = 10  # Number of measurement positions per library
+    MIN_WAVELENGTH_NM = 200  # Minimum wavelength in UV-VIS-NIR range (nm)
+    MAX_WAVELENGTH_NM = 2500  # Maximum wavelength in UV-VIS-NIR range (nm)
+    MAX_INTENSITY_PERCENT = 100  # Maximum intensity percentage
+
     test_file = os.path.join('tests', 'data', 'test_rt_autosampler.archive.yaml')
     entry_archive = parse(test_file)[0]
     normalize_all(entry_archive)
@@ -23,14 +29,14 @@ def test_rt_autosampler_schema():
     # eugbe_0008_RTP_hd, eugbe_0009_RTP_hd,
     # anait_0030_RTP_ha, anait_0030_RTP_hc,
     # anait_0030_RTP_hd, anait_0030_RTP_hb
-    assert len(entry_archive.data.steps) == 6
+    assert len(entry_archive.data.steps) == EXPECTED_LIBRARIES
 
     # Each step should be an RTMeasurement
     for step in entry_archive.data.steps:
         assert step.m_def.name == 'RTMeasurement'
 
         # Each library has 10 measurement positions
-        assert len(step.results) == 10
+        assert len(step.results) == POSITIONS_PER_LIBRARY
 
         # Each position should have results with spectra
         for result in step.results:
@@ -50,12 +56,12 @@ def test_rt_autosampler_schema():
                 assert len(spectrum.intensity) == len(spectrum.wavelength)
 
                 # Check that wavelengths are in reasonable range (UV-VIS-NIR)
-                assert spectrum.wavelength.min() >= 200  # nm
-                assert spectrum.wavelength.max() <= 2500  # nm
+                assert spectrum.wavelength.min() >= MIN_WAVELENGTH_NM
+                assert spectrum.wavelength.max() <= MAX_WAVELENGTH_NM
 
                 # Check intensity values are in valid range (0-100% or 0-1)
                 assert spectrum.intensity.min() >= 0
-                assert spectrum.intensity.max() <= 100
+                assert spectrum.intensity.max() <= MAX_INTENSITY_PERCENT
 
 
 def test_rt_autosampler_sample_names():
