@@ -158,13 +158,14 @@ class SingleMeasurement:
 
 # class to store multiple measurements at the same sample position
 class MultiMeasurement:
-    def __init__(self, sample_name):
+    def __init__(self, sample_name, verbose=False):
         self.sample_name = sample_name
         self.position_x = None
         self.position_y = None
         self.measurements = []
         self.avg_sp_measurements = []
         self.derived_data = {}
+        self.verbose = verbose
 
     def calc_avg_transmission_refl(self, wv_start=None, wv_end=None):
         if self.avg_sp_measurements is not None:
@@ -244,11 +245,12 @@ class MultiMeasurement:
                     )
                     averaged_measurements.append(avg_measurement)
             else:
-                print(
-                    f'Warning (point X={self.position_x}, '
-                    f'Y={self.position_y}): Unequal number of s and p '
-                    f'measurements'
-                )
+                if self.verbose:
+                    print(
+                        f'Warning (point X={self.position_x}, '
+                        f'Y={self.position_y}): Unequal number of s and p '
+                        f'measurements'
+                    )
 
         self.avg_sp_measurements = averaged_measurements
 
@@ -318,18 +320,20 @@ class MultiMeasurement:
         # and check there is a single R and T measurement
         for key, measurements in rt_grouped_measurements.items():
             if len(measurements) != 1:
-                print(
-                    f'Warning (point X={self.position_x}, '
-                    f'Y={self.position_y}): {len(measurements)} {key} '
-                    f'measurements found'
-                )
+                if self.verbose:
+                    print(
+                        f'Warning (point X={self.position_x}, '
+                        f'Y={self.position_y}): {len(measurements)} {key} '
+                        f'measurements found'
+                    )
                 return
         # check that both R and T measurements are present
         if 'T' not in rt_grouped_measurements or 'R' not in rt_grouped_measurements:
-            print(
-                f'Warning (point X={self.position_x}, '
-                f'Y={self.position_y}): T or R measurement missing'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): T or R measurement missing'
+                )
             return
         # filter the measurements to the specified wavelength range if provided
         if wv_start is not None and wv_end is not None:
@@ -403,10 +407,11 @@ class MultiMeasurement:
         # check that the alpha data is present, by chekcing  that one of the
         # derived data dict key starts with alpha
         if 'alpha' not in self.derived_data:
-            print(
-                f'Warning (point X={self.position_x}, '
-                f'Y={self.position_y}): Alpha data missing'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): Alpha data missing'
+                )
 
         alpha_df = self.derived_data['alpha']
         alpha = alpha_df['alpha']
@@ -439,10 +444,12 @@ class MultiMeasurement:
         """
         # Check that the alpha data is present
         if 'alpha' not in self.derived_data:
-            print(
-                f'Warning (point X={self.position_x}, '
-                f'Y={self.position_y}): Alpha data missing'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): Alpha data missing'
+                )
+            return
             return
 
         alpha_df = self.derived_data['alpha']
@@ -482,12 +489,13 @@ class MultiMeasurement:
                 smooth_alpha, window_size, 2, deriv=2, mode='mirror'
             )
         else:
-            print(
-                f'Warning (point X={self.position_x},'
-                f' Y={self.position_y}): '
-                'Wavelength values are not evenly spaced. Using rolling'
-                ' average smoothing instead.'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x},'
+                    f' Y={self.position_y}): '
+                    'Wavelength values are not evenly spaced. Using rolling'
+                    ' average smoothing instead.'
+                )
 
             # Rolling average smoothing
             kernel = np.ones(window_size) / window_size
@@ -507,18 +515,20 @@ class MultiMeasurement:
             first_derivative_trimmed = first_derivative[valid_slice]
             second_derivative_trimmed = second_derivative[valid_slice]
 
-            print(
-                f'Info (point X={self.position_x}, Y={self.position_y}): '
-                f'Removed {edge_points_to_remove} points from each edge. '
-                f'Working with {len(wavelength_trimmed)} points instead '
-                f'of {len(wavelength)}.'
-            )
+            if self.verbose:
+                print(
+                    f'Info (point X={self.position_x}, Y={self.position_y}): '
+                    f'Removed {edge_points_to_remove} points from each edge. '
+                    f'Working with {len(wavelength_trimmed)} points instead '
+                    f'of {len(wavelength)}.'
+                )
         else:
-            print(
-                f'Warning (point X={self.position_x}, Y={self.position_y}): '
-                f'Not enough data points to remove edges safely. '
-                f'Using all {len(wavelength)} points.'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, Y={self.position_y}): '
+                    f'Not enough data points to remove edges safely. '
+                    f'Using all {len(wavelength)} points.'
+                )
             wavelength_trimmed = wavelength
             smooth_alpha_trimmed = smooth_alpha
             first_derivative_trimmed = first_derivative
@@ -534,11 +544,12 @@ class MultiMeasurement:
                 zero_crossings, key=lambda x: abs(x - inflection_idx_trimmed)
             )
         else:
-            print(
-                f'Warning (point X={self.position_x}, '
-                f'Y={self.position_y}): No zero crossing found. Using'
-                ' inflection point as bandgap.'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): No zero crossing found. Using'
+                    ' inflection point as bandgap.'
+                )
             bandgap_idx_trimmed = inflection_idx_trimmed
 
         bandgap_wavelength = wavelength_trimmed[bandgap_idx_trimmed]
@@ -585,11 +596,12 @@ class MultiMeasurement:
         # Before splitting the data, we check that not all smoothed alpha values
         # are above a certain threshold, if they are we return NaN
         if np.all(smooth_alpha_trimmed > min_alpha):
-            print(
-                f'Warning (point X={self.position_x}, Y={self.position_y}): '
-                f'All smoothed alpha values are above {min_alpha}. '
-                f'Bandgap estimation impossible.'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, Y={self.position_y}): '
+                    f'All smoothed alpha values are above {min_alpha}. '
+                    f'Bandgap estimation impossible.'
+                )
             bandgap_energy = np.nan
             bandgap_wavelength = np.nan
 
@@ -619,27 +631,30 @@ class MultiMeasurement:
         """
         # Check that the alpha data is present
         if 'alpha' not in self.derived_data:
-            print(
-                f'Warning (point X={self.position_x}, '
-                f'Y={self.position_y}): Alpha data missing'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): Alpha data missing'
+                )
             return
 
         if 'smoothed_alpha' not in self.derived_data:
-            print(
-                f'Warning (point X={self.position_x}, '
-                f'Y={self.position_y}): Smoothed alpha data missing'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): Smoothed alpha data missing'
+                )
             return
 
         # if all the alpha values are above the threshold, we return np.nan
         # and print a warning
         if all(self.derived_data['smoothed_alpha']['smoothed_alpha'] > min_alpha):
-            print(
-                f'Warning (point X={self.position_x}, '
-                f'Y={self.position_y}): All alpha values are above the '
-                f'threshold. Bandgap estimation impossible.'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): All alpha values are above the '
+                    f'threshold. Bandgap estimation impossible.'
+                )
             self.derived_data['bandgap_threshold_energy'] = np.nan
             self.derived_data['bandgap_threshold_wavelength'] = np.nan
             return
@@ -668,22 +683,24 @@ class MultiMeasurement:
                 # if the very first window has all values above the threshold
                 # we say that the bandgap is np.nan
                 if i == 0:
-                    print(
-                        f'Warning (point X={self.position_x}, '
-                        f'Y={self.position_y}): All alpha values are above the '
-                        f'threshold. Bandgap estimation impossible.'
-                    )
+                    if self.verbose:
+                        print(
+                            f'Warning (point X={self.position_x}, '
+                            f'Y={self.position_y}): All alpha values are above the '
+                            f'threshold. Bandgap estimation impossible.'
+                        )
                     E_g = np.nan
                 else:
                     # Calculate the average energy value of the window
                     E_g = np.mean(E_window)
                 break
         else:
-            print(
-                f'Warning (point X={self.position_x}, '
-                f'Y={self.position_y}): No suitable region found for '
-                f'bandgap estimation.'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): No suitable region found for '
+                    f'bandgap estimation.'
+                )
             E_g = np.nan
 
         # Store results in derived_data
@@ -703,10 +720,11 @@ class MultiMeasurement:
         """
         # Check that the alpha data is present
         if 'alpha' not in self.derived_data:
-            print(
-                f'Warning (point X={self.position_x}, '
-                f'Y={self.position_y}): Alpha data missing'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): Alpha data missing'
+                )
             return
 
         alpha_df = self.derived_data['alpha']
@@ -761,28 +779,31 @@ class MultiMeasurement:
                 best_fit = model
 
         if best_fit is None:
-            print(
-                f'Warning (point X={self.position_x}, '
-                f'Y={self.position_y}): No suitable region found for '
-                f'bandgap estimation (r>{min_r} and slope>{min_slope}).'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): No suitable region found for '
+                    f'bandgap estimation (r>{min_r} and slope>{min_slope}).'
+                )
             E_g = np.nan
             best_r = np.nan
             best_region = np.nan
             best_region_center = np.nan
         elif best_r < min_r:
-            print(
-                f'Warning (point X={self.position_x}, '
-                f'Y={self.position_y}): Best region correlation '
-                f'coefficient below {min_r}. Bandgap estimation impossible.'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): Best region correlation '
+                    f'coefficient below {min_r}. Bandgap estimation impossible.'
+                )
             E_g = np.nan
         elif all(alpha > MIN_ALPHA_BANDGAP):
-            print(
-                f'Warning (point X={self.position_x}, '
-                f'Y={self.position_y}): All alpha values are above '
-                f'{MIN_ALPHA_BANDGAP}. Bandgap estimation impossible.'
-            )
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): All alpha values are above '
+                    f'{MIN_ALPHA_BANDGAP}. Bandgap estimation impossible.'
+                )
             E_g = np.nan
             best_r = np.nan
             best_region = np.nan
@@ -867,21 +888,21 @@ def group_samples(collects):
 
 
 def estimate_bandgap_tauc_map(
-    map, window_size=WINDOW_SIZE_INTERCEPT, max_energy=MAX_ENERGY
+    map_meas, window_size=WINDOW_SIZE_INTERCEPT, max_energy=MAX_ENERGY, verbose=False
 ):
     """
     Method to estimate the bandgap from the absorption plot
     using the intercept method. The main different with the estimate_bandgap_tauc
-    method is that it first scans for all the measurements in the map and finds
-    the region with the highest avg correlation coefficient over the whole map.
-    Then it uses this region to estimate the bandgap for each point in the map.
+    method is that it first scans for all the measurements in the map_meas and finds
+    the region with the highest avg correlation coefficient over the whole map_meas.
+    Then it uses this region to estimate the bandgap for each point in the map_meas.
     """
     best_r_dict = {}
     best_region_dict = {}
     max_region = None
     min_region = None
 
-    for position_key, multi_measurement in map.items():
+    for position_key, multi_measurement in map_meas.items():
         best_region, best_r = multi_measurement.estimate_bandgap_tauc(
             window_size=window_size, max_energy=max_energy
         )
@@ -898,15 +919,16 @@ def estimate_bandgap_tauc_map(
         max_region = max(max_region, region[1])
         min_region = min(min_region, region[0])
 
-    print(f'Max region: {max_region}')
-    print(f'Min region: {min_region}')
-    print(f'Average best region: {best_region_avg}')
+    if verbose:
+        print(f'Max region: {max_region}')
+        print(f'Min region: {min_region}')
+        print(f'Average best region: {best_region_avg}')
 
     # TODO: fit the tauc data to a line in the average best region and
     # find the intersection with the x-axis
 
 
-def group_measurements_position(samples):
+def group_measurements_position(samples, verbose=False):
     multi_measurements = {}
     for sample_name, collects in samples.items():
         if sample_name not in multi_measurements:
@@ -916,7 +938,7 @@ def group_measurements_position(samples):
             position_y = collect.config['Ysample']
             position_key = f'{position_x}_{position_y}'
             if position_key not in multi_measurements[sample_name]:
-                multi_measurement = MultiMeasurement(sample_name)
+                multi_measurement = MultiMeasurement(sample_name, verbose=verbose)
                 multi_measurement.position_x = collect.config['Xsample']
                 multi_measurement.position_y = collect.config['Ysample']
                 multi_measurements[sample_name][position_key] = multi_measurement
@@ -1075,7 +1097,7 @@ def parse_file(data_path, config_path=None):
 # -----------------Plotting-------------------
 
 
-def print_methods(multi_meas_map):
+def print_methods(multi_meas_map, verbose=True):
     """
     Method to print the methods used for the derived data, it iterates through
     the derived data and looks for method strings or dictionaries, and prints
@@ -1092,13 +1114,16 @@ def print_methods(multi_meas_map):
         if 'method' not in key:
             continue
         if isinstance(value, dict):
-            print(f'{key}:')
+            if verbose:
+                print(f'{key}:')
             for sub_key, sub_value in value.items():
-                print(f'    {sub_key}: {sub_value}')
+                if verbose:
+                    print(f'    {sub_key}: {sub_value}')
                 methods[f'{key}_{sub_key}'] = sub_value
 
         elif isinstance(value, str):
-            print(f'{key}: {value}')
+            if verbose:
+                print(f'{key}: {value}')
             methods[key] = value
 
     return methods
