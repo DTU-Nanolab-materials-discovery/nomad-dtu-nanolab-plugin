@@ -66,7 +66,16 @@ class RTSpectrum(ArchiveSection):
     detector_angle = Quantity(
         type=np.float64,
         unit='degree',
-        description='Detector angle in degrees.',
+        description="""
+        Detector angle in degrees, the angle between the beam and the detector.
+        180° means is in the direction of the transmitted beam (typically for
+        transmission measurements), while small angles means it is in the
+        direction of the reflected beam (typically for reflection measurements).
+        Angles contrainted between 12 and 180° (if the beam is detector is on
+        the left side of the optical path) and -12 and -179° (if the detector
+        is on the right side of the optical path) based on typical Agilent Cary
+        7000 UMS configurations.
+        """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
         ),
@@ -75,7 +84,13 @@ class RTSpectrum(ArchiveSection):
     sample_angle = Quantity(
         type=np.float64,
         unit='degree',
-        description='Sample angle in degrees.',
+        description="""
+        Sample angle in degrees, the angle between the beam and the sample
+        surface. 0° means the beam is normal to the sample surface, while
+        larger angles mean the beam is more grazing. Angles are typically
+        between 0 and 85° based on typical Agilent Cary 7000 UMS
+        configurations.
+        """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
         ),
@@ -83,7 +98,15 @@ class RTSpectrum(ArchiveSection):
 
     polarization = Quantity(
         type=MEnum('s', 'p', 'unpolarized(p-biased)'),
-        description='Polarization state of the measurement.',
+        description="""
+        Polarisation of the light if the polarizer element was used during
+        the measurement. 's (angle 0°)' means the electric field is
+        perpendicular to the plane of incidence, 'p (angle 90°)' means the
+        electric field is parallel to the plane of incidence, and
+        'unpolarized (p-biased)' means the polarizer was set to unpolarized
+        mode to increase measurement throughput, which typically results in a
+        p-polarized bias in the transmitted beam.
+        """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
         ),
@@ -108,7 +131,9 @@ class RTResult(MappingResult):
     spectra = SubSection(
         section_def=RTSpectrum,
         repeats=True,
-        description='List of R and/or T spectra measured at this position.',
+        description="""
+        List of Reflection and/or Transmission spectra measured at this position.
+        """,
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -147,8 +172,11 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
             'label': 'Data file (CSV with R/T spectra)',
         },
         description=(
-            'CSV file containing all R and T spectra for different '
-            'samples and positions'
+            'CSV file containing all R and T spectra recorded by the Agilent '
+            'Cary 7000 UMS autosampler. This file contains the raw spectral '
+            'data along with metadata and needs to be parsed together with '
+            'the config file to extract individual spectra and associate them '
+            'with the correct sample/library and position.'
         ),
     )
 
@@ -159,7 +187,13 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
             'component': 'FileEditQuantity',
             'label': 'Config/Grid file (CSV)',
         },
-        description='CSV file containing the grid/position metadata mapping',
+        description="""
+        CSV file containing the grid/position metadata mapping. This file
+        mapps each position on each library to the corresponding recorded
+        spectra in the data file, (Ex: the first recorded spectrum of the
+        data_file has been recorded at position X=5mm, Y=10mm on library
+        "eugbe_0025_Zr_FL")
+        """
     )
 
     raw_file = Quantity(
@@ -171,7 +205,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
         },
         description="""
             Raw binary file from the Agilent Cary 7000 UMS instrument
-            (for bookkeeping and data provenance).
+            (for bookkeeping and data provenance). File extension is typically .bsw.
         """
     )
 
@@ -215,17 +249,17 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
 
             # Create a measurement archive for each library
             for library_id, position_data in library_data.items():
-                # Skip baseline samples
+                # Skip baseline samples (we might not to skip it in the future)
                 if library_id == 'Baseline':
                     continue
-                
+
                 # Extract datetime from first measurement for uniqueness
                 first_multi_measurement = next(iter(position_data.values()))
                 collection_time = None
                 if first_multi_measurement.measurements:
                     first_measurement = first_multi_measurement.measurements[0]
                     collection_time = first_measurement.metadata.get('Collection Time')
-                
+
                 # Format datetime for name uniqueness
                 if collection_time is not None:
                     if hasattr(collection_time, 'strftime'):
@@ -238,7 +272,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                         )
                 else:
                     datetime_label = 'unknown'
-                
+
                 measurement = RTMeasurement(
                     name=f'{library_id}_RT_{datetime_label}',
                     data_file=f'{library_id}_RT_{datetime_label}'
@@ -274,6 +308,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                             logger.warning(f'Unknown measurement type: {meas_type}')
                             continue
 
+                        # Create spectrum object
                         spectrum = RTSpectrum(
                             spectrum_type=spectrum_type,
                             wavelength=(
@@ -300,12 +335,12 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                         spectra.append(spectrum)
 
                     result.spectra = spectra
-                    
+
                     # Verify positions were set correctly before adding to results
                     results.append(result)
 
                 measurement.results = results
-                
+
                 # Log positions from results after assignment
                 # Results are stored in the archive via create_archive
 
@@ -343,9 +378,9 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         label='RT Measurement',
     )
 
-    # Wavelength bounds for averaging (in nm)
-    WAVELENGTH_MIN = 400
-    WAVELENGTH_MAX = 800
+    # Wavelength bounds for averaging (in nm). We choose the visible range.
+    WAVELENGTH_MIN = 400 #nm
+    WAVELENGTH_MAX = 800 #nm
 
     data_file = Quantity(
         type=str,
@@ -364,7 +399,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     def plot(self) -> None:
         """
         Create interactive Plotly visualizations of RT measurement data.
-        
+
         Creates two types of plots:
         1. "R and T Spectra": All spectra overlaid
         2. "Individual Configuration Heatmaps": One spatial heatmap per
@@ -372,33 +407,33 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
            sample angle, polarization) showing average intensity over the
            wavelength range defined by WAVELENGTH_MIN-WAVELENGTH_MAX class
            constants.
-        
+
         Each unique configuration gets its own heatmap with measurement
         details in the title.
         """
         import plotly.graph_objs as go
         from nomad.datamodel.metainfo.plot import PlotlyFigure
         from scipy.interpolate import griddata
-        
+
         if not self.results:
             return
-        
+
         # ===== Plot 1: All R and T Spectra =====
         fig_spectra = go.Figure()
-        
+
         for result in self.results:
             position_label = result.name or 'Unknown'
-            
+
             for spectrum in result.spectra:
                 if spectrum.wavelength is None or spectrum.intensity is None:
                     continue
-                
+
                 # Convert wavelength to nm if it's a Quantity
                 if hasattr(spectrum.wavelength, 'magnitude'):
                     wavelength = spectrum.wavelength.to('nm').magnitude
                 else:
                     wavelength = spectrum.wavelength
-                
+
                 intensity = spectrum.intensity
                 spectrum_type = spectrum.spectrum_type or 'Unknown'
 
@@ -413,20 +448,20 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     else 'n/a'
                 )
                 polarization_label = spectrum.polarization or 'n/a'
-                
+
                 # Create trace label with position and type
                 trace_name = (
                     f'{position_label}_{spectrum_type} '
                     f'({detector_label}, {sample_label}, {polarization_label})'
                 )
-                
+
                 # Use different colors/styles for R vs T
                 line_style = dict()
                 if spectrum_type == 'Reflection':
                     line_style['dash'] = 'solid'
                 elif spectrum_type == 'Transmission':
                     line_style['dash'] = 'dot'
-                
+
                 fig_spectra.add_trace(
                     go.Scatter(
                         x=wavelength,
@@ -437,7 +472,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         hoverlabel=dict(namelength=-1),
                     )
                 )
-        
+
         fig_spectra.update_layout(
             title='Reflection (solid) and Transmission (dot) Spectra',
             xaxis_title='Wavelength (nm)',
@@ -448,7 +483,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             xaxis=dict(fixedrange=False),
             yaxis=dict(fixedrange=False),
         )
-        
+
         plot_json_spectra = fig_spectra.to_plotly_json()
         plot_json_spectra['config'] = dict(scrollZoom=False)
         self.figures.append(
@@ -457,13 +492,13 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 figure=plot_json_spectra,
             )
         )
-        
+
         # ===== Plot 2: Individual Configuration Heatmaps =====
         # Collect all unique spectrum configurations present in the data
         # Each unique combination of (type, detector_angle, sample_angle,
         # polarization) gets its own heatmap
         spectrum_configs = {}
-        
+
         for result in self.results:
             for spectrum in result.spectra:
                 if spectrum.spectrum_type:
@@ -471,7 +506,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     detector_angle = getattr(spectrum, 'detector_angle', None)
                     sample_angle = getattr(spectrum, 'sample_angle', None)
                     polarization = getattr(spectrum, 'polarization', None)
-                    
+
                     det_val = (
                         detector_angle.to('degree').magnitude
                         if detector_angle is not None
@@ -483,28 +518,28 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         else None
                     )
                     pol_val = polarization if polarization else 'unknown'
-                    
+
                     config_key = (
                         spectrum.spectrum_type,
                         det_val,
                         samp_val,
                         pol_val
                     )
-                    
+
                     if config_key not in spectrum_configs:
                         spectrum_configs[config_key] = []
-        
+
         # Collect position and average data for each spectrum configuration
         def compute_avg_for_config(result: RTResult, config_key: tuple) -> float:
             """Compute average intensity for a specific spectrum configuration."""
             wv_start = self.WAVELENGTH_MIN
             wv_end = self.WAVELENGTH_MAX
             spectrum_type, det_angle, samp_angle, pol = config_key
-            
+
             for spectrum in result.spectra:
                 if spectrum.spectrum_type != spectrum_type:
                     continue
-                
+
                 # Match all configuration parameters
                 det_val = getattr(spectrum, 'detector_angle', None)
                 det_val = (
@@ -519,22 +554,22 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     else None
                 )
                 pol_val = getattr(spectrum, 'polarization', None) or 'unknown'
-                
+
                 if (det_val == det_angle and samp_val == samp_angle and pol_val == pol):
                     if spectrum.wavelength is None or spectrum.intensity is None:
                         continue
-                    
+
                     if hasattr(spectrum.wavelength, 'magnitude'):
                         wavelength = spectrum.wavelength.to('nm').magnitude
                     else:
                         wavelength = spectrum.wavelength
-                    
+
                     mask = (wavelength >= wv_start) & (wavelength <= wv_end)
                     if np.any(mask):
                         return float(np.mean(spectrum.intensity[mask]))
-            
+
             return np.nan
-        
+
         # Populate data for each configuration
         positions = []
         for result in self.results:
@@ -553,27 +588,27 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     pos_y = pos_y_attr
 
                 positions.append((pos_x, pos_y))
-                
+
                 # Compute average for each spectrum configuration
                 for config_key, config_values in spectrum_configs.items():
                     avg_val = compute_avg_for_config(result, config_key)
                     config_values.append(avg_val)
-        
+
         if positions:
             # Create heatmap for each unique spectrum configuration
             pos_x_vals = [p[0] for p in positions]
             pos_y_vals = [p[1] for p in positions]
-            
+
             # Check if we have a 2D grid or just a line
             unique_x = len(set(pos_x_vals))
             unique_y = len(set(pos_y_vals))
-            
+
             if unique_x > 1 and unique_y > 1:
                 # 2D heatmap for each spectrum configuration
                 for config_key, values in spectrum_configs.items():
                     if not all(np.isnan(values)):
                         spectrum_type, det_angle, samp_angle, polarization = config_key
-                        
+
                         # Build title with all measurement details
                         det_str = (
                             f'{det_angle:.1f}°'
@@ -586,7 +621,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             else 'n/a'
                         )
                         pol_str = polarization if polarization else 'n/a'
-                        
+
                         title = (
                             f'Avg. {spectrum_type} '
                             f'{self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm '
@@ -597,7 +632,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             f'{spectrum_type[0]} {det_str}_{samp_str}_'
                             f'{pol_str}'
                         )
-                        
+
                         # Create interpolation grid for smooth heatmap
                         xi = np.linspace(min(pos_x_vals), max(pos_x_vals), 100)
                         yi = np.linspace(min(pos_y_vals), max(pos_y_vals), 100)
@@ -608,7 +643,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             (xi, yi),
                             method='linear',
                         )
-                        
+
                         # Create heatmap trace
                         heatmap = go.Heatmap(
                             x=xi[0],
@@ -617,7 +652,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             colorscale='Viridis',
                             colorbar=dict(title=spectrum_type),
                         )
-                        
+
                         # Create scatter overlay for actual measurement points
                         scatter = go.Scatter(
                             x=pos_x_vals,
@@ -637,10 +672,10 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                                 '<b>Y:</b> %{y:.2f} mm'
                             ),
                         )
-                        
+
                         # Combine heatmap and scatter
                         fig_map = go.Figure(data=[heatmap, scatter])
-                        
+
                         fig_map.update_layout(
                             title=title,
                             xaxis_title='X Position (mm)',
@@ -651,7 +686,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             xaxis=dict(fixedrange=False),
                             yaxis=dict(fixedrange=False),
                         )
-                        
+
                         plot_json_map = fig_map.to_plotly_json()
                         plot_json_map['config'] = dict(scrollZoom=False)
                         self.figures.append(
@@ -664,13 +699,13 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 # 1D line plot - create separate plot for each spectrum configuration
                 x_axis = pos_x_vals if unique_x > 1 else pos_y_vals
                 x_label = 'X Position (mm)' if unique_x > 1 else 'Y Position (mm)'
-                
+
                 color_map = {'Transmission': 'blue', 'Reflection': 'red'}
-                
+
                 for config_key, values in spectrum_configs.items():
                     if not all(np.isnan(values)):
                         spectrum_type, det_angle, samp_angle, polarization = config_key
-                        
+
                         # Build title with all measurement details
                         det_str = (
                             f'{det_angle:.1f}°'
@@ -683,7 +718,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             else 'n/a'
                         )
                         pol_str = polarization if polarization else 'n/a'
-                        
+
                         title = (
                             f'Avg. {spectrum_type} '
                             f'{self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm '
@@ -694,10 +729,10 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             f'{spectrum_type[0]} {det_str}_{samp_str}_'
                             f'{pol_str}'
                         )
-                        
+
                         # Get color based on spectrum type
                         color = color_map.get(spectrum_type, 'green')
-                        
+
                         fig_line = go.Figure()
                         fig_line.add_trace(
                             go.Scatter(
@@ -712,7 +747,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                                 ),
                             )
                         )
-                        
+
                         fig_line.update_layout(
                             title=title,
                             xaxis_title=x_label,
@@ -721,7 +756,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             hovermode='closest',
                             showlegend=False,
                         )
-                        
+
                         plot_json_line = fig_line.to_plotly_json()
                         plot_json_line['config'] = dict(scrollZoom=False)
                         self.figures.append(
