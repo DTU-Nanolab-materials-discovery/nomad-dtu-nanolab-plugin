@@ -189,7 +189,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
         },
         description="""
         CSV file containing the grid/position metadata mapping. This file
-        mapps each position on each library to the corresponding recorded
+        maps each position on each library to the corresponding recorded
         spectra in the data file, (Ex: the first recorded spectrum of the
         data_file has been recorded at position X=5mm, Y=10mm on library
         "eugbe_0025_Zr_FL")
