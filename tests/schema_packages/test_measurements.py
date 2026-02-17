@@ -118,7 +118,7 @@ def test_rt_autosampler_schema():
         'anait_0030_RTP_ha',
         'anait_0030_RTP_hc',
         'anait_0030_RTP_hd',
-        'anait_0030_RTP_hb'
+        'anait_0030_RTP_hb',
     ]
 
     # The autosampler measurement should create steps (one per library)
@@ -139,6 +139,5 @@ def test_rt_autosampler_schema():
     assert len(step_library_names) == len(expected_libraries)
     for expected_name in expected_libraries:
         assert expected_name in step_library_names, (
-            f"Expected library {expected_name} not found in steps"
+            f'Expected library {expected_name} not found in steps'
         )
-
