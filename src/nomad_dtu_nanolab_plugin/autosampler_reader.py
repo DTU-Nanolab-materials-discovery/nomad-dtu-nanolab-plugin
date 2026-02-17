@@ -244,13 +244,12 @@ class MultiMeasurement:
                         s_measurement, p_measurement
                     )
                     averaged_measurements.append(avg_measurement)
-            else:
-                if self.verbose:
-                    print(
-                        f'Warning (point X={self.position_x}, '
-                        f'Y={self.position_y}): Unequal number of s and p '
-                        f'measurements'
-                    )
+            elif self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): Unequal number of s and p '
+                    f'measurements'
+                )
 
         self.avg_sp_measurements = averaged_measurements
 
