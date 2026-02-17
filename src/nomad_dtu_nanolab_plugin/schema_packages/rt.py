@@ -71,7 +71,7 @@ class RTSpectrum(ArchiveSection):
         180° means is in the direction of the transmitted beam (typically for
         transmission measurements), while small angles means it is in the
         direction of the reflected beam (typically for reflection measurements).
-        Angles contrainted between 12 and 180° (if the beam is detector is on
+        Angles constrained between 12 and 180° (if the beam is detector is on
         the left side of the optical path) and -12 and -179° (if the detector
         is on the right side of the optical path) based on typical Agilent Cary
         7000 UMS configurations.
