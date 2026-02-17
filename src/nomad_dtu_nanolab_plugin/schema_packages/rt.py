@@ -271,7 +271,6 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
 
                 measurement = RTMeasurement(
                     name=f'{library_id}_RT_{datetime_label}',
-                    data_file=f'{library_id}_RT_{datetime_label}',
                 )
 
                 # Create results for each position
@@ -373,11 +372,6 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     # Wavelength bounds for averaging (in nm). We choose the visible range.
     WAVELENGTH_MIN = 400  # nm
     WAVELENGTH_MAX = 800  # nm
-
-    data_file = Quantity(
-        type=str,
-        description='Reference to the source data file for sample identification.',
-    )
 
     results = SubSection(
         section_def=RTResult,
@@ -765,8 +759,8 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if self.location is None:
             self.location = 'DTU Nanolab RT Measurement'
 
-        if self.data_file:
-            self.add_sample_reference(self.data_file, 'RT', archive, logger)
+        if self.name:
+            self.add_sample_reference(self.name, 'RT', archive, logger)
 
         super().normalize(archive, logger)
 
