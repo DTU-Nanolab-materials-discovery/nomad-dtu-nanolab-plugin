@@ -165,28 +165,6 @@ class EllipsometryMetadata(Schema):
         super().normalize(archive, logger)
 
 
-class DTUEllipsoSampleAlignment(DTUBaseSampleAlignment):
-    """Sample alignment information for ellipsometry mapping measurements.
-
-    Inherits from DTUBaseSampleAlignment which provides:
-        - width (float with unit): Sample width
-        - height (float with unit): Sample height
-        - x_upper_left (float with unit): X-coordinate of upper-left corner
-        - y_upper_left (float with unit): Y-coordinate of upper-left corner
-        - x_lower_right (float with unit): X-coordinate of lower-right corner
-        - y_lower_right (float with unit): Y-coordinate of lower-right corner
-        - center_around_zero (button): Auto-calculate corners centered at (0,0)
-
-    Notes:
-        - Enables consistent positioning across different measurement techniques
-        - Default sample size is 40mm x 40mm
-    """
-
-    m_def = Section(
-        description='The alignment of the sample on the stage.',
-    )
-
-
 class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     """Main schema for spectroscopic ellipsometry measurements.
 
@@ -251,7 +229,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         repeats=True,
     )
     sample_alignment = SubSection(
-        section_def=DTUEllipsoSampleAlignment,
+        section_def=DTUBaseSampleAlignment,
         description='The alignment of the sample.',
     )
 

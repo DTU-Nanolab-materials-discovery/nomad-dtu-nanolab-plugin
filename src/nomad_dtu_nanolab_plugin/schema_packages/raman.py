@@ -111,29 +111,6 @@ class RamanResult(MappingResult):
         super().normalize(archive, logger)
 
 
-class DTURamanSampleAlignment(DTUBaseSampleAlignment):
-    """Sample alignment information for Raman mapping measurements.
-
-    Inherits from DTUBaseSampleAlignment which provides:
-        - width (float with unit): Sample width
-        - height (float with unit): Sample height
-        - x_upper_left (float with unit): X-coordinate of upper-left corner
-        - y_upper_left (float with unit): Y-coordinate of upper-left corner
-        - x_lower_right (float with unit): X-coordinate of lower-right corner
-        - y_lower_right (float with unit): Y-coordinate of lower-right corner
-        - center_around_zero (button): Auto-calculate corners centered at (0,0)
-
-    Notes:
-        - Enables consistent positioning across different measurement techniques
-        - Currently optional; many measurements use absolute stage coordinates only
-        - Default sample size is 40mm x 40mm
-    """
-
-    m_def = Section(
-        description='The alignment of the sample on the stage.',
-    )
-
-
 class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     """Main schema for Raman mapping measurements.
 
@@ -224,7 +201,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
     )
     sample_alignment = SubSection(
-        section_def=DTURamanSampleAlignment,
+        section_def=DTUBaseSampleAlignment,
         description='The alignment of the sample.',
     )
 

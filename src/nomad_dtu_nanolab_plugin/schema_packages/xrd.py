@@ -40,6 +40,7 @@ from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+    DTUBaseSampleAlignment,
     DtuNanolabMeasurement,
 )
 
@@ -82,6 +83,10 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         section_def=XRDMappingResult,
         description='The XRD results.',
         repeats=True,
+    )
+    sample_alignment = SubSection(
+        section_def=DTUBaseSampleAlignment,
+        description='The alignment of the sample.',
     )
 
     def plot(self) -> None:
