@@ -118,7 +118,7 @@ def test_rt_autosampler_schema():
         'anait_0030_RTP_ha_rt_measurement_20251105_203950',
         'anait_0030_RTP_hc_rt_measurement_20251105_212832',
         'anait_0030_RTP_hd_rt_measurement_20251105_221715',
-        'anait_0030_RTP_hb_rt_measurement_20251105_230614'
+        'anait_0030_RTP_hb_rt_measurement_20251105_230614',
     ]
 
     # The autosampler measurement should create steps (one per library)
