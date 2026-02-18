@@ -48,7 +48,6 @@ from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_measurements.mapping.schema import (
     MappingResult,
-    RectangularSampleAlignment,
 )
 from nomad_measurements.utils import merge_sections
 from structlog.stdlib import BoundLogger
@@ -58,6 +57,7 @@ from nomad_dtu_nanolab_plugin.raman_map_parser import (
     MappingRamanMeas,
 )
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+    DTUBaseSampleAlignment,
     DtuNanolabMeasurement,
 )
 
@@ -72,8 +72,11 @@ class RamanResult(MappingResult):
     """Single Raman spectrum result at a specific spatial position.
 
     Stores spectral data (intensity vs Raman shift) along with metadata about
-    the measurement position, laser parameters, and associated optical image.
+    the measurement position and associated optical image.
     Inherits from MappingResult to get standardized position handling and naming.
+
+    Note: Laser wavelength, accumulation count, and exposure time are stored at
+    the RamanMeasurement level as they are common to all measurement points.
     """
 
     m_def = Section()
@@ -89,11 +92,6 @@ class RamanResult(MappingResult):
         shape=['*'],
         unit='1/cm',
         description='The Raman shift values in 1/cm',
-    )
-    laser_wavelength = Quantity(
-        type=np.dtype(np.float64),
-        unit='nm',
-        description='The wavelength of the laser used in the Raman measurement.',
     )
     optical_image = Quantity(
         type=str,
@@ -111,30 +109,6 @@ class RamanResult(MappingResult):
         """
 
         super().normalize(archive, logger)
-
-
-class DTUSampleAlignment(RectangularSampleAlignment):
-    """Sample alignment information for rectangular mapping grids.
-
-    Defines the spatial relationship between measurement positions and the physical
-    sample. Used to convert between stage coordinates and sample coordinates.
-
-    Inherited from RectangularSampleAlignment:
-        - width (float with unit): Sample width
-        - height (float with unit): Sample height
-        - x_upper_left (float with unit): X-coordinate of upper-left corner
-        - y_upper_left (float with unit): Y-coordinate of upper-left corner
-        - x_lower_right (float with unit): X-coordinate of lower-right corner
-        - y_lower_right (float with unit): Y-coordinate of lower-right corner
-
-    Notes:
-        - Enables consistent positioning across different measurement techniques
-        - Currently optional; many measurements use absolute stage coordinates only
-    """
-
-    m_def = Section(
-        description='The alignment of the sample on the stage.',
-    )
 
 
 class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
@@ -159,6 +133,61 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             component=ELNComponentEnum.FileEditQuantity,
         ),
     )
+    accumulation_count = Quantity(
+        type=int,
+        description=(
+            'Number of accumulations for each measurement point. '
+            'Common to all spectra in the mapping.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+    exposure_time = Quantity(
+        type=np.float64,
+        unit='s',
+        description=(
+            'Total exposure time per accumulation point. '
+            'Common to all spectra in the mapping.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='s',
+        ),
+    )
+    laser_wavelength = Quantity(
+        type=np.dtype(np.float64),
+        unit='nm',
+        description=(
+            'The wavelength of the laser used in the Raman measurement. '
+            'Common to all spectra in the mapping.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='nm',
+        ),
+    )
+    laser_power_percent = Quantity(
+        type=np.float64,
+        description=(
+            'Laser power as a percentage of maximum power (0-100%). '
+            'Common to all spectra in the mapping.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+    objective_magnification = Quantity(
+        type=np.float64,
+        description=(
+            'Objective lens magnification '
+            '(e.g., 20 for 20x, 50 for 50x, 100 for 100x). '
+            'Common to all spectra in the mapping.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
     results = SubSection(
         section_def=RamanResult,
         repeats=True,
@@ -172,7 +201,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
     )
     sample_alignment = SubSection(
-        section_def=DTUSampleAlignment,
+        section_def=DTUBaseSampleAlignment,
         description='The alignment of the sample.',
     )
 
@@ -203,7 +232,6 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             result = RamanResult(
                 intensity=meas.data['intensity'].to_list(),
                 raman_shift=meas.data['wavenumber'].to_numpy() * ureg('1/cm'),
-                laser_wavelength=meas.laser_wavelength,
                 optical_image=img_file,
                 x_absolute=x_absolute,
                 y_absolute=y_absolute,
@@ -224,8 +252,8 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         2. Parses spectral data and positions using MappingRamanMeas
         3. Extracts and saves optical microscopy images
         4. Creates optical image grid for overview
-        5. Generates intensity map figure
-        6. Converts data to RamanResult objects
+        5. Converts data to RamanResult objects
+        6. Extracts measurement-level metadata (accumulation count, exposure time)
         """
         with archive.m_context.raw_file(self.raman_data_file) as file:
             # Initialize the mapping reader
@@ -242,6 +270,45 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 folder = '.'
 
             mapping.read_wdf_mapping(folder, [filename])
+
+            # Extract measurement-level metadata from the WDF file
+            # These are common to all measurement points
+            if mapping.raman_meas_list and hasattr(mapping, 'wdf_reader'):
+                reader = mapping.wdf_reader
+                if reader:
+                    # Extract laser wavelength
+                    if hasattr(reader, 'laser_length'):
+                        self.laser_wavelength = reader.laser_length * ureg('nm')
+
+                    # TODO: improve the following extraction of metadata
+                    # for now we defauly back to manual extraction
+                    """ 
+                    # Extract accumulation count
+                    if hasattr(reader, 'accumulation_count'):
+                        self.accumulation_count = reader.accumulation_count
+
+                    # Calculate exposure time per point from time data
+                    # Check for at least 3 headers (typically X, Y, Time)
+                    min_headers_for_time = 3
+                    if (
+                        hasattr(reader, 'origin_list_header')
+                        and len(reader.origin_list_header) >= min_headers_for_time
+                    ):
+                        from renishawWiRE.types import DataType
+
+                        # Find the Time entry in origin_list_header
+                        for header in reader.origin_list_header:
+                            if header[1] == DataType.Time and len(header[4]) > 1:
+                                time_data = header[4]
+                                # Calculate average time per point
+                                time_diff = time_data[1] - time_data[0]
+                                if time_diff > 0:
+                                    self.exposure_time = (
+                                    (time_diff * ureg('s'))
+                                    /self.accumulation_count
+                                    )
+                                break
+                    """
 
             # Save images to the upload directory
             # Handle both ClientContext (tests) and ServerContext (production)
@@ -287,13 +354,8 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     else f'{meas_name}_optical_grid.png'
                 )
 
-            # Generate intensity map figure and add to figures
-            fig_heatmap = mapping.plot_intensity_map()
-
             # Write the data to results
             self.write_raman_data(mapping.raman_meas_list, img_list, archive, logger)
-
-            return fig_heatmap
 
     def plot(self) -> None:
         """Generate interactive Plotly visualizations of Raman data.
@@ -311,7 +373,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         Plot 2: Stacked Spectra
             - Spectra offset vertically for clarity
             - Offset calculated dynamically based on intensity range
-            - Excludes Si peak region (510-530 cm⁻¹) from offset calculation
+            - Excludes Si peak region (510-530 cm-1) from offset calculation
             - Better for visualizing peak evolution across positions
         Returns:
             None. Appends PlotlyFigure objects to self.figures list.
@@ -447,6 +509,146 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
         )
 
+    def plot_intensity_map_from_results(
+        self, wavenumber_tolerance: float = 5
+    ) -> PlotlyFigure | None:
+        """Generate Raman intensity map from normalized results with position awareness.
+
+        Creates a 2D heatmap showing spatial distribution of Raman intensity at the
+        wavenumber with maximum intensity (excluding Si peak). Uses relative positions
+        if available, falls back to absolute stage positions otherwise.
+
+        Args:
+            wavenumber_tolerance: Tolerance window in cm-1 around detected peak
+            wavenumber
+
+        Returns:
+            PlotlyFigure or None: Interactive heatmap figure ready for display
+        """
+        if not self.results:
+            return None
+
+        # Determine position type and titles
+        use_relative = all(
+            isinstance(r.x_relative, ureg.Quantity)
+            and isinstance(r.y_relative, ureg.Quantity)
+            for r in self.results
+        )
+
+        if use_relative:
+            x_title = 'X Sample Position (mm)'
+            y_title = 'Y Sample Position (mm)'
+        else:
+            x_title = 'X Stage Position (mm)'
+            y_title = 'Y Stage Position (mm)'
+
+        # Auto-detect target wavenumber (excluding Si peak region)
+        SI_PEAK_RANGE = (510, 530)
+        max_intensity = 0
+        target_wavenumber = 520  # default fallback
+
+        for result in self.results:
+            raman_shift_data = (
+                result.raman_shift.to('1/cm').magnitude
+                if hasattr(result.raman_shift, 'magnitude')
+                else result.raman_shift
+            )
+            intensity_data = result.intensity
+
+            # Exclude Si peak region
+            mask = (raman_shift_data < SI_PEAK_RANGE[0]) | (
+                raman_shift_data > SI_PEAK_RANGE[1]
+            )
+            if mask.any():
+                filtered_intensity = intensity_data[mask]
+                filtered_wavenumber = raman_shift_data[mask]
+                max_idx = np.argmax(filtered_intensity)
+                current_max = filtered_intensity[max_idx]
+                if current_max > max_intensity:
+                    max_intensity = current_max
+                    target_wavenumber = filtered_wavenumber[max_idx]
+
+        # Extract intensity at target wavenumber for each position
+        x_positions = []
+        y_positions = []
+        intensities = []
+
+        for result in self.results:
+            # Get positions
+            if use_relative:
+                x_pos = result.x_relative.to('mm').magnitude
+                y_pos = result.y_relative.to('mm').magnitude
+            else:
+                x_pos = result.x_absolute.to('mm').magnitude
+                y_pos = result.y_absolute.to('mm').magnitude
+
+            # Round to avoid floating-point precision issues in grid creation
+            x_positions.append(round(x_pos, 6))
+            y_positions.append(round(y_pos, 6))
+
+            # Get Raman shift and intensity
+            raman_shift_data = (
+                result.raman_shift.to('1/cm').magnitude
+                if hasattr(result.raman_shift, 'magnitude')
+                else result.raman_shift
+            )
+            intensity_data = result.intensity
+
+            # Find intensity at target wavenumber
+            mask = (raman_shift_data >= target_wavenumber - wavenumber_tolerance) & (
+                raman_shift_data <= target_wavenumber + wavenumber_tolerance
+            )
+
+            if mask.any():
+                intensity = intensity_data[mask].mean()
+            else:
+                intensity = 0
+            intensities.append(intensity)
+
+        # Create intensity matrix for heatmap
+        x_unique = sorted(set(x_positions))
+        y_unique = sorted(set(y_positions))
+
+        intensity_matrix = np.zeros((len(y_unique), len(x_unique)))
+        count_matrix = np.zeros((len(y_unique), len(x_unique)))
+
+        for x_pos, y_pos, intensity in zip(x_positions, y_positions, intensities):
+            x_idx = x_unique.index(x_pos)
+            y_idx = y_unique.index(y_pos)
+            intensity_matrix[y_idx, x_idx] += intensity
+            count_matrix[y_idx, x_idx] += 1
+
+        # Average intensities where multiple measurements mapped to same grid point
+        mask = count_matrix > 0
+        intensity_matrix[mask] /= count_matrix[mask]
+
+        # Create heatmap figure
+        fig = go.Figure(
+            data=go.Heatmap(
+                z=intensity_matrix,
+                x=x_unique,
+                y=y_unique,
+                colorscale='Viridis',
+                colorbar=dict(title='Intensity'),
+            )
+        )
+
+        fig.update_layout(
+            title=f'Raman Intensity Map at {target_wavenumber:.2f} cm-1',
+            xaxis_title=x_title,
+            yaxis_title=y_title,
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(fixedrange=False),
+            yaxis=dict(fixedrange=False),
+        )
+
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+
+        return PlotlyFigure(label='Raman Intensity Map', figure=plot_json)
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """Main normalization pipeline for Raman measurements.
 
@@ -472,31 +674,18 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 archive=archive,
                 logger=logger,
             )
-            fig_heatmap = self.read_raman_data(archive, logger)
+            self.read_raman_data(archive, logger)
 
         super().normalize(archive, logger)
 
         self.figures = []
         if len(self.results) > 0:
             self.plot()
-            if fig_heatmap:
-                fig_heatmap.update_layout(
-                    template='plotly_white',
-                    hovermode='closest',
-                    dragmode='zoom',
-                    xaxis=dict(
-                        fixedrange=False,
-                    ),
-                    yaxis=dict(
-                        fixedrange=False,
-                    ),
-                )
-                self.figures.append(
-                    PlotlyFigure(
-                        label='Raman Intensity Map',
-                        figure=fig_heatmap.to_plotly_json(),
-                    )
-                )
+            # Generate intensity map from normalized results
+            # (respects relative positions)
+            intensity_map_fig = self.plot_intensity_map_from_results()
+            if intensity_map_fig:
+                self.figures.append(intensity_map_fig)
 
 
 m_package.__init_metainfo__()

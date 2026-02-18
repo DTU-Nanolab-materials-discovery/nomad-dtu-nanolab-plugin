@@ -35,6 +35,7 @@ from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+    DTUBaseSampleAlignment,
     DtuNanolabMeasurement,
 )
 
@@ -226,6 +227,10 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         section_def=EllipsometryMappingResult,
         description='The ellipsometry results.',
         repeats=True,
+    )
+    sample_alignment = SubSection(
+        section_def=DTUBaseSampleAlignment,
+        description='The alignment of the sample.',
     )
 
     def read_thickness_file(
@@ -487,6 +492,10 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         """
         # Collect parameter values and coordinates from all measurement positions
         param_data = []
+        x_title = 'X Position (mm)'
+        y_title = 'Y Position (mm)'
+        coord_type = 'Position'  # Will be set to 'Sample' or 'Stage'
+
         for r in self.results:
             param_value = getattr(r, parameter_name, None)
             if param_value is not None:
@@ -495,10 +504,31 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     value = param_value.to(unit).magnitude
                 else:
                     value = float(param_value)
+
+                # Prefer relative positions if available, fallback to absolute
+                if isinstance(r.x_relative, ureg.Quantity) and isinstance(
+                    r.y_relative, ureg.Quantity
+                ):
+                    x = r.x_relative.to('mm').magnitude
+                    y = r.y_relative.to('mm').magnitude
+                    x_title = 'X Sample Position (mm)'
+                    y_title = 'Y Sample Position (mm)'
+                    coord_type = 'Sample'
+                elif isinstance(r.x_absolute, ureg.Quantity) and isinstance(
+                    r.y_absolute, ureg.Quantity
+                ):
+                    x = r.x_absolute.to('mm').magnitude
+                    y = r.y_absolute.to('mm').magnitude
+                    x_title = 'X Stage Position (mm)'
+                    y_title = 'Y Stage Position (mm)'
+                    coord_type = 'Stage'
+                else:
+                    continue
+
                 param_data.append(
                     {
-                        'x': r.x_absolute.to('mm').magnitude,
-                        'y': r.y_absolute.to('mm').magnitude,
+                        'x': x,
+                        'y': y,
                         'value': value,
                     }
                 )
@@ -510,6 +540,16 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         x_vals = [d['x'] for d in param_data]
         y_vals = [d['y'] for d in param_data]
         values = [d['value'] for d in param_data]
+
+        # Format axis labels with or without units
+        if unit and unit.strip():
+            y_axis_label = f'{parameter_label} ({unit})'
+            colorbar_title = f'{parameter_label} ({unit})'
+            hover_unit = f' {unit}'
+        else:
+            y_axis_label = parameter_label
+            colorbar_title = parameter_label
+            hover_unit = ''
 
         # Determine dimensionality by counting unique coordinates
         # This tells us if we have a line scan (1D) or area map (2D)
@@ -530,9 +570,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     )
                 )
                 fig.update_layout(
-                    title=f'{parameter_label} vs Y Position',
+                    title=f'{parameter_label} vs Y {coord_type} Position',
                     xaxis_title='Y Position (mm)',
-                    yaxis_title=f'{parameter_label} ({unit})',
+                    yaxis_title=y_axis_label,
                     template='plotly_white',
                     hovermode='closest',
                     dragmode='zoom',
@@ -551,9 +591,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     )
                 )
                 fig.update_layout(
-                    title=f'{parameter_label} vs X Position',
+                    title=f'{parameter_label} vs X {coord_type} Position',
                     xaxis_title='X Position (mm)',
-                    yaxis_title=f'{parameter_label} ({unit})',
+                    yaxis_title=y_axis_label,
                     template='plotly_white',
                     hovermode='closest',
                     dragmode='zoom',
@@ -577,7 +617,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 y=yi[:, 0],
                 z=zi,
                 colorscale='Viridis',
-                colorbar=dict(title=f'{parameter_label} ({unit})'),
+                colorbar=dict(title=colorbar_title),
             )
 
             # Create a scatter plot overlay
@@ -596,16 +636,18 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     ),
                 ),
                 customdata=values,
-                hovertemplate=f'<b>{parameter_label}:</b> %{{customdata:.1f}} {unit}',
+                hovertemplate=(
+                    f'<b>{parameter_label}:</b> %{{customdata:.1f}}{hover_unit}'
+                ),
             )
 
             # Combine heatmap and scatter plot
             fig = go.Figure(data=[heatmap, scatter])
 
             fig.update_layout(
-                title=f'{parameter_label} Colormap',
-                xaxis_title='X Position (mm)',
-                yaxis_title='Y Position (mm)',
+                title=f'{parameter_label} {coord_type} Colormap',
+                xaxis_title=x_title,
+                yaxis_title=y_title,
                 template='plotly_white',
                 hovermode='closest',
                 dragmode='zoom',
