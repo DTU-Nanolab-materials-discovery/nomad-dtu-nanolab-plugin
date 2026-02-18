@@ -487,6 +487,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         """
         # Collect parameter values and coordinates from all measurement positions
         param_data = []
+        x_title = 'X Position (mm)'
+        y_title = 'Y Position (mm)'
+        
         for r in self.results:
             param_value = getattr(r, parameter_name, None)
             if param_value is not None:
@@ -495,10 +498,29 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     value = param_value.to(unit).magnitude
                 else:
                     value = float(param_value)
+                
+                # Prefer relative positions if available, fallback to absolute
+                if isinstance(r.x_relative, ureg.Quantity) and isinstance(
+                    r.y_relative, ureg.Quantity
+                ):
+                    x = r.x_relative.to('mm').magnitude
+                    y = r.y_relative.to('mm').magnitude
+                    x_title = 'X Sample Position (mm)'
+                    y_title = 'Y Sample Position (mm)'
+                elif isinstance(r.x_absolute, ureg.Quantity) and isinstance(
+                    r.y_absolute, ureg.Quantity
+                ):
+                    x = r.x_absolute.to('mm').magnitude
+                    y = r.y_absolute.to('mm').magnitude
+                    x_title = 'X Stage Position (mm)'
+                    y_title = 'Y Stage Position (mm)'
+                else:
+                    continue
+                    
                 param_data.append(
                     {
-                        'x': r.x_absolute.to('mm').magnitude,
-                        'y': r.y_absolute.to('mm').magnitude,
+                        'x': x,
+                        'y': y,
                         'value': value,
                     }
                 )
@@ -604,8 +626,8 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
             fig.update_layout(
                 title=f'{parameter_label} Colormap',
-                xaxis_title='X Position (mm)',
-                yaxis_title='Y Position (mm)',
+                xaxis_title=x_title,
+                yaxis_title=y_title,
                 template='plotly_white',
                 hovermode='closest',
                 dragmode='zoom',
