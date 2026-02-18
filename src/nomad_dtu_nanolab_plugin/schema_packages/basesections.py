@@ -131,18 +131,30 @@ class DTUBaseSampleAlignment(RectangularSampleAlignment):
 
                     # Use user-provided width and height, centered on the
                     # measurement center
+                    # Strip units from width/height to match dimensionless center
                     if self.width is not None and self.height is not None:
-                        self.x_upper_left = x_center - self.width / 2
-                        self.x_lower_right = x_center + self.width / 2
-                        self.y_upper_left = y_center + self.height / 2
-                        self.y_lower_right = y_center - self.height / 2
+                        width_m = (
+                            self.width.to('m').magnitude
+                            if hasattr(self.width, 'to')
+                            else self.width
+                        )
+                        height_m = (
+                            self.height.to('m').magnitude
+                            if hasattr(self.height, 'to')
+                            else self.height
+                        )
+                        
+                        self.x_upper_left = x_center - width_m / 2
+                        self.x_lower_right = x_center + width_m / 2
+                        self.y_upper_left = y_center + height_m / 2
+                        self.y_lower_right = y_center - height_m / 2
 
                         logger.info(
                             f'Calculated corner coordinates: '
                             f'measurement center='
                             f'({x_center:.6f}, {y_center:.6f}) m, '
-                            f'width={self.width:.6f} m, '
-                            f'height={self.height:.6f} m, '
+                            f'width={width_m:.6f} m, '
+                            f'height={height_m:.6f} m, '
                             f'corners: upper-left='
                             f'({self.x_upper_left:.6f}, '
                             f'{self.y_upper_left:.6f}), '
