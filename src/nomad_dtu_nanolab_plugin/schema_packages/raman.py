@@ -280,6 +280,9 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     if hasattr(reader, 'laser_length'):
                         self.laser_wavelength = reader.laser_length * ureg('nm')
 
+                    #TODO: improve the following extraction of metadata 
+                    # for now we defauly back to manual extraction
+                    """ 
                     # Extract accumulation count
                     if hasattr(reader, 'accumulation_count'):
                         self.accumulation_count = reader.accumulation_count
@@ -302,6 +305,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                                 if time_diff > 0:
                                     self.exposure_time_per_point = time_diff * ureg('s')
                                 break
+                    """
 
             # Save images to the upload directory
             # Handle both ClientContext (tests) and ServerContext (production)
