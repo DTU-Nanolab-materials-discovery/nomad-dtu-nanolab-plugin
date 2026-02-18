@@ -536,13 +536,11 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         )
 
         if use_relative:
-            position_unit = 'mm'
             x_title = 'X Sample Position (mm)'
             y_title = 'Y Sample Position (mm)'
         else:
-            position_unit = 'um'
-            x_title = 'X Stage Position (um)'
-            y_title = 'Y Stage Position (um)'
+            x_title = 'X Stage Position (mm)'
+            y_title = 'Y Stage Position (mm)'
 
         # Auto-detect target wavenumber (excluding Si peak region)
         SI_PEAK_RANGE = (510, 530)
@@ -578,14 +576,15 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         for result in self.results:
             # Get positions
             if use_relative:
-                x_pos = result.x_relative.to(position_unit).magnitude
-                y_pos = result.y_relative.to(position_unit).magnitude
+                x_pos = result.x_relative.to('mm').magnitude
+                y_pos = result.y_relative.to('mm').magnitude
             else:
-                x_pos = result.x_absolute.to(position_unit).magnitude
-                y_pos = result.y_absolute.to(position_unit).magnitude
+                x_pos = result.x_absolute.to('mm').magnitude
+                y_pos = result.y_absolute.to('mm').magnitude
 
-            x_positions.append(x_pos)
-            y_positions.append(y_pos)
+            # Round to avoid floating-point precision issues in grid creation
+            x_positions.append(round(x_pos, 6))
+            y_positions.append(round(y_pos, 6))
 
             # Get Raman shift and intensity
             raman_shift_data = (
@@ -611,10 +610,17 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         y_unique = sorted(set(y_positions))
 
         intensity_matrix = np.zeros((len(y_unique), len(x_unique)))
+        count_matrix = np.zeros((len(y_unique), len(x_unique)))
+        
         for x_pos, y_pos, intensity in zip(x_positions, y_positions, intensities):
             x_idx = x_unique.index(x_pos)
             y_idx = y_unique.index(y_pos)
-            intensity_matrix[y_idx, x_idx] = intensity
+            intensity_matrix[y_idx, x_idx] += intensity
+            count_matrix[y_idx, x_idx] += 1
+        
+        # Average intensities where multiple measurements mapped to same grid point
+        mask = count_matrix > 0
+        intensity_matrix[mask] /= count_matrix[mask]
 
         # Create heatmap figure
         fig = go.Figure(
@@ -628,7 +634,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         )
 
         fig.update_layout(
-            title=f'Raman Intensity Map at {target_wavenumber:.2f} cm^-1',
+            title=f'Raman Intensity Map at {target_wavenumber:.2f} cm-1',
             xaxis_title=x_title,
             yaxis_title=y_title,
             template='plotly_white',
