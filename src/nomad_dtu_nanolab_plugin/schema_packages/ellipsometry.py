@@ -516,6 +516,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         param_data = []
         x_title = 'X Position (mm)'
         y_title = 'Y Position (mm)'
+        coord_type = 'Position'  # Will be set to 'Sample' or 'Stage'
 
         for r in self.results:
             param_value = getattr(r, parameter_name, None)
@@ -534,6 +535,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     y = r.y_relative.to('mm').magnitude
                     x_title = 'X Sample Position (mm)'
                     y_title = 'Y Sample Position (mm)'
+                    coord_type = 'Sample'
                 elif isinstance(r.x_absolute, ureg.Quantity) and isinstance(
                     r.y_absolute, ureg.Quantity
                 ):
@@ -541,6 +543,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     y = r.y_absolute.to('mm').magnitude
                     x_title = 'X Stage Position (mm)'
                     y_title = 'Y Stage Position (mm)'
+                    coord_type = 'Stage'
                 else:
                     continue
 
@@ -589,7 +592,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     )
                 )
                 fig.update_layout(
-                    title=f'{parameter_label} vs Y Position',
+                    title=f'{parameter_label} vs Y {coord_type} Position',
                     xaxis_title='Y Position (mm)',
                     yaxis_title=y_axis_label,
                     template='plotly_white',
@@ -610,7 +613,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     )
                 )
                 fig.update_layout(
-                    title=f'{parameter_label} vs X Position',
+                    title=f'{parameter_label} vs X {coord_type} Position',
                     xaxis_title='X Position (mm)',
                     yaxis_title=y_axis_label,
                     template='plotly_white',
@@ -664,7 +667,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             fig = go.Figure(data=[heatmap, scatter])
 
             fig.update_layout(
-                title=f'{parameter_label} Colormap',
+                title=f'{parameter_label} {coord_type} Colormap',
                 xaxis_title=x_title,
                 yaxis_title=y_title,
                 template='plotly_white',
