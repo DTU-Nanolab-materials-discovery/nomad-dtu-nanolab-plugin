@@ -113,7 +113,7 @@ class RamanResult(MappingResult):
         super().normalize(archive, logger)
 
 
-class DTUSampleAlignment(RectangularSampleAlignment):
+class DTURamanSampleAlignment(RectangularSampleAlignment):
     """Sample alignment information for rectangular mapping grids.
 
     Defines the spatial relationship between measurement positions and the physical
@@ -135,7 +135,66 @@ class DTUSampleAlignment(RectangularSampleAlignment):
     m_def = Section(
         description='The alignment of the sample on the stage.',
     )
-
+    #by default, the bottom left corner of the sample is at (0,0) in stage 
+    # coordinates, and the sample extends in the positive x and y directions
+    # generally with size 40mm
+    
+    width = Quantity(
+        type=np.float64,
+        default=0.04,
+        description='The width of the sample.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+        unit='m',
+    )
+    height = Quantity(
+        type=np.float64,
+        default=0.04,
+        description='The height of the sample.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+        unit='m',
+    )
+    x_upper_left = Quantity(
+        type=np.float64,
+        default=0.0,
+        description='The x-coordinate of the upper-left corner of the sample.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+    )
+    y_upper_left = Quantity(
+        type=np.float64,
+        default=0.04,
+        description='The y-coordinate of the upper-left corner of the sample.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+    )
+    x_lower_right = Quantity(
+        type=np.float64,
+        default=0.04,
+        description='The x-coordinate of the lower-right corner of the sample.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+    )
+    y_lower_right = Quantity(
+        type=np.float64,
+        default=0.0,
+        description='The y-coordinate of the lower-right corner of the sample.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+    )
 
 class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     """Main schema for Raman mapping measurements.
@@ -172,7 +231,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
     )
     sample_alignment = SubSection(
-        section_def=DTUSampleAlignment,
+        section_def=DTURamanSampleAlignment,
         description='The alignment of the sample.',
     )
 

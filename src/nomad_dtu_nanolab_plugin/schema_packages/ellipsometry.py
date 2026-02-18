@@ -28,6 +28,7 @@ from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_measurements.mapping.schema import (
     MappingResult,
+    RectangularSampleAlignment,
 )
 from nomad_measurements.utils import merge_sections
 from scipy.interpolate import griddata
@@ -164,6 +165,48 @@ class EllipsometryMetadata(Schema):
         super().normalize(archive, logger)
 
 
+class DTUEllipsoSampleAlignment(RectangularSampleAlignment):
+    """Sample alignment information for rectangular ellipsometry mapping grids.
+
+    Defines the spatial relationship between measurement positions and the physical
+    sample. Used to convert between stage coordinates and sample coordinates.
+
+    Inherited from RectangularSampleAlignment:
+        - x_upper_left (float with unit): X-coordinate of upper-left corner
+        - y_upper_left (float with unit): Y-coordinate of upper-left corner
+        - x_lower_right (float with unit): X-coordinate of lower-right corner
+        - y_lower_right (float with unit): Y-coordinate of lower-right corner
+
+    Notes:
+        - Enables consistent positioning across different measurement techniques
+        - Sample dimensions default to 40mm x 40mm
+    """
+
+    m_def = Section(
+        description='The alignment of the sample on the stage.',
+    )
+    width = Quantity(
+        type=np.float64,
+        default=0.04,
+        description='The width of the sample.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+        unit='m',
+    )
+    height = Quantity(
+        type=np.float64,
+        default=0.04,
+        description='The height of the sample.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+        unit='m',
+    )
+
+
 class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     """Main schema for spectroscopic ellipsometry measurements.
 
@@ -226,6 +269,10 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         section_def=EllipsometryMappingResult,
         description='The ellipsometry results.',
         repeats=True,
+    )
+    sample_alignment = SubSection(
+        section_def=DTUEllipsoSampleAlignment,
+        description='The alignment of the sample.',
     )
 
     def read_thickness_file(
@@ -533,6 +580,16 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         y_vals = [d['y'] for d in param_data]
         values = [d['value'] for d in param_data]
 
+        # Format axis labels with or without units
+        if unit and unit.strip():
+            y_axis_label = f'{parameter_label} ({unit})'
+            colorbar_title = f'{parameter_label} ({unit})'
+            hover_unit = f' {unit}'
+        else:
+            y_axis_label = parameter_label
+            colorbar_title = parameter_label
+            hover_unit = ''
+
         # Determine dimensionality by counting unique coordinates
         # This tells us if we have a line scan (1D) or area map (2D)
         unique_x = len(set(x_vals))  # Number of distinct x positions
@@ -554,7 +611,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 fig.update_layout(
                     title=f'{parameter_label} vs Y Position',
                     xaxis_title='Y Position (mm)',
-                    yaxis_title=f'{parameter_label} ({unit})',
+                    yaxis_title=y_axis_label,
                     template='plotly_white',
                     hovermode='closest',
                     dragmode='zoom',
@@ -575,7 +632,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 fig.update_layout(
                     title=f'{parameter_label} vs X Position',
                     xaxis_title='X Position (mm)',
-                    yaxis_title=f'{parameter_label} ({unit})',
+                    yaxis_title=y_axis_label,
                     template='plotly_white',
                     hovermode='closest',
                     dragmode='zoom',
@@ -599,7 +656,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 y=yi[:, 0],
                 z=zi,
                 colorscale='Viridis',
-                colorbar=dict(title=f'{parameter_label} ({unit})'),
+                colorbar=dict(title=colorbar_title),
             )
 
             # Create a scatter plot overlay
@@ -618,7 +675,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     ),
                 ),
                 customdata=values,
-                hovertemplate=f'<b>{parameter_label}:</b> %{{customdata:.1f}} {unit}',
+                hovertemplate=f'<b>{parameter_label}:</b> %{{customdata:.1f}}{hover_unit}',
             )
 
             # Combine heatmap and scatter plot
