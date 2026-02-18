@@ -165,45 +165,25 @@ class EllipsometryMetadata(Schema):
         super().normalize(archive, logger)
 
 
-class DTUEllipsoSampleAlignment(RectangularSampleAlignment):
-    """Sample alignment information for rectangular ellipsometry mapping grids.
+class DTUEllipsoSampleAlignment(DTUBaseSampleAlignment):
+    """Sample alignment information for ellipsometry mapping measurements.
 
-    Defines the spatial relationship between measurement positions and the physical
-    sample. Used to convert between stage coordinates and sample coordinates.
-
-    Inherited from RectangularSampleAlignment:
+    Inherits from DTUBaseSampleAlignment which provides:
+        - width (float with unit): Sample width
+        - height (float with unit): Sample height
         - x_upper_left (float with unit): X-coordinate of upper-left corner
         - y_upper_left (float with unit): Y-coordinate of upper-left corner
         - x_lower_right (float with unit): X-coordinate of lower-right corner
         - y_lower_right (float with unit): Y-coordinate of lower-right corner
+        - center_around_zero (button): Auto-calculate corners centered at (0,0)
 
     Notes:
         - Enables consistent positioning across different measurement techniques
-        - Sample dimensions default to 40mm x 40mm
+        - Default sample size is 40mm x 40mm
     """
 
     m_def = Section(
         description='The alignment of the sample on the stage.',
-    )
-    width = Quantity(
-        type=np.float64,
-        default=0.04,
-        description='The width of the sample.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-        unit='m',
-    )
-    height = Quantity(
-        type=np.float64,
-        default=0.04,
-        description='The height of the sample.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-        unit='m',
     )
 
 
