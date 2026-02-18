@@ -48,7 +48,6 @@ from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_measurements.mapping.schema import (
     MappingResult,
-    RectangularSampleAlignment,
 )
 from nomad_measurements.utils import merge_sections
 from structlog.stdlib import BoundLogger
@@ -58,6 +57,7 @@ from nomad_dtu_nanolab_plugin.raman_map_parser import (
     MappingRamanMeas,
 )
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+    DTUBaseSampleAlignment,
     DtuNanolabMeasurement,
 )
 
@@ -111,87 +111,26 @@ class RamanResult(MappingResult):
         super().normalize(archive, logger)
 
 
-class DTURamanSampleAlignment(RectangularSampleAlignment):
-    """Sample alignment information for rectangular mapping grids.
+class DTURamanSampleAlignment(DTUBaseSampleAlignment):
+    """Sample alignment information for Raman mapping measurements.
 
-    Defines the spatial relationship between measurement positions and the physical
-    sample. Used to convert between stage coordinates and sample coordinates.
-
-    Inherited from RectangularSampleAlignment:
+    Inherits from DTUBaseSampleAlignment which provides:
         - width (float with unit): Sample width
         - height (float with unit): Sample height
         - x_upper_left (float with unit): X-coordinate of upper-left corner
         - y_upper_left (float with unit): Y-coordinate of upper-left corner
         - x_lower_right (float with unit): X-coordinate of lower-right corner
         - y_lower_right (float with unit): Y-coordinate of lower-right corner
+        - center_around_zero (button): Auto-calculate corners centered at (0,0)
 
     Notes:
         - Enables consistent positioning across different measurement techniques
         - Currently optional; many measurements use absolute stage coordinates only
+        - Default sample size is 40mm x 40mm
     """
 
     m_def = Section(
         description='The alignment of the sample on the stage.',
-    )
-    # by default, the bottom left corner of the sample is at (0,0) in stage
-    # coordinates, and the sample extends in the positive x and y directions
-    # generally with size 40mm
-
-    width = Quantity(
-        type=np.float64,
-        default=0.04,
-        description='The width of the sample.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-        unit='m',
-    )
-    height = Quantity(
-        type=np.float64,
-        default=0.04,
-        description='The height of the sample.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-        unit='m',
-    )
-    x_upper_left = Quantity(
-        type=np.float64,
-        default=0.0,
-        description='The x-coordinate of the upper-left corner of the sample.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-    )
-    y_upper_left = Quantity(
-        type=np.float64,
-        default=0.04,
-        description='The y-coordinate of the upper-left corner of the sample.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-    )
-    x_lower_right = Quantity(
-        type=np.float64,
-        default=0.04,
-        description='The x-coordinate of the lower-right corner of the sample.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
-    )
-    y_lower_right = Quantity(
-        type=np.float64,
-        default=0.0,
-        description='The y-coordinate of the lower-right corner of the sample.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-        ),
     )
 
 
