@@ -280,7 +280,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     if hasattr(reader, 'laser_length'):
                         self.laser_wavelength = reader.laser_length * ureg('nm')
 
-                    #TODO: improve the following extraction of metadata 
+                    # TODO: improve the following extraction of metadata
                     # for now we defauly back to manual extraction
                     """ 
                     # Extract accumulation count
@@ -611,13 +611,13 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         intensity_matrix = np.zeros((len(y_unique), len(x_unique)))
         count_matrix = np.zeros((len(y_unique), len(x_unique)))
-        
+
         for x_pos, y_pos, intensity in zip(x_positions, y_positions, intensities):
             x_idx = x_unique.index(x_pos)
             y_idx = y_unique.index(y_pos)
             intensity_matrix[y_idx, x_idx] += intensity
             count_matrix[y_idx, x_idx] += 1
-        
+
         # Average intensities where multiple measurements mapped to same grid point
         mask = count_matrix > 0
         intensity_matrix[mask] /= count_matrix[mask]

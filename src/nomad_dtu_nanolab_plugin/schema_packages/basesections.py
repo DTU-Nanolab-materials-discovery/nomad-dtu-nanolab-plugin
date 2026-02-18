@@ -143,7 +143,7 @@ class DTUBaseSampleAlignment(RectangularSampleAlignment):
                             if hasattr(self.height, 'to')
                             else self.height
                         )
-                        
+
                         self.x_upper_left = x_center - width_m / 2
                         self.x_lower_right = x_center + width_m / 2
                         self.y_upper_left = y_center + height_m / 2
