@@ -347,7 +347,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
 
                 measurements.append(
                     ExperimentStep(
-                        name=f'{library_id} measurement',
+                        name=f'{library_id}_rt_measurement_{datetime_label}',
                         activity=measurement_ref,
                     )
                 )
