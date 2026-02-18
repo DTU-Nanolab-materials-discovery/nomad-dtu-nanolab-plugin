@@ -639,6 +639,8 @@ class MappingRamanMeas:
         intensities = []
 
         for raman_meas in self.raman_meas_list:
+            # Note: x_pos and y_pos are already in micrometers from WDF file
+            # These correspond to stage positions (absolute coordinates)
             x_positions.append(raman_meas.x_pos)
             y_positions.append(raman_meas.y_pos)
 

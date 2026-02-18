@@ -224,8 +224,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         2. Parses spectral data and positions using MappingRamanMeas
         3. Extracts and saves optical microscopy images
         4. Creates optical image grid for overview
-        5. Generates intensity map figure
-        6. Converts data to RamanResult objects
+        5. Converts data to RamanResult objects
         """
         with archive.m_context.raw_file(self.raman_data_file) as file:
             # Initialize the mapping reader
@@ -287,13 +286,8 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     else f'{meas_name}_optical_grid.png'
                 )
 
-            # Generate intensity map figure and add to figures
-            fig_heatmap = mapping.plot_intensity_map()
-
             # Write the data to results
             self.write_raman_data(mapping.raman_meas_list, img_list, archive, logger)
-
-            return fig_heatmap
 
     def plot(self) -> None:
         """Generate interactive Plotly visualizations of Raman data.
@@ -447,6 +441,139 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
         )
 
+    def plot_intensity_map_from_results(
+        self, wavenumber_tolerance: float = 5
+    ) -> PlotlyFigure | None:
+        """Generate Raman intensity map from normalized results with position awareness.
+
+        Creates a 2D heatmap showing spatial distribution of Raman intensity at the
+        wavenumber with maximum intensity (excluding Si peak). Uses relative positions
+        if available, falls back to absolute stage positions otherwise.
+
+        Args:
+            wavenumber_tolerance: Tolerance window in cm⁻¹ around detected peak wavenumber
+
+        Returns:
+            PlotlyFigure or None: Interactive heatmap figure ready for display
+        """
+        if not self.results:
+            return None
+
+        # Determine position type and titles
+        use_relative = all(
+            isinstance(r.x_relative, ureg.Quantity)
+            and isinstance(r.y_relative, ureg.Quantity)
+            for r in self.results
+        )
+
+        if use_relative:
+            position_unit = 'mm'
+            x_title = 'X Sample Position (mm)'
+            y_title = 'Y Sample Position (mm)'
+        else:
+            position_unit = 'um'
+            x_title = 'X Stage Position (μm)'
+            y_title = 'Y Stage Position (μm)'
+
+        # Auto-detect target wavenumber (excluding Si peak region)
+        SI_PEAK_RANGE = (510, 530)
+        max_intensity = 0
+        target_wavenumber = 520  # default fallback
+
+        for result in self.results:
+            raman_shift_data = (
+                result.raman_shift.to('1/cm').magnitude
+                if hasattr(result.raman_shift, 'magnitude')
+                else result.raman_shift
+            )
+            intensity_data = result.intensity
+
+            # Exclude Si peak region
+            mask = (raman_shift_data < SI_PEAK_RANGE[0]) | (
+                raman_shift_data > SI_PEAK_RANGE[1]
+            )
+            if mask.any():
+                filtered_intensity = intensity_data[mask]
+                filtered_wavenumber = raman_shift_data[mask]
+                max_idx = np.argmax(filtered_intensity)
+                current_max = filtered_intensity[max_idx]
+                if current_max > max_intensity:
+                    max_intensity = current_max
+                    target_wavenumber = filtered_wavenumber[max_idx]
+
+        # Extract intensity at target wavenumber for each position
+        x_positions = []
+        y_positions = []
+        intensities = []
+
+        for result in self.results:
+            # Get positions
+            if use_relative:
+                x_pos = result.x_relative.to(position_unit).magnitude
+                y_pos = result.y_relative.to(position_unit).magnitude
+            else:
+                x_pos = result.x_absolute.to(position_unit).magnitude
+                y_pos = result.y_absolute.to(position_unit).magnitude
+
+            x_positions.append(x_pos)
+            y_positions.append(y_pos)
+
+            # Get Raman shift and intensity
+            raman_shift_data = (
+                result.raman_shift.to('1/cm').magnitude
+                if hasattr(result.raman_shift, 'magnitude')
+                else result.raman_shift
+            )
+            intensity_data = result.intensity
+
+            # Find intensity at target wavenumber
+            mask = (
+                raman_shift_data >= target_wavenumber - wavenumber_tolerance
+            ) & (raman_shift_data <= target_wavenumber + wavenumber_tolerance)
+
+            if mask.any():
+                intensity = intensity_data[mask].mean()
+            else:
+                intensity = 0
+            intensities.append(intensity)
+
+        # Create intensity matrix for heatmap
+        x_unique = sorted(set(x_positions))
+        y_unique = sorted(set(y_positions))
+
+        intensity_matrix = np.zeros((len(y_unique), len(x_unique)))
+        for x_pos, y_pos, intensity in zip(x_positions, y_positions, intensities):
+            x_idx = x_unique.index(x_pos)
+            y_idx = y_unique.index(y_pos)
+            intensity_matrix[y_idx, x_idx] = intensity
+
+        # Create heatmap figure
+        fig = go.Figure(
+            data=go.Heatmap(
+                z=intensity_matrix,
+                x=x_unique,
+                y=y_unique,
+                colorscale='Viridis',
+                colorbar=dict(title='Intensity'),
+            )
+        )
+
+        fig.update_layout(
+            title=f'Raman Intensity Map at {target_wavenumber:.2f} cm⁻¹',
+            xaxis_title=x_title,
+            yaxis_title=y_title,
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(fixedrange=False),
+            yaxis=dict(fixedrange=False),
+        )
+
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+
+        return PlotlyFigure(label='Raman Intensity Map', figure=plot_json)
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """Main normalization pipeline for Raman measurements.
 
@@ -472,31 +599,17 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 archive=archive,
                 logger=logger,
             )
-            fig_heatmap = self.read_raman_data(archive, logger)
+            self.read_raman_data(archive, logger)
 
         super().normalize(archive, logger)
 
         self.figures = []
         if len(self.results) > 0:
             self.plot()
-            if fig_heatmap:
-                fig_heatmap.update_layout(
-                    template='plotly_white',
-                    hovermode='closest',
-                    dragmode='zoom',
-                    xaxis=dict(
-                        fixedrange=False,
-                    ),
-                    yaxis=dict(
-                        fixedrange=False,
-                    ),
-                )
-                self.figures.append(
-                    PlotlyFigure(
-                        label='Raman Intensity Map',
-                        figure=fig_heatmap.to_plotly_json(),
-                    )
-                )
+            # Generate intensity map from normalized results (respects relative positions)
+            intensity_map_fig = self.plot_intensity_map_from_results()
+            if intensity_map_fig:
+                self.figures.append(intensity_map_fig)
 
 
 m_package.__init_metainfo__()
