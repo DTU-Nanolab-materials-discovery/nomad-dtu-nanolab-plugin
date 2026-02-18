@@ -489,7 +489,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         param_data = []
         x_title = 'X Position (mm)'
         y_title = 'Y Position (mm)'
-        
+
         for r in self.results:
             param_value = getattr(r, parameter_name, None)
             if param_value is not None:
@@ -498,7 +498,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     value = param_value.to(unit).magnitude
                 else:
                     value = float(param_value)
-                
+
                 # Prefer relative positions if available, fallback to absolute
                 if isinstance(r.x_relative, ureg.Quantity) and isinstance(
                     r.y_relative, ureg.Quantity
@@ -516,7 +516,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     y_title = 'Y Stage Position (mm)'
                 else:
                     continue
-                    
+
                 param_data.append(
                     {
                         'x': x,

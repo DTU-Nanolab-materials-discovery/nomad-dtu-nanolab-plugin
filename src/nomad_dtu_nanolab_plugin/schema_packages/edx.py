@@ -401,7 +401,6 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if isinstance(image_files, str):
             image_files = [image_files]
 
-
         for img_file in image_files:
             # Extract spectrum number from filename
             # Pattern: "SE Image - Before/After X" where X is the spectrum number

@@ -451,7 +451,8 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if available, falls back to absolute stage positions otherwise.
 
         Args:
-            wavenumber_tolerance: Tolerance window in cm⁻¹ around detected peak wavenumber
+            wavenumber_tolerance: Tolerance window in cm⁻¹ around detected peak
+            wavenumber
 
         Returns:
             PlotlyFigure or None: Interactive heatmap figure ready for display
@@ -527,9 +528,9 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             intensity_data = result.intensity
 
             # Find intensity at target wavenumber
-            mask = (
-                raman_shift_data >= target_wavenumber - wavenumber_tolerance
-            ) & (raman_shift_data <= target_wavenumber + wavenumber_tolerance)
+            mask = (raman_shift_data >= target_wavenumber - wavenumber_tolerance) & (
+                raman_shift_data <= target_wavenumber + wavenumber_tolerance
+            )
 
             if mask.any():
                 intensity = intensity_data[mask].mean()
@@ -606,7 +607,8 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         self.figures = []
         if len(self.results) > 0:
             self.plot()
-            # Generate intensity map from normalized results (respects relative positions)
+            # Generate intensity map from normalized results
+            # (respects relative positions)
             intensity_map_fig = self.plot_intensity_map_from_results()
             if intensity_map_fig:
                 self.figures.append(intensity_map_fig)
