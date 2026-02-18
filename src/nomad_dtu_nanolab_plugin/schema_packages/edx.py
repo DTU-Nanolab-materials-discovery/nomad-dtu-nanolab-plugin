@@ -394,7 +394,6 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         image_mapping = {}
 
         if not self.electron_image_files:
-            logger.debug('No electron image files provided.')
             return image_mapping
 
         # Ensure electron_image_files is a list
@@ -402,16 +401,14 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if isinstance(image_files, str):
             image_files = [image_files]
 
-        logger.debug(f'Available image files: {image_files}')
 
         for img_file in image_files:
             # Extract spectrum number from filename
             # Pattern: "SE Image - Before/After X" where X is the spectrum number
-            match = re.search(r'(\d+)', img_file)
+            match = re.search(r'(?:Before|After)\s*(\d+)', img_file)
             if match:
                 spectrum_num = int(match.group(1))
                 image_mapping[spectrum_num] = img_file
-                logger.debug(f'Mapped spectrum {spectrum_num} to image: {img_file}')
 
         return image_mapping
 
@@ -494,10 +491,6 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
                 if spectrum_num is not None and spectrum_num in image_mapping:
                     result.electron_image = image_mapping[spectrum_num]
-                    logger.debug(
-                        f'Associated spectrum {spectrum_num}'
-                        f'with image: {result.electron_image}'
-                    )
 
             result.normalize(archive, logger)
             results.append(result)
