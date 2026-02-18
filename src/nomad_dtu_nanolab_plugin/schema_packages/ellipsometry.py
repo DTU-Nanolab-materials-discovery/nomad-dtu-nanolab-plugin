@@ -675,7 +675,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     ),
                 ),
                 customdata=values,
-                hovertemplate=f'<b>{parameter_label}:</b> %{{customdata:.1f}}{hover_unit}',
+                hovertemplate=(
+                    f'<b>{parameter_label}:</b> %{{customdata:.1f}}{hover_unit}'
+                ),
             )
 
             # Combine heatmap and scatter plot

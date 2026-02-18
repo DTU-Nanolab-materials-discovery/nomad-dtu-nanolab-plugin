@@ -72,8 +72,11 @@ class RamanResult(MappingResult):
     """Single Raman spectrum result at a specific spatial position.
 
     Stores spectral data (intensity vs Raman shift) along with metadata about
-    the measurement position, laser parameters, and associated optical image.
+    the measurement position and associated optical image.
     Inherits from MappingResult to get standardized position handling and naming.
+
+    Note: Laser wavelength, accumulation count, and exposure time are stored at
+    the RamanMeasurement level as they are common to all measurement points.
     """
 
     m_def = Section()
@@ -89,11 +92,6 @@ class RamanResult(MappingResult):
         shape=['*'],
         unit='1/cm',
         description='The Raman shift values in 1/cm',
-    )
-    laser_wavelength = Quantity(
-        type=np.dtype(np.float64),
-        unit='nm',
-        description='The wavelength of the laser used in the Raman measurement.',
     )
     optical_image = Quantity(
         type=str,
@@ -135,10 +133,10 @@ class DTURamanSampleAlignment(RectangularSampleAlignment):
     m_def = Section(
         description='The alignment of the sample on the stage.',
     )
-    #by default, the bottom left corner of the sample is at (0,0) in stage 
+    # by default, the bottom left corner of the sample is at (0,0) in stage
     # coordinates, and the sample extends in the positive x and y directions
     # generally with size 40mm
-    
+
     width = Quantity(
         type=np.float64,
         default=0.04,
@@ -196,6 +194,7 @@ class DTURamanSampleAlignment(RectangularSampleAlignment):
         ),
     )
 
+
 class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     """Main schema for Raman mapping measurements.
 
@@ -216,6 +215,61 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
+        ),
+    )
+    accumulation_count = Quantity(
+        type=int,
+        description=(
+            'Number of accumulations for each measurement point. '
+            'Common to all spectra in the mapping.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+    exposure_time_per_point = Quantity(
+        type=np.float64,
+        unit='s',
+        description=(
+            'Total exposure time per measurement point, including all accumulations '
+            'and overhead. Common to all spectra in the mapping.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='s',
+        ),
+    )
+    laser_wavelength = Quantity(
+        type=np.dtype(np.float64),
+        unit='nm',
+        description=(
+            'The wavelength of the laser used in the Raman measurement. '
+            'Common to all spectra in the mapping.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='nm',
+        ),
+    )
+    laser_power_percent = Quantity(
+        type=np.float64,
+        description=(
+            'Laser power as a percentage of maximum power (0-100%). '
+            'Common to all spectra in the mapping.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+    objective_magnification = Quantity(
+        type=np.float64,
+        description=(
+            'Objective lens magnification '
+            '(e.g., 20 for 20x, 50 for 50x, 100 for 100x). '
+            'Common to all spectra in the mapping.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
         ),
     )
     results = SubSection(
@@ -262,7 +316,6 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             result = RamanResult(
                 intensity=meas.data['intensity'].to_list(),
                 raman_shift=meas.data['wavenumber'].to_numpy() * ureg('1/cm'),
-                laser_wavelength=meas.laser_wavelength,
                 optical_image=img_file,
                 x_absolute=x_absolute,
                 y_absolute=y_absolute,
@@ -284,6 +337,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         3. Extracts and saves optical microscopy images
         4. Creates optical image grid for overview
         5. Converts data to RamanResult objects
+        6. Extracts measurement-level metadata (accumulation count, exposure time)
         """
         with archive.m_context.raw_file(self.raman_data_file) as file:
             # Initialize the mapping reader
@@ -300,6 +354,38 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 folder = '.'
 
             mapping.read_wdf_mapping(folder, [filename])
+
+            # Extract measurement-level metadata from the WDF file
+            # These are common to all measurement points
+            if mapping.raman_meas_list and hasattr(mapping, 'wdf_reader'):
+                reader = mapping.wdf_reader
+                if reader:
+                    # Extract laser wavelength
+                    if hasattr(reader, 'laser_length'):
+                        self.laser_wavelength = reader.laser_length * ureg('nm')
+
+                    # Extract accumulation count
+                    if hasattr(reader, 'accumulation_count'):
+                        self.accumulation_count = reader.accumulation_count
+
+                    # Calculate exposure time per point from time data
+                    # Check for at least 3 headers (typically X, Y, Time)
+                    min_headers_for_time = 3
+                    if (
+                        hasattr(reader, 'origin_list_header')
+                        and len(reader.origin_list_header) >= min_headers_for_time
+                    ):
+                        from renishawWiRE.types import DataType
+
+                        # Find the Time entry in origin_list_header
+                        for header in reader.origin_list_header:
+                            if header[1] == DataType.Time and len(header[4]) > 1:
+                                time_data = header[4]
+                                # Calculate average time per point
+                                time_diff = time_data[1] - time_data[0]
+                                if time_diff > 0:
+                                    self.exposure_time_per_point = time_diff * ureg('s')
+                                break
 
             # Save images to the upload directory
             # Handle both ClientContext (tests) and ServerContext (production)
