@@ -373,7 +373,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         Plot 2: Stacked Spectra
             - Spectra offset vertically for clarity
             - Offset calculated dynamically based on intensity range
-            - Excludes Si peak region (510-530 cm⁻¹) from offset calculation
+            - Excludes Si peak region (510-530 cm-1) from offset calculation
             - Better for visualizing peak evolution across positions
         Returns:
             None. Appends PlotlyFigure objects to self.figures list.
@@ -519,7 +519,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if available, falls back to absolute stage positions otherwise.
 
         Args:
-            wavenumber_tolerance: Tolerance window in cm⁻¹ around detected peak
+            wavenumber_tolerance: Tolerance window in cm-1 around detected peak
             wavenumber
 
         Returns:
@@ -628,7 +628,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         )
 
         fig.update_layout(
-            title=f'Raman Intensity Map at {target_wavenumber:.2f} cm⁻¹',
+            title=f'Raman Intensity Map at {target_wavenumber:.2f} cm-1',
             xaxis_title=x_title,
             yaxis_title=y_title,
             template='plotly_white',
