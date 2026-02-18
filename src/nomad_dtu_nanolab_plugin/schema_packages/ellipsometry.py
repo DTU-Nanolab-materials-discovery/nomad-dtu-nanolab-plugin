@@ -28,7 +28,6 @@ from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_measurements.mapping.schema import (
     MappingResult,
-    RectangularSampleAlignment,
 )
 from nomad_measurements.utils import merge_sections
 from scipy.interpolate import griddata
@@ -36,6 +35,7 @@ from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+    DTUBaseSampleAlignment,
     DtuNanolabMeasurement,
 )
 
