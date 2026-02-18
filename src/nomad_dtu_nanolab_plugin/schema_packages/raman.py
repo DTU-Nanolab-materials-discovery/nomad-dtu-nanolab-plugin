@@ -143,12 +143,12 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             component=ELNComponentEnum.NumberEditQuantity,
         ),
     )
-    exposure_time_per_point = Quantity(
+    exposure_time = Quantity(
         type=np.float64,
         unit='s',
         description=(
-            'Total exposure time per measurement point, including all accumulations '
-            'and overhead. Common to all spectra in the mapping.'
+            'Total exposure time per accumulation point. '
+            'Common to all spectra in the mapping.'
         ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
@@ -303,7 +303,10 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                                 # Calculate average time per point
                                 time_diff = time_data[1] - time_data[0]
                                 if time_diff > 0:
-                                    self.exposure_time_per_point = time_diff * ureg('s')
+                                    self.exposure_time = (
+                                    (time_diff * ureg('s'))
+                                    /self.accumulation_count
+                                    )
                                 break
                     """
 
