@@ -541,8 +541,8 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             y_title = 'Y Sample Position (mm)'
         else:
             position_unit = 'um'
-            x_title = 'X Stage Position (μm)'
-            y_title = 'Y Stage Position (μm)'
+            x_title = 'X Stage Position (um)'
+            y_title = 'Y Stage Position (um)'
 
         # Auto-detect target wavenumber (excluding Si peak region)
         SI_PEAK_RANGE = (510, 530)
@@ -628,7 +628,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         )
 
         fig.update_layout(
-            title=f'Raman Intensity Map at {target_wavenumber:.2f} cm-1',
+            title=f'Raman Intensity Map at {target_wavenumber:.2f} cm^-1',
             xaxis_title=x_title,
             yaxis_title=y_title,
             template='plotly_white',
