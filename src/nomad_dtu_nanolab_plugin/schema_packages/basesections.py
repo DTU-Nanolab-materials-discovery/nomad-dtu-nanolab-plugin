@@ -8,7 +8,10 @@ from nomad.datamodel.metainfo.basesections import (
     CompositeSystemReference,
 )
 from nomad.metainfo import Package, Quantity, Section
-from nomad_measurements.mapping.schema import MappingMeasurement, RectangularSampleAlignment
+from nomad_measurements.mapping.schema import (
+    MappingMeasurement,
+    RectangularSampleAlignment,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -65,9 +68,10 @@ class DTUBaseSampleAlignment(RectangularSampleAlignment):
         type=bool,
         default=False,
         description=(
-            'Automatically calculate corner coordinates using user-provided width/height '
-            'centered on the actual measurement positions (x_absolute, y_absolute from results) '
-            'to center the relative map at (0,0).'
+            'Automatically calculate corner coordinates using user-provided '
+            'width/height centered on the actual measurement positions '
+            '(x_absolute, y_absolute from results) to center the relative '
+            'map at (0,0).'
         ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.ActionEditQuantity,
@@ -96,40 +100,54 @@ class DTUBaseSampleAlignment(RectangularSampleAlignment):
                 # Extract all x_absolute and y_absolute positions
                 x_positions = []
                 y_positions = []
-                
+
                 for result in parent.results:
                     if hasattr(result, 'x_absolute') and result.x_absolute is not None:
                         # Convert to meters if it has a unit
-                        x_val = result.x_absolute.to('m').magnitude if hasattr(result.x_absolute, 'to') else result.x_absolute
+                        x_val = (
+                            result.x_absolute.to('m').magnitude
+                            if hasattr(result.x_absolute, 'to')
+                            else result.x_absolute
+                        )
                         x_positions.append(x_val)
                     if hasattr(result, 'y_absolute') and result.y_absolute is not None:
                         # Convert to meters if it has a unit
-                        y_val = result.y_absolute.to('m').magnitude if hasattr(result.y_absolute, 'to') else result.y_absolute
+                        y_val = (
+                            result.y_absolute.to('m').magnitude
+                            if hasattr(result.y_absolute, 'to')
+                            else result.y_absolute
+                        )
                         y_positions.append(y_val)
-                
+
                 if x_positions and y_positions:
                     # Calculate the center of the actual measurements
                     x_min = min(x_positions)
                     x_max = max(x_positions)
                     y_min = min(y_positions)
                     y_max = max(y_positions)
-                    
+
                     x_center = (x_min + x_max) / 2
                     y_center = (y_min + y_max) / 2
-                    
-                    # Use user-provided width and height, centered on the measurement center
+
+                    # Use user-provided width and height, centered on the
+                    # measurement center
                     if self.width is not None and self.height is not None:
                         self.x_upper_left = x_center - self.width / 2
                         self.x_lower_right = x_center + self.width / 2
                         self.y_upper_left = y_center + self.height / 2
                         self.y_lower_right = y_center - self.height / 2
-                        
+
                         logger.info(
                             f'Calculated corner coordinates: '
-                            f'measurement center=({x_center:.6f}, {y_center:.6f}) m, '
-                            f'width={self.width:.6f} m, height={self.height:.6f} m, '
-                            f'corners: upper-left=({self.x_upper_left:.6f}, {self.y_upper_left:.6f}), '
-                            f'lower-right=({self.x_lower_right:.6f}, {self.y_lower_right:.6f})'
+                            f'measurement center='
+                            f'({x_center:.6f}, {y_center:.6f}) m, '
+                            f'width={self.width:.6f} m, '
+                            f'height={self.height:.6f} m, '
+                            f'corners: upper-left='
+                            f'({self.x_upper_left:.6f}, '
+                            f'{self.y_upper_left:.6f}), '
+                            f'lower-right=({self.x_lower_right:.6f}, '
+                            f'{self.y_lower_right:.6f})'
                         )
                     else:
                         logger.warning(
@@ -137,13 +155,14 @@ class DTUBaseSampleAlignment(RectangularSampleAlignment):
                         )
                 else:
                     logger.warning(
-                        'Cannot center around zero: no valid x/y positions found in results.'
+                        'Cannot center around zero: no valid x/y positions '
+                        'found in results.'
                     )
             else:
                 logger.warning(
                     'Cannot center around zero: no results found in parent measurement.'
                 )
-            
+
             self.center_around_zero = False
 
 
