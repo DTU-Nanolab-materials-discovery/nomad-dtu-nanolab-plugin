@@ -1,0 +1,3145 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A plugin for the schemas, parsers, and workflows of the DTU Nanolab Materials Discovery group">
+      
+      
+        <meta name="author" content="Lena Mittman">
+      
+      
+      
+        <link rel="prev" href="gas.html">
+      
+      
+        <link rel="next" href="sputtering.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>Instruments - nomad-dtu-nanolab-plugin</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Titillium+Web:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Titillium Web";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="#2A4CDF" data-md-color-accent="#008A67">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#laboratory-instruments" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/" title="nomad-dtu-nanolab-plugin" class="md-header__button md-logo" aria-label="nomad-dtu-nanolab-plugin" data-md-component="logo">
+      
+  <img src="../assets/nomad-plugin-logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            nomad-dtu-nanolab-plugin
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Instruments
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/" title="nomad-dtu-nanolab-plugin" class="md-nav__button md-logo" aria-label="nomad-dtu-nanolab-plugin" data-md-component="logo">
+      
+  <img src="../assets/nomad-plugin-logo.png" alt="logo">
+
+    </a>
+    nomad-dtu-nanolab-plugin
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/tutorial.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3">
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1">
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/install_this_plugin.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install this Plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/getting-started-with-schemas.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understanding Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2">
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Upload &amp; Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Upload &amp; Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/upload-sputtering-data.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upload Sputtering Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/add-edx-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add EDX Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/add-raman-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add Raman Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/add-xrd-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add XRD Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/add-ellipsometry-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add Ellipsometry Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/add-rtp-data.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add RTP Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/cleave-libraries.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cleave Libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3">
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Visualization &amp; Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Visualization &amp; Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/plot-combinatorial-edx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plot Combinatorial EDX Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/export-high-quality-figures.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export High-Quality Figures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4">
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Troubleshooting
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/troubleshoot-jupyter.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fix Jupyter Launch Issues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5">
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/adapt-for-your-lab.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adapt for Your Lab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/contribute_to_this_plugin.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute to this plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/contribute_to_the_documentation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute to the documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4">
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explanation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Explanation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/data-model.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/workflow.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Materials Discovery Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/combinatorial-libraries.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Combinatorial Libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/characterization.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Characterization Techniques
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab Inventory &amp; Items
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Lab Inventory &amp; Items
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="samples.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Samples and Libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="substrates.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Substrates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="targets.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="gas.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gas Supplies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="instruments.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typical-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-track-instruments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Track Instruments?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#instrument-types-at-dtu-nanolab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instrument Types at DTU Nanolab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Schemas
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schema-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema Documentation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Schema Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#purge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Purge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#propercleaning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ProperCleaning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#openingtoair" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpeningToAir
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nontoxicgasinlet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NonToxicGasInlet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#toxicgasinlet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ToxicGasInlet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taurussource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TaurusSource
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#magkeeper3source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Magkeeper3Source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#magkeeper4source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Magkeeper4Source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scrackersource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SCrackerSource
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuinstrument" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUInstrument
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3">
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Synthesis &amp; Processing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Synthesis &amp; Processing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="sputtering.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sputtering Deposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="rtp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rapid Thermal Processing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="thermal.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Thermal Evaporation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cleaving.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Library Cleaving
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4">
+        
+          
+          <label class="md-nav__link" for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Characterization
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Characterization
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="basesections.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base Measurement Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="xrd.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    X-ray Diffraction (XRD)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="xps.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    X-ray Photoelectron Spectroscopy (XPS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="edx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Energy-Dispersive X-ray (EDX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="pl.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Photoluminescence (PL)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ellipsometry.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ellipsometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="raman.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Raman Spectroscopy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="rt.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RT Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5">
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="analysis.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Jupyter Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typical-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-track-instruments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Track Instruments?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#instrument-types-at-dtu-nanolab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instrument Types at DTU Nanolab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Schemas
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schema-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema Documentation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Schema Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#purge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Purge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#propercleaning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ProperCleaning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#openingtoair" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpeningToAir
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nontoxicgasinlet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NonToxicGasInlet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#toxicgasinlet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ToxicGasInlet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taurussource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TaurusSource
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#magkeeper3source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Magkeeper3Source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#magkeeper4source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Magkeeper4Source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scrackersource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SCrackerSource
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuinstrument" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUInstrument
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation">
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../index.html" class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="index.html" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Reference
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="samples.html" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Lab Inventory &amp; Items
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="laboratory-instruments">Laboratory Instruments<a class="headerlink" href="#laboratory-instruments" title="Permanent link">¶</a></h1>
+<p>Instruments are the equipment used for synthesis, processing, and characterization. Tracking instrument configurations ensures reproducibility and helps correlate results with specific tool conditions.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">¶</a></h2>
+<p>This schema package defines:</p>
+<ul>
+<li><strong>DTUInstrument</strong> - A laboratory instrument with capabilities, configurations, and usage tracking</li>
+</ul>
+<p>Instruments extend NOMAD's <code>Instrument</code> entity, providing:</p>
+<ul>
+<li>Unique lab IDs and asset numbers</li>
+<li>Instrument type and model information</li>
+<li>Capabilities and specifications</li>
+<li>Configuration parameters</li>
+<li>Maintenance and calibration history</li>
+</ul>
+<h2 id="typical-usage">Typical Usage<a class="headerlink" href="#typical-usage" title="Permanent link">¶</a></h2>
+<ol>
+<li><strong>Register instruments</strong>: Create <code>DTUInstrument</code> entries for sputter tools, XRD systems, XPS systems, etc.</li>
+<li><strong>Reference in activities</strong>: <a href="sputtering.html">Synthesis processes</a> and <a href="xrd.html">measurements</a> reference the instrument used</li>
+<li><strong>Track configurations</strong>: Document chamber pressure, power supplies, detector settings, etc.</li>
+<li><strong>Maintenance logs</strong>: Record calibrations, repairs, and modifications</li>
+</ol>
+<h2 id="why-track-instruments">Why Track Instruments?<a class="headerlink" href="#why-track-instruments" title="Permanent link">¶</a></h2>
+<p>Instrument details affect data quality and reproducibility:</p>
+<ul>
+<li><strong>Tool-to-tool variation</strong>: Different instruments can produce different results even with "identical" parameters</li>
+<li><strong>Configuration changes</strong>: Software updates, hardware modifications, and calibrations affect results</li>
+<li><strong>Troubleshooting</strong>: When results change unexpectedly, instrument logs help identify the cause</li>
+<li><strong>Publication requirements</strong>: Many journals require detailed instrument information</li>
+</ul>
+<h2 id="instrument-types-at-dtu-nanolab">Instrument Types at DTU Nanolab<a class="headerlink" href="#instrument-types-at-dtu-nanolab" title="Permanent link">¶</a></h2>
+<ul>
+<li><strong>Deposition tools</strong>: Sputter systems, thermal evaporators</li>
+<li><strong>Processing tools</strong>: RTP furnaces, annealing systems</li>
+<li><strong>Characterization</strong>: XRD, XPS, EDX, Raman, ellipsometry, PL</li>
+</ul>
+<h2 id="related-schemas">Related Schemas<a class="headerlink" href="#related-schemas" title="Permanent link">¶</a></h2>
+<ul>
+<li><strong>Used in synthesis</strong>: <a href="sputtering.html">Sputtering</a>, <a href="thermal.html">Thermal Evaporation</a>, <a href="rtp.html">RTP</a></li>
+<li><strong>Used in measurements</strong>: <a href="xrd.html">XRD</a>, <a href="xps.html">XPS</a>, <a href="edx.html">EDX</a>, <a href="pl.html">PL</a>, <a href="ellipsometry.html">Ellipsometry</a>, <a href="raman.html">Raman</a>, <a href="rt.html">RT</a></li>
+<li><strong>Co-used with</strong>: <a href="targets.html">Targets</a>, <a href="gas.html">Gas Supplies</a></li>
+</ul>
+<hr>
+<h2 id="schema-documentation">Schema Documentation<a class="headerlink" href="#schema-documentation" title="Permanent link">¶</a></h2>
+<h3 id="purge">Purge<a class="headerlink" href="#purge" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>date_of_last_purge</td>
+<td><code>nomad.metainfo.data_type.Datetime</code></td>
+<td></td>
+</tr>
+<tr>
+<td>number_of_purge_cycles</td>
+<td><code>float64</code></td>
+<td><strong>default</strong>=<code>5</code></td>
+</tr>
+<tr>
+<td>time_per_purge_cycles</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>second</code>, <strong>default</strong>=<code>100</code></td>
+</tr>
+<tr>
+<td>pressure_during_purge</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>kilogram / meter / second ** 2</code>, <strong>default</strong>=<code>1</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="propercleaning">ProperCleaning<a class="headerlink" href="#propercleaning" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>date_of_last_cleaning</td>
+<td><code>nomad.metainfo.data_type.Datetime</code></td>
+<td></td>
+</tr>
+<tr>
+<td>comment_about_last_cleaning</td>
+<td><code>str</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="openingtoair">OpeningToAir<a class="headerlink" href="#openingtoair" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>date_of_last_opened_from_back</td>
+<td><code>nomad.metainfo.data_type.Datetime</code></td>
+<td></td>
+</tr>
+<tr>
+<td>comment_about_last_opened_to_air</td>
+<td><code>str</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="nontoxicgasinlet">NonToxicGasInlet<a class="headerlink" href="#nontoxicgasinlet" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>non_toxic_gas_inlet_position_x</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0</code></td>
+</tr>
+<tr>
+<td>non_toxic_gas_inlet_position_y</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0</code></td>
+</tr>
+<tr>
+<td>non_toxic_gas_inlet_position_z</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0</code></td>
+</tr>
+<tr>
+<td>non_toxic_gas_inlet_direction</td>
+<td><code>str</code></td>
+<td><strong>default</strong>=<code>upwards</code></td>
+</tr>
+<tr>
+<td>non_toxic_gas_inlet_pipe_diameter</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0.025</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="toxicgasinlet">ToxicGasInlet<a class="headerlink" href="#toxicgasinlet" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>toxic_gas_inlet_position_x</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0</code></td>
+</tr>
+<tr>
+<td>toxic_gas_inlet_position_y</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0</code></td>
+</tr>
+<tr>
+<td>toxic_gas_inlet_position_z</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0</code></td>
+</tr>
+<tr>
+<td>toxic_gas_inlet_direction</td>
+<td><code>str</code></td>
+<td><strong>default</strong>=<code>downward</code></td>
+</tr>
+<tr>
+<td>toxic_gas_inlet_pipe_diameter</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0.025</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="taurussource">TaurusSource<a class="headerlink" href="#taurussource" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>date_of_changes</td>
+<td><code>nomad.metainfo.data_type.Datetime</code></td>
+<td></td>
+</tr>
+<tr>
+<td>pointed_towards_x</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code></td>
+</tr>
+<tr>
+<td>pointed_towards_y</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code></td>
+</tr>
+<tr>
+<td>distance_to_substrate</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0.209</code></td>
+</tr>
+<tr>
+<td>set_angle</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>radian</code>, <strong>default</strong>=<code>0.8726</code></td>
+</tr>
+<tr>
+<td>rotation</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>radian</code>, <strong>default</strong>=<code>0</code></td>
+</tr>
+<tr>
+<td>mounted_taret</td>
+<td><code>nomad.datamodel.metainfo.basesections.v1.CompositeSystem</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="magkeeper3source">Magkeeper3Source<a class="headerlink" href="#magkeeper3source" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>date_of_changes</td>
+<td><code>nomad.metainfo.data_type.Datetime</code></td>
+<td></td>
+</tr>
+<tr>
+<td>pointed_towards_x</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code></td>
+</tr>
+<tr>
+<td>pointed_towards_y</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code></td>
+</tr>
+<tr>
+<td>distance_to_substrate</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0.201</code></td>
+</tr>
+<tr>
+<td>set_angle</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>radian</code>, <strong>default</strong>=<code>0.8377</code></td>
+</tr>
+<tr>
+<td>rotation</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>radian</code>, <strong>default</strong>=<code>0</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="magkeeper4source">Magkeeper4Source<a class="headerlink" href="#magkeeper4source" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>date_of_changes</td>
+<td><code>nomad.metainfo.data_type.Datetime</code></td>
+<td></td>
+</tr>
+<tr>
+<td>pointed_towards_x</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code></td>
+</tr>
+<tr>
+<td>pointed_towards_y</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code></td>
+</tr>
+<tr>
+<td>distance_to_substrate</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0.201</code></td>
+</tr>
+<tr>
+<td>set_angle</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>radian</code>, <strong>default</strong>=<code>0.8377</code></td>
+</tr>
+<tr>
+<td>rotation</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>radian</code>, <strong>default</strong>=<code>0</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="scrackersource">SCrackerSource<a class="headerlink" href="#scrackersource" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>date_of_changes</td>
+<td><code>nomad.metainfo.data_type.Datetime</code></td>
+<td></td>
+</tr>
+<tr>
+<td>pointed_towards_x</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code></td>
+</tr>
+<tr>
+<td>pointed_towards_y</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code></td>
+</tr>
+<tr>
+<td>distance_to_substrate</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0.227</code></td>
+</tr>
+<tr>
+<td>set_angle</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>radian</code>, <strong>default</strong>=<code>1.1344</code></td>
+</tr>
+<tr>
+<td>S_cracker_extension_into_chamber</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter</code>, <strong>default</strong>=<code>0</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtuinstrument">DTUInstrument<a class="headerlink" href="#dtuinstrument" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.metainfo.basesections.v1.Instrument</code>, <code>nomad.datamodel.data.EntryData</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>time_used_chamber</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>second</code></td>
+</tr>
+<tr>
+<td>base_pressure</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>kilogram / meter / second ** 2</code>, <strong>default</strong>=<code>1.7e-06</code></td>
+</tr>
+<tr>
+<td>chamber_history</td>
+<td><code>str</code></td>
+<td></td>
+</tr>
+<tr>
+<td>purge</td>
+<td><a href="#purge"><code>Purge</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>proper_cleaning</td>
+<td><a href="#propercleaning"><code>ProperCleaning</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>opening_to_air</td>
+<td><a href="#openingtoair"><code>OpeningToAir</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>non_toxic_gas_inlet</td>
+<td><a href="#nontoxicgasinlet"><code>NonToxicGasInlet</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>toxic_gas_inlet</td>
+<td><a href="#toxicgasinlet"><code>ToxicGasInlet</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>Taurus_source</td>
+<td><a href="#taurussource"><code>TaurusSource</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>Magkeeper3_source</td>
+<td><a href="#magkeeper3source"><code>Magkeeper3Source</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>Magkeeper4_source</td>
+<td><a href="#magkeeper4source"><code>Magkeeper4Source</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>S_cracker_source</td>
+<td><a href="#scrackersource"><code>SCrackerSource</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>DTUInstrument</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer">
+        
+          
+          <a href="gas.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: Gas Supplies">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Gas Supplies
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="sputtering.html" class="md-footer__link md-footer__link--next" aria-label="Next: Sputtering Deposition">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Sputtering Deposition
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"></path></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.path", "navigation.footer", "navigation.top", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascript.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>

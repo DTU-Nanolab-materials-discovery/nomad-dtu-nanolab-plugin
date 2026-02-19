@@ -1,0 +1,3277 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A plugin for the schemas, parsers, and workflows of the DTU Nanolab Materials Discovery group">
+      
+      
+        <meta name="author" content="Lena Mittman">
+      
+      
+      
+        <link rel="prev" href="add-raman-measurements.html">
+      
+      
+        <link rel="next" href="add-ellipsometry-measurements.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>Add XRD Measurements - nomad-dtu-nanolab-plugin</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Titillium+Web:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Titillium Web";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="#2A4CDF" data-md-color-accent="#008A67">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#add-xrd-measurements" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/" title="nomad-dtu-nanolab-plugin" class="md-header__button md-logo" aria-label="nomad-dtu-nanolab-plugin" data-md-component="logo">
+      
+  <img src="../assets/nomad-plugin-logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            nomad-dtu-nanolab-plugin
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Add XRD Measurements
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/" title="nomad-dtu-nanolab-plugin" class="md-nav__button md-logo" aria-label="nomad-dtu-nanolab-plugin" data-md-component="logo">
+      
+  <img src="../assets/nomad-plugin-logo.png" alt="logo">
+
+    </a>
+    nomad-dtu-nanolab-plugin
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/tutorial.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1">
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="install_this_plugin.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install this Plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="getting-started-with-schemas.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understanding Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Upload &amp; Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Upload &amp; Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="upload-sputtering-data.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upload Sputtering Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="add-edx-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add EDX Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="add-raman-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add Raman Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add XRD Measurements
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="add-xrd-measurements.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add XRD Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-prepare-your-xrd-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Prepare Your XRD Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-navigate-to-your-upload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Navigate to Your Upload
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-create-xrd-measurement-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Create XRD Measurement Entry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 3: Create XRD Measurement Entry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-start-schema-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Start Schema Creation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-name-and-select-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Name and Select Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-upload-xrd-data-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Upload XRD Data Files
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 4: Upload XRD Data Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-locate-the-file-upload-field" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Locate the File Upload Field
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-upload-multiple-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Upload Multiple Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-review-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Review Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 5: Review Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-navigate-to-results-subsection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Navigate to Results Subsection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-examine-auto-generated-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Examine Auto-Generated Plots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-optional-remove-invalid-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Optional: Remove Invalid Points
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-6-repeat-for-additional-quarters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6: Repeat for Additional Quarters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#no-plots-appear-in-results-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No plots appear in Results section
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#some-files-didnt-upload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Some files didn't upload
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diffraction-patterns-look-wrong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diffraction patterns look wrong
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cant-delete-data-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can't delete data points
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-format-not-recognized" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File format not recognized
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-xrd-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding XRD Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Understanding XRD Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-does-xrd-measure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What does XRD measure?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#measurement-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measurement considerations:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-interpretation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data interpretation:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#need-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Need Help?
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="add-ellipsometry-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add Ellipsometry Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="add-rtp-data.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add RTP Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cleave-libraries.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cleave Libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3">
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Visualization &amp; Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Visualization &amp; Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="plot-combinatorial-edx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plot Combinatorial EDX Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="export-high-quality-figures.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export High-Quality Figures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4">
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Troubleshooting
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="troubleshoot-jupyter.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fix Jupyter Launch Issues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5">
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="adapt-for-your-lab.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adapt for Your Lab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contribute_to_this_plugin.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute to this plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contribute_to_the_documentation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute to the documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4">
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explanation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Explanation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/data-model.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/workflow.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Materials Discovery Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/combinatorial-libraries.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Combinatorial Libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/characterization.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Characterization Techniques
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5">
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2">
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab Inventory &amp; Items
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Lab Inventory &amp; Items
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/samples.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Samples and Libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/substrates.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Substrates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/targets.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/gas.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gas Supplies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3">
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Synthesis &amp; Processing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Synthesis &amp; Processing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/sputtering.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sputtering Deposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/rtp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rapid Thermal Processing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/thermal.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Thermal Evaporation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/cleaving.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Library Cleaving
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4">
+        
+          
+          <label class="md-nav__link" for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Characterization
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Characterization
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/basesections.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base Measurement Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/xrd.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    X-ray Diffraction (XRD)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/xps.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    X-ray Photoelectron Spectroscopy (XPS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/edx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Energy-Dispersive X-ray (EDX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/pl.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Photoluminescence (PL)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/ellipsometry.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ellipsometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/raman.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Raman Spectroscopy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/rt.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RT Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5">
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/analysis.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Jupyter Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-prepare-your-xrd-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Prepare Your XRD Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-navigate-to-your-upload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Navigate to Your Upload
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-create-xrd-measurement-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Create XRD Measurement Entry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 3: Create XRD Measurement Entry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-start-schema-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Start Schema Creation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-name-and-select-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Name and Select Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-upload-xrd-data-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Upload XRD Data Files
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 4: Upload XRD Data Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-locate-the-file-upload-field" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Locate the File Upload Field
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-upload-multiple-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Upload Multiple Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-review-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Review Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 5: Review Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-navigate-to-results-subsection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Navigate to Results Subsection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-examine-auto-generated-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Examine Auto-Generated Plots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-optional-remove-invalid-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Optional: Remove Invalid Points
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-6-repeat-for-additional-quarters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6: Repeat for Additional Quarters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#no-plots-appear-in-results-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No plots appear in Results section
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#some-files-didnt-upload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Some files didn't upload
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diffraction-patterns-look-wrong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diffraction patterns look wrong
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cant-delete-data-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can't delete data points
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-format-not-recognized" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File format not recognized
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-xrd-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding XRD Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Understanding XRD Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-does-xrd-measure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What does XRD measure?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#measurement-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measurement considerations:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-interpretation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data interpretation:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#need-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Need Help?
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation">
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../index.html" class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="install_this_plugin.html" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    How-to guides
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="upload-sputtering-data.html" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Data Upload &amp; Management
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="add-xrd-measurements">Add XRD Measurements<a class="headerlink" href="#add-xrd-measurements" title="Permanent link">¶</a></h1>
+<p>This guide explains how to add X-ray Diffraction (XRD) structural characterization data to your combinatorial library in NOMAD Oasis.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">¶</a></h2>
+<p>XRD provides structural information including crystal phases, lattice parameters, and orientations. This guide covers:</p>
+<ul>
+<li>Creating an XRD measurement entry</li>
+<li>Uploading multiple data files</li>
+<li>Reviewing auto-generated diffraction plots</li>
+<li>Managing measurement points</li>
+</ul>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">¶</a></h2>
+<p>Before starting, you need:</p>
+<ul>
+<li><strong>Completed sputtering upload</strong> with combinatorial libraries</li>
+<li><strong>XRD data files</strong> - Individual files for each measured point</li>
+<li><strong>Knowledge of which quarter</strong> you measured (BL, BR, FL, FR)</li>
+</ul>
+<div class="admonition info">
+<p class="admonition-title">File Format</p>
+<p>XRD files are typically <code>.xy</code>, <code>.xrdml</code>, <code>.raw</code>, or similar formats containing 2θ angle vs. intensity data.</p>
+</div>
+<h2 id="step-1-prepare-your-xrd-files">Step 1: Prepare Your XRD Files<a class="headerlink" href="#step-1-prepare-your-xrd-files" title="Permanent link">¶</a></h2>
+<p>Organize your XRD data files. They should look like:</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../assets/nomad-add-xrd-data-manual-v1/image-001.png" data-desc-position="bottom"><img alt="XRD files organization" src="../assets/nomad-add-xrd-data-manual-v1/image-001.png"></a></p>
+<div class="admonition tip">
+<p class="admonition-title">Measurement Strategy</p>
+<ul>
+<li><strong>Full quarter mapping</strong>: Upload all points from one quarter</li>
+<li><strong>Selected points</strong>: Upload specific interesting positions only</li>
+<li><strong>Individual points</strong>: Upload single positions for quick checks</li>
+</ul>
+<p>Quarters uploaded individually are recommended for organization.</p>
+</div>
+<h2 id="step-2-navigate-to-your-upload">Step 2: Navigate to Your Upload<a class="headerlink" href="#step-2-navigate-to-your-upload" title="Permanent link">¶</a></h2>
+<ol>
+<li>
+<p>Go to the <strong>sputtering upload</strong> where your combinatorial libraries were created</p>
+</li>
+<li>
+<p>Click on the upload to open it</p>
+</li>
+</ol>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../assets/nomad-add-xrd-data-manual-v1/image-002.png" data-desc-position="bottom"><img alt="Upload selection" src="../assets/nomad-add-xrd-data-manual-v1/image-002.png"></a></p>
+<h2 id="step-3-create-xrd-measurement-entry">Step 3: Create XRD Measurement Entry<a class="headerlink" href="#step-3-create-xrd-measurement-entry" title="Permanent link">¶</a></h2>
+<h3 id="31-start-schema-creation">3.1 Start Schema Creation<a class="headerlink" href="#31-start-schema-creation" title="Permanent link">¶</a></h3>
+<p>Click <strong>"Create from schema"</strong> in your upload.</p>
+<h3 id="32-name-and-select-schema">3.2 Name and Select Schema<a class="headerlink" href="#32-name-and-select-schema" title="Permanent link">¶</a></h3>
+<p>Follow the naming convention:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>username_####_Material_Quarter_XRD
+</code></pre></div>
+<p>Examples:</p>
+<ul>
+<li><code>amazingresearcher_0042_CuZn_BL_XRD</code> (back left quarter)</li>
+<li><code>username_0123_BaZr_FR_XRD</code> (front right quarter)</li>
+</ul>
+<p><strong>Select the schema:</strong></p>
+<ul>
+<li>Choose <strong>"XRD Measurement"</strong> from the Built-in schemas dropdown</li>
+</ul>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../assets/nomad-add-xrd-data-manual-v1/image-003.png" data-desc-position="bottom"><img alt="Schema selection" src="../assets/nomad-add-xrd-data-manual-v1/image-003.png"></a></p>
+<p>Click <strong>"Create"</strong>.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../assets/nomad-add-xrd-data-manual-v1/image-004.png" data-desc-position="bottom"><img alt="Created XRD entry" src="../assets/nomad-add-xrd-data-manual-v1/image-004.png"></a></p>
+<h2 id="step-4-upload-xrd-data-files">Step 4: Upload XRD Data Files<a class="headerlink" href="#step-4-upload-xrd-data-files" title="Permanent link">¶</a></h2>
+<h3 id="41-locate-the-file-upload-field">4.1 Locate the File Upload Field<a class="headerlink" href="#41-locate-the-file-upload-field" title="Permanent link">¶</a></h3>
+<p>Scroll down to find the <strong>"Data files"</strong> field in the XRD measurement entry.</p>
+<h3 id="42-upload-multiple-files">4.2 Upload Multiple Files<a class="headerlink" href="#42-upload-multiple-files" title="Permanent link">¶</a></h3>
+<ol>
+<li><strong>Select all</strong> your XRD data files for this quarter:</li>
+<li>Use Ctrl+Click (Windows/Linux) or Cmd+Click (Mac) to select multiple files</li>
+<li>
+<p>Or drag and drop all files at once</p>
+</li>
+<li>
+<p>Upload to the "Data files" field</p>
+</li>
+</ol>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../assets/nomad-add-xrd-data-manual-v1/image-005.png" data-desc-position="bottom"><img alt="Uploading XRD files" src="../assets/nomad-add-xrd-data-manual-v1/image-005.png"></a></p>
+<ol>
+<li><strong>IMPORTANT: Click "Save"</strong> immediately after upload completes</li>
+</ol>
+<div class="admonition danger">
+<p class="admonition-title">Must Save!</p>
+<p>Always click "Save" after uploading files. Unsaved uploads will be lost.</p>
+</div>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../assets/nomad-add-xrd-data-manual-v1/image-006.png" data-desc-position="bottom"><img alt="Files uploaded successfully" src="../assets/nomad-add-xrd-data-manual-v1/image-006.png"></a></p>
+<div class="admonition info">
+<p class="admonition-title">Processing</p>
+<p>NOMAD processes each XRD file to extract:</p>
+<ul>
+<li>2θ angle ranges</li>
+<li>Intensity patterns</li>
+<li>Measurement positions on the sample</li>
+<li>Peak positions and intensities</li>
+</ul>
+</div>
+<h2 id="step-5-review-results">Step 5: Review Results<a class="headerlink" href="#step-5-review-results" title="Permanent link">¶</a></h2>
+<h3 id="51-navigate-to-results-subsection">5.1 Navigate to Results Subsection<a class="headerlink" href="#51-navigate-to-results-subsection" title="Permanent link">¶</a></h3>
+<p>Scroll down to the <strong>"Results"</strong> subsection and expand it.</p>
+<h3 id="52-examine-auto-generated-plots">5.2 Examine Auto-Generated Plots<a class="headerlink" href="#52-examine-auto-generated-plots" title="Permanent link">¶</a></h3>
+<p>NOMAD automatically generates visualizations showing:</p>
+<ul>
+<li>Individual diffraction patterns for each point</li>
+<li>Overlay plots comparing multiple positions</li>
+<li>2θ vs. intensity for all measurements</li>
+</ul>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../assets/nomad-add-xrd-data-manual-v1/image-007.png" data-desc-position="bottom"><img alt="XRD results visualization" src="../assets/nomad-add-xrd-data-manual-v1/image-007.png"></a></p>
+<p>All measurement points are displayed in the graphs, allowing you to:</p>
+<ul>
+<li>Compare phases across composition space</li>
+<li>Identify structural transitions</li>
+<li>Locate amorphous vs. crystalline regions</li>
+</ul>
+<h3 id="53-optional-remove-invalid-points">5.3 Optional: Remove Invalid Points<a class="headerlink" href="#53-optional-remove-invalid-points" title="Permanent link">¶</a></h3>
+<p>If you measured incorrect positions (bare substrate, wrong sample, etc.):</p>
+<ol>
+<li>
+<p>Locate the data point in the list</p>
+</li>
+<li>
+<p>Click the <strong>trash can icon</strong> next to the invalid point</p>
+</li>
+<li>
+<p><strong>Click "Save"</strong> after deletion</p>
+</li>
+</ol>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../assets/nomad-add-xrd-data-manual-v1/image-008.png" data-desc-position="bottom"><img alt="Managing data points" src="../assets/nomad-add-xrd-data-manual-v1/image-008.png"></a></p>
+<div class="admonition note">
+<p class="admonition-title">When to delete points</p>
+<p>Unlike EDX where substrate hits are common, XRD measurements are typically more controlled. You'll rarely need to delete points unless you explicitly measured the wrong location.</p>
+</div>
+<h2 id="step-6-repeat-for-additional-quarters">Step 6: Repeat for Additional Quarters<a class="headerlink" href="#step-6-repeat-for-additional-quarters" title="Permanent link">¶</a></h2>
+<p>If you measured multiple quarters, repeat this process for each:</p>
+<ol>
+<li>Create a new XRD Measurement entry with the appropriate quarter identifier:</li>
+<li><code>username_####_Material_BR_XRD</code></li>
+<li><code>username_####_Material_BL_XRD</code></li>
+<li><code>username_####_Material_FL_XRD</code></li>
+<li>
+<p><code>username_####_Material_FR_XRD</code></p>
+</li>
+<li>
+<p>Upload the corresponding XRD files</p>
+</li>
+<li>
+<p>Review results and clean data if needed</p>
+</li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Organization Benefits</p>
+<p>Separate entries per quarter:</p>
+<ul>
+<li>Keeps file counts manageable</li>
+<li>Matches physical sample division</li>
+<li>Enables quarter-specific analysis</li>
+<li>Parallels EDX organization</li>
+</ul>
+</div>
+<h2 id="verification-checklist">Verification Checklist<a class="headerlink" href="#verification-checklist" title="Permanent link">¶</a></h2>
+<p>After uploading XRD data, verify:</p>
+<ul>
+<li>[ ] Entry named correctly with quarter identifier</li>
+<li>[ ] All XRD files uploaded successfully</li>
+<li>[ ] Results subsection shows diffraction patterns</li>
+<li>[ ] Data points correspond to expected positions</li>
+<li>[ ] Patterns show reasonable peak intensities</li>
+<li>[ ] Final save completed</li>
+<li>[ ] No obvious file upload errors</li>
+</ul>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">¶</a></h2>
+<h3 id="no-plots-appear-in-results-section">No plots appear in Results section<a class="headerlink" href="#no-plots-appear-in-results-section" title="Permanent link">¶</a></h3>
+<p><strong>Problem</strong>: Results subsection is empty after upload</p>
+<p><strong>Solutions</strong>:</p>
+<ul>
+<li>Verify files are in supported XRD format</li>
+<li>Check that files aren't corrupted (open in analysis software)</li>
+<li>Confirm you clicked "Save" after upload</li>
+<li>Refresh the page and wait for processing to complete</li>
+<li>Check upload status for error messages</li>
+</ul>
+<h3 id="some-files-didnt-upload">Some files didn't upload<a class="headerlink" href="#some-files-didnt-upload" title="Permanent link">¶</a></h3>
+<p><strong>Problem</strong>: Expected file count doesn't match uploaded count</p>
+<p><strong>Solutions</strong>:</p>
+<ul>
+<li>Check file size limits (typically &lt;10 MB per file)</li>
+<li>Verify all files were selected before uploading</li>
+<li>Try uploading in smaller batches</li>
+<li>Ensure files aren't open in another program</li>
+<li>Check file permissions</li>
+</ul>
+<h3 id="diffraction-patterns-look-wrong">Diffraction patterns look wrong<a class="headerlink" href="#diffraction-patterns-look-wrong" title="Permanent link">¶</a></h3>
+<p><strong>Problem</strong>: Plots show unexpected peak positions or intensities</p>
+<p><strong>Solutions</strong>:</p>
+<ul>
+<li>Verify you uploaded files from the correct measurement</li>
+<li>Check that files haven't been modified or corrupted</li>
+<li>Confirm the quarter identifier matches the actual measured quarter</li>
+<li>Review raw files in your XRD analysis software</li>
+<li>Check for correct wavelength/radiation type in metadata</li>
+</ul>
+<h3 id="cant-delete-data-points">Can't delete data points<a class="headerlink" href="#cant-delete-data-points" title="Permanent link">¶</a></h3>
+<p><strong>Problem</strong>: Trash icon missing or not working</p>
+<p><strong>Solutions</strong>:</p>
+<ul>
+<li>Ensure you're in edit mode</li>
+<li>Check you have write permissions</li>
+<li>Try refreshing the page</li>
+<li>Verify the entry isn't published/locked</li>
+</ul>
+<h3 id="file-format-not-recognized">File format not recognized<a class="headerlink" href="#file-format-not-recognized" title="Permanent link">¶</a></h3>
+<p><strong>Problem</strong>: Upload rejects your XRD files</p>
+<p><strong>Solutions</strong>:</p>
+<ul>
+<li>Check the supported file formats with your NOMAD administrator</li>
+<li>Export data in a different format from your XRD software</li>
+<li>Verify files aren't compressed (.zip, .rar, etc.)</li>
+<li>Ensure file extensions are correct and lowercase</li>
+</ul>
+<h2 id="understanding-xrd-data">Understanding XRD Data<a class="headerlink" href="#understanding-xrd-data" title="Permanent link">¶</a></h2>
+<h3 id="what-does-xrd-measure">What does XRD measure?<a class="headerlink" href="#what-does-xrd-measure" title="Permanent link">¶</a></h3>
+<p>XRD provides:</p>
+<ul>
+<li><strong>Crystal structure</strong> - Phase identification (cubic, tetragonal, etc.)</li>
+<li><strong>Lattice parameters</strong> - Unit cell dimensions</li>
+<li><strong>Crystallinity</strong> - Relative amounts of crystalline vs. amorphous material</li>
+<li><strong>Preferred orientation</strong> - Texture information</li>
+<li><strong>Phase purity</strong> - Presence of multiple phases</li>
+</ul>
+<h3 id="measurement-considerations">Measurement considerations:<a class="headerlink" href="#measurement-considerations" title="Permanent link">¶</a></h3>
+<ul>
+<li><strong>Penetration depth</strong>: X-rays probe full film thickness plus substrate</li>
+<li><strong>Spatial resolution</strong>: Spot size typically 1-10 mm (larger than EDX)</li>
+<li><strong>Substrate peaks</strong>: Silicon substrate peaks will appear in patterns</li>
+<li><strong>Thin film effects</strong>: May see broad peaks or weak intensities</li>
+</ul>
+<h3 id="data-interpretation">Data interpretation:<a class="headerlink" href="#data-interpretation" title="Permanent link">¶</a></h3>
+<p>Use the visualizations to:</p>
+<ul>
+<li>Map phase evolution across composition gradients</li>
+<li>Identify composition regions with desired crystal structures</li>
+<li>Track structural transitions (e.g., amorphous to crystalline)</li>
+<li>Compare experimental patterns to reference databases</li>
+</ul>
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">¶</a></h2>
+<p>After adding XRD measurements:</p>
+<ol>
+<li><strong><a href="add-edx-measurements.html">Add EDX Measurements</a></strong> - Correlate structure with composition</li>
+<li><strong><a href="add-ellipsometry-measurements.html">Add Ellipsometry Measurements</a></strong> - Add optical properties</li>
+<li><strong><a href="../reference/index.html">Add Other Characterization</a></strong> - XPS, PL, Raman</li>
+<li><strong><a href="../reference/analysis.html">Jupyter Analysis</a></strong> - Create custom structure-property plots</li>
+</ol>
+<h2 id="related-resources">Related Resources<a class="headerlink" href="#related-resources" title="Permanent link">¶</a></h2>
+<ul>
+<li><a href="upload-sputtering-data.html">Upload Sputtering Data</a> - Create parent combinatorial library</li>
+<li><a href="../reference/xrd.html">XRD Reference</a> - Detailed schema documentation</li>
+<li><a href="../tutorial/tutorial.html">Tutorial</a> - Complete workflow example</li>
+<li><a href="../explanation/characterization.html">Characterization Techniques</a> - Understanding XRD in context</li>
+</ul>
+<h2 id="need-help">Need Help?<a class="headerlink" href="#need-help" title="Permanent link">¶</a></h2>
+<p>If you encounter issues:</p>
+<ul>
+<li>Ask colleagues who have uploaded XRD data successfully</li>
+<li>Review example XRD uploads in your group</li>
+<li>Check the <a href="../reference/xrd.html">Reference Documentation</a></li>
+<li>Contact DTU Nanolab NOMAD support</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer">
+        
+          
+          <a href="add-raman-measurements.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: Add Raman Measurements">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Add Raman Measurements
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="add-ellipsometry-measurements.html" class="md-footer__link md-footer__link--next" aria-label="Next: Add Ellipsometry Measurements">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Add Ellipsometry Measurements
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"></path></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.path", "navigation.footer", "navigation.top", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascript.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>

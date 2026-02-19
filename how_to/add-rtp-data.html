@@ -1,0 +1,3439 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A plugin for the schemas, parsers, and workflows of the DTU Nanolab Materials Discovery group">
+      
+      
+        <meta name="author" content="Lena Mittman">
+      
+      
+      
+        <link rel="prev" href="add-ellipsometry-measurements.html">
+      
+      
+        <link rel="next" href="cleave-libraries.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>Add RTP Data - nomad-dtu-nanolab-plugin</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Titillium+Web:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Titillium Web";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="#2A4CDF" data-md-color-accent="#008A67">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#add-rtp-data" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/" title="nomad-dtu-nanolab-plugin" class="md-header__button md-logo" aria-label="nomad-dtu-nanolab-plugin" data-md-component="logo">
+      
+  <img src="../assets/nomad-plugin-logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            nomad-dtu-nanolab-plugin
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Add RTP Data
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/" title="nomad-dtu-nanolab-plugin" class="md-nav__button md-logo" aria-label="nomad-dtu-nanolab-plugin" data-md-component="logo">
+      
+  <img src="../assets/nomad-plugin-logo.png" alt="logo">
+
+    </a>
+    nomad-dtu-nanolab-plugin
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/tutorial.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1">
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="install_this_plugin.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install this Plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="getting-started-with-schemas.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understanding Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Upload &amp; Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Upload &amp; Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="upload-sputtering-data.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upload Sputtering Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="add-edx-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add EDX Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="add-raman-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add Raman Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="add-xrd-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add XRD Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="add-ellipsometry-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add Ellipsometry Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add RTP Data
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="add-rtp-data.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add RTP Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-create-rtp-upload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Create RTP Upload
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 1: Create RTP Upload">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-create-new-upload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Create New Upload
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-create-rtp-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Create RTP Entry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 2: Create RTP Entry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-start-schema-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Start Schema Creation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-name-and-select-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Name and Select Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-upload-logfiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Upload Logfiles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-fill-in-overview-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Fill in Overview Information
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 4: Fill in Overview Information">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-basic-process-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Basic Process Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-material-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Material Space
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-add-thermal-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Add Thermal Steps
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 5: Add Thermal Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-determine-number-of-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Determine Number of Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-create-step-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Create Step Entries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-fill-step-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Fill Step Details
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-6-add-input-samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6: Add Input Samples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 6: Add Input Samples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-determine-number-of-input-samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Determine Number of Input Samples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-create-sample-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Create Sample Entries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-link-each-sample" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Link Each Sample
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-7-save-everything" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 7: Save Everything
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cant-save-validation-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can't save - validation error
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cant-find-input-sample-in-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can't find input sample in list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wrong-sample-linked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wrong sample linked
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-samples-from-same-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple samples from same library
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#thermal-steps-in-wrong-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thermal steps in wrong order
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-rtp-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding RTP Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Understanding RTP Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-document-rtp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why document RTP?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best practices:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#need-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Need Help?
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cleave-libraries.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cleave Libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3">
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Visualization &amp; Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Visualization &amp; Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="plot-combinatorial-edx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plot Combinatorial EDX Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="export-high-quality-figures.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export High-Quality Figures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4">
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Troubleshooting
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="troubleshoot-jupyter.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fix Jupyter Launch Issues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5">
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="adapt-for-your-lab.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adapt for Your Lab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contribute_to_this_plugin.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute to this plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contribute_to_the_documentation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute to the documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4">
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explanation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Explanation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/data-model.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/workflow.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Materials Discovery Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/combinatorial-libraries.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Combinatorial Libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/characterization.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Characterization Techniques
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5">
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2">
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab Inventory &amp; Items
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Lab Inventory &amp; Items
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/samples.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Samples and Libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/substrates.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Substrates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/targets.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/gas.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gas Supplies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3">
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Synthesis &amp; Processing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Synthesis &amp; Processing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/sputtering.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sputtering Deposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/rtp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rapid Thermal Processing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/thermal.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Thermal Evaporation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/cleaving.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Library Cleaving
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4">
+        
+          
+          <label class="md-nav__link" for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Characterization
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Characterization
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/basesections.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base Measurement Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/xrd.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    X-ray Diffraction (XRD)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/xps.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    X-ray Photoelectron Spectroscopy (XPS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/edx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Energy-Dispersive X-ray (EDX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/pl.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Photoluminescence (PL)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/ellipsometry.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ellipsometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/raman.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Raman Spectroscopy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/rt.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RT Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5">
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/analysis.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Jupyter Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-create-rtp-upload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Create RTP Upload
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 1: Create RTP Upload">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-create-new-upload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Create New Upload
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-create-rtp-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Create RTP Entry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 2: Create RTP Entry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-start-schema-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Start Schema Creation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-name-and-select-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Name and Select Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-upload-logfiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Upload Logfiles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-fill-in-overview-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Fill in Overview Information
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 4: Fill in Overview Information">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-basic-process-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Basic Process Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-material-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Material Space
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-add-thermal-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Add Thermal Steps
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 5: Add Thermal Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-determine-number-of-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Determine Number of Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-create-step-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Create Step Entries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-fill-step-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Fill Step Details
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-6-add-input-samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6: Add Input Samples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 6: Add Input Samples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-determine-number-of-input-samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Determine Number of Input Samples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-create-sample-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Create Sample Entries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-link-each-sample" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Link Each Sample
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-7-save-everything" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 7: Save Everything
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cant-save-validation-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can't save - validation error
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cant-find-input-sample-in-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can't find input sample in list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wrong-sample-linked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wrong sample linked
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-samples-from-same-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple samples from same library
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#thermal-steps-in-wrong-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thermal steps in wrong order
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-rtp-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding RTP Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Understanding RTP Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-document-rtp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why document RTP?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best practices:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#need-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Need Help?
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation">
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../index.html" class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="install_this_plugin.html" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    How-to guides
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="upload-sputtering-data.html" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Data Upload &amp; Management
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="add-rtp-data">Add RTP Data<a class="headerlink" href="#add-rtp-data" title="Permanent link">¶</a></h1>
+<p>This guide explains how to add Rapid Thermal Processing (RTP) data to NOMAD Oasis. RTP is used for thermal annealing, crystallization, or other heat treatments of your samples.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">¶</a></h2>
+<p>RTP entries document:</p>
+<ul>
+<li>Thermal processing steps (heating, annealing, cooling)</li>
+<li>Temperature profiles and ramp rates</li>
+<li>Atmosphere and gas flows</li>
+<li>Input samples and their positions</li>
+<li>Links to processed combinatorial libraries</li>
+</ul>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">¶</a></h2>
+<p>Before starting, you need:</p>
+<ul>
+<li><strong>RTP logfiles</strong> from the RTP system</li>
+<li><strong>Completed sputtering upload</strong> or <strong>cleaved libraries</strong> that were processed</li>
+<li><strong>Process details</strong>:</li>
+<li>Number of thermal steps</li>
+<li>Temperature profiles</li>
+<li>Gas atmospheres</li>
+<li>Sample positions</li>
+<li>Material systems</li>
+</ul>
+<h2 id="step-1-create-rtp-upload">Step 1: Create RTP Upload<a class="headerlink" href="#step-1-create-rtp-upload" title="Permanent link">¶</a></h2>
+<h3 id="11-create-new-upload">1.1 Create New Upload<a class="headerlink" href="#11-create-new-upload" title="Permanent link">¶</a></h3>
+<ol>
+<li>
+<p>Click <strong>"New Upload"</strong> in NOMAD Oasis</p>
+</li>
+<li>
+<p><strong>Name the upload</strong> following your lab's RTP naming convention:
+   </p><div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>username_####_RTP
+</code></pre></div>
+   Example: <code>amazingresearcher_0042_RTP</code><p></p>
+</li>
+<li>
+<p><strong>Share with group</strong>:</p>
+</li>
+<li>Click "Edit upload members"</li>
+<li>Add "Thin-Film Materials Discovery" as co-author</li>
+<li>
+<p>Add other collaborators as needed</p>
+</li>
+<li>
+<p>Click <strong>"Save"</strong></p>
+</li>
+</ol>
+<h2 id="step-2-create-rtp-entry">Step 2: Create RTP Entry<a class="headerlink" href="#step-2-create-rtp-entry" title="Permanent link">¶</a></h2>
+<h3 id="21-start-schema-creation">2.1 Start Schema Creation<a class="headerlink" href="#21-start-schema-creation" title="Permanent link">¶</a></h3>
+<p>In your RTP upload, click <strong>"Create from schema"</strong>.</p>
+<h3 id="22-name-and-select-schema">2.2 Name and Select Schema<a class="headerlink" href="#22-name-and-select-schema" title="Permanent link">¶</a></h3>
+<p><strong>Entry name</strong>: Use the same naming as the upload
+</p><div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>username_####_RTP
+</code></pre></div><p></p>
+<p><strong>Schema selection</strong>: Choose <strong>"RTP"</strong> or <strong>"Rapid Thermal Processing"</strong> from built-in schemas</p>
+<p>Click <strong>"Create"</strong>.</p>
+<h2 id="step-3-upload-logfiles">Step 3: Upload Logfiles<a class="headerlink" href="#step-3-upload-logfiles" title="Permanent link">¶</a></h2>
+<p>If your RTP system generates logfiles:</p>
+<ol>
+<li>
+<p><strong>Drag and drop</strong> the logfiles into the designated field</p>
+</li>
+<li>
+<p>NOMAD will parse:</p>
+</li>
+<li>Temperature vs. time profiles</li>
+<li>Gas flows</li>
+<li>Pressure history</li>
+<li>
+<p>Ramp rates</p>
+</li>
+<li>
+<p><strong>Click "Save"</strong> after upload</p>
+</li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Logfile Support</p>
+<p>Check with your group which logfile formats are supported by the parser. Manual entry is also possible.</p>
+</div>
+<h2 id="step-4-fill-in-overview-information">Step 4: Fill in Overview Information<a class="headerlink" href="#step-4-fill-in-overview-information" title="Permanent link">¶</a></h2>
+<h3 id="41-basic-process-data">4.1 Basic Process Data<a class="headerlink" href="#41-basic-process-data" title="Permanent link">¶</a></h3>
+<p>Fill in the main entry fields:</p>
+<ul>
+<li><strong>Process name/description</strong> - Brief summary of the RTP purpose</li>
+<li><strong>Date and time</strong> - When the process occurred</li>
+<li><strong>Operator</strong> - Who performed the RTP</li>
+</ul>
+<h3 id="42-material-space">4.2 Material Space<a class="headerlink" href="#42-material-space" title="Permanent link">¶</a></h3>
+<p>Press the arrow next to <strong>"Overview"</strong> subsection to expand.</p>
+<p>Fill in the <strong>"Material space:</strong></p>
+<ul>
+<li>Enter the target materials used in deposition with hyphens between them</li>
+<li>Example: <code>Ba-Zr</code> for barium-zirconium system</li>
+<li>Example: <code>Cu-Zn-Sn-S</code> for quaternary system</li>
+</ul>
+<p>This helps identify what materials were processed.</p>
+<div class="admonition info">
+<p class="admonition-title">Why Material Space?</p>
+<p>Material space enables searching across related processes (sputtering + RTP) for the same material system.</p>
+</div>
+<h2 id="step-5-add-thermal-steps">Step 5: Add Thermal Steps<a class="headerlink" href="#step-5-add-thermal-steps" title="Permanent link">¶</a></h2>
+<p>RTP processes typically consist of multiple thermal steps (heating, hold, cooling).</p>
+<h3 id="51-determine-number-of-steps">5.1 Determine Number of Steps<a class="headerlink" href="#51-determine-number-of-steps" title="Permanent link">¶</a></h3>
+<p>Count your thermal steps. Common sequences:</p>
+<ul>
+<li><strong>3 steps</strong>: Heat → Anneal → Cool</li>
+<li><strong>2 steps</strong>: Heat/Anneal → Cool</li>
+<li><strong>5+ steps</strong>: Multi-stage annealing with plateaus</li>
+</ul>
+<h3 id="52-create-step-entries">5.2 Create Step Entries<a class="headerlink" href="#52-create-step-entries" title="Permanent link">¶</a></h3>
+<ol>
+<li>
+<p>Click the <strong>"+" icon</strong> next to "Steps"</p>
+</li>
+<li>
+<p>Add one step entry for each thermal stage</p>
+</li>
+<li>
+<p>For each step:</p>
+</li>
+<li>Give it a <strong>descriptive name</strong> (e.g., "Heating", "Annealing", "Cooling")</li>
+<li>Click to open the <strong>step overview</strong></li>
+</ol>
+<h3 id="53-fill-step-details">5.3 Fill Step Details<a class="headerlink" href="#53-fill-step-details" title="Permanent link">¶</a></h3>
+<p>For each step, expand the overview and fill in:</p>
+<ul>
+<li><strong>Temperature</strong> - Target or maximum temperature (with units)</li>
+<li><strong>Duration</strong> - How long at this temperature</li>
+<li><strong>Ramp rate</strong> - Rate of temperature change (K/min or °C/min)</li>
+<li><strong>Gas atmosphere</strong> - N₂, O₂, forming gas, vacuum, etc.</li>
+<li><strong>Gas flow rate</strong> - If applicable</li>
+<li><strong>Pressure</strong> - Chamber pressure during step</li>
+</ul>
+<p>Example:</p>
+<p><strong>Step 1: Heating</strong></p>
+<ul>
+<li>Temperature: 600 °C</li>
+<li>Duration: 10 min</li>
+<li>Ramp rate: 30 °C/min</li>
+<li>Atmosphere: N₂</li>
+</ul>
+<p><strong>Step 2: Annealing</strong></p>
+<ul>
+<li>Temperature: 600 °C</li>
+<li>Duration: 60 min</li>
+<li>Ramp rate: 0 °C/min (isothermal)</li>
+<li>Atmosphere: N₂</li>
+</ul>
+<p><strong>Step 3: Cooling</strong></p>
+<ul>
+<li>Temperature: 25 °C</li>
+<li>Duration: 20 min</li>
+<li>Ramp rate: -30 °C/min</li>
+<li>Atmosphere: N₂</li>
+</ul>
+<h2 id="step-6-add-input-samples">Step 6: Add Input Samples<a class="headerlink" href="#step-6-add-input-samples" title="Permanent link">¶</a></h2>
+<p>Link the combinatorial libraries or samples that underwent RTP.</p>
+<h3 id="61-determine-number-of-input-samples">6.1 Determine Number of Input Samples<a class="headerlink" href="#61-determine-number-of-input-samples" title="Permanent link">¶</a></h3>
+<p>Count how many separate samples were processed in this RTP run.</p>
+<h3 id="62-create-sample-entries">6.2 Create Sample Entries<a class="headerlink" href="#62-create-sample-entries" title="Permanent link">¶</a></h3>
+<ol>
+<li>
+<p>Click the <strong>"+" icon</strong> next to "Input samples"</p>
+</li>
+<li>
+<p>Add one entry for each sample</p>
+</li>
+</ol>
+<h3 id="63-link-each-sample">6.3 Link Each Sample<a class="headerlink" href="#63-link-each-sample" title="Permanent link">¶</a></h3>
+<p>For each input sample:</p>
+<ol>
+<li>Give it a <strong>name</strong> - Use the cleaved material library name</li>
+<li>
+<p>Example: <code>amazingresearcher_0042_CuZn_BL</code></p>
+</li>
+<li>
+<p><strong>Choose from the list</strong> - Select the existing combinatorial library from your sputtering upload</p>
+</li>
+<li>
+<p>Use filters to find it quickly</p>
+</li>
+<li>
+<p>Choose the <strong>relative position</strong> in the RTP chamber if applicable:</p>
+</li>
+<li>Center, edge, specific location</li>
+<li>This helps track position-dependent effects</li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">Important</p>
+<p>Do NOT click "Save" until you've filled in ALL step data and ALL samples! Partial saves may cause validation errors.</p>
+</div>
+<h2 id="step-7-save-everything">Step 7: Save Everything<a class="headerlink" href="#step-7-save-everything" title="Permanent link">¶</a></h2>
+<p>Once completed:</p>
+<ul>
+<li>✓ Overview information filled</li>
+<li>✓ Material space specified</li>
+<li>✓ All thermal steps added and configured</li>
+<li>✓ All input samples linked</li>
+</ul>
+<p><strong>Click the "Save" button</strong> at the top of the page.</p>
+<div class="admonition danger">
+<p class="admonition-title">Save Only When Complete</p>
+<p>The RTP schema validates relationships between steps and samples. Save only after everything is filled to avoid errors.</p>
+</div>
+<h2 id="verification-checklist">Verification Checklist<a class="headerlink" href="#verification-checklist" title="Permanent link">¶</a></h2>
+<p>After saving, verify:</p>
+<ul>
+<li>[ ] RTP entry created successfully (no error messages)</li>
+<li>[ ] All thermal steps are present and named</li>
+<li>[ ] Temperature profiles are correct</li>
+<li>[ ] Input samples link to correct combinatorial libraries</li>
+<li>[ ] Material space matches your system</li>
+<li>[ ] Logfiles uploaded (if applicable)</li>
+</ul>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">¶</a></h2>
+<h3 id="cant-save-validation-error">Can't save - validation error<a class="headerlink" href="#cant-save-validation-error" title="Permanent link">¶</a></h3>
+<p><strong>Problem</strong>: Error message appears when trying to save</p>
+<p><strong>Solutions</strong>:</p>
+<ul>
+<li>Check that all required fields are filled</li>
+<li>Ensure all thermal steps have temperature and duration</li>
+<li>Verify input samples are properly linked (not just named)</li>
+<li>Make sure material space is specified</li>
+<li>Try filling in any empty fields marked with red indicators</li>
+</ul>
+<h3 id="cant-find-input-sample-in-list">Can't find input sample in list<a class="headerlink" href="#cant-find-input-sample-in-list" title="Permanent link">¶</a></h3>
+<p><strong>Problem</strong>: Expected combinatorial library doesn't appear in selector</p>
+<p><strong>Solutions</strong>:</p>
+<ul>
+<li>Verify the library exists in a sputtering upload</li>
+<li>Check if you have access permissions to that upload</li>
+<li>Ensure the library is from a shared upload</li>
+<li>Search by typing the exact library name</li>
+<li>Ask colleagues if library exists under different name</li>
+</ul>
+<h3 id="wrong-sample-linked">Wrong sample linked<a class="headerlink" href="#wrong-sample-linked" title="Permanent link">¶</a></h3>
+<p><strong>Problem</strong>: Linked incorrect combinatorial library</p>
+<p><strong>Solutions</strong>:</p>
+<ul>
+<li>If not saved yet: simply reselect the correct library</li>
+<li>If already saved: edit the RTP entry and change the link</li>
+<li>Verify the library name matches your physical sample</li>
+</ul>
+<h3 id="multiple-samples-from-same-library">Multiple samples from same library<a class="headerlink" href="#multiple-samples-from-same-library" title="Permanent link">¶</a></h3>
+<p><strong>Problem</strong>: Processed multiple quarters from the same parent library</p>
+<p><strong>Solutions</strong>:</p>
+<ul>
+<li>Add separate input sample entries for each cleaved piece</li>
+<li>Select the specific child library for each (e.g., <code>_Q1</code>, <code>_Q2</code>)</li>
+<li>Document positions if they matter for the RTP process</li>
+</ul>
+<h3 id="thermal-steps-in-wrong-order">Thermal steps in wrong order<a class="headerlink" href="#thermal-steps-in-wrong-order" title="Permanent link">¶</a></h3>
+<p><strong>Problem</strong>: Created steps but they're not in chronological order</p>
+<p><strong>Solutions</strong>:</p>
+<ul>
+<li>Most schemas maintain the order you created them</li>
+<li>Use step numbering in names (1-Heating, 2-Annealing, 3-Cooling)</li>
+<li>Check if the schema allows reordering</li>
+<li>Delete and recreate if necessary (before linking measurements)</li>
+</ul>
+<h2 id="understanding-rtp-data">Understanding RTP Data<a class="headerlink" href="#understanding-rtp-data" title="Permanent link">¶</a></h2>
+<h3 id="why-document-rtp">Why document RTP?<a class="headerlink" href="#why-document-rtp" title="Permanent link">¶</a></h3>
+<p>RTP significantly affects:</p>
+<ul>
+<li><strong>Crystal structure</strong> - Phase transitions, grain growth</li>
+<li><strong>Optical properties</strong> - Bandgap, absorption</li>
+<li><strong>Electrical properties</strong> - Conductivity, mobility</li>
+<li><strong>Compositional homogeneity</strong> - Interdiffusion, segregation</li>
+</ul>
+<p>Documenting RTP enables:</p>
+<ul>
+<li>Reproducing successful processes</li>
+<li>Correlating thermal history with properties</li>
+<li>Searching for samples with similarthermal treatment</li>
+<li>Understanding structure-property relationships</li>
+</ul>
+<h3 id="best-practices">Best practices:<a class="headerlink" href="#best-practices" title="Permanent link">¶</a></h3>
+<ul>
+<li><strong>Complete documentation</strong>: Record all steps, even brief ones</li>
+<li><strong>Consistent naming</strong>: Use systematic step names across RTPs</li>
+<li><strong>Atmosphere details</strong>: Gas type and flow impact results</li>
+<li><strong>Position tracking</strong>: Note sample positions if non-uniform heating</li>
+<li><strong>Link thoroughly</strong>: Connect to both parent deposition and subsequent characterization</li>
+</ul>
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">¶</a></h2>
+<p>After adding RTP data:</p>
+<ol>
+<li>Characterize the processed samples:</li>
+<li><a href="add-xrd-measurements.html">Add XRD Measurements</a> - Check for structural changes</li>
+<li><a href="add-edx-measurements.html">Add EDX Measurements</a> - Verify composition stability</li>
+<li>
+<p>Other characterization as appropriate</p>
+</li>
+<li>
+<p>Compare pre- and post-RTP properties</p>
+</li>
+<li>
+<p>Use Jupyter Analysis to correlate thermal treatment with outcomes</p>
+</li>
+</ol>
+<h2 id="related-resources">Related Resources<a class="headerlink" href="#related-resources" title="Permanent link">¶</a></h2>
+<ul>
+<li><a href="upload-sputtering-data.html">Upload Sputtering Data</a> - Create input libraries</li>
+<li><a href="cleave-libraries.html">Cleave Libraries</a> - Prepare samples for RTP</li>
+<li><a href="../reference/rtp.html">RTP Reference</a> - Detailed schema documentation</li>
+<li><a href="../explanation/workflow.html">Materials Discovery Workflow</a> - RTP in context</li>
+</ul>
+<h2 id="need-help">Need Help?<a class="headerlink" href="#need-help" title="Permanent link">¶</a></h2>
+<p>If you encounter issues:</p>
+<ul>
+<li>Ask colleagues experienced with RTP documentation</li>
+<li>Review existing RTP uploads for examples</li>
+<li>Check the <a href="../reference/rtp.html">Reference Documentation</a></li>
+<li>Contact DTU Nanolab NOMAD support</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer">
+        
+          
+          <a href="add-ellipsometry-measurements.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: Add Ellipsometry Measurements">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Add Ellipsometry Measurements
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="cleave-libraries.html" class="md-footer__link md-footer__link--next" aria-label="Next: Cleave Libraries">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Cleave Libraries
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"></path></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.path", "navigation.footer", "navigation.top", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascript.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>

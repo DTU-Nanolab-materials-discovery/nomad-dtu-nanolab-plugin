@@ -1,0 +1,5384 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A plugin for the schemas, parsers, and workflows of the DTU Nanolab Materials Discovery group">
+      
+      
+        <meta name="author" content="Lena Mittman">
+      
+      
+      
+        <link rel="prev" href="instruments.html">
+      
+      
+        <link rel="next" href="rtp.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>Sputtering Deposition - nomad-dtu-nanolab-plugin</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Titillium+Web:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Titillium Web";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="#2A4CDF" data-md-color-accent="#008A67">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#sputter-deposition" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/" title="nomad-dtu-nanolab-plugin" class="md-header__button md-logo" aria-label="nomad-dtu-nanolab-plugin" data-md-component="logo">
+      
+  <img src="../assets/nomad-plugin-logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            nomad-dtu-nanolab-plugin
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Sputtering Deposition
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/" title="nomad-dtu-nanolab-plugin" class="md-nav__button md-logo" aria-label="nomad-dtu-nanolab-plugin" data-md-component="logo">
+      
+  <img src="../assets/nomad-plugin-logo.png" alt="logo">
+
+    </a>
+    nomad-dtu-nanolab-plugin
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/tutorial.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3">
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1">
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/install_this_plugin.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install this Plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/getting-started-with-schemas.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understanding Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2">
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Upload &amp; Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Upload &amp; Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/upload-sputtering-data.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upload Sputtering Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/add-edx-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add EDX Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/add-raman-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add Raman Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/add-xrd-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add XRD Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/add-ellipsometry-measurements.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add Ellipsometry Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/add-rtp-data.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add RTP Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/cleave-libraries.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cleave Libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3">
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Visualization &amp; Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Visualization &amp; Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/plot-combinatorial-edx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plot Combinatorial EDX Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/export-high-quality-figures.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export High-Quality Figures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4">
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Troubleshooting
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/troubleshoot-jupyter.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fix Jupyter Launch Issues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5">
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/adapt-for-your-lab.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adapt for Your Lab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/contribute_to_this_plugin.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute to this plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how_to/contribute_to_the_documentation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute to the documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4">
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explanation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Explanation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/data-model.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/workflow.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Materials Discovery Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/combinatorial-libraries.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Combinatorial Libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/characterization.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Characterization Techniques
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2">
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lab Inventory &amp; Items
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Lab Inventory &amp; Items
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="samples.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Samples and Libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="substrates.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Substrates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="targets.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="gas.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gas Supplies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instruments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Synthesis &amp; Processing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Synthesis &amp; Processing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sputtering Deposition
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="sputtering.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sputtering Deposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typical-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parsing-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parsing Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parsing Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#benefits-of-automated-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benefits of Automated Processing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Schemas
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schema-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema Documentation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Schema Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dtusubstratemounting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuSubstrateMounting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtupowersetpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuPowerSetPoint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusputterpowersupply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSputterPowerSupply
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtudcbias" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuDCBias
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuforwardpower" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuForwardPower
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtureflectedpower" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuReflectedPower
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusputterrfpowersupply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSputterRFPowerSupply
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuvoltage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuVoltage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtucurrent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuCurrent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusputterdcpowersupply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSputterDCPowerSupply
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtupulsefrequency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuPulseFrequency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtudeadtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuDeadTime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusputterpulseddcpowersupply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSputterPulsedDCPowerSupply
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#substrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Substrate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scrackeroverview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SCrackerOverview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuzonetemp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuZoneTemp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuvalveontime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuValveOnTime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuvalvefrequency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuValveFrequency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scracker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SCracker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtushutter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUShutter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtutargetreference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUTargetReference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtutargetcomponent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUTargetComponent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSource
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuplasma" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuPlasma
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusputteringsource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSputteringSource
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtureactivegascomponent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuReactiveGasComponent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtumassflowcontroller" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuMassFlowController
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtureactivegassource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuReactiveGasSource
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtucrackermaterial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuCrackerMaterial
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtucrackersource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuCrackerSource
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtugasflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUGasFlow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtutemperature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuTemperature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusubstrateheater" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuSubstrateHeater
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuchamberenvironment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUChamberEnvironment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusteps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSteps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#endofprocess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EndOfProcess
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instrumentparameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        InstrumentParameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sourceoverview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SourceOverview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usedgas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UsedGas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sourcerampup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SourceRampUp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sourcepresput" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SourcePresput
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sourcedeprate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SourceDepRate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sulfurcrackerpressure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SulfurCrackerPressure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#depositionparameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DepositionParameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#temprampup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TempRampUp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#temprampdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TempRampDown
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuflag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuFlag
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusputtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSputtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="rtp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rapid Thermal Processing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="thermal.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Thermal Evaporation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cleaving.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Library Cleaving
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4">
+        
+          
+          <label class="md-nav__link" for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Characterization
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Characterization
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="basesections.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base Measurement Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="xrd.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    X-ray Diffraction (XRD)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="xps.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    X-ray Photoelectron Spectroscopy (XPS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="edx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Energy-Dispersive X-ray (EDX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="pl.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Photoluminescence (PL)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ellipsometry.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ellipsometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="raman.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Raman Spectroscopy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="rt.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RT Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5">
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="analysis.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Jupyter Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typical-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parsing-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parsing Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parsing Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#benefits-of-automated-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benefits of Automated Processing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Schemas
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schema-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema Documentation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Schema Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dtusubstratemounting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuSubstrateMounting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtupowersetpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuPowerSetPoint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusputterpowersupply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSputterPowerSupply
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtudcbias" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuDCBias
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuforwardpower" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuForwardPower
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtureflectedpower" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuReflectedPower
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusputterrfpowersupply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSputterRFPowerSupply
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuvoltage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuVoltage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtucurrent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuCurrent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusputterdcpowersupply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSputterDCPowerSupply
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtupulsefrequency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuPulseFrequency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtudeadtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuDeadTime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusputterpulseddcpowersupply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSputterPulsedDCPowerSupply
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#substrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Substrate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scrackeroverview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SCrackerOverview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuzonetemp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuZoneTemp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuvalveontime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuValveOnTime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuvalvefrequency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuValveFrequency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scracker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SCracker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtushutter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUShutter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtutargetreference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUTargetReference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtutargetcomponent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUTargetComponent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSource
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuplasma" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuPlasma
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusputteringsource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSputteringSource
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtureactivegascomponent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuReactiveGasComponent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtumassflowcontroller" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuMassFlowController
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtureactivegassource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuReactiveGasSource
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtucrackermaterial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuCrackerMaterial
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtucrackersource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuCrackerSource
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtugasflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUGasFlow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtutemperature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuTemperature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusubstrateheater" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuSubstrateHeater
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuchamberenvironment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUChamberEnvironment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusteps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSteps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#endofprocess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EndOfProcess
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instrumentparameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        InstrumentParameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sourceoverview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SourceOverview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usedgas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UsedGas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sourcerampup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SourceRampUp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sourcepresput" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SourcePresput
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sourcedeprate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SourceDepRate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sulfurcrackerpressure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SulfurCrackerPressure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#depositionparameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DepositionParameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#temprampup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TempRampUp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#temprampdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TempRampDown
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtuflag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DtuFlag
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dtusputtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DTUSputtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation">
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../index.html" class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="index.html" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Reference
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="sputtering.html" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Synthesis &amp; Processing
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="sputter-deposition">Sputter Deposition<a class="headerlink" href="#sputter-deposition" title="Permanent link">¶</a></h1>
+<p>Sputter deposition is a physical vapor deposition technique where material is ejected from targets by ion bombardment and deposited onto substrates. At DTU Nanolab, multi-target sputtering creates combinatorial libraries for efficient materials exploration.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">¶</a></h2>
+<p>This schema package defines:</p>
+<ul>
+<li><strong>DTUSputtering</strong> - A sputter deposition process with detailed parameters for targets, gases, pressures, powers, and substrate handling</li>
+</ul>
+<p>The sputtering process extends NOMAD's <code>Process</code> and <code>Activity</code> base classes, providing:</p>
+<ul>
+<li>Links to input entities (substrates, targets, gases) and output entities (samples/libraries)</li>
+<li>Deposition parameters (pressure, power, time, temperature)</li>
+<li>Multi-target configurations with independent control</li>
+<li>Gas flow and composition settings</li>
+<li>Automated workflow integration</li>
+</ul>
+<h2 id="typical-usage">Typical Usage<a class="headerlink" href="#typical-usage" title="Permanent link">¶</a></h2>
+<ol>
+<li><strong>Set up deposition</strong>: Reference <a href="substrates.html">substrates</a> to use, <a href="targets.html">targets</a> for each source, <a href="gas.html">gases</a> for atmosphere, and the <a href="instruments.html">instrument</a></li>
+<li><strong>Configure parameters</strong>: Set target powers, chamber pressure, gas flows, deposition time, substrate temperature</li>
+<li><strong>Document gradient/pattern</strong>: For combinatorial libraries, describe the composition gradient or pattern</li>
+<li><strong>Link output</strong>: Reference the <a href="samples.html">DTUCombinatorialLibrary</a> created by this process</li>
+<li><strong>Track provenance</strong>: The sputtering entry links the entire chain: substrates + targets + gases → library</li>
+</ol>
+<h2 id="parsing-workflow">Parsing Workflow<a class="headerlink" href="#parsing-workflow" title="Permanent link">¶</a></h2>
+<p>The sputtering parser automatically processes machine log files and extracts relevant process information through a multi-step workflow:</p>
+<ol>
+<li><strong>Data Logging</strong>: During deposition, more than 100 machine signals (pressure gauges, powers, flows, etc.) are logged through time using the native software of the sputtering tool (Lesker Eklipse). Relevant logged quantities include:</li>
+<li>Chamber pressure</li>
+<li>Flow rates of reactive and non-reactive gases</li>
+<li>Status of the S cracker</li>
+<li>Substrate temperature</li>
+<li>
+<p>Sputter target information and operating conditions (sputtering mode, power, shutter status, etc.)</p>
+</li>
+<li>
+<p><strong>Process Step Identification</strong>: The logged information is uploaded to the sputtering entry and rationalized using a custom parser. Important process steps are identified using conditional logic that uniquely describes each processing step. For example:</p>
+</li>
+<li>The <strong>deposition step</strong> is defined as timestamps where at least one target is both on with a sustained plasma and in line of sight of the substrate (shutters open)</li>
+<li>
+<p>Other identified steps include: Temperature Ramping Up, Deposition, Cooling, etc.</p>
+</li>
+<li>
+<p><strong>Parameter Extraction</strong>: Once processing steps are identified, derived parameters that give insight into the process are automatically extracted. For instance:</p>
+</li>
+<li>Deposition temperature is calculated as the average recorded temperature during the deposition step</li>
+<li>
+<p>Similar derived parameters are calculated for each process step</p>
+</li>
+<li>
+<p><strong>Schema Population</strong>: Derived parameters are routed to their relevant locations in the sputtering data schema, allowing easy access to:</p>
+</li>
+<li>General quantities (e.g., deposition temperature)</li>
+<li>
+<p>Specific quantities (e.g., reflected RF power as a function of time during target plasma ignition)</p>
+</li>
+<li>
+<p><strong>Visualization</strong>: Process information is assembled into graphs providing quick process overview:</p>
+</li>
+<li>Main deposition events represented as a function of time</li>
+<li>Visualization of elemental and gaseous source positions during combinatorial deposition</li>
+<li>
+<p>Target stability diagnostics (e.g., DC bias as a function of time during deposition for RF sputtering)</p>
+</li>
+<li>
+<p><strong>Library Generation</strong>: Based on user-provided substrate information, combinatorial libraries are automatically created following laboratory conventions. For example:</p>
+</li>
+<li>Four square-shaped Si substrates and one rectangular glass substrate → 5 standalone combinatorial library instances</li>
+<li>Each library has harmonious naming conventions and references linking to the sputtering process and respective substrate types</li>
+</ol>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../assets/sputtering-workflow.png" data-desc-position="bottom"><img alt="Sputtering workflow visualization" src="../assets/sputtering-workflow.png"></a></p>
+<p><em>Default graphs obtained from parsing a log file through the sputtering entry. (a) Position of the different substrates on the platen during deposition, relative to the sources, namely the reactive toxic gas inlet (H2S + PH3) and the Cu target and other sputtering chamber landmark. (b) Position of the substrate during mounting, defining the orientation of base coordinate system for the combinatorial library. (c) Process timeline graph representing the extent in time of different process-relevant events, such as the moments where reactive gases were flown in the chamber (PH3 On, H2S on) or the moment of the deposition itself. (d) The DC self-bias developed by the Cu target during the deposition.</em></p>
+<h3 id="benefits-of-automated-processing">Benefits of Automated Processing<a class="headerlink" href="#benefits-of-automated-processing" title="Permanent link">¶</a></h3>
+<p>With automatic log file processing, the time a user must spend on uploading data is minimized and the benefits outweigh the extra work by far.</p>
+<p><strong>Short-term benefits:</strong>
+- Human-readable plots automatically generated from log file data
+- Visualization of important parameters throughout the deposition process
+- Immediate diagnostic feedback on process stability</p>
+<p><strong>Long-term benefits:</strong>
+- Maintaining an overview of completed experiments
+- Easing the integration of collected data during the planning of future experiments
+- Facilitating the publication of synthesis data in accordance with FAIR principles</p>
+<h2 id="key-parameters">Key Parameters<a class="headerlink" href="#key-parameters" title="Permanent link">¶</a></h2>
+<ul>
+<li><strong>Target configurations</strong>: Multiple targets with independent power control</li>
+<li><strong>Chamber conditions</strong>: Base pressure, working pressure, gas composition</li>
+<li><strong>Deposition control</strong>: Time, rate, substrate rotation/motion for gradients</li>
+<li><strong>Thermal management</strong>: Substrate temperature, heating/cooling</li>
+</ul>
+<h2 id="related-schemas">Related Schemas<a class="headerlink" href="#related-schemas" title="Permanent link">¶</a></h2>
+<ul>
+<li><strong>Input entities</strong>: <a href="substrates.html">Substrates</a>, <a href="targets.html">Targets</a>, <a href="gas.html">Gas Supplies</a></li>
+<li><strong>Instrument</strong>: <a href="instruments.html">DTUInstrument</a> (sputter tool)</li>
+<li><strong>Output entities</strong>: <a href="samples.html">DTUCombinatorialLibrary</a></li>
+<li><strong>Follow-up processes</strong>: <a href="cleaving.html">Library Cleaving</a>, <a href="rtp.html">RTP</a></li>
+<li><strong>Characterization</strong>: <a href="xrd.html">XRD</a>, <a href="xps.html">XPS</a>, <a href="edx.html">EDX</a>, etc.</li>
+</ul>
+<hr>
+<h2 id="schema-documentation">Schema Documentation<a class="headerlink" href="#schema-documentation" title="Permanent link">¶</a></h2>
+<h3 id="dtusubstratemounting">DtuSubstrateMounting<a class="headerlink" href="#dtusubstratemounting" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Section containing information about the mounting of the substrate.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td><code>str</code></td>
+<td>The name of the substrate mounting.</td>
+</tr>
+<tr>
+<td>substrate_batch</td>
+<td><code>nomad_dtu_nanolab_plugin.schema_packages.substrate.DTUSubstrateBatch</code></td>
+<td>A reference to the batch of the substrate used.</td>
+</tr>
+<tr>
+<td>substrate</td>
+<td><code>nomad_dtu_nanolab_plugin.schema_packages.substrate.DTUSubstrate</code></td>
+<td>A reference to the substrate used.</td>
+</tr>
+<tr>
+<td>relative_position</td>
+<td><code>str</code></td>
+<td>The relative position of the substrate on the platen.</td>
+</tr>
+<tr>
+<td>position_x</td>
+<td><code>float64</code></td>
+<td>The x-coordinate of the substrate on the platen.<br><strong>unit</strong>=<code>meter</code></td>
+</tr>
+<tr>
+<td>position_y</td>
+<td><code>float64</code></td>
+<td>The y-coordinate of the substrate on the platen.<br><strong>unit</strong>=<code>meter</code></td>
+</tr>
+<tr>
+<td>rotation</td>
+<td><code>float64</code></td>
+<td>The rotation of the substrate on the platen, relative to the width (x-axis) and height (y-axis) of the substrate.<br><strong>unit</strong>=<code>radian</code></td>
+</tr>
+<tr>
+<td>method_of_contact</td>
+<td><code>['clamps', 'frame', 'other']</code></td>
+<td>The method of contact between the substrate and the platen.<br><strong>default</strong>=<code>clamps</code></td>
+</tr>
+<tr>
+<td>mask_used</td>
+<td><code>bool</code></td>
+<td>Whether a mask was used during the deposition.<br><strong>default</strong>=<code>False</code></td>
+</tr>
+<tr>
+<td>mask_description</td>
+<td><code>str</code></td>
+<td>A description of the mask used.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>DtuSubstrateMounting</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+<h3 id="dtupowersetpoint">DtuPowerSetPoint<a class="headerlink" href="#dtupowersetpoint" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>float64</code></td>
+<td>The set point power.<br><strong>shape</strong>=<code>['*']</code>, <strong>unit</strong>=<code>watt</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtusputterpowersupply">DTUSputterPowerSupply<a class="headerlink" href="#dtusputterpowersupply" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.vapor_deposition.pvd.general.PVDEvaporationSource</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>power_type</td>
+<td><code>['DC', 'RF', 'pulsed_DC']</code></td>
+<td><strong>default</strong>=<code>RF</code></td>
+</tr>
+<tr>
+<td>avg_power_sp</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>kilogram * meter ** 2 / second ** 3</code></td>
+</tr>
+<tr>
+<td>power_sp</td>
+<td><a href="#dtupowersetpoint"><code>DtuPowerSetPoint</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtudcbias">DtuDCBias<a class="headerlink" href="#dtudcbias" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>float64</code></td>
+<td>The DC self bias.<br><strong>shape</strong>=<code>['*']</code>, <strong>unit</strong>=<code>volt</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtuforwardpower">DtuForwardPower<a class="headerlink" href="#dtuforwardpower" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>float64</code></td>
+<td>The forward power.<br><strong>shape</strong>=<code>['*']</code>, <strong>unit</strong>=<code>watt</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtureflectedpower">DtuReflectedPower<a class="headerlink" href="#dtureflectedpower" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>float64</code></td>
+<td>The reflected power.<br><strong>shape</strong>=<code>['*']</code>, <strong>unit</strong>=<code>watt</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtusputterrfpowersupply">DTUSputterRFPowerSupply<a class="headerlink" href="#dtusputterrfpowersupply" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <a href="#dtusputterpowersupply"><code>DTUSputterPowerSupply</code></a></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>power_type</td>
+<td><code>['RF']</code></td>
+<td>The type of power supply.<br><strong>default</strong>=<code>RF</code></td>
+</tr>
+<tr>
+<td>avg_dc_bias</td>
+<td><code>float64</code></td>
+<td>The average DC bias.<br><strong>unit</strong>=<code>volt</code></td>
+</tr>
+<tr>
+<td>avg_fwd_power</td>
+<td><code>float64</code></td>
+<td>The average forward power.<br><strong>unit</strong>=<code>kilogram * meter ** 2 / second ** 3</code></td>
+</tr>
+<tr>
+<td>avg_rfl_power</td>
+<td><code>float64</code></td>
+<td>The average reflected power.<br><strong>unit</strong>=<code>kilogram * meter ** 2 / second ** 3</code></td>
+</tr>
+<tr>
+<td>dc_bias</td>
+<td><a href="#dtudcbias"><code>DtuDCBias</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>fwd_power</td>
+<td><a href="#dtuforwardpower"><code>DtuForwardPower</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>rfl_power</td>
+<td><a href="#dtureflectedpower"><code>DtuReflectedPower</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtuvoltage">DtuVoltage<a class="headerlink" href="#dtuvoltage" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>float64</code></td>
+<td>The voltage of the power supply.<br><strong>shape</strong>=<code>['*']</code>, <strong>unit</strong>=<code>volt</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtucurrent">DtuCurrent<a class="headerlink" href="#dtucurrent" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>float64</code></td>
+<td>The current of the power supply.<br><strong>shape</strong>=<code>['*']</code>, <strong>unit</strong>=<code>ampere</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtusputterdcpowersupply">DTUSputterDCPowerSupply<a class="headerlink" href="#dtusputterdcpowersupply" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <a href="#dtusputterpowersupply"><code>DTUSputterPowerSupply</code></a></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>avg_voltage</td>
+<td><code>float64</code></td>
+<td>The average voltage of the DC power supply.<br><strong>unit</strong>=<code>volt</code></td>
+</tr>
+<tr>
+<td>avg_current</td>
+<td><code>float64</code></td>
+<td>The average current of the DC power supply.<br><strong>unit</strong>=<code>ampere</code></td>
+</tr>
+<tr>
+<td>voltage</td>
+<td><a href="#dtuvoltage"><code>DtuVoltage</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>current</td>
+<td><a href="#dtucurrent"><code>DtuCurrent</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtupulsefrequency">DtuPulseFrequency<a class="headerlink" href="#dtupulsefrequency" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>float64</code></td>
+<td>The pulse frequency of the PDC power supply<br><strong>shape</strong>=<code>['*']</code>, <strong>unit</strong>=<code>hertz</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtudeadtime">DtuDeadTime<a class="headerlink" href="#dtudeadtime" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>float64</code></td>
+<td>The dead time of the PDC power supply.<br><strong>shape</strong>=<code>['*']</code>, <strong>unit</strong>=<code>second</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtusputterpulseddcpowersupply">DTUSputterPulsedDCPowerSupply<a class="headerlink" href="#dtusputterpulseddcpowersupply" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <a href="#dtusputterdcpowersupply"><code>DTUSputterDCPowerSupply</code></a></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>avg_pulse_frequency</td>
+<td><code>float64</code></td>
+<td>The average pulse frequency of the PDC power supply.<br><strong>unit</strong>=<code>1 / second</code></td>
+</tr>
+<tr>
+<td>avg_dead_time</td>
+<td><code>float64</code></td>
+<td>The average dead time of the PDC power supply.<br><strong>unit</strong>=<code>second</code></td>
+</tr>
+<tr>
+<td>pulse_frequency</td>
+<td><a href="#dtupulsefrequency"><code>DtuPulseFrequency</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>dead_time</td>
+<td><a href="#dtudeadtime"><code>DtuDeadTime</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="substrate">Substrate<a class="headerlink" href="#substrate" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>setpoint_temperature</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>corrected_real_temperature</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>Substrate</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+<h3 id="scrackeroverview">SCrackerOverview<a class="headerlink" href="#scrackeroverview" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>zone1_temperature</td>
+<td><code>float64</code></td>
+<td>The temperature of sulfur cracker zone 1.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>zone1_temperature_setpoint</td>
+<td><code>float64</code></td>
+<td>The temperature setpoint of sulfur cracker zone 1.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>zone2_temperature</td>
+<td><code>float64</code></td>
+<td>The temperature of sulfur cracker zone 2.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>zone3_temperature</td>
+<td><code>float64</code></td>
+<td>The temperature of sulfur cracker zone 3.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>valve_on_time</td>
+<td><code>float64</code></td>
+<td>The valve on time of the sulfur cracker zone 2.<br><strong>unit</strong>=<code>second</code></td>
+</tr>
+<tr>
+<td>valve_frequency</td>
+<td><code>float64</code></td>
+<td>The valve frequency of the sulfur cracker zone 2.<br><strong>unit</strong>=<code>1 / second</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtuzonetemp">DtuZoneTemp<a class="headerlink" href="#dtuzonetemp" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>float64</code></td>
+<td>The temperature of zone 1.<br><strong>shape</strong>=<code>['*']</code>, <strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtuvalveontime">DtuValveOnTime<a class="headerlink" href="#dtuvalveontime" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>float64</code></td>
+<td>The valve on time.<br><strong>shape</strong>=<code>['*']</code>, <strong>unit</strong>=<code>second</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtuvalvefrequency">DtuValveFrequency<a class="headerlink" href="#dtuvalvefrequency" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>float64</code></td>
+<td>The valve frequency.<br><strong>shape</strong>=<code>['*']</code>, <strong>unit</strong>=<code>hertz</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="scracker">SCracker<a class="headerlink" href="#scracker" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>avg_zone1_temperature</td>
+<td><code>float64</code></td>
+<td>The average temperature of sulfur cracker zone 1.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>avg_zone2_temperature</td>
+<td><code>float64</code></td>
+<td>The average temperature of sulfur cracker zone 2.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>avg_zone3_temperature</td>
+<td><code>float64</code></td>
+<td>The average temperature of sulfur cracker zone 3.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>avg_valve_on_time</td>
+<td><code>float64</code></td>
+<td>The average valve on time of the sulfur cracker zone 2.<br><strong>unit</strong>=<code>second</code></td>
+</tr>
+<tr>
+<td>avg_valve_frequency</td>
+<td><code>float64</code></td>
+<td>The average valve frequency of the sulfur cracker zone 2.<br><strong>unit</strong>=<code>1 / second</code></td>
+</tr>
+<tr>
+<td>zone1_temperature</td>
+<td><a href="#dtuzonetemp"><code>DtuZoneTemp</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>zone2_temperature</td>
+<td><a href="#dtuzonetemp"><code>DtuZoneTemp</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>zone3_temperature</td>
+<td><a href="#dtuzonetemp"><code>DtuZoneTemp</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>valve_on_time</td>
+<td><a href="#dtuvalveontime"><code>DtuValveOnTime</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>valve_frequency</td>
+<td><a href="#dtuvalvefrequency"><code>DtuValveFrequency</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtushutter">DTUShutter<a class="headerlink" href="#dtushutter" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>bool</code></td>
+<td>Position of the substrate shutter (1: open, 0: closed).<br><strong>shape</strong>=<code>['*']</code></td>
+</tr>
+<tr>
+<td>mode_value</td>
+<td><code>bool</code></td>
+<td>Most represented (mode value) shutter state (1: mostly pen, 0: mostly closed).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtutargetreference">DTUTargetReference<a class="headerlink" href="#dtutargetreference" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.metainfo.basesections.v1.CompositeSystemReference</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>reference</td>
+<td><code>nomad_dtu_nanolab_plugin.schema_packages.target.DTUTarget</code></td>
+<td>A reference to a NOMAD Target entry.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>DtuTargetReference</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+<h3 id="dtutargetcomponent">DTUTargetComponent<a class="headerlink" href="#dtutargetcomponent" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.metainfo.basesections.v1.Component</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>system</td>
+<td><code>nomad_dtu_nanolab_plugin.schema_packages.target.DTUTarget</code></td>
+<td>The target material.</td>
+</tr>
+<tr>
+<td>lab_id</td>
+<td><code>str</code></td>
+<td>The lab ID of the target material.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong> without further documentation</p>
+<h3 id="dtusource">DTUSource<a class="headerlink" href="#dtusource" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.vapor_deposition.pvd.general.PVDSource</code></p>
+<h3 id="dtuplasma">DtuPlasma<a class="headerlink" href="#dtuplasma" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class similar a DTUSputteringSource with the exception that it does not have a material section</p>
+<p><strong>inherits from</strong>: <a href="#dtusource"><code>DTUSource</code></a></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>source_shutter_open</td>
+<td><a href="#dtushutter"><code>DTUShutter</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>vapor_source</td>
+<td><a href="#dtusputterpowersupply"><code>DTUSputterPowerSupply</code></a></td>
+<td>The power supply of the sputtering source.<br><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtusputteringsource">DTUSputteringSource<a class="headerlink" href="#dtusputteringsource" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <a href="#dtuplasma"><code>DtuPlasma</code></a></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>material</td>
+<td><a href="#dtutargetcomponent"><code>DTUTargetComponent</code></a></td>
+<td>The source of the material that is being evaporated. Example: A sputtering target, a powder in a crucible, etc.<br><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>DTUSource</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+<h3 id="dtureactivegascomponent">DtuReactiveGasComponent<a class="headerlink" href="#dtureactivegascomponent" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.metainfo.basesections.v1.Component</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>system</td>
+<td><code>nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply</code></td>
+<td>The reactive gas supply.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtumassflowcontroller">DtuMassFlowController<a class="headerlink" href="#dtumassflowcontroller" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.metainfo.basesections.v1.Component</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>flow</td>
+<td><code>nomad_material_processing.vapor_deposition.general.VolumetricFlowRate</code></td>
+<td><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtureactivegassource">DtuReactiveGasSource<a class="headerlink" href="#dtureactivegassource" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <a href="#dtusource"><code>DTUSource</code></a></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>material</td>
+<td><a href="#dtureactivegascomponent"><code>DtuReactiveGasComponent</code></a></td>
+<td>The source of the material that is being evaporated. Example: A sputtering target, a powder in a crucible, etc.<br><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>vapor_source</td>
+<td><a href="#dtumassflowcontroller"><code>DtuMassFlowController</code></a></td>
+<td>Example: A heater, a filament, a laser, etc.<br><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtucrackermaterial">DtuCrackerMaterial<a class="headerlink" href="#dtucrackermaterial" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.metainfo.basesections.v1.PureSubstanceComponent</code></p>
+<p><strong>normalization</strong>: </p>
+<p>If none is set, the
+normalizer will set the name of the component to be the molecular formula of the
+substance.</p>
+<h3 id="dtucrackersource">DtuCrackerSource<a class="headerlink" href="#dtucrackersource" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <a href="#dtusource"><code>DTUSource</code></a></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>material</td>
+<td><a href="#dtucrackermaterial"><code>DtuCrackerMaterial</code></a></td>
+<td>The source of the material that is being evaporated. Example: A sputtering target, a powder in a crucible, etc.<br><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>vapor_source</td>
+<td><a href="#scracker"><code>SCracker</code></a></td>
+<td>Example: A heater, a filament, a laser, etc.<br><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>valve_open</td>
+<td><a href="#dtushutter"><code>DTUShutter</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtugasflow">DTUGasFlow<a class="headerlink" href="#dtugasflow" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.vapor_deposition.general.GasFlow</code>, <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gas_name</td>
+<td><code>str</code></td>
+<td>The name of the gas.</td>
+</tr>
+<tr>
+<td>gas_supply_reference</td>
+<td><code>nomad_dtu_nanolab_plugin.schema_packages.gas.DTUGasSupply</code></td>
+<td>The gas supply used.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>DTUGasFlow</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+<h3 id="dtutemperature">DtuTemperature<a class="headerlink" href="#dtutemperature" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.general.TimeSeries</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td><code>float64</code></td>
+<td>The temperature of the heater.<br><strong>shape</strong>=<code>['*']</code>, <strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtusubstrateheater">DtuSubstrateHeater<a class="headerlink" href="#dtusubstrateheater" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Custom class for the substrate heater.</p>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.vapor_deposition.general.SubstrateHeater</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>avg_temperature_1</td>
+<td><code>float64</code></td>
+<td>The average temperature of the heater as measured by thermocouple 1.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>avg_temperature_2</td>
+<td><code>float64</code></td>
+<td>The average temperature of the heater as measured by thermocouple 2.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>avg_temperature_setpoint</td>
+<td><code>float64</code></td>
+<td>The average temperature setpoint of the heater.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>temperature_1</td>
+<td><a href="#dtutemperature"><code>DtuTemperature</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>temperature_2</td>
+<td><a href="#dtutemperature"><code>DtuTemperature</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>temperature_setpoint</td>
+<td><a href="#dtutemperature"><code>DtuTemperature</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtuchamberenvironment">DTUChamberEnvironment<a class="headerlink" href="#dtuchamberenvironment" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.vapor_deposition.general.ChamberEnvironment</code>, <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gas_flow</td>
+<td><a href="#dtugasflow"><code>DTUGasFlow</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>platen_bias</td>
+<td><a href="#dtuplasma"><code>DtuPlasma</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>heater</td>
+<td><a href="#dtusubstrateheater"><code>DtuSubstrateHeater</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>DTUChamberEnvironment</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+<h3 id="dtusteps">DTUSteps<a class="headerlink" href="#dtusteps" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.vapor_deposition.pvd.general.PVDStep</code>, <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sources</td>
+<td><a href="#dtusource"><code>DTUSource</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>environment</td>
+<td><a href="#dtuchamberenvironment"><code>DTUChamberEnvironment</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>DTUSteps</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+<h3 id="endofprocess">EndOfProcess<a class="headerlink" href="#endofprocess" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>taken_out</td>
+<td><code>['back', 'front']</code></td>
+<td><strong>default</strong>=<code>front</code></td>
+</tr>
+<tr>
+<td>heater_temperature</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>time_in_chamber_after_deposition</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>second</code></td>
+</tr>
+<tr>
+<td>chamber_purged</td>
+<td><code>bool</code></td>
+<td><strong>default</strong>=<code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="instrumentparameters">InstrumentParameters<a class="headerlink" href="#instrumentparameters" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.metainfo.basesections.v1.InstrumentReference</code>, <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>platen_rotation</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>radian</code></td>
+</tr>
+<tr>
+<td>stage_used</td>
+<td><code>['cooling', 'heating']</code></td>
+<td><strong>default</strong>=<code>heating</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>InstrumentParameters</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+<h3 id="sourceoverview">SourceOverview<a class="headerlink" href="#sourceoverview" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>target_name</td>
+<td><code>str</code></td>
+<td>The name of the gun on which the target in mounted.</td>
+</tr>
+<tr>
+<td>target_material</td>
+<td><code>str</code></td>
+<td>The material of the target.</td>
+</tr>
+<tr>
+<td>target_usage</td>
+<td><code>float64</code></td>
+<td>The accumulated power the target has been exposed to at the end of the deposition<br><strong>unit</strong>=<code>hour * kilowatt</code></td>
+</tr>
+<tr>
+<td>applied_power</td>
+<td><code>float64</code></td>
+<td>The applied power.<br><strong>unit</strong>=<code>kilogram * meter ** 2 / second ** 3</code></td>
+</tr>
+<tr>
+<td>power_type</td>
+<td><code>['DC', 'RF', 'pulsed_DC']</code></td>
+<td>The type of power supply.<br><strong>default</strong>=<code>RF</code></td>
+</tr>
+<tr>
+<td>average_voltage</td>
+<td><code>float64</code></td>
+<td>The average voltage (DC bias in RF) of the power supply.<br><strong>unit</strong>=<code>volt</code></td>
+</tr>
+<tr>
+<td>std_voltage</td>
+<td><code>float64</code></td>
+<td>'The standard deviation of the voltage (DC bias in RF) of the power supply.'<br><strong>unit</strong>=<code>volt</code></td>
+</tr>
+<tr>
+<td>start_voltage</td>
+<td><code>float64</code></td>
+<td>The voltage (DC bias in RF) at the start of the deposition.<br><strong>unit</strong>=<code>volt</code></td>
+</tr>
+<tr>
+<td>end_voltage</td>
+<td><code>float64</code></td>
+<td>The voltage (DC bias in RF) at the end of the deposition.<br><strong>unit</strong>=<code>volt</code></td>
+</tr>
+<tr>
+<td>start_end_voltage</td>
+<td><code>float64</code></td>
+<td>The difference between the start and end voltage (DC bias in RF).<br><strong>unit</strong>=<code>volt</code></td>
+</tr>
+<tr>
+<td>max_voltage</td>
+<td><code>float64</code></td>
+<td>The maximum voltage (DC bias in RF) during the deposition.<br><strong>unit</strong>=<code>volt</code></td>
+</tr>
+<tr>
+<td>min_voltage</td>
+<td><code>float64</code></td>
+<td>The minimum voltage (DC bias in RF) during the deposition.<br><strong>unit</strong>=<code>volt</code></td>
+</tr>
+<tr>
+<td>range_voltage</td>
+<td><code>float64</code></td>
+<td>The difference between min and max voltage (DC bias in RF).<br><strong>unit</strong>=<code>volt</code></td>
+</tr>
+<tr>
+<td>voltage_comments</td>
+<td><code>str</code></td>
+<td>Comments on the voltage (DC bias in RF) during the deposition.</td>
+</tr>
+<tr>
+<td>target_id</td>
+<td><a href="#dtutargetreference"><code>DTUTargetReference</code></a></td>
+<td>A reference to the target used.<br><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="usedgas">UsedGas<a class="headerlink" href="#usedgas" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.vapor_deposition.general.GasFlow</code>, <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gas_name</td>
+<td><code>str</code></td>
+<td></td>
+</tr>
+<tr>
+<td>used_gas_supply</td>
+<td><code>nomad.datamodel.metainfo.basesections.v1.CompositeSystem</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>UsedGas</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+<h3 id="sourcerampup">SourceRampUp<a class="headerlink" href="#sourcerampup" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>target_name</td>
+<td><code>str</code></td>
+<td>The name of the gun on which the target in mounted.</td>
+</tr>
+<tr>
+<td>plasma_ignition_power</td>
+<td><code>float64</code></td>
+<td>The power at which plasma ignites.<br><strong>unit</strong>=<code>kilogram * meter ** 2 / second ** 3</code></td>
+</tr>
+<tr>
+<td>plasma_ignition_pressure</td>
+<td><code>float64</code></td>
+<td>The pressure at which the plasma was ignited.<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="sourcepresput">SourcePresput<a class="headerlink" href="#sourcepresput" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>target_name</td>
+<td><code>str</code></td>
+<td>The name of the gun on which the target in mounted.</td>
+</tr>
+<tr>
+<td>presput_time</td>
+<td><code>float64</code></td>
+<td>The total presputtering time.<br><strong>unit</strong>=<code>second</code></td>
+</tr>
+<tr>
+<td>presput_power</td>
+<td><code>float64</code></td>
+<td>The average power during presputtering.<br><strong>unit</strong>=<code>kilogram * meter ** 2 / second ** 3</code></td>
+</tr>
+<tr>
+<td>presput_pressure</td>
+<td><code>float64</code></td>
+<td>The average pressure during presputtering.<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+<tr>
+<td>presput_ar_flow</td>
+<td><code>float64</code></td>
+<td>The average Ar flow during presputtering.<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="sourcedeprate">SourceDepRate<a class="headerlink" href="#sourcedeprate" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>target_name</td>
+<td><code>str</code></td>
+<td></td>
+</tr>
+<tr>
+<td>source_deprate</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>meter / second</code></td>
+</tr>
+<tr>
+<td>source_deprate_ref_mat</td>
+<td><code>str</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="sulfurcrackerpressure">SulfurCrackerPressure<a class="headerlink" href="#sulfurcrackerpressure" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sulfur_partial_pressure</td>
+<td><code>float64</code></td>
+<td><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+<tr>
+<td>sulfur_flow</td>
+<td><code>float64</code></td>
+<td>Flow of sulfur<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>SulfurCrackerPressure</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+<h3 id="depositionparameters">DepositionParameters<a class="headerlink" href="#depositionparameters" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>deposition_temperature</td>
+<td><code>float64</code></td>
+<td>The temperature of the deposition as measured by thermocouple 1.<br><strong>unit</strong>=<code>kelvin</code>, <strong>default</strong>=<code>300</code></td>
+</tr>
+<tr>
+<td>deposition_temperature_2</td>
+<td><code>float64</code></td>
+<td>The temperature of the deposition as measured by thermocouple 2.<br><strong>unit</strong>=<code>kelvin</code>, <strong>default</strong>=<code>300</code></td>
+</tr>
+<tr>
+<td>deposition_temperature_setpoint</td>
+<td><code>float64</code></td>
+<td>The temperature setpoint of the deposition.<br><strong>unit</strong>=<code>kelvin</code>, <strong>default</strong>=<code>300</code></td>
+</tr>
+<tr>
+<td>deposition_true_temperature</td>
+<td><code>float64</code></td>
+<td>The corrected real temperature of the deposition as calculated with : 0.905 * (0.5 * (deposition_temperature + deposition_temperature_2)) + 12<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>deposition_time</td>
+<td><code>float64</code></td>
+<td>The total deposition time.<br><strong>unit</strong>=<code>second</code>, <strong>default</strong>=<code>1800</code></td>
+</tr>
+<tr>
+<td>platen_rotation</td>
+<td><code>float64</code></td>
+<td>The platen rotation angle during the deposition.<br><strong>unit</strong>=<code>radian</code></td>
+</tr>
+<tr>
+<td>sputter_pressure</td>
+<td><code>float64</code></td>
+<td>The pressure during sputtering as measured by the capman gauge.<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code>, <strong>default</strong>=<code>0.6666</code></td>
+</tr>
+<tr>
+<td>material_space</td>
+<td><code>str</code></td>
+<td>The material space explored by the deposition.</td>
+</tr>
+<tr>
+<td>ar_flow</td>
+<td><code>float64</code></td>
+<td>Flow of 100% Ar in equivalent flow at standard conditions 0, i.e. the equivalent rate at a temperature of 0 °C (273.15 K) and a pressure of 1 atm (101325 Pa).<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+<tr>
+<td>ar_partial_pressure</td>
+<td><code>float64</code></td>
+<td>The Ar partial pressure during the deposition.<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+<tr>
+<td>h2s_in_ar_flow</td>
+<td><code>float64</code></td>
+<td>Flow of 10% H2S in Ar in equivalent flow at standard conditions 0, i.e. the equivalent rate at a temperature of 0 °C (273.15 K) and a pressure of 1 atm (101325 Pa).<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+<tr>
+<td>h2s_partial_pressure</td>
+<td><code>float64</code></td>
+<td>The H2S partial pressure during the deposition.<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+<tr>
+<td>nh3_in_ar_flow</td>
+<td><code>float64</code></td>
+<td>Flow of 10% NH3 in Ar in equivalent flow at standard conditions 0, i.e. the equivalent rate at a temperature of 0 °C (273.15 K) and a pressure of 1 atm (101325 Pa).<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+<tr>
+<td>nh3_partial_pressure</td>
+<td><code>float64</code></td>
+<td>The NH3 partial pressure during the deposition.<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+<tr>
+<td>ph3_in_ar_flow</td>
+<td><code>float64</code></td>
+<td>Flow of 10% PH3 in Ar in equivalent flow at standard conditions 0, i.e. the equivalent rate at a temperature of 0 °C (273.15 K) and a pressure of 1 atm (101325 Pa).<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+<tr>
+<td>ph3_partial_pressure</td>
+<td><code>float64</code></td>
+<td>The PH3 partial pressure during the deposition<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+<tr>
+<td>n2_flow</td>
+<td><code>float64</code></td>
+<td>Flow of 100% N2 in equivalent flow at standard conditions 0, i.e. the equivalent rate at a temperature of 0 °C (273.15 K) and a pressure of 1 atm (101325 Pa).<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+<tr>
+<td>n2_partial_pressure</td>
+<td><code>float64</code></td>
+<td>The N2 partial pressure during the deposition.<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+<tr>
+<td>o2_in_ar_flow</td>
+<td><code>float64</code></td>
+<td>Flow of 20% O2 in Ar in equivalent flow at standard conditions 0, i.e. the equivalent rate at a temperature of 0 °C (273.15 K) and a pressure of 1 atm (101325 Pa).<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+<tr>
+<td>o2_partial_pressure</td>
+<td><code>float64</code></td>
+<td>The O2 partial pressure during the deposition.<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+<tr>
+<td>ph3_h2s_ratio</td>
+<td><code>float64</code></td>
+<td>The PH3/H2S ratio (if applicable).</td>
+</tr>
+<tr>
+<td>magkeeper3</td>
+<td><a href="#sourceoverview"><code>SourceOverview</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>magkeeper4</td>
+<td><a href="#sourceoverview"><code>SourceOverview</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>taurus</td>
+<td><a href="#sourceoverview"><code>SourceOverview</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>s_cracker</td>
+<td><a href="#scrackeroverview"><code>SCrackerOverview</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>used_gases</td>
+<td><a href="#usedgas"><code>UsedGas</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>DepositionParameters</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+<h3 id="temprampup">TempRampUp<a class="headerlink" href="#temprampup" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>duration</td>
+<td><code>float64</code></td>
+<td>The duration of the temperature ramp up.<br><strong>unit</strong>=<code>second</code></td>
+</tr>
+<tr>
+<td>start_temperature_setpoint</td>
+<td><code>float64</code></td>
+<td>The start temperature setpoint.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>end_temperature_setpoint</td>
+<td><code>float64</code></td>
+<td>The end temperature setpoint.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>temperature_slope</td>
+<td><code>float64</code></td>
+<td>The temperature slope.<br><strong>unit</strong>=<code>kelvin / second</code></td>
+</tr>
+<tr>
+<td>avg_capman_pressure</td>
+<td><code>float64</code></td>
+<td>The average pressure during the temperature ramp up.<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+<tr>
+<td>avg_ar_flow</td>
+<td><code>float64</code></td>
+<td>The average Ar flow during the temperature ramp up.<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+<tr>
+<td>avg_h2s_in_ar_flow</td>
+<td><code>float64</code></td>
+<td>The average H2S flow during the temperature ramp up.<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+<tr>
+<td>avg_ph3_in_ar_flow</td>
+<td><code>float64</code></td>
+<td>The average PH3 flow during the temperature ramp up.<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+<tr>
+<td>cracker_enabled</td>
+<td><code>bool</code></td>
+<td>Boolean to indicate if the cracker was enabled.<br><strong>default</strong>=<code>False</code></td>
+</tr>
+<tr>
+<td>heating_procedure</td>
+<td><code>str</code></td>
+<td>Comment on the heating procedure.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="temprampdown">TempRampDown<a class="headerlink" href="#temprampdown" title="Permanent link">¶</a></h3>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>duration</td>
+<td><code>float64</code></td>
+<td>The duration of the temperature ramp down.<br><strong>unit</strong>=<code>second</code></td>
+</tr>
+<tr>
+<td>start_temperature</td>
+<td><code>float64</code></td>
+<td>The start temperature.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>end_temperature</td>
+<td><code>float64</code></td>
+<td>The end temperature.<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>avg_capman_pressure</td>
+<td><code>float64</code></td>
+<td>The average pressure during the temperature ramp down.<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+<tr>
+<td>avg_ar_flow</td>
+<td><code>float64</code></td>
+<td>The average Ar flow during the temperature ramp down.<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+<tr>
+<td>avg_h2s_in_ar_flow</td>
+<td><code>float64</code></td>
+<td>The average H2S flow during the temperature ramp down.<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+<tr>
+<td>avg_ph3_in_ar_flow</td>
+<td><code>float64</code></td>
+<td>The average PH3 flow during the temperature ramp down.<br><strong>unit</strong>=<code>meter ** 3 / second</code></td>
+</tr>
+<tr>
+<td>cracker_enabled</td>
+<td><code>bool</code></td>
+<td>Boolean to indicate if the cracker was enabled.<br><strong>default</strong>=<code>False</code></td>
+</tr>
+<tr>
+<td>anion_input_cutoff_temperature</td>
+<td><code>float64</code></td>
+<td>The temperature at which the anion input (H2S, S-cracker, PH3, NH3, O2 or N2) was cut off.'<br><strong>unit</strong>=<code>kelvin</code></td>
+</tr>
+<tr>
+<td>cooling_procedure</td>
+<td><code>str</code></td>
+<td>Comment on the cooling procedure.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dtuflag">DtuFlag<a class="headerlink" href="#dtuflag" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad.datamodel.data.ArchiveSection</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>flag</td>
+<td><code>str</code></td>
+<td>Flag name associated with the deposition. Flags are used to indicate issues that occurred during the deposition (see description).</td>
+</tr>
+<tr>
+<td>flag_description</td>
+<td><code>str</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>DtuFlag</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+<h3 id="dtusputtering">DTUSputtering<a class="headerlink" href="#dtusputtering" title="Permanent link">¶</a></h3>
+<p><strong>description</strong>: Class autogenerated from yaml schema.</p>
+<p><strong>inherits from</strong>: <code>nomad_material_processing.vapor_deposition.pvd.sputtering.SputterDeposition</code>, <code>nomad.datamodel.metainfo.plot.PlotSection</code>, <code>nomad.datamodel.data.EntryData</code></p>
+<p><strong>properties</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>type</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lab_id</td>
+<td><code>str</code></td>
+<td>The ID of the run. Format: user_XXXX_ElemementSymbol</td>
+</tr>
+<tr>
+<td>location</td>
+<td><code>str</code></td>
+<td>location of the experiment.<br><strong>default</strong>=<code>DTU; IDOL Lab</code></td>
+</tr>
+<tr>
+<td>log_file</td>
+<td><code>str</code></td>
+<td>Cell to upload the log file containing the deposition data.</td>
+</tr>
+<tr>
+<td>process_log_file</td>
+<td><code>bool</code></td>
+<td>Boolean to indicate if the log_file should be processed.<br><strong>default</strong>=<code>True</code></td>
+</tr>
+<tr>
+<td>overwrite</td>
+<td><code>bool</code></td>
+<td>Boolean to indicate if the data present in the class should be overwritten by data incoming from the log file.<br><strong>default</strong>=<code>True</code></td>
+</tr>
+<tr>
+<td>cracker_warmup_log_file</td>
+<td><code>str</code></td>
+<td>Cell to upload the log file containing the cracker warmup data.</td>
+</tr>
+<tr>
+<td>platen_used</td>
+<td><code>['A', 'B']</code></td>
+<td>The platen used for the deposition.</td>
+</tr>
+<tr>
+<td>base_pressure</td>
+<td><code>float64</code></td>
+<td>The base pressure of the chamber before deposition.<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+<tr>
+<td>sulfur_partial_pressure</td>
+<td><code>float64</code></td>
+<td>The sulfur partial pressure, as estimated or measured.<br><strong>unit</strong>=<code>kilogram / meter / second ** 2</code></td>
+</tr>
+<tr>
+<td>target_image_before</td>
+<td><code>str</code></td>
+<td>Cell to upload the image of the target before the deposition.</td>
+</tr>
+<tr>
+<td>target_image_after</td>
+<td><code>str</code></td>
+<td>Cell to upload the image of the target after the deposition.</td>
+</tr>
+<tr>
+<td>plasma_image</td>
+<td><code>str</code></td>
+<td>Cell to upload the image of the plasma during the deposition.</td>
+</tr>
+<tr>
+<td>sample_image</td>
+<td><code>str</code></td>
+<td>Cell to upload the image of the sample.</td>
+</tr>
+<tr>
+<td>optix_spectra</td>
+<td><code>str</code></td>
+<td>Cell to upload the Optix spectra data.</td>
+</tr>
+<tr>
+<td>rga_file</td>
+<td><code>str</code></td>
+<td>Cell to upload the RGA data associated by the Optix spectra data.</td>
+</tr>
+<tr>
+<td>optix_power_type</td>
+<td><code>['DC', 'PDC']</code></td>
+<td>The type of power used for the Optix. DC (default) or PDC.</td>
+</tr>
+<tr>
+<td>optix_current</td>
+<td><code>float64</code></td>
+<td>The current used for the Optix.<br><strong>unit</strong>=<code>ampere</code></td>
+</tr>
+<tr>
+<td>flags</td>
+<td><a href="#dtuflag"><code>DtuFlag</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>substrates</td>
+<td><a href="#dtusubstratemounting"><code>DtuSubstrateMounting</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>steps</td>
+<td><a href="#dtusteps"><code>DTUSteps</code></a></td>
+<td>The steps of the deposition process.<br><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>end_of_process</td>
+<td><a href="#endofprocess"><code>EndOfProcess</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>instruments</td>
+<td><a href="#instrumentparameters"><code>InstrumentParameters</code></a></td>
+<td>A list of all the instruments and their role in this process.<br><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>deposition_parameters</td>
+<td><a href="#depositionparameters"><code>DepositionParameters</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>source_ramp_up</td>
+<td><a href="#sourcerampup"><code>SourceRampUp</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>source_presput</td>
+<td><a href="#sourcepresput"><code>SourcePresput</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>source_deprate</td>
+<td><a href="#sourcedeprate"><code>SourceDepRate</code></a></td>
+<td><strong>sub-section</strong>, <strong>repeats</strong></td>
+</tr>
+<tr>
+<td>sulfur_cracker_pressure</td>
+<td><a href="#sulfurcrackerpressure"><code>SulfurCrackerPressure</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>temperature_ramp_up</td>
+<td><a href="#temprampup"><code>TempRampUp</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+<tr>
+<td>temperature_ramp_down</td>
+<td><a href="#temprampdown"><code>TempRampDown</code></a></td>
+<td><strong>sub-section</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>normalization</strong>: </p>
+<p>The normalizer for the <code>DTUSputtering</code> class.</p>
+<p>Args:
+    archive (EntryArchive): The archive containing the section that is being
+    normalized.
+    logger (BoundLogger): A structlog logger.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer">
+        
+          
+          <a href="instruments.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: Instruments">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Instruments
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="rtp.html" class="md-footer__link md-footer__link--next" aria-label="Next: Rapid Thermal Processing">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Rapid Thermal Processing
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"></path></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.path", "navigation.footer", "navigation.top", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascript.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>
