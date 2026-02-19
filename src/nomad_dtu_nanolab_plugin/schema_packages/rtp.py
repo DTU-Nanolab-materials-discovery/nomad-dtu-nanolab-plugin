@@ -1298,7 +1298,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             self.add_libraries(archive, logger)
         self.plot_temperature_profile()
         self.plot_susceptor()
-        
+
         # Populate results with material elements for periodic table filtering
         if self.overview is not None and self.overview.material_space:
             if archive.results is None:
