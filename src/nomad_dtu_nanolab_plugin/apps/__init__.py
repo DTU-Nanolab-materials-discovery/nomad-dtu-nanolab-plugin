@@ -1402,6 +1402,13 @@ raman = AppEntryPoint(
                 label='Date and time',
             ),
             Column(
+                search_quantity=f'data.laser_wavelength#{raman_schema}',
+                selected=True,
+                label='Laser wavelength',
+                unit='nm',
+                format=Format(decimals=1),
+            ),
+            Column(
                 search_quantity='main_author.name',
                 selected=True,
                 label='Main author',
@@ -1418,7 +1425,7 @@ raman = AppEntryPoint(
                 MenuItemHistogram(
                     title='Laser wavelength',
                     x=Axis(
-                        search_quantity=f'data.results.laser_wavelength#{raman_schema}',
+                        search_quantity=f'data.laser_wavelength#{raman_schema}',
                         scale='linear',
                         unit='nm',
                     ),
@@ -1484,15 +1491,12 @@ rt_measurements = AppEntryPoint(
                     search_quantity=f'data.samples.lab_id#{rt_schema}',
                     show_input=True,
                 ),
-                MenuItemHistogram(
-                    title='Detector angle',
-                    x=Axis(
-                        search_quantity=(
-                            f'data.results.spectra.detector_angle#{rt_schema}'
-                        ),
-                        scale='linear',
-                        unit='degree',
+                MenuItemTerms(
+                    title='Measurement Type',
+                    search_quantity=(
+                        f'data.results.spectra.spectrum_type#{rt_schema}'
                     ),
+                    show_input=True,
                 ),
                 MenuItemHistogram(
                     title='Measurement Date',
