@@ -17,6 +17,7 @@ from nomad.datamodel.metainfo.basesections import (
     CompositeSystemReference,
 )
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
+from nomad.datamodel.results import Material, Results
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_material_processing.general import (
@@ -1297,3 +1298,12 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             self.add_libraries(archive, logger)
         self.plot_temperature_profile()
         self.plot_susceptor()
+
+        # Populate results with material elements for periodic table filtering
+        if self.overview is not None and self.overview.material_space:
+            if archive.results is None:
+                archive.results = Results()
+            if archive.results.material is None:
+                archive.results.material = Material()
+            elements = self.overview.material_space.split('-')
+            archive.results.material.elements = elements
