@@ -1300,3 +1300,216 @@ samples = AppEntryPoint(
         },
     ),
 )
+
+
+ellipsometry_schema = (
+    'nomad_dtu_nanolab_plugin.schema_packages.ellipsometry.DTUEllipsometryMeasurement'
+)
+
+ellipsometry = AppEntryPoint(
+    name='Ellipsometry app',
+    description='App for searching ellipsometry measurements.',
+    app=App(
+        label='Ellipsometry Measurements',
+        path='ellipsometry-measurements',
+        category='Activities',
+        description="""
+        Explore ellipsometry measurements with optical constants and thickness data.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{ellipsometry_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{ellipsometry_schema}',
+                selected=True,
+                label='Ellipsometry ID',
+            ),
+            Column(
+                search_quantity=f'data.datetime#{ellipsometry_schema}',
+                selected=True,
+                label='Date and time',
+            ),
+            Column(
+                search_quantity='main_author.name',
+                selected=True,
+                label='Main author',
+            ),
+        ],
+        menu=Menu(
+            size=MenuSizeEnum.XL,
+            items=[
+                MenuItemTerms(
+                    title='Sample ID',
+                    search_quantity=f'data.samples.lab_id#{ellipsometry_schema}',
+                    show_input=True,
+                ),
+                MenuItemHistogram(
+                    title='Thickness',
+                    x=Axis(
+                        search_quantity=f'data.results.thickness#{ellipsometry_schema}',
+                        scale='linear',
+                        unit='nm',
+                    ),
+                ),
+                MenuItemHistogram(
+                    title='Measurement Date',
+                    x=Axis(
+                        search_quantity=f'data.datetime#{ellipsometry_schema}',
+                    ),
+                ),
+                MenuItemTerms(
+                    search_quantity='authors.name',
+                    show_input=True,
+                ),
+            ],
+        ),
+        filters_locked={
+            'entry_type': 'DTUEllipsometryMeasurement',
+        },
+    ),
+)
+
+
+raman_schema = 'nomad_dtu_nanolab_plugin.schema_packages.raman.RamanMeasurement'
+
+raman = AppEntryPoint(
+    name='Raman app',
+    description='App for searching Raman measurements.',
+    app=App(
+        label='Raman Measurements',
+        path='raman-measurements',
+        category='Activities',
+        description="""
+        Explore Raman spectroscopy measurements.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{raman_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{raman_schema}',
+                selected=True,
+                label='Raman ID',
+            ),
+            Column(
+                search_quantity=f'data.datetime#{raman_schema}',
+                selected=True,
+                label='Date and time',
+            ),
+            Column(
+                search_quantity=f'data.laser_wavelength#{raman_schema}',
+                selected=True,
+                label='Laser wavelength',
+                unit='nm',
+                format=Format(decimals=1),
+            ),
+            Column(
+                search_quantity='main_author.name',
+                selected=True,
+                label='Main author',
+            ),
+        ],
+        menu=Menu(
+            size=MenuSizeEnum.XL,
+            items=[
+                MenuItemTerms(
+                    title='Sample ID',
+                    search_quantity=f'data.samples.lab_id#{raman_schema}',
+                    show_input=True,
+                ),
+                MenuItemHistogram(
+                    title='Laser wavelength',
+                    x=Axis(
+                        search_quantity=f'data.laser_wavelength#{raman_schema}',
+                        scale='linear',
+                        unit='nm',
+                    ),
+                ),
+                MenuItemHistogram(
+                    title='Measurement Date',
+                    x=Axis(
+                        search_quantity=f'data.datetime#{raman_schema}',
+                    ),
+                ),
+                MenuItemTerms(
+                    search_quantity='authors.name',
+                    show_input=True,
+                ),
+            ],
+        ),
+        filters_locked={
+            'entry_type': 'RamanMeasurement',
+        },
+    ),
+)
+
+
+rt_schema = 'nomad_dtu_nanolab_plugin.schema_packages.rt.RTMeasurement'
+
+rt_measurements = AppEntryPoint(
+    name='RT Measurements app',
+    description='App for searching reflection/transmission measurements.',
+    app=App(
+        label='R/T Measurements',
+        path='rt-measurements',
+        category='Activities',
+        description="""
+        Explore Reflection and Transmission (R/T) measurements.
+        """,
+        filters=Filters(
+            include=[
+                f'*#{rt_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{rt_schema}',
+                selected=True,
+                label='R/T ID',
+            ),
+            Column(
+                search_quantity=f'data.datetime#{rt_schema}',
+                selected=True,
+                label='Date and time',
+            ),
+            Column(
+                search_quantity='main_author.name',
+                selected=True,
+                label='Main author',
+            ),
+        ],
+        menu=Menu(
+            size=MenuSizeEnum.XL,
+            items=[
+                MenuItemTerms(
+                    title='Sample ID',
+                    search_quantity=f'data.samples.lab_id#{rt_schema}',
+                    show_input=True,
+                ),
+                MenuItemTerms(
+                    title='Measurement Type',
+                    search_quantity=(f'data.results.spectra.spectrum_type#{rt_schema}'),
+                    show_input=True,
+                ),
+                MenuItemHistogram(
+                    title='Measurement Date',
+                    x=Axis(
+                        search_quantity=f'data.datetime#{rt_schema}',
+                    ),
+                ),
+                MenuItemTerms(
+                    search_quantity='authors.name',
+                    show_input=True,
+                ),
+            ],
+        ),
+        filters_locked={
+            'entry_type': 'RTMeasurement',
+        },
+    ),
+)

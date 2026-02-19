@@ -1,18 +1,181 @@
 import re
 from typing import TYPE_CHECKING
 
+import numpy as np
 from nomad.datamodel.datamodel import EntryArchive
+from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import (
     CompositeSystemReference,
 )
-from nomad.metainfo import Package
-from nomad_measurements.mapping.schema import MappingMeasurement
+from nomad.metainfo import Package, Quantity, Section
+from nomad_measurements.mapping.schema import (
+    MappingMeasurement,
+    RectangularSampleAlignment,
+)
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
 m_package = Package()
+
+
+class DTUBaseSampleAlignment(RectangularSampleAlignment):
+    """Base class for DTU sample alignment with common functionality.
+
+    This base class provides common sample alignment properties and functionality
+    for all DTU measurement types (Raman, XRD, Ellipsometry, EDX, etc.).
+
+    Features:
+        - Standard width and height properties with default values (40mm x 40mm)
+        - "Center Around Zero" button to automatically calculate corner coordinates
+          by analyzing actual measurement positions (x_absolute, y_absolute) from
+          results and using the user-provided width/height centered on those positions,
+          so the relative map is centered at (0,0)
+
+    Inherited from RectangularSampleAlignment:
+        - x_upper_left (float with unit): X-coordinate of upper-left corner
+        - y_upper_left (float with unit): Y-coordinate of upper-left corner
+        - x_lower_right (float with unit): X-coordinate of lower-right corner
+        - y_lower_right (float with unit): Y-coordinate of lower-right corner
+    """
+
+    m_def = Section(
+        description='The alignment of the sample on the stage.',
+    )
+
+    width = Quantity(
+        type=np.float64,
+        default=0.04,
+        description='The width of the sample.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+        unit='m',
+    )
+    height = Quantity(
+        type=np.float64,
+        default=0.04,
+        description='The height of the sample.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+        ),
+        unit='m',
+    )
+    center_around_zero = Quantity(
+        type=bool,
+        default=False,
+        description=(
+            'Automatically calculate corner coordinates using user-provided '
+            'width/height centered on the actual measurement positions '
+            '(x_absolute, y_absolute from results) to center the relative '
+            'map at (0,0).'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.ActionEditQuantity,
+            label='Center Around Zero',
+        ),
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """Normalize the sample alignment information.
+
+        If center_around_zero is triggered, calculates corner coordinates based on
+        the actual measurement positions (x_absolute, y_absolute) from the results,
+        using the user-provided width/height and centering them on the measurement
+        bounding box so that relative positions will be centered at (0,0).
+
+        Args:
+            archive (EntryArchive): The archive containing the section being normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        super().normalize(archive, logger)
+
+        if self.center_around_zero:
+            # Get the parent measurement section to access results
+            parent = self.m_parent
+            if parent and hasattr(parent, 'results') and parent.results:
+                # Extract all x_absolute and y_absolute positions
+                x_positions = []
+                y_positions = []
+
+                for result in parent.results:
+                    if hasattr(result, 'x_absolute') and result.x_absolute is not None:
+                        # Convert to meters if it has a unit
+                        x_val = (
+                            result.x_absolute.to('m').magnitude
+                            if hasattr(result.x_absolute, 'to')
+                            else result.x_absolute
+                        )
+                        x_positions.append(x_val)
+                    if hasattr(result, 'y_absolute') and result.y_absolute is not None:
+                        # Convert to meters if it has a unit
+                        y_val = (
+                            result.y_absolute.to('m').magnitude
+                            if hasattr(result.y_absolute, 'to')
+                            else result.y_absolute
+                        )
+                        y_positions.append(y_val)
+
+                if x_positions and y_positions:
+                    # Calculate the center of the actual measurements
+                    x_min = min(x_positions)
+                    x_max = max(x_positions)
+                    y_min = min(y_positions)
+                    y_max = max(y_positions)
+
+                    x_center = (x_min + x_max) / 2
+                    y_center = (y_min + y_max) / 2
+
+                    # Use user-provided width and height, centered on the
+                    # measurement center
+                    # Strip units from width/height to match dimensionless center
+                    if self.width is not None and self.height is not None:
+                        width_m = (
+                            self.width.to('m').magnitude
+                            if hasattr(self.width, 'to')
+                            else self.width
+                        )
+                        height_m = (
+                            self.height.to('m').magnitude
+                            if hasattr(self.height, 'to')
+                            else self.height
+                        )
+
+                        self.x_upper_left = x_center - width_m / 2
+                        self.x_lower_right = x_center + width_m / 2
+                        self.y_upper_left = y_center + height_m / 2
+                        self.y_lower_right = y_center - height_m / 2
+
+                        logger.info(
+                            f'Calculated corner coordinates: '
+                            f'measurement center='
+                            f'({x_center:.6f}, {y_center:.6f}) m, '
+                            f'width={width_m:.6f} m, '
+                            f'height={height_m:.6f} m, '
+                            f'corners: upper-left='
+                            f'({self.x_upper_left:.6f}, '
+                            f'{self.y_upper_left:.6f}), '
+                            f'lower-right=({self.x_lower_right:.6f}, '
+                            f'{self.y_lower_right:.6f})'
+                        )
+                    else:
+                        logger.warning(
+                            'Cannot center around zero: width or height is not set.'
+                        )
+                else:
+                    logger.warning(
+                        'Cannot center around zero: no valid x/y positions '
+                        'found in results.'
+                    )
+            else:
+                logger.warning(
+                    'Cannot center around zero: no results found in parent measurement.'
+                )
+
+            self.center_around_zero = False
 
 
 class DtuNanolabMeasurement(MappingMeasurement):
