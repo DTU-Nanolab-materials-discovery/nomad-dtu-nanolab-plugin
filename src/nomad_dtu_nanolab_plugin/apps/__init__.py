@@ -723,6 +723,9 @@ rtp = AppEntryPoint(
             title='Material',
             size=MenuSizeEnum.XL,
             items=[
+                MenuItemPeriodicTable(
+                    quantity='results.material.elements',
+                ),
                 MenuItemHistogram(
                     title='Process Date',
                     x=Axis(
