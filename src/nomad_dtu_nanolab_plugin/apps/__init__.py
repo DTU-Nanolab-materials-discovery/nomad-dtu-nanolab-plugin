@@ -1493,9 +1493,7 @@ rt_measurements = AppEntryPoint(
                 ),
                 MenuItemTerms(
                     title='Measurement Type',
-                    search_quantity=(
-                        f'data.results.spectra.spectrum_type#{rt_schema}'
-                    ),
+                    search_quantity=(f'data.results.spectra.spectrum_type#{rt_schema}'),
                     show_input=True,
                 ),
                 MenuItemHistogram(
