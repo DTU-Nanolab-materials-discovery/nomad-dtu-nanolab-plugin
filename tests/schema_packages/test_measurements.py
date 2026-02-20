@@ -88,7 +88,7 @@ Names can be generated from the test file by running the following command:
         ),
     ],
 )
-def test_schema(test_file, expected_result_count, expected_names):
+def test_mapping_schema(test_file, expected_result_count, expected_names):
     test_file_path = os.path.join('tests', 'data', test_file)
     entry_archive = parse(test_file_path)[0]
     normalize_all(entry_archive)
@@ -97,3 +97,47 @@ def test_schema(test_file, expected_result_count, expected_names):
 
     for result in entry_archive.data.results:
         assert result.name in expected_names
+
+
+def test_rt_autosampler_schema():
+    """
+    Test the RT autosampler measurement schema.
+
+    This test verifies that the DtuAutosamplerMeasurement correctly parses
+    data and config CSV files and creates individual RTMeasurement steps
+    for each library.
+    """
+    test_file = os.path.join('tests', 'data', 'test_rt_autosampler.archive.yaml')
+    entry_archive = parse(test_file)[0]
+    normalize_all(entry_archive)
+
+    # Expected library names from the grid file (excluding Baseline)
+    expected_libraries = [
+        'eugbe_0008_RTP_hd_rt_measurement_20251105_190408',
+        'eugbe_0009_RTP_hd_rt_measurement_20251105_195149',
+        'anait_0030_RTP_ha_rt_measurement_20251105_203950',
+        'anait_0030_RTP_hc_rt_measurement_20251105_212832',
+        'anait_0030_RTP_hd_rt_measurement_20251105_221715',
+        'anait_0030_RTP_hb_rt_measurement_20251105_230614',
+    ]
+
+    # The autosampler measurement should create steps (one per library)
+    assert len(entry_archive.data.steps) == len(expected_libraries)
+
+    # Extract library names from step names and verify they match expected
+    step_library_names = []
+    for step in entry_archive.data.steps:
+        assert step.name is not None
+        assert 'measurement' in step.name.lower()
+        # Extract library name (it's the first part before ' measurement')
+        library_name = step.name.split(' ')[0]
+        step_library_names.append(library_name)
+        # Each step should have an activity reference
+        assert step.activity is not None
+
+    # Check that we have the right libraries (order might vary)
+    assert len(step_library_names) == len(expected_libraries)
+    for expected_name in expected_libraries:
+        assert expected_name in step_library_names, (
+            f'Expected library {expected_name} not found in steps'
+        )
