@@ -738,16 +738,13 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         # Calculate and plot absorption coefficient α = 4πk/λ
         fig_alpha = go.Figure()
         for result in self.results:
-            if (
-                result.wavelength is not None
-                and result.k is not None
-            ):
+            if result.wavelength is not None and result.k is not None:
                 wavelength = result.wavelength.to('nm').magnitude
                 # Convert wavelength to photon energy: E (eV) = 1240 / λ(nm)
                 photon_energy = 1240.0 / wavelength
                 k = result.k
                 position = result.position
-                
+
                 # Calculate absorption coefficient: α = 4πk/λ
                 # λ in cm = wavelength_nm × 10^-7
                 # α in cm^-1 = 4π × k / (wavelength_nm × 10^-7)
