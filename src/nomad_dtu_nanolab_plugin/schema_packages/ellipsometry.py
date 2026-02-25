@@ -666,18 +666,19 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         """
         Generate all interactive Plotly visualizations for the ellipsometry data.
 
-        Creates three types of plots:
-        1. Optical constants (n and k) vs wavelength for all positions
-        2. Thickness spatial map (1D or 2D depending on measurement grid)
-        3. Roughness spatial map (1D or 2D depending on measurement grid)
-        4. MSE (fit quality) spatial map (1D or 2D depending on measurement grid)
+        Creates five types of plots:
+        1. Optical constants (n and k) vs photon energy for all positions
+        2. Absorption coefficient (α) vs photon energy for all positions
+        3. Thickness spatial map (1D or 2D depending on measurement grid)
+        4. Roughness spatial map (1D or 2D depending on measurement grid)
+        5. MSE (fit quality) spatial map (1D or 2D depending on measurement grid)
 
         All plots are interactive with zoom, pan, and hover capabilities.
         """
         if not self.results:
             return
 
-        # ===== Plot 1: Optical Constants (n and k) vs Wavelength =====
+        # ===== Plot 1: Optical Constants (n and k) vs Photon Energy =====
         # Create a multi-trace plot showing n and k for all measurement positions
         fig = go.Figure()
         for result in self.results:
@@ -687,13 +688,15 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 and result.k is not None
             ):
                 wavelength = result.wavelength.to('nm').magnitude
+                # Convert wavelength to photon energy: E (eV) = 1240 / λ(nm)
+                photon_energy = 1240.0 / wavelength
                 n = result.n
                 k = result.k
                 position = result.position
 
                 fig.add_trace(
                     go.Scatter(
-                        x=wavelength,
+                        x=photon_energy,
                         y=n,
                         mode='lines',
                         name=f'n @ {position}',
@@ -701,7 +704,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 )
                 fig.add_trace(
                     go.Scatter(
-                        x=wavelength,
+                        x=photon_energy,
                         y=k,
                         mode='lines',
                         name=f'k @ {position}',
@@ -711,7 +714,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         fig.update_layout(
             title='Optical Constants (n and k)',
-            xaxis_title='Wavelength (nm)',
+            xaxis_title='Photon Energy (eV)',
             yaxis_title='n, k',
             template='plotly_white',
             hovermode='closest',
@@ -731,19 +734,68 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
         )
 
-        # ===== Plot 2: Thickness Spatial Map =====
+        # ===== Plot 2: Absorption Coefficient vs Photon Energy =====
+        # Calculate and plot absorption coefficient α = 4πk/λ
+        fig_alpha = go.Figure()
+        for result in self.results:
+            if (
+                result.wavelength is not None
+                and result.k is not None
+            ):
+                wavelength = result.wavelength.to('nm').magnitude
+                # Convert wavelength to photon energy: E (eV) = 1240 / λ(nm)
+                photon_energy = 1240.0 / wavelength
+                k = result.k
+                position = result.position
+                
+                # Calculate absorption coefficient: α = 4πk/λ
+                # λ in cm = wavelength_nm × 10^-7
+                # α in cm^-1 = 4π × k / (wavelength_nm × 10^-7)
+                alpha = (4 * np.pi * k) / (wavelength * 1e-7)
+
+                fig_alpha.add_trace(
+                    go.Scatter(
+                        x=photon_energy,
+                        y=alpha,
+                        mode='lines',
+                        name=f'α @ {position}',
+                    )
+                )
+
+        fig_alpha.update_layout(
+            title='Absorption Coefficient',
+            xaxis_title='Photon Energy (eV)',
+            yaxis_title='α (cm⁻¹)',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(fixedrange=False),
+            yaxis=dict(fixedrange=False, exponentformat='power'),
+        )
+
+        # Configure and store the absorption coefficient plot
+        plot_json_alpha = fig_alpha.to_plotly_json()
+        plot_json_alpha['config'] = dict(scrollZoom=False)
+        self.figures.append(
+            PlotlyFigure(
+                label='Absorption Coefficient',
+                figure=plot_json_alpha,
+            )
+        )
+
+        # ===== Plot 3: Thickness Spatial Map =====
         # Use the helper method to create a thickness map (1D or 2D)
         thickness_fig = self._create_parameter_map('thickness', 'Thickness', 'nm')
         if thickness_fig:
             self.figures.append(thickness_fig)
 
-        # ===== Plot 3: Roughness Spatial Map =====
+        # ===== Plot 4: Roughness Spatial Map =====
         # Create a roughness map (1D or 2D)
         roughness_fig = self._create_parameter_map('roughness', 'Roughness', 'nm')
         if roughness_fig:
             self.figures.append(roughness_fig)
 
-        # ===== Plot 4: MSE (Fit Quality) Spatial Map =====
+        # ===== Plot 5: MSE (Fit Quality) Spatial Map =====
         # Create a map showing the quality of the model fit at each position
         # Lower MSE values indicate better fits
         mse_fig = self._create_parameter_map('mse', 'Mean Squared Error', '')
