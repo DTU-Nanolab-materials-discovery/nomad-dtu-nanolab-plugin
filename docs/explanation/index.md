@@ -37,3 +37,9 @@ The nomad-dtu-nanolab-plugin is built on three core principles:
 - [NOMAD Documentation](https://nomad-lab.eu/prod/v1/docs/){:target="_blank" rel="noopener"} - Main platform documentation
 - [Basic Formal Ontology](https://basic-formal-ontology.org/){:target="_blank" rel="noopener"} - Ontological foundation (advanced reading)
 - [Diataxis Framework](https://diataxis.fr/){:target="_blank" rel="noopener"} - Documentation structure philosophy we follow
+
+## Related Publication
+
+For a full description of the system and a demonstration on a phosphosulfide combinatorial project, see:
+
+> Mittmann, L. A., Nässtrom, H., Bertin, E., Kapoor, S., Diogo, I., Itzhak, A., Dalmonte, G., Thorup Danielsen, R., Skytte, M. E., Von Wenckstern, H., Crovetto, A., & Márquez, J. A. (2026). Digital infrastructure to support daily high-throughput experimental materials research. *ChemRxiv*. [https://doi.org/10.26434/chemrxiv.15000115/v1](https://doi.org/10.26434/chemrxiv.15000115/v1){:target="_blank" rel="noopener"}
