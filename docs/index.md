@@ -3,7 +3,7 @@
 This plugin powers the data management infrastructure for the **Materials Discovery group** at the [DTU Nanolab](https://www.dtu.dk/english/about/organization/institutter/energy/research/labs/nanolab), led by [Andrea Crovetto](https://orbit.dtu.dk/en/persons/andrea-crovetto). The group specializes in high-throughput combinatorial synthesis and characterization of thin-film materials for sustainable energy applications.
 
 <div markdown="block" class="action-buttons">
-  <a href="#" class="md-button md-button--primary action-button">📄 Paper</a>
+  <a href="https://chemrxiv.org/doi/full/10.26434/chemrxiv.15000115/v1" class="md-button md-button--primary action-button" target="_blank" rel="noopener">📄 Paper</a>
   <a href="http://nomad.nanolab.dtu.dk/nomad-oasis/gui/" class="md-button md-button--primary action-button">🔍 NOMAD Oasis</a>
   <a href="https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin" class="md-button action-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg> Plugin Repository</a>
 </div>
@@ -98,3 +98,23 @@ The group employs a **combinatorial materials discovery workflow** that accelera
 4. **Data-driven analysis** identifies promising compositions for further development
 
 This plugin enables **FAIR** (Findable, Accessible, Interoperable, Reusable) data management for the entire workflow, from synthesis to characterization, ensuring reproducibility and facilitating collaboration.
+
+## Citation
+
+If you use this plugin in your research, please cite:
+
+> Mittmann, L. A., Nässtrom, H., Bertin, E., Kapoor, S., Diogo, I., Itzhak, A., Dalmonte, G., Thorup Danielsen, R., Skytte, M. E., Von Wenckstern, H., Crovetto, A., & Márquez, J. A. (2026). Digital infrastructure to support daily high-throughput experimental materials research. *ChemRxiv*. [https://doi.org/10.26434/chemrxiv.15000115/v1](https://doi.org/10.26434/chemrxiv.15000115/v1){:target="_blank" rel="noopener"}
+
+??? note "BibTeX"
+    ```bibtex
+    @article{mittmann_digital_nodate,
+      title   = {Digital infrastructure to support daily high-throughput experimental materials research},
+      author  = {Mittmann, Lena A and N{\"a}sstr{\"o}m, Hampus and Bertin, Eug{\`e}ne and Kapoor, Sarthak and Diogo, In{\^e}s and Itzhak, Anat and Dalmonte, Giulia and {Thorup Danielsen}, Rasmus and Skytte, Malthe E. and Von Wenckstern, Holger and Crovetto, Andrea and M{\'a}rquez, Jos{\'e} A},
+      journal = {ChemRxiv},
+      year    = {2026},
+      volume  = {2026},
+      number  = {0216},
+      doi     = {10.26434/chemrxiv.15000115/v1},
+      url     = {https://chemrxiv.org/doi/full/10.26434/chemrxiv.15000115/v1},
+    }
+    ```

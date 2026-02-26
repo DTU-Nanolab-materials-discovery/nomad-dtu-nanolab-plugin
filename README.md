@@ -81,7 +81,29 @@ ruff format .
 
 ## 📝 Citation
 
-If you use this plugin in your research, please cite it using the metadata in [CITATION.cff](CITATION.cff).
+If you use this plugin in your research, please cite the accompanying paper:
+
+> Mittmann, L. A., Nässtrom, H., Bertin, E., Kapoor, S., Diogo, I., Itzhak, A., Dalmonte, G., Thorup Danielsen, R., Skytte, M. E., Von Wenckstern, H., Crovetto, A., & Márquez, J. A. (2026). Digital infrastructure to support daily high-throughput experimental materials research. *ChemRxiv*. https://doi.org/10.26434/chemrxiv.15000115/v1
+
+<details>
+<summary>BibTeX</summary>
+
+```bibtex
+@article{mittmann_digital_nodate,
+  title   = {Digital infrastructure to support daily high-throughput experimental materials research},
+  author  = {Mittmann, Lena A and N{\"a}sstr{\"o}m, Hampus and Bertin, Eug{\`e}ne and Kapoor, Sarthak and Diogo, In{\^e}s and Itzhak, Anat and Dalmonte, Giulia and {Thorup Danielsen}, Rasmus and Skytte, Malthe E. and Von Wenckstern, Holger and Crovetto, Andrea and M{\'a}rquez, Jos{\'e} A},
+  journal = {ChemRxiv},
+  year    = {2026},
+  volume  = {2026},
+  number  = {0216},
+  doi     = {10.26434/chemrxiv.15000115/v1},
+  url     = {https://chemrxiv.org/doi/full/10.26434/chemrxiv.15000115/v1},
+}
+```
+
+</details>
+
+You can also cite the software itself using the metadata in [CITATION.cff](CITATION.cff).
 
 ## 💰 Funding
 
