@@ -7433,6 +7433,7 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, **kwargs):
 
     return fig
 
+
 def check_for_spectra(spectra_path, spectra_extension):
     # Check if the spectra_path exists and is a directory
     if os.path.isdir(spectra_path):
