@@ -7608,5 +7608,3 @@ def check_for_spectra(spectra_path, spectra_extension):
             ):
                 return os.path.join(spectra_path, file)
     return None
-
-
