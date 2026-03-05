@@ -78,17 +78,12 @@ class DtuNanolabMeasurement(MappingMeasurement):
         length = getattr(geometry, 'length', None)
         if width is None or length is None:
             logger.warning(
-                'Cannot determine sample dimensions: '
-                'geometry has no width or length.'
+                'Cannot determine sample dimensions: geometry has no width or length.'
             )
             return None
 
-        width_m = (
-            width.to('m').magnitude if hasattr(width, 'to') else float(width)
-        )
-        height_m = (
-            length.to('m').magnitude if hasattr(length, 'to') else float(length)
-        )
+        width_m = width.to('m').magnitude if hasattr(width, 'to') else float(width)
+        height_m = length.to('m').magnitude if hasattr(length, 'to') else float(length)
         return width_m, height_m
 
     def _compute_alignment_from_barycenter(
@@ -102,9 +97,7 @@ class DtuNanolabMeasurement(MappingMeasurement):
         alignment on the bounding-box center of the actual measurement positions.
         """
         if not self.results:
-            logger.warning(
-                'Cannot center around barycenter: no results available.'
-            )
+            logger.warning('Cannot center around barycenter: no results available.')
             return
 
         dims = self._get_sample_dimensions(logger)
