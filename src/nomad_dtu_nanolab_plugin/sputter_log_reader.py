@@ -555,6 +555,7 @@ OVERVIEW_PLOT_MARKER_MAP = {True: 'x', False: 'circle'}
 
 # Choosing what to plot in the overview plot
 OVERVIEW_PLOT = [
+    'PC Substrate Shutter Open',
     'PC Capman Pressure',
     'Substrate Heater Temperature',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
@@ -1441,7 +1442,12 @@ class Deposition_Event(Lf_Event):
 
     # master parameters extraction method for the deposition event
     def get_params(
-        self, raw_data=None, source_list=None, params=None, interrupt_deposition=False
+        self,
+        raw_data=None,
+        source_list=None,
+        params=None,
+        interrupt_deposition=False,
+        last_dep_fallback=False,
     ):
         if params is None:
             params = {}
@@ -1451,6 +1457,7 @@ class Deposition_Event(Lf_Event):
         # Extract if the deposition has beem interrupted based the interrupt_deposition
         # flag
         params[self.category]['interrupted'] = interrupt_deposition
+        params[self.category]['last_dep_fallback'] = last_dep_fallback
 
         params = self.get_rt_bool(params=params)
         params = self.get_source_used_deposition(source_list, params=params)
@@ -2552,17 +2559,6 @@ def get_end_of_process(raw_data, params=None):
     return params
 
 
-# method to save the derived quantities report as a text file
-def save_report_as_text(params: dict, txt_file_path, logfile_name=None):
-    # Save the derived quantities report as a text file as
-    with open(txt_file_path, 'w') as txt_file:
-        if logfile_name is not None:
-            txt_file.write(
-                f'Derived quantities report for logfile\n{logfile_name}:\n\n'
-            )
-        txt_file.write(write_params(params))
-
-
 # method to flatten a nested dictionary
 def flatten_dict(d, parent_key='', sep=';'):
     """
@@ -2613,73 +2609,6 @@ def fix_single_dict_level(dict_var, sep='__'):
     return dict_var
 
 
-def consolidate_data_to_csv(all_params, samples_dir, sep='__', process_NaN=False):
-    # Flatten the dictionary with the specified separator
-    flatten_all_params = flatten_dict(all_params, sep=sep)
-
-    # fix the level of the dict
-    flatten_all_params = fix_single_dict_level(flatten_all_params)
-
-    # Convert the flattened dictionary to a DataFrame
-    df = pd.DataFrame([flatten_all_params])
-
-    # Split the column names using the separator and ensure consistent levels
-    split_columns = [tuple(col.split(sep)) for col in df.columns]
-
-    # Set the standardized MultiIndex for the DataFrame columns
-    df.columns = pd.MultiIndex.from_tuples(split_columns)
-
-    # Fill NaN values in the MultiIndex headers
-    if process_NaN:
-        df.columns = pd.MultiIndex.from_tuples(
-            [tuple('' if pd.isna(x) else x for x in col) for col in df.columns]
-        )
-
-    # Save the DataFrame to a CSV file
-    output_path = os.path.join(samples_dir, 'all_params.csv')
-    df.to_csv(output_path, index=False, na_rep='')
-
-    print(f'Data successfully saved to {output_path}')
-
-
-def open_csv_as_multiindex(csv_path, replace_nan=False):
-    """
-    Reopen a CSV file as a MultiIndex DataFrame.
-
-    Args:
-        csv_path (str): The path to the CSV file.
-
-    Returns:
-        pd.DataFrame: The MultiIndex DataFrame.
-    """
-    # Read the CSV file with the appropriate header levels
-    df = pd.read_csv(csv_path, header=[0, 1, 2, 3], na_filter=False)
-
-    # The columns are already MultiIndex, so no need to split them again
-    df.columns = pd.MultiIndex.from_tuples(df.columns)
-
-    # set the index names to ['sample','event','source','parameter']
-    df.columns.names = ['sample', 'event', 'source', 'parameter']
-
-    if replace_nan:
-        # Replace the string 'nan' with an empty string in MultiIndex column names
-        df.columns = df.columns.set_levels(
-            [level.str.replace('nan', '') for level in df.columns.levels]
-        )
-
-    return df
-
-
-# method to get a parameter from a MultiIndex DataFrame
-# path being a list of strings pointing to the parameter
-def get_df_param(df, path: list):
-    for key in path:
-        df = df.xs(key, axis=1, level=1)
-    # set the data row index to path[-1]
-    df.index = pd.Index(df.index, name=path[-1])
-    return df
-
-
 # Function to convert timestamps to isoformat
 def convert_timestamps(obj):
     if isinstance(obj, dict):
@@ -2715,49 +2644,6 @@ def print_params(quantities, indent=''):
             elif isinstance(value, pd.Series):
                 formatted_value = 'Cannot display pd.DataFrame'
             print(f'{indent}{key}: {formatted_value}')
-
-
-def build_file_paths(logfiles, i):
-    file_dir = os.path.join(logfiles['folder'][i])
-
-    # Specify the main report export location and file name
-    txt_file_name = f'{logfiles["name"][i]}_derived_quantities.txt'
-    txt_file_path = os.path.join(file_dir, txt_file_name)
-
-    # Specify the step report export location and file name
-    step_file_name = f'{logfiles["name"][i]}_derived_quantities_step.txt'
-    step_file_path = os.path.join(file_dir, step_file_name)
-
-    # Specify the plotly graph export location and file name for timelines
-    timeline_file_name = f'{logfiles["name"][i]}_plotly_timeline.html'
-    timeline_file_path = os.path.join(file_dir, timeline_file_name)
-
-    # Specify the plotly graph export location and file name for bias/power plots
-    bias_file_name = f'{logfiles["name"][i]}_plotly_bias.html'
-    bias_file_path = os.path.join(file_dir, bias_file_name)
-
-    # Specify the plotly graph export location and file name
-    # for the overview plot
-    overview_file_name = f'{logfiles["name"][i]}_plotly_overview.html'
-    overview_file_path = os.path.join(file_dir, overview_file_name)
-
-    # specify the optix cascade plot export location and file name
-    optix_cascade_file_name = f'{logfiles["name"][i]}_optix_cascade.html'
-    optix_file_path = os.path.join(file_dir, optix_cascade_file_name)
-
-    # Specify the chamber config plot export location and file name
-    chamber_config_file_name = f'{logfiles["name"][i]}_chamber_config.png'
-    chamber_config_file_path = os.path.join(file_dir, chamber_config_file_name)
-
-    return (
-        txt_file_path,
-        step_file_path,
-        timeline_file_path,
-        bias_file_path,
-        overview_file_path,
-        optix_file_path,
-        chamber_config_file_path,
-    )
 
 
 # Function to write the derived quantities in a nested format
@@ -5024,7 +4910,9 @@ def generate_overview_plot(data, logfile_name, events):
         )
 
     # place a vertical line marker at the beginning and at the end of the deposition
-    dep_start, dep_end = deposition.bounds[0][0], deposition.bounds[0][1]
+    # if there are multiple depositions, use the longest one
+    longest_bound = max(deposition.bounds, key=lambda b: b[1] - b[0])
+    dep_start, dep_end = longest_bound[0], longest_bound[1]
 
     overview_plot = quick_plot(
         data_resampled,
@@ -5677,6 +5565,7 @@ def format_logfile(data):
 
 def verify_deposition_unicity(events, raw_data):
     interrupt_deposition = False
+    last_dep_fallback = False
     for event in events:
         if event.category == 'deposition':
             # if a deposition event time between the bounds is lower
@@ -5726,14 +5615,16 @@ def verify_deposition_unicity(events, raw_data):
                         print('A unique deposition event was succesfully filtered')
                         interrupt_deposition = True
                     else:
-                        raise ValueError(
-                            'Error: The number of deposition events is not 1 ',
-                            'after increasing the continuity limit and filttering ',
-                            'smaller events',
+                        print(
+                            'Warning: Could not reduce to a single deposition event.',
+                            'Falling back to the last (chronologically latest)',
+                            'deposition event.',
                         )
+                        event.select_event(raw_data, -1)
+                        last_dep_fallback = True
                         break
 
-    return events, interrupt_deposition
+    return events, interrupt_deposition, last_dep_fallback
 
 
 def select_last_event(events, raw_data, ref_event, categories):
@@ -5902,7 +5793,9 @@ def read_events(data):
         events_to_plot = copy.deepcopy(events)
 
         # We verify the unicity of the deposition event, and try to fix it if needed
-        events, interrupt_deposition = verify_deposition_unicity(events, data)
+        events, interrupt_deposition, last_dep_fallback = verify_deposition_unicity(
+            events, data
+        )
 
         # To make a list sutable for making a report, we remove
         # all the events that do not match the CATEGORIES_MAIN_REPORT
@@ -5931,6 +5824,7 @@ def read_events(data):
                     source_list=source_list,
                     params=main_params,
                     interrupt_deposition=interrupt_deposition,
+                    last_dep_fallback=last_dep_fallback,
                 )
             else:
                 main_params = event.get_params(
@@ -6185,7 +6079,7 @@ def map_params_to_nomad(params, gun_list):
                     [
                         ['deposition', gun, 'target_usage'],
                         ['deposition_parameters', gun, 'target_usage'],
-                        'kW*h',
+                        'kilowatt*hour',
                     ],
                     [
                         ['deposition', gun, 'avg_output_power'],
@@ -7540,47 +7434,6 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, **kwargs):
     return fig
 
 
-def explore_log_files(
-    samples_dir,
-    logfiles_extension=LOGFILES_EXTENSION,
-    spectra_extension=SPECTRA_EXTENSION,
-):
-    logfiles = {'name': [], 'folder': [], 'spectra': []}
-
-    # In samples_dir, explore all the folders (samples names)
-    for folder in os.listdir(samples_dir):
-        logfile_path = os.path.join(samples_dir, folder, 'log_files')
-        spectra_path = os.path.join(samples_dir, folder, 'optix_spectra')
-
-        # Check if the logfile_path exists and is a directory
-        if os.path.isdir(logfile_path):
-            # Iterate over files in the logfile_path directory
-            for file in os.listdir(logfile_path):
-                if re.match(r'^\w+\d{4}\w+', file) and file.endswith(
-                    f'.{logfiles_extension}'
-                ):
-                    logfile_name = re.sub(rf'\.{logfiles_extension}$', '', file)
-                    spectra_file_path = check_for_spectra(
-                        spectra_path, spectra_extension
-                    )
-                    if TEST_SPECIFIC_LOGFILE:
-                        if logfile_name in SAMPLES_TO_TEST:
-                            logfiles['name'].append(logfile_name)
-                            logfiles['folder'].append(logfile_path)
-                            logfiles['spectra'].append(spectra_file_path)
-                    elif not TEST_SPECIFIC_LOGFILE:
-                        if REMOVE_SAMPLES and (logfile_name not in SAMPLES_TO_REMOVE):
-                            logfiles['name'].append(logfile_name)
-                            logfiles['folder'].append(logfile_path)
-                            logfiles['spectra'].append(spectra_file_path)
-                        elif not REMOVE_SAMPLES:
-                            logfiles['name'].append(logfile_name)
-                            logfiles['folder'].append(logfile_path)
-                            logfiles['spectra'].append(spectra_file_path)
-    print(logfiles['name'])
-    return logfiles
-
-
 def check_for_spectra(spectra_path, spectra_extension):
     # Check if the spectra_path exists and is a directory
     if os.path.isdir(spectra_path):
@@ -7593,140 +7446,3 @@ def check_for_spectra(spectra_path, spectra_extension):
             ):
                 return os.path.join(spectra_path, file)
     return None
-
-
-# ---------------MAIN-----------
-
-
-def main():
-    # global events_to_plot, main_params, step_params, all_params
-    samples_dir = r'Z:\P110143-phosphosulfides-Andrea\Data\Samples'
-
-    # Initialize the the general param dictionary
-    all_params = {}
-
-    logfiles = explore_log_files(samples_dir)
-
-    # Loop over all the logfiles in the directory
-    for i in range(len(logfiles['name'])):
-        # Default Logfile location
-        print('\n')
-        print(f'Processing logfile {logfiles["name"][i]}.CSV')
-        logfile_path = (
-            f'{logfiles["folder"][i]}/{logfiles["name"][i]}.{LOGFILES_EXTENSION}'
-        )
-
-        # ---------DEFAULT EXPORT LOCATIONS-------------
-        # Specify the path and filename for the report text file
-
-        (
-            txt_file_path,
-            step_file_path,
-            timeline_file_path,
-            bias_file_path,
-            overview_file_path,
-            optix_file_path,
-            chamber_file_path,
-        ) = build_file_paths(logfiles, i)
-        # ---------READ THE DATA-------------
-
-        # Read the log file and spectrum data
-        print('Extracting all the events from the logfile')
-        data = read_logfile(logfile_path)
-
-        # ----READ ALL THE EVENTS IN THE LOGFILE----
-        events_to_plot, main_params, step_params = read_events(data)
-
-        # ---APPEND THE MAIN PARAMS TO THE ALL PARAMS DICTIONARY---
-        sample_key = '_'.join(str(logfiles['name'][i]).split('_')[0:3])
-        all_params[sample_key] = main_params
-
-        # --------GRAPH THE DIFFERENT STEPS ON A TIME LINE------------
-
-        # Create the figure
-        print('Generating the plotly plots')
-        plotly_timeline = generate_timeline(events_to_plot, logfiles['name'][i])
-
-        if PRINT_FIGURES:
-            plotly_timeline.show(config=PLOTLY_CONFIG)
-
-        # Save the image as an interactive html file
-        plotly_timeline.write_html(timeline_file_path)
-
-        # --------GRAPH THE DC BIAS AS A FUNCTION OF TIME------------
-
-        bias_plot = generate_bias_plot(events_to_plot, logfiles['name'][i])
-
-        if PRINT_FIGURES:
-            bias_plot.show(config=PLOTLY_CONFIG)
-
-        bias_plot.write_html(bias_file_path)
-
-        # --------GRAPH THE OVERVIEW PLOT----------------
-
-        overview_plot = generate_overview_plot(
-            data, logfiles['name'][i], events_to_plot
-        )
-
-        if PRINT_FIGURES:
-            overview_plot.show(config=PLOTLY_CONFIG)
-
-        overview_plot.write_html(overview_file_path)
-
-        # ------GRAPH THE OPTIX SPECTRA PLOT------------
-
-        if logfiles['spectra'][i] is not None:
-            spectra = read_spectrum(logfiles['spectra'][i])
-            optix_plot = generate_optix_plot(
-                spectra,
-                events_to_plot,
-                logfiles['name'][i],
-            )
-
-            if PRINT_FIGURES:
-                optix_plot.show(config=PLOTLY_CONFIG)
-
-            optix_plot.write_html(optix_file_path)
-
-        # -----GRAPH THE CHAMBER CONFIG---
-
-        if 'platen_position' in main_params['deposition']:
-            plolty_chamber_plot, plotly_moutning_plot = plot_logfile_chamber(
-                main_params, logfiles['name'][i]
-            )
-
-            plolty_chamber_plot.write_html(chamber_file_path.replace('.png', '.html'))
-
-            plotly_moutning_plot.write_html(
-                chamber_file_path.replace('.png', '_moutning.html')
-            )
-
-        # --------PRINT DERIVED QUANTITIES REPORTS-------------
-
-        if PRINT_MAIN_PARAMS:
-            print(f'Derived quantities report for logfile\n{logfiles["name"][i]}:\n')
-            print_params(main_params)
-
-        if PRINT_STEP_PARAMS:
-            print(f'Step report for logfile\n{logfiles["name"][i]}:\n')
-            print_params(step_params)
-
-        # ---SAVE THE REPORT QUANTITIES IN A TEXT FILE---
-
-        print('Saving the derived quantities report as a text file')
-        save_report_as_text(main_params, txt_file_path, logfiles['name'][i])
-
-        # --SAVE THE STEP REPORT QUANTITIES IN A TEXT FILE
-        if SAVE_STEP_PARAMS:
-            save_report_as_text(step_params, step_file_path, logfiles['name'][i])
-
-    # ----CONSILIDATE THE DATA INTO A SINGLE CSV FILE-----
-
-    print('Consolidating the data into a single CSV file')
-    consolidate_data_to_csv(all_params, samples_dir, process_NaN=True)
-
-    print('Processing done')
-
-
-if __name__ == '__main__':
-    main()
