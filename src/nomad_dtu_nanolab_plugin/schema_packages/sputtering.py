@@ -1882,6 +1882,7 @@ class DtuFlag(ArchiveSection):
                     'WRONG_TOXIC_GAS_FLOW',
                     'WRONG_CRACKER_SIGNAL',
                     'INTERRUPTED_DEPOSITION',
+                    'LAST_DEPOSITION_FALLBACK',
                 ]
             ),
         ),
@@ -1921,6 +1922,12 @@ class DtuFlag(ArchiveSection):
                 'spontenously. The deposition might have been resumed after the '
                 'target was turned on again. The deposition time in the logfile '
                 'might not be accurate.'
+            ),
+            'LAST_DEPOSITION_FALLBACK': (
+                'Multiple deposition events were detected and could not be reduced '
+                'to a single event by removing small events or merging. The last '
+                '(chronologically latest) deposition event was used as a fallback. '
+                'The deposition parameters may not be representative of the full run.'
             ),
         }
 
@@ -2397,8 +2404,12 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         # if the depositon was interrupted (this an info that we get from the params
         # dict, we put a flag on this sputtering process
+        if params['deposition'].get('last_dep_fallback', False):
+            params['deposition']['interrupted'] = True
         if params['deposition']['interrupted']:
             sputtering.flags.append(DtuFlag(flag='INTERRUPTED_DEPOSITION'))
+        if params['deposition'].get('last_dep_fallback', False):
+            sputtering.flags.append(DtuFlag(flag='LAST_DEPOSITION_FALLBACK'))
 
         return sputtering
 
@@ -3087,6 +3098,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             for gas_flow in step.environment.gas_flow:
                 gas_flow.normalize(archive, logger)
                 gas_flow.gas.normalize(archive, logger)
+
+        # Explicitly trigger the normalizer for flags added during log parsing,
+        # as they are added mid-normalization and won't be reached by the cascade
+        for flag in self.flags:
+            flag.normalize(archive, logger)
 
         # correct the angle of the platen if necessary (after the 8th of may 2025,
         # the angle are all shited by 120 degrees relative to the old angle)

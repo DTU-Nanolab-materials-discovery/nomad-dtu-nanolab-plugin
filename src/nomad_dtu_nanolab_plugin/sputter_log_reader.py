@@ -555,6 +555,7 @@ OVERVIEW_PLOT_MARKER_MAP = {True: 'x', False: 'circle'}
 
 # Choosing what to plot in the overview plot
 OVERVIEW_PLOT = [
+    'PC Substrate Shutter Open',
     'PC Capman Pressure',
     'Substrate Heater Temperature',
     'Sulfur Cracker Control Valve PulseWidth Setpoint Feedback',
@@ -1441,7 +1442,12 @@ class Deposition_Event(Lf_Event):
 
     # master parameters extraction method for the deposition event
     def get_params(
-        self, raw_data=None, source_list=None, params=None, interrupt_deposition=False
+        self,
+        raw_data=None,
+        source_list=None,
+        params=None,
+        interrupt_deposition=False,
+        last_dep_fallback=False,
     ):
         if params is None:
             params = {}
@@ -1451,6 +1457,7 @@ class Deposition_Event(Lf_Event):
         # Extract if the deposition has beem interrupted based the interrupt_deposition
         # flag
         params[self.category]['interrupted'] = interrupt_deposition
+        params[self.category]['last_dep_fallback'] = last_dep_fallback
 
         params = self.get_rt_bool(params=params)
         params = self.get_source_used_deposition(source_list, params=params)
@@ -5024,7 +5031,9 @@ def generate_overview_plot(data, logfile_name, events):
         )
 
     # place a vertical line marker at the beginning and at the end of the deposition
-    dep_start, dep_end = deposition.bounds[0][0], deposition.bounds[0][1]
+    # if there are multiple depositions, use the longest one
+    longest_bound = max(deposition.bounds, key=lambda b: b[1] - b[0])
+    dep_start, dep_end = longest_bound[0], longest_bound[1]
 
     overview_plot = quick_plot(
         data_resampled,
@@ -5677,6 +5686,7 @@ def format_logfile(data):
 
 def verify_deposition_unicity(events, raw_data):
     interrupt_deposition = False
+    last_dep_fallback = False
     for event in events:
         if event.category == 'deposition':
             # if a deposition event time between the bounds is lower
@@ -5726,14 +5736,16 @@ def verify_deposition_unicity(events, raw_data):
                         print('A unique deposition event was succesfully filtered')
                         interrupt_deposition = True
                     else:
-                        raise ValueError(
-                            'Error: The number of deposition events is not 1 ',
-                            'after increasing the continuity limit and filttering ',
-                            'smaller events',
+                        print(
+                            'Warning: Could not reduce to a single deposition event.',
+                            'Falling back to the last (chronologically latest)',
+                            'deposition event.',
                         )
+                        event.select_event(raw_data, -1)
+                        last_dep_fallback = True
                         break
 
-    return events, interrupt_deposition
+    return events, interrupt_deposition, last_dep_fallback
 
 
 def select_last_event(events, raw_data, ref_event, categories):
@@ -5902,7 +5914,9 @@ def read_events(data):
         events_to_plot = copy.deepcopy(events)
 
         # We verify the unicity of the deposition event, and try to fix it if needed
-        events, interrupt_deposition = verify_deposition_unicity(events, data)
+        events, interrupt_deposition, last_dep_fallback = verify_deposition_unicity(
+            events, data
+        )
 
         # To make a list sutable for making a report, we remove
         # all the events that do not match the CATEGORIES_MAIN_REPORT
@@ -5931,6 +5945,7 @@ def read_events(data):
                     source_list=source_list,
                     params=main_params,
                     interrupt_deposition=interrupt_deposition,
+                    last_dep_fallback=last_dep_fallback,
                 )
             else:
                 main_params = event.get_params(
@@ -6185,7 +6200,7 @@ def map_params_to_nomad(params, gun_list):
                     [
                         ['deposition', gun, 'target_usage'],
                         ['deposition_parameters', gun, 'target_usage'],
-                        'kW*h',
+                        'kilowatt*hour',
                     ],
                     [
                         ['deposition', gun, 'avg_output_power'],
