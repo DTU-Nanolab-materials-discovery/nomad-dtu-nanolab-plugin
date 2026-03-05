@@ -219,7 +219,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         Processing Steps:
             1. Iterate through each RamanMeas object
-            2. Convert positions to proper units (micrometers → meters)
+            2. Convert positions to proper units (micrometers -> meters)
             3. Extract intensity and wavenumber arrays
             4. Create RamanResult with all metadata
             5. Normalize each result (generates name from position)

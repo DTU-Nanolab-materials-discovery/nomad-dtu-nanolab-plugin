@@ -100,7 +100,7 @@ class EllipsometryMappingResult(MappingResult):
     epsilon_inf = Quantity(
         type=np.float64,
         description=(
-            'The high-frequency dielectric constant (ε∞), representing the'
+            'The high-frequency dielectric constant (epon)), representing the'
             "material's relative permittivity at optical frequencies"
         ),
         a_eln=ELNAnnotation(
@@ -304,7 +304,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             first_col_name = header_line.split('\t')[0]
             if first_col_name == 'Energy (eV)':
                 # Convert energy (eV) to wavelength (nm) using
-                # λ = 1239.84 / E
+                # lambda = 1239.84 / E
                 df.iloc[:, 0] = 1239.84 / df.iloc[:, 0]
                 # After conversion, wavelength should be in descending order
                 # from the ascending energy. We need to reverse the entire
@@ -553,12 +553,17 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         # Determine dimensionality by counting unique coordinates
         # This tells us if we have a line scan (1D) or area map (2D)
-        unique_x = len(set(x_vals))  # Number of distinct x positions
-        unique_y = len(set(y_vals))  # Number of distinct y positions
+        # Use a tolerance to handle floating-point noise (e.g. ~1e-15 values
+        # that should be treated as identical)
+        x_range = max(x_vals) - min(x_vals)
+        y_range = max(y_vals) - min(y_vals)
+        tol = 1e-6  # 1 nm tolerance
+        is_1d_x = x_range < tol  # all x approximately the same
+        is_1d_y = y_range < tol  # all y approximately the same
 
-        if unique_x == 1 or unique_y == 1:
+        if is_1d_x or is_1d_y:
             # 1D data - create a line plot with markers
-            if unique_x == 1:
+            if is_1d_x:
                 # Y varies
                 fig = go.Figure()
                 fig.add_trace(
@@ -668,7 +673,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         Creates five types of plots:
         1. Optical constants (n and k) vs photon energy for all positions
-        2. Absorption coefficient (α) vs photon energy for all positions
+        2. Absorption coefficient (alpha) vs photon energy for all positions
         3. Thickness spatial map (1D or 2D depending on measurement grid)
         4. Roughness spatial map (1D or 2D depending on measurement grid)
         5. MSE (fit quality) spatial map (1D or 2D depending on measurement grid)
@@ -688,7 +693,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 and result.k is not None
             ):
                 wavelength = result.wavelength.to('nm').magnitude
-                # Convert wavelength to photon energy: E (eV) = 1240 / λ(nm)
+                # Convert wavelength to photon energy: E (eV) = 1240 / lambda(nm)
                 photon_energy = 1240.0 / wavelength
                 n = result.n
                 k = result.k
@@ -735,19 +740,19 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         )
 
         # ===== Plot 2: Absorption Coefficient vs Photon Energy =====
-        # Calculate and plot absorption coefficient α = 4πk/λ
+        # Calculate and plot absorption coefficient alpha = 4*pi*k/lambda
         fig_alpha = go.Figure()
         for result in self.results:
             if result.wavelength is not None and result.k is not None:
                 wavelength = result.wavelength.to('nm').magnitude
-                # Convert wavelength to photon energy: E (eV) = 1240 / λ(nm)
+                # Convert wavelength to photon energy: E (eV) = 1240 / lambda(nm)
                 photon_energy = 1240.0 / wavelength
                 k = result.k
                 position = result.position
 
-                # Calculate absorption coefficient: α = 4πk/λ
-                # λ in cm = wavelength_nm × 10^-7
-                # α in cm^-1 = 4π × k / (wavelength_nm × 10^-7)
+                # Calculate absorption coefficient: alpha = 4*pi*k/lambda
+                # lambda in cm = wavelength_nm * 10^-7
+                # alpha in cm^-1 = 4*pi * k / (wavelength_nm * 10^-7)
                 alpha = (4 * np.pi * k) / (wavelength * 1e-7)
 
                 fig_alpha.add_trace(
@@ -755,14 +760,14 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         x=photon_energy,
                         y=alpha,
                         mode='lines',
-                        name=f'α @ {position}',
+                        name=f'alpha @ {position}',
                     )
                 )
 
         fig_alpha.update_layout(
             title='Absorption Coefficient',
             xaxis_title='Photon Energy (eV)',
-            yaxis_title='α (cm⁻¹)',
+            yaxis_title='alpha (1/cm)',
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
