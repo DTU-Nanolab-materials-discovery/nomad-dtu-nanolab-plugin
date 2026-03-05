@@ -106,7 +106,7 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         # Update layout
         fig.update_layout(
             title='XRD Patterns',
-            xaxis_title='2<i>θ</i> / °',
+            xaxis_title='2<i>theta</i> (deg)',
             yaxis_title='Intensity',
             template='plotly_white',
             hovermode='closest',
@@ -170,7 +170,7 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         # Update layout
         fig2.update_layout(
             title='XRD Patterns stacked',
-            xaxis_title='2<i>θ</i> / °',
+            xaxis_title='2<i>theta</i> (deg)',
             yaxis_title='Log(Intensity)',
             template='plotly_white',
             hovermode='closest',
@@ -247,7 +247,7 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
             # Update layout
             # fig3.update_layout(
             #    title='XRD Patterns stacked',
-            #    xaxis_title='2<i>θ</i> / °',
+            #    xaxis_title='2<i>theta</i> (deg)',
             #    yaxis_title='Intensity',
             #    template='plotly_white',
             #    hovermode='closest',
