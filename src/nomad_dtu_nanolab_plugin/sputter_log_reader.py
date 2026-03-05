@@ -2559,17 +2559,6 @@ def get_end_of_process(raw_data, params=None):
     return params
 
 
-# method to save the derived quantities report as a text file
-def save_report_as_text(params: dict, txt_file_path, logfile_name=None):
-    # Save the derived quantities report as a text file as
-    with open(txt_file_path, 'w') as txt_file:
-        if logfile_name is not None:
-            txt_file.write(
-                f'Derived quantities report for logfile\n{logfile_name}:\n\n'
-            )
-        txt_file.write(write_params(params))
-
-
 # method to flatten a nested dictionary
 def flatten_dict(d, parent_key='', sep=';'):
     """
@@ -2620,73 +2609,6 @@ def fix_single_dict_level(dict_var, sep='__'):
     return dict_var
 
 
-def consolidate_data_to_csv(all_params, samples_dir, sep='__', process_NaN=False):
-    # Flatten the dictionary with the specified separator
-    flatten_all_params = flatten_dict(all_params, sep=sep)
-
-    # fix the level of the dict
-    flatten_all_params = fix_single_dict_level(flatten_all_params)
-
-    # Convert the flattened dictionary to a DataFrame
-    df = pd.DataFrame([flatten_all_params])
-
-    # Split the column names using the separator and ensure consistent levels
-    split_columns = [tuple(col.split(sep)) for col in df.columns]
-
-    # Set the standardized MultiIndex for the DataFrame columns
-    df.columns = pd.MultiIndex.from_tuples(split_columns)
-
-    # Fill NaN values in the MultiIndex headers
-    if process_NaN:
-        df.columns = pd.MultiIndex.from_tuples(
-            [tuple('' if pd.isna(x) else x for x in col) for col in df.columns]
-        )
-
-    # Save the DataFrame to a CSV file
-    output_path = os.path.join(samples_dir, 'all_params.csv')
-    df.to_csv(output_path, index=False, na_rep='')
-
-    print(f'Data successfully saved to {output_path}')
-
-
-def open_csv_as_multiindex(csv_path, replace_nan=False):
-    """
-    Reopen a CSV file as a MultiIndex DataFrame.
-
-    Args:
-        csv_path (str): The path to the CSV file.
-
-    Returns:
-        pd.DataFrame: The MultiIndex DataFrame.
-    """
-    # Read the CSV file with the appropriate header levels
-    df = pd.read_csv(csv_path, header=[0, 1, 2, 3], na_filter=False)
-
-    # The columns are already MultiIndex, so no need to split them again
-    df.columns = pd.MultiIndex.from_tuples(df.columns)
-
-    # set the index names to ['sample','event','source','parameter']
-    df.columns.names = ['sample', 'event', 'source', 'parameter']
-
-    if replace_nan:
-        # Replace the string 'nan' with an empty string in MultiIndex column names
-        df.columns = df.columns.set_levels(
-            [level.str.replace('nan', '') for level in df.columns.levels]
-        )
-
-    return df
-
-
-# method to get a parameter from a MultiIndex DataFrame
-# path being a list of strings pointing to the parameter
-def get_df_param(df, path: list):
-    for key in path:
-        df = df.xs(key, axis=1, level=1)
-    # set the data row index to path[-1]
-    df.index = pd.Index(df.index, name=path[-1])
-    return df
-
-
 # Function to convert timestamps to isoformat
 def convert_timestamps(obj):
     if isinstance(obj, dict):
@@ -2722,49 +2644,6 @@ def print_params(quantities, indent=''):
             elif isinstance(value, pd.Series):
                 formatted_value = 'Cannot display pd.DataFrame'
             print(f'{indent}{key}: {formatted_value}')
-
-
-def build_file_paths(logfiles, i):
-    file_dir = os.path.join(logfiles['folder'][i])
-
-    # Specify the main report export location and file name
-    txt_file_name = f'{logfiles["name"][i]}_derived_quantities.txt'
-    txt_file_path = os.path.join(file_dir, txt_file_name)
-
-    # Specify the step report export location and file name
-    step_file_name = f'{logfiles["name"][i]}_derived_quantities_step.txt'
-    step_file_path = os.path.join(file_dir, step_file_name)
-
-    # Specify the plotly graph export location and file name for timelines
-    timeline_file_name = f'{logfiles["name"][i]}_plotly_timeline.html'
-    timeline_file_path = os.path.join(file_dir, timeline_file_name)
-
-    # Specify the plotly graph export location and file name for bias/power plots
-    bias_file_name = f'{logfiles["name"][i]}_plotly_bias.html'
-    bias_file_path = os.path.join(file_dir, bias_file_name)
-
-    # Specify the plotly graph export location and file name
-    # for the overview plot
-    overview_file_name = f'{logfiles["name"][i]}_plotly_overview.html'
-    overview_file_path = os.path.join(file_dir, overview_file_name)
-
-    # specify the optix cascade plot export location and file name
-    optix_cascade_file_name = f'{logfiles["name"][i]}_optix_cascade.html'
-    optix_file_path = os.path.join(file_dir, optix_cascade_file_name)
-
-    # Specify the chamber config plot export location and file name
-    chamber_config_file_name = f'{logfiles["name"][i]}_chamber_config.png'
-    chamber_config_file_path = os.path.join(file_dir, chamber_config_file_name)
-
-    return (
-        txt_file_path,
-        step_file_path,
-        timeline_file_path,
-        bias_file_path,
-        overview_file_path,
-        optix_file_path,
-        chamber_config_file_path,
-    )
 
 
 # Function to write the derived quantities in a nested format
@@ -7553,48 +7432,6 @@ def plot_plotly_chamber_config(samples, guns, platen_angle, **kwargs):
         )
 
     return fig
-
-
-def explore_log_files(
-    samples_dir,
-    logfiles_extension=LOGFILES_EXTENSION,
-    spectra_extension=SPECTRA_EXTENSION,
-):
-    logfiles = {'name': [], 'folder': [], 'spectra': []}
-
-    # In samples_dir, explore all the folders (samples names)
-    for folder in os.listdir(samples_dir):
-        logfile_path = os.path.join(samples_dir, folder, 'log_files')
-        spectra_path = os.path.join(samples_dir, folder, 'optix_spectra')
-
-        # Check if the logfile_path exists and is a directory
-        if os.path.isdir(logfile_path):
-            # Iterate over files in the logfile_path directory
-            for file in os.listdir(logfile_path):
-                if re.match(r'^\w+\d{4}\w+', file) and file.endswith(
-                    f'.{logfiles_extension}'
-                ):
-                    logfile_name = re.sub(rf'\.{logfiles_extension}$', '', file)
-                    spectra_file_path = check_for_spectra(
-                        spectra_path, spectra_extension
-                    )
-                    if TEST_SPECIFIC_LOGFILE:
-                        if logfile_name in SAMPLES_TO_TEST:
-                            logfiles['name'].append(logfile_name)
-                            logfiles['folder'].append(logfile_path)
-                            logfiles['spectra'].append(spectra_file_path)
-                    elif not TEST_SPECIFIC_LOGFILE:
-                        if REMOVE_SAMPLES and (logfile_name not in SAMPLES_TO_REMOVE):
-                            logfiles['name'].append(logfile_name)
-                            logfiles['folder'].append(logfile_path)
-                            logfiles['spectra'].append(spectra_file_path)
-                        elif not REMOVE_SAMPLES:
-                            logfiles['name'].append(logfile_name)
-                            logfiles['folder'].append(logfile_path)
-                            logfiles['spectra'].append(spectra_file_path)
-    print(logfiles['name'])
-    return logfiles
-
 
 def check_for_spectra(spectra_path, spectra_extension):
     # Check if the spectra_path exists and is a directory
