@@ -48,6 +48,7 @@ from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_measurements.mapping.schema import (
     MappingResult,
+    RectangularSampleAlignment,
 )
 from nomad_measurements.utils import merge_sections
 from structlog.stdlib import BoundLogger
@@ -57,7 +58,6 @@ from nomad_dtu_nanolab_plugin.raman_map_parser import (
     MappingRamanMeas,
 )
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    DTUBaseSampleAlignment,
     DtuNanolabMeasurement,
 )
 
@@ -201,7 +201,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
     )
     sample_alignment = SubSection(
-        section_def=DTUBaseSampleAlignment,
+        section_def=RectangularSampleAlignment,
         description='The alignment of the sample.',
     )
 

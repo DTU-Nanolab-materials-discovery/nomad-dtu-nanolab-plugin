@@ -28,6 +28,7 @@ from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad_measurements.mapping.schema import (
     MappingResult,
+    RectangularSampleAlignment,
 )
 from nomad_measurements.utils import merge_sections
 from nomad_measurements.xrd.schema import (
@@ -40,7 +41,6 @@ from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    DTUBaseSampleAlignment,
     DtuNanolabMeasurement,
 )
 
@@ -85,7 +85,7 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         repeats=True,
     )
     sample_alignment = SubSection(
-        section_def=DTUBaseSampleAlignment,
+        section_def=RectangularSampleAlignment,
         description='The alignment of the sample.',
     )
 
