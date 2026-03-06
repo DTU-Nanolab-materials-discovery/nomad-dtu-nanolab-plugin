@@ -8,7 +8,6 @@ from nomad.datamodel.metainfo.annotations import (
     ELNComponentEnum,
     SectionProperties,
 )
-
 from nomad.metainfo.metainfo import MProxy, Package, Quantity, Section, SubSection
 from nomad_material_processing.vapor_deposition.pvd.thermal import ThermalEvaporation
 
