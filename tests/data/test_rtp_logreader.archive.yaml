@@ -1,0 +1,5 @@
+data:
+  m_def: nomad_dtu_nanolab_plugin.schema_packages.rtp.DtuRTP
+  location: "DTU; IDOL Lab"
+  log_file_eklipse: rtp_logreader_example_eklipse.csv
+  log_file_T2BDiagnostics: rtp_logreader_example_t2b.txt
