@@ -180,7 +180,7 @@ class DTUSubstrateBatch(Collection, Schema):
     )
 
     def next_used_in(
-        self, entry_types: list [type[Schema]], negate: bool = False
+        self, entry_types: list[type[Schema]], negate: bool = False
     ) -> DTUSubstrate:
         from nomad.search import MetadataPagination, search
 
