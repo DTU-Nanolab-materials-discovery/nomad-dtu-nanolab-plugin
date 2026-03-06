@@ -32,6 +32,7 @@ from nomad_material_processing.vapor_deposition.cvd.general import (
 from nomad_measurements.utils import create_archive
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.rtp_log_reader import parse_rtp_logfiles
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
     DTUCombinatorialLibrary,
     DtuLibraryReference,
@@ -1270,6 +1271,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+        self.parse_log_files(archive, logger)
         super().normalize(archive, logger)
         # Populate lab_id according to generated name
         if self.lab_id is None:
@@ -1307,3 +1309,85 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 archive.results.material = Material()
             elements = self.overview.material_space.split('-')
             archive.results.material.elements = elements
+
+    def parse_log_files(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """Parse RTP gas and diagnostics log files and populate RTP quantities."""
+        if not self.log_file_eklipse or not self.log_file_T2BDiagnostics:
+            return
+
+        try:
+            with archive.m_context.raw_file(self.log_file_eklipse, 'r') as eklipse_file:
+                with archive.m_context.raw_file(
+                    self.log_file_T2BDiagnostics, 'r'
+                ) as diagnostics_file:
+                    parsed = parse_rtp_logfiles(
+                        eklipse_csv_path=eklipse_file.name,
+                        t2b_diagnostics_txt_path=diagnostics_file.name,
+                    )
+        except Exception as exc:
+            logger.warning(f'Failed to parse RTP log files: {exc}')
+            return
+
+        # Keep explicitly entered values; auto-fill only when missing.
+        if self.used_gases in (None, []):
+            self.used_gases = parsed.used_gases
+
+        if self.base_pressure is None and parsed.base_pressure_pa is not None:
+            self.base_pressure = parsed.base_pressure_pa
+        if (
+            self.base_pressure_ballast is None
+            and parsed.base_pressure_ballast_pa is not None
+        ):
+            self.base_pressure_ballast = parsed.base_pressure_ballast_pa
+        if self.rate_of_rise is None and parsed.rate_of_rise_pa_s is not None:
+            self.rate_of_rise = parsed.rate_of_rise_pa_s
+        if self.chiller_flow is None and parsed.chiller_flow_m3_s is not None:
+            self.chiller_flow = parsed.chiller_flow_m3_s
+
+        if self.overview is None:
+            self.overview = RTPOverview()
+
+        if self.overview.annealing_pressure is None:
+            self.overview.annealing_pressure = parsed.overview.get('annealing_pressure')
+        if self.overview.annealing_time is None:
+            self.overview.annealing_time = parsed.overview.get('annealing_time')
+        if self.overview.annealing_temperature is None:
+            self.overview.annealing_temperature = parsed.overview.get(
+                'annealing_temperature'
+            )
+        if self.overview.annealing_ar_flow is None:
+            self.overview.annealing_ar_flow = parsed.overview.get('annealing_ar_flow')
+        if self.overview.annealing_n2_flow is None:
+            self.overview.annealing_n2_flow = parsed.overview.get('annealing_n2_flow')
+        if self.overview.annealing_ph3_in_ar_flow is None:
+            self.overview.annealing_ph3_in_ar_flow = parsed.overview.get(
+                'annealing_ph3_in_ar_flow'
+            )
+        if self.overview.annealing_h2s_in_ar_flow is None:
+            self.overview.annealing_h2s_in_ar_flow = parsed.overview.get(
+                'annealing_h2s_in_ar_flow'
+            )
+        if self.overview.total_heating_time is None:
+            self.overview.total_heating_time = parsed.overview.get('total_heating_time')
+        if self.overview.total_cooling_time is None:
+            self.overview.total_cooling_time = parsed.overview.get('total_cooling_time')
+        if self.overview.end_of_process_temperature is None:
+            self.overview.end_of_process_temperature = parsed.overview.get(
+                'end_of_process_temperature'
+            )
+
+        if not self.steps:
+            self.steps = []
+            for i, parsed_step in enumerate(parsed.steps, start=1):
+                step = DTURTPSteps(name=f'{parsed_step.name} {i}')
+                step.step_overview = RTPStepOverview(
+                    duration=parsed_step.duration_s,
+                    pressure=parsed_step.pressure_pa,
+                    step_ar_flow=parsed_step.ar_flow_m3_s,
+                    step_n2_flow=parsed_step.n2_flow_m3_s,
+                    step_ph3_in_ar_flow=parsed_step.ph3_in_ar_flow_m3_s,
+                    step_h2s_in_ar_flow=parsed_step.h2s_in_ar_flow_m3_s,
+                    initial_temperature=parsed_step.initial_temperature_k,
+                    final_temperature=parsed_step.final_temperature_k,
+                )
+                self.steps.append(step)
