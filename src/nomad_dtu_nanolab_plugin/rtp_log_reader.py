@@ -1,3 +1,4 @@
+import csv
 import re
 from dataclasses import dataclass
 from io import StringIO
@@ -51,16 +52,65 @@ def _normalize_column_name(name: str) -> str:
     return re.sub(r'[^a-z0-9]+', '', str(name).lower())
 
 
+def _count_columns_for_delimiter(line: str, delimiter: str) -> int:
+    row = next(
+        csv.reader(
+            [line],
+            delimiter=delimiter,
+            quotechar='"',
+            skipinitialspace=True,
+        )
+    )
+    return len(row)
+
+
+def _detect_delimiter_from_line(line: str) -> str | None:
+    best_delimiter = None
+    best_columns = 1
+    for delimiter in [',', ';', '\t']:
+        try:
+            n_columns = _count_columns_for_delimiter(line, delimiter)
+        except Exception:
+            continue
+        if n_columns > best_columns:
+            best_columns = n_columns
+            best_delimiter = delimiter
+
+    if best_columns <= 1:
+        return None
+    return best_delimiter
+
+
 def _read_csv_with_fallback(path: str) -> pd.DataFrame:
     # The exported RTP CSV can use different delimiters depending on locale.
-    for sep in [',', ';', '\t']:
+    with open(path, encoding='utf-8', errors='ignore') as handle:
+        non_empty_lines = [line for line in handle if line.strip()]
+
+    preferred_sep = None
+    if non_empty_lines:
+        preferred_sep = _detect_delimiter_from_line(non_empty_lines[0])
+
+    separators = [',', ';', '\t']
+    if preferred_sep in separators:
+        separators.remove(preferred_sep)
+        separators.insert(0, preferred_sep)
+
+    for sep in separators:
         try:
-            df = pd.read_csv(path, sep=sep, engine='python')
+            df = pd.read_csv(path, sep=sep, engine='python', skipinitialspace=True)
             if len(df.columns) > 1:
                 return df
         except Exception:
             continue
-    return pd.read_csv(path, sep=r'[;,\t]+', engine='python')
+
+    # Fall back to the preferred separator if all attempts failed.
+    fallback_sep = preferred_sep or ','
+    return pd.read_csv(
+        path,
+        sep=fallback_sep,
+        engine='python',
+        skipinitialspace=True,
+    )
 
 
 def _extract_key_values_from_text(content: str) -> dict[str, float]:
@@ -110,13 +160,24 @@ def _parse_table_from_text(content: str) -> pd.DataFrame:
     if header_idx is None:
         return pd.DataFrame()
 
+    header_delimiter = _detect_delimiter_from_line(lines[header_idx])
+    if header_delimiter is None:
+        return pd.DataFrame()
+
     # Collect only contiguous tabular rows after the header.
     table_lines = [lines[header_idx]]
-    n_cols = len(re.split(r'[;,\t]+', lines[header_idx]))
+    n_cols = _count_columns_for_delimiter(lines[header_idx], header_delimiter)
     for line in lines[header_idx + 1 :]:
         if not re.search(r'\d', line):
             break
-        cols = re.split(r'[;,\t]+', line)
+        cols = next(
+            csv.reader(
+                [line],
+                delimiter=header_delimiter,
+                quotechar='"',
+                skipinitialspace=True,
+            )
+        )
         if len(cols) < MIN_TABLE_DATA_COLUMNS:
             break
         if len(cols) != n_cols:
@@ -129,7 +190,10 @@ def _parse_table_from_text(content: str) -> pd.DataFrame:
         return pd.DataFrame()
 
     return pd.read_csv(
-        StringIO('\n'.join(table_lines)), sep=r'[;,\t]+', engine='python'
+        StringIO('\n'.join(table_lines)),
+        sep=header_delimiter,
+        engine='python',
+        skipinitialspace=True,
     )
 
 
