@@ -81,6 +81,22 @@ def _detect_delimiter_from_line(line: str) -> str | None:
     return best_delimiter
 
 
+def _find_header_line_index(lines: list[str], delimiter: str) -> int:
+    best_idx = 0
+    best_columns = 1
+    for idx, line in enumerate(lines[:50]):
+        if not line.strip():
+            continue
+        try:
+            n_columns = _count_columns_for_delimiter(line, delimiter)
+        except Exception:
+            continue
+        if n_columns > best_columns:
+            best_columns = n_columns
+            best_idx = idx
+    return best_idx
+
+
 def _read_csv_with_fallback(path: str) -> pd.DataFrame:
     # The exported RTP CSV can use different delimiters depending on locale.
     with open(path, encoding='utf-8', errors='ignore') as handle:
@@ -96,8 +112,22 @@ def _read_csv_with_fallback(path: str) -> pd.DataFrame:
         separators.insert(0, preferred_sep)
 
     for sep in separators:
+        header_idx = (
+            _find_header_line_index(non_empty_lines, sep) if non_empty_lines else 0
+        )
         try:
-            df = pd.read_csv(path, sep=sep, engine='python', skipinitialspace=True)
+            # Parse from the detected table start in-memory to avoid physical
+            # line-offset issues when files contain metadata preambles/blank lines.
+            candidate_lines = non_empty_lines[header_idx:]
+            if not candidate_lines:
+                continue
+            df = pd.read_csv(
+                StringIO(''.join(candidate_lines)),
+                sep=sep,
+                engine='python',
+                skipinitialspace=True,
+                on_bad_lines='skip',
+            )
             if len(df.columns) > 1:
                 return df
         except Exception:
@@ -105,11 +135,25 @@ def _read_csv_with_fallback(path: str) -> pd.DataFrame:
 
     # Fall back to the preferred separator if all attempts failed.
     fallback_sep = preferred_sep or ','
+    header_idx = (
+        _find_header_line_index(non_empty_lines, fallback_sep) if non_empty_lines else 0
+    )
+    candidate_lines = non_empty_lines[header_idx:]
+    if candidate_lines:
+        return pd.read_csv(
+            StringIO(''.join(candidate_lines)),
+            sep=fallback_sep,
+            engine='python',
+            skipinitialspace=True,
+            on_bad_lines='skip',
+        )
+
     return pd.read_csv(
         path,
         sep=fallback_sep,
         engine='python',
         skipinitialspace=True,
+        on_bad_lines='skip',
     )
 
 
@@ -194,6 +238,7 @@ def _parse_table_from_text(content: str) -> pd.DataFrame:
         sep=header_delimiter,
         engine='python',
         skipinitialspace=True,
+        on_bad_lines='skip',
     )
 
 
