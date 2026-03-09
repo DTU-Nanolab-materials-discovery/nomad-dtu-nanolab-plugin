@@ -2,6 +2,7 @@ import os.path
 
 import pytest
 from nomad.client import normalize_all, parse
+from nomad_dtu_nanolab_plugin.rtp_log_reader import _read_csv_with_fallback
 
 MIN_EXPECTED_STEPS = 2
 
@@ -28,3 +29,20 @@ def test_rtp_logreader_populates_process_data():
 
     # 1.1 torr from diagnostics log.
     assert data.base_pressure.to('torr').magnitude == pytest.approx(1.1, abs=1e-3)
+
+
+def test_read_csv_with_fallback_keeps_quoted_fields(tmp_path):
+    csv_file = tmp_path / 'quoted_eklipse.csv'
+    csv_file.write_text(
+        'timestamp;comment;value\n'
+        '2026-03-09 10:00:00;"note with ; semicolon";1\n'
+        '2026-03-09 10:00:01;"note with , comma";2\n',
+        encoding='utf-8',
+    )
+
+    df = _read_csv_with_fallback(str(csv_file))
+
+    assert list(df.columns) == ['timestamp', 'comment', 'value']
+    assert len(df) == 2
+    assert df.iloc[0]['comment'] == 'note with ; semicolon'
+    assert df.iloc[1]['comment'] == 'note with , comma'
