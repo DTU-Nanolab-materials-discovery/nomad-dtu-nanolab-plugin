@@ -1,5 +1,8 @@
+import tempfile
 import time
 import warnings
+from contextlib import ExitStack
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -180,6 +183,7 @@ class DtuRTPInputSampleMounting(ArchiveSection):
             }
             if self.relative_position in positions:
                 self.position_x, self.position_y = positions[self.relative_position]
+
         if self.relative_position is not None:
             self.name = self.relative_position
         elif self.position_x is not None and self.position_y is not None:
@@ -799,7 +803,7 @@ class DTURTPSteps(CVDStep, ArchiveSection):
         # Get used_gases from DtuRTP main class
         parent = getattr(self, 'm_parent', None)
         if parent is not None and hasattr(parent, 'used_gases'):
-            for gas in parent.used_gases:
+            for gas in parent.used_gases or []:
                 source = DtuRTPSources()
                 source.sources = [gas]
                 source.name = gas
@@ -832,6 +836,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     'location',
                     'log_file_eklipse',
                     'log_file_T2BDiagnostics',
+                    'process_log_files',
+                    'overwrite_existing_data',
                     'samples_susceptor_before',
                     'samples_susceptor_after',
                     'base_pressure',
@@ -867,25 +873,40 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     log_file_eklipse = Quantity(
         type=str,
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.FileEditQuantity, label='Gases log file'
+            component=ELNComponentEnum.FileEditQuantity, label='Gas/Pressure log file'
         ),
-        description='Cell to upload the gases log file from the RTP process.',
+        description='Cell to upload the gas/pressurelog file obtained with Eklipse.',
     )
     log_file_T2BDiagnostics = Quantity(
         type=str,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity, label='Temperature log file'
         ),
-        description='Cell to upload the temperature log file from the RTP process.',
+        description=(
+            'Cell to upload the temperature log file obtained with T2BDiagnostics.'
+        ),
     )
-    # log_file_pressure = Quantity(
-    #    type=str,
-    #    a_eln=ELNAnnotation(
-    #        component=ELNComponentEnum.FileEditQuantity,
-    #        label = 'Pressure log file'
-    #    ),
-    #    description='Cell to upload the pressure log file from the RTP process.',
-    # )
+    process_log_files = Quantity(
+        type=bool,
+        default=True,
+        description='Boolean to indicate if the RTP log files should be processed.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+            label='Process log files',
+        ),
+    )
+    overwrite_existing_data = Quantity(
+        type=bool,
+        default=False,
+        description=(
+            'Boolean to indicate if existing RTP data should be overwritten '
+            'by values parsed from log files.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+            label='Overwrite existing data?',
+        ),
+    )
     samples_susceptor_before = Quantity(
         type=str,
         a_eln={
@@ -975,11 +996,67 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     )
 
     ############################## CREATING RTP SAMPLE LIBRARY ######################
+    def _sync_step_sources_from_used_gases(self) -> None:
+        gases = [gas for gas in (self.used_gases or []) if gas]
+        for step in getattr(self, 'steps', []) or []:
+            step.sources = []
+            for gas in gases:
+                source = DtuRTPSources()
+                source.sources = [gas]
+                source.name = gas
+                step.sources.append(source)
+
+    def _autofill_material_space(self) -> None:
+        if self.overview is None:
+            self.overview = RTPOverview()
+
+        current_material_space = getattr(self.overview, 'material_space', None)
+        if isinstance(current_material_space, str) and current_material_space.strip():
+            return
+
+        ordered_elements: list[str] = []
+
+        def _append_symbol(raw_symbol) -> None:
+            if raw_symbol is None:
+                return
+            symbol = str(raw_symbol).strip()
+            if symbol and symbol not in ordered_elements:
+                ordered_elements.append(symbol)
+
+        for rtp_sample in getattr(self, 'input_samples', []):
+            origin = getattr(rtp_sample, 'input_combi_lib', None)
+            if origin is None:
+                continue
+
+            layer_ref = (
+                origin.layers[0].reference if getattr(origin, 'layers', None) else None
+            )
+            layer_comp = getattr(layer_ref, 'elemental_composition', None)
+            if layer_comp is None:
+                layer_comp = getattr(origin, 'elemental_composition', None)
+
+            if not layer_comp:
+                continue
+
+            for elem in layer_comp:
+                symbol = getattr(elem, 'element', elem)
+                _append_symbol(symbol)
+
+        gas_to_element = {'PH3': 'P', 'H2S': 'S'}
+        for gas, symbol in gas_to_element.items():
+            if gas in (self.used_gases or []):
+                _append_symbol(symbol)
+
+        if ordered_elements:
+            self.overview.material_space = '-'.join(ordered_elements)
+
     def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         samples = []
         rtp_name = self.name
         rtp_datetime = self.datetime
         rtp_materialspace = self.overview.material_space
+        if not rtp_materialspace:
+            return
         for rtp_sample in self.input_samples:
             # Get the the input sample and original sample
             origin = rtp_sample.input_combi_lib
@@ -1139,6 +1216,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         rel_pos = getattr(input_sample, 'relative_position', None)
         x = getattr(input_sample, 'position_x', None)
         y = getattr(input_sample, 'position_y', None)
+        rotation = getattr(input_sample, 'rotation', None)
         if rel_pos is None and x is None and y is None:
             warnings.warn(
                 f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}'"
@@ -1172,13 +1250,33 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             x = x.to('mm').magnitude
         if hasattr(y, 'magnitude'):
             y = y.to('mm').magnitude
+        if rotation is None:
+            angle_rad = 0.0
+        elif hasattr(rotation, 'to'):
+            angle_rad = float(rotation.to('rad').magnitude)
+        else:
+            angle_rad = float(rotation)
+
         half_w, half_l = width / 2, length / 2
+        local_corners = [
+            (-half_w, -half_l),
+            (half_w, -half_l),
+            (half_w, half_l),
+            (-half_w, half_l),
+        ]
+        cos_a = float(np.cos(angle_rad))
+        sin_a = float(np.sin(angle_rad))
+        rotated_corners = [
+            (
+                x + (cx * cos_a - cy * sin_a),
+                y + (cx * sin_a + cy * cos_a),
+            )
+            for cx, cy in local_corners
+        ]
+        path = 'M ' + ' L '.join(f'{px},{py}' for px, py in rotated_corners) + ' Z'
         fig.add_shape(
-            type='rect',
-            x0=x - half_w,
-            y0=y - half_l,
-            x1=x + half_w,
-            y1=y + half_l,
+            type='path',
+            path=path,
             line=dict(color='blue', width=2),
             fillcolor='rgba(100,100,255,0.3)',
         )
@@ -1271,7 +1369,16 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        self.parse_log_files(archive, logger)
+        if (
+            self.log_file_eklipse
+            and self.log_file_T2BDiagnostics
+            and self.process_log_files
+        ):
+            self.parse_log_files(
+                archive,
+                logger,
+                overwrite=bool(self.overwrite_existing_data),
+            )
         super().normalize(archive, logger)
         # Populate lab_id according to generated name
         if self.lab_id is None:
@@ -1296,6 +1403,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         self._time = times
         self._temperature_profile = temps
         self.figures = []
+        self._sync_step_sources_from_used_gases()
+        self._autofill_material_space()
         if self.overview is not None:
             self.add_libraries(archive, logger)
         self.plot_temperature_profile()
@@ -1310,73 +1419,264 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             elements = self.overview.material_space.split('-')
             archive.results.material.elements = elements
 
-    def parse_log_files(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+    def parse_log_files(
+        self,
+        archive: 'EntryArchive',
+        logger: 'BoundLogger',
+        overwrite: bool = False,
+    ) -> None:
         """Parse RTP gas and diagnostics log files and populate RTP quantities."""
         if not self.log_file_eklipse or not self.log_file_T2BDiagnostics:
             return
 
+        def _sanitize_path_value(path_value: str) -> str:
+            raw = str(path_value).strip().strip('"').strip("'")
+            # Some serialized paths can contain escaped control chars where
+            # backslashes were interpreted (e.g. "\raw" -> "\r" + "aw").
+            raw = raw.replace('\r', '/').replace('\n', '/').replace('\t', '/')
+            raw = raw.replace('\\', '/')
+            return raw
+
+        def _candidate_raw_paths(path_value: str) -> list[str]:
+            normalized = _sanitize_path_value(path_value)
+            candidates = [normalized]
+
+            if normalized.startswith('./'):
+                candidates.append(normalized[2:])
+            if normalized.startswith('/'):
+                candidates.append(normalized.lstrip('/'))
+            if '/raw/' in normalized:
+                candidates.append(normalized.split('/raw/', 1)[1])
+            if normalized.startswith('raw/'):
+                candidates.append(normalized[4:])
+
+            filename = normalized.rsplit('/', 1)[-1]
+            if filename:
+                candidates.append(filename)
+
+            deduped: list[str] = []
+            for candidate in candidates:
+                if candidate and candidate not in deduped:
+                    deduped.append(candidate)
+            return deduped
+
+        def _resolve_input_path(
+            path_value: str, expected_suffix: str
+        ) -> tuple[str, str]:
+            last_exc: Exception | None = None
+            for candidate in _candidate_raw_paths(path_value):
+                try:
+                    with archive.m_context.raw_file(candidate, 'r'):
+                        return ('raw', candidate)
+                except Exception as exc:
+                    last_exc = exc
+
+            # Fallback for local processing where values can point to staging
+            # paths directly (e.g. .volumes/fs/staging/.../raw/file.csv).
+            fs_candidates = _candidate_raw_paths(path_value)
+            fs_candidates.insert(0, _sanitize_path_value(path_value))
+
+            base_dirs = [
+                Path.cwd(),
+                Path(__file__).resolve().parents[5],
+                Path(__file__).resolve().parents[4],
+                Path(__file__).resolve().parents[3],
+                Path(__file__).resolve().parents[4] / 'nomad-FAIR',
+            ]
+            for candidate in fs_candidates:
+                try:
+                    p = Path(candidate)
+                    if p.is_file():
+                        return ('fs', str(p))
+
+                    if not p.is_absolute():
+                        for base in base_dirs:
+                            resolved = (base / p).resolve()
+                            if resolved.is_file():
+                                return ('fs', str(resolved))
+                except Exception:
+                    continue
+
+            # Final fallback: find staged file by basename under .volumes staging.
+            filename = _sanitize_path_value(path_value).rsplit('/', 1)[-1]
+            if filename:
+                for base in base_dirs:
+                    try:
+                        staging_root = (base / '.volumes' / 'fs' / 'staging').resolve()
+                        if not staging_root.exists():
+                            continue
+                        for hit in staging_root.rglob(filename):
+                            if hit.is_file() and 'raw' in hit.parts:
+                                return ('fs', str(hit))
+                    except Exception:
+                        continue
+
+                # Broader fallback inspired by sputter parser pragmatism:
+                # search all known .volumes/fs trees regardless of subfolder.
+                for base in base_dirs:
+                    try:
+                        fs_root = (base / '.volumes' / 'fs').resolve()
+                        if not fs_root.exists():
+                            continue
+                        for hit in fs_root.rglob(filename):
+                            if hit.is_file():
+                                return ('fs', str(hit))
+                    except Exception:
+                        continue
+
+            # Format-driven fallback for variable file names:
+            # search latest matching file by expected extension and typical RTP naming.
+            suffix = expected_suffix.lower().lstrip('.')
+            for base in base_dirs:
+                try:
+                    fs_root = (base / '.volumes' / 'fs').resolve()
+                    if not fs_root.exists():
+                        continue
+
+                    pattern = f'*.{suffix}'
+                    candidates = [
+                        hit
+                        for hit in fs_root.rglob(pattern)
+                        if hit.is_file() and 'raw' in hit.parts
+                    ]
+
+                    if not candidates:
+                        continue
+
+                    if suffix == 'csv':
+                        preferred = [
+                            p
+                            for p in candidates
+                            if 'recording set' in p.name.lower()
+                            or '_rtp_' in p.name.lower()
+                        ]
+                    else:
+                        preferred = [
+                            p
+                            for p in candidates
+                            if 'logfile' in p.name.lower() or '_rtp_' in p.name.lower()
+                        ]
+
+                    pool = preferred if preferred else candidates
+                    newest = max(pool, key=lambda p: p.stat().st_mtime)
+                    return ('fs', str(newest))
+                except Exception:
+                    continue
+
+            if last_exc is not None:
+                raise last_exc
+            raise FileNotFoundError(path_value)
+
         try:
-            with archive.m_context.raw_file(self.log_file_eklipse, 'r') as eklipse_file:
-                with archive.m_context.raw_file(
-                    self.log_file_T2BDiagnostics, 'r'
-                ) as diagnostics_file:
-                    parsed = parse_rtp_logfiles(
-                        eklipse_csv_path=eklipse_file.name,
-                        t2b_diagnostics_txt_path=diagnostics_file.name,
+            eklipse_kind, eklipse_ref = _resolve_input_path(
+                self.log_file_eklipse, 'csv'
+            )
+            diagnostics_kind, diagnostics_ref = _resolve_input_path(
+                self.log_file_T2BDiagnostics, 'txt'
+            )
+
+            with ExitStack() as stack:
+
+                def _materialize_raw_to_temp(raw_ref: str, suffix: str) -> str:
+                    raw_handle = stack.enter_context(
+                        archive.m_context.raw_file(raw_ref, 'r')
                     )
+                    temp_file = tempfile.NamedTemporaryFile(
+                        mode='w',
+                        encoding='utf-8',
+                        delete=False,
+                        suffix=suffix,
+                        newline='',
+                    )
+                    try:
+                        temp_file.write(raw_handle.read())
+                    finally:
+                        temp_file.close()
+                    stack.callback(
+                        lambda p=temp_file.name: Path(p).unlink(missing_ok=True)
+                    )
+                    return temp_file.name
+
+                if eklipse_kind == 'raw':
+                    eklipse_suffix = (
+                        '.csv' if eklipse_ref.lower().endswith('.csv') else '.txt'
+                    )
+                    eklipse_path = _materialize_raw_to_temp(eklipse_ref, eklipse_suffix)
+                else:
+                    eklipse_path = eklipse_ref
+
+                if diagnostics_kind == 'raw':
+                    diagnostics_suffix = (
+                        '.txt' if diagnostics_ref.lower().endswith('.txt') else '.csv'
+                    )
+                    diagnostics_path = _materialize_raw_to_temp(
+                        diagnostics_ref, diagnostics_suffix
+                    )
+                else:
+                    diagnostics_path = diagnostics_ref
+
+                parsed = parse_rtp_logfiles(
+                    eklipse_csv_path=eklipse_path,
+                    t2b_diagnostics_txt_path=diagnostics_path,
+                )
         except Exception as exc:
             logger.warning(f'Failed to parse RTP log files: {exc}')
             return
 
-        # Keep explicitly entered values; auto-fill only when missing.
-        if self.used_gases in (None, []):
+        # Keep explicitly entered values by default; optionally overwrite.
+        if overwrite or self.used_gases in (None, []):
             self.used_gases = parsed.used_gases
 
-        if self.base_pressure is None and parsed.base_pressure_pa is not None:
+        if (
+            overwrite or self.base_pressure is None
+        ) and parsed.base_pressure_pa is not None:
             self.base_pressure = parsed.base_pressure_pa
         if (
-            self.base_pressure_ballast is None
-            and parsed.base_pressure_ballast_pa is not None
-        ):
+            overwrite or self.base_pressure_ballast is None
+        ) and parsed.base_pressure_ballast_pa is not None:
             self.base_pressure_ballast = parsed.base_pressure_ballast_pa
-        if self.rate_of_rise is None and parsed.rate_of_rise_pa_s is not None:
+        if (
+            overwrite or self.rate_of_rise is None
+        ) and parsed.rate_of_rise_pa_s is not None:
             self.rate_of_rise = parsed.rate_of_rise_pa_s
-        if self.chiller_flow is None and parsed.chiller_flow_m3_s is not None:
+        if (
+            overwrite or self.chiller_flow is None
+        ) and parsed.chiller_flow_m3_s is not None:
             self.chiller_flow = parsed.chiller_flow_m3_s
 
         if self.overview is None:
             self.overview = RTPOverview()
 
-        if self.overview.annealing_pressure is None:
+        if overwrite or self.overview.annealing_pressure is None:
             self.overview.annealing_pressure = parsed.overview.get('annealing_pressure')
-        if self.overview.annealing_time is None:
+        if overwrite or self.overview.annealing_time is None:
             self.overview.annealing_time = parsed.overview.get('annealing_time')
-        if self.overview.annealing_temperature is None:
+        if overwrite or self.overview.annealing_temperature is None:
             self.overview.annealing_temperature = parsed.overview.get(
                 'annealing_temperature'
             )
-        if self.overview.annealing_ar_flow is None:
+        if overwrite or self.overview.annealing_ar_flow is None:
             self.overview.annealing_ar_flow = parsed.overview.get('annealing_ar_flow')
-        if self.overview.annealing_n2_flow is None:
+        if overwrite or self.overview.annealing_n2_flow is None:
             self.overview.annealing_n2_flow = parsed.overview.get('annealing_n2_flow')
-        if self.overview.annealing_ph3_in_ar_flow is None:
+        if overwrite or self.overview.annealing_ph3_in_ar_flow is None:
             self.overview.annealing_ph3_in_ar_flow = parsed.overview.get(
                 'annealing_ph3_in_ar_flow'
             )
-        if self.overview.annealing_h2s_in_ar_flow is None:
+        if overwrite or self.overview.annealing_h2s_in_ar_flow is None:
             self.overview.annealing_h2s_in_ar_flow = parsed.overview.get(
                 'annealing_h2s_in_ar_flow'
             )
-        if self.overview.total_heating_time is None:
+        if overwrite or self.overview.total_heating_time is None:
             self.overview.total_heating_time = parsed.overview.get('total_heating_time')
-        if self.overview.total_cooling_time is None:
+        if overwrite or self.overview.total_cooling_time is None:
             self.overview.total_cooling_time = parsed.overview.get('total_cooling_time')
-        if self.overview.end_of_process_temperature is None:
+        if overwrite or self.overview.end_of_process_temperature is None:
             self.overview.end_of_process_temperature = parsed.overview.get(
                 'end_of_process_temperature'
             )
 
-        if not self.steps:
+        if overwrite or not self.steps:
             self.steps = []
             for i, parsed_step in enumerate(parsed.steps, start=1):
                 step = DTURTPSteps(name=f'{parsed_step.name} {i}')
