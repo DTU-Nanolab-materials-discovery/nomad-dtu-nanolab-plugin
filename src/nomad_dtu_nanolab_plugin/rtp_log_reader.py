@@ -1,27 +1,30 @@
+from __future__ import annotations
+
 import csv
 import re
 from dataclasses import dataclass
 from io import StringIO
-from typing import Any
 
-import numpy as np
-import pandas as pd
+# Keep heavy dependencies out of import-time to avoid breaking NOMAD startup.
+np = None
+pd = None
 
-# Parsing and unit-conversion thresholds used by the RTP log reader.
-MIN_TABLE_DATA_COLUMNS = 2
-MIN_TABLE_ROWS = 2
 TORR_TO_PA = 133.322368421
 MTORR_TO_PA = 0.133322368421
 SCCM_TO_M3_S = 1e-6 / 60
 LMIN_TO_M3_S = 1e-3 / 60
-PRESSURE_TORR_INTERPRETATION_MAX = 2000.0
 CELSIUS_TO_KELVIN_OFFSET = 273.15
-CELSIUS_MEDIAN_THRESHOLD = 350.0
-MIN_POINTS_FOR_STEP_EXTRACTION = 2
-MIN_PROCESS_ROWS_FOR_RATE_OF_RISE = 4
-MIN_LINEAR_FIT_POINTS = 3
-STATIC_FLOW_THRESHOLD_M3_S = 1e-9
-MIN_USED_GAS_FLOW_M3_S = 1e-12
+PRESSURE_TORR_INTERPRETATION_MAX = 2000.0
+MIN_USED_GAS_FLOW_SCCM = 1.0
+MIN_USED_GAS_FLOW_M3_S = MIN_USED_GAS_FLOW_SCCM * SCCM_TO_M3_S
+MIN_POINTS_FOR_STEPS = 3
+MAX_PROBE_LINES = 200
+TEMPERATURE_CELSIUS_MAX_CUTOFF = 350.0
+MIN_COLUMNS_FOR_TABLE_ROW = 2
+MIN_TRENDLOG_PARTS = 3
+MIN_ANNEALING_PLATEAU_DURATION_S = 1.0
+ANNEALING_DURATION_TOLERANCE_S = 0.05
+MIN_PLATEAU_POINTS = 2
 
 
 @dataclass
@@ -48,446 +51,14 @@ class ParsedRTPData:
     steps: list[ParsedRTPStep]
 
 
-def _normalize_column_name(name: str) -> str:
-    return re.sub(r'[^a-z0-9]+', '', str(name).lower())
-
-
-def _count_columns_for_delimiter(line: str, delimiter: str) -> int:
-    row = next(
-        csv.reader(
-            [line],
-            delimiter=delimiter,
-            quotechar='"',
-            skipinitialspace=True,
-        )
-    )
-    return len(row)
-
-
-def _detect_delimiter_from_line(line: str) -> str | None:
-    best_delimiter = None
-    best_columns = 1
-    for delimiter in [',', ';', '\t']:
-        try:
-            n_columns = _count_columns_for_delimiter(line, delimiter)
-        except Exception:
-            continue
-        if n_columns > best_columns:
-            best_columns = n_columns
-            best_delimiter = delimiter
-
-    if best_columns <= 1:
-        return None
-    return best_delimiter
-
-
-def _find_header_line_index(lines: list[str], delimiter: str) -> int:
-    best_idx = 0
-    best_columns = 1
-    for idx, line in enumerate(lines[:50]):
-        if not line.strip():
-            continue
-        try:
-            n_columns = _count_columns_for_delimiter(line, delimiter)
-        except Exception:
-            continue
-        if n_columns > best_columns:
-            best_columns = n_columns
-            best_idx = idx
-    return best_idx
-
-
-def _read_csv_with_fallback(path: str) -> pd.DataFrame:
-    # The exported RTP CSV can use different delimiters depending on locale.
-    with open(path, encoding='utf-8', errors='ignore') as handle:
-        non_empty_lines = [line for line in handle if line.strip()]
-
-    preferred_sep = None
-    if non_empty_lines:
-        preferred_sep = _detect_delimiter_from_line(non_empty_lines[0])
-
-    separators = [',', ';', '\t']
-    if preferred_sep in separators:
-        separators.remove(preferred_sep)
-        separators.insert(0, preferred_sep)
-
-    for sep in separators:
-        header_idx = (
-            _find_header_line_index(non_empty_lines, sep) if non_empty_lines else 0
-        )
-        try:
-            # Parse from the detected table start in-memory to avoid physical
-            # line-offset issues when files contain metadata preambles/blank lines.
-            candidate_lines = non_empty_lines[header_idx:]
-            if not candidate_lines:
-                continue
-            df = pd.read_csv(
-                StringIO(''.join(candidate_lines)),
-                sep=sep,
-                engine='python',
-                skipinitialspace=True,
-                on_bad_lines='skip',
-            )
-            if len(df.columns) > 1:
-                return df
-        except Exception:
-            continue
-
-    # Fall back to the preferred separator if all attempts failed.
-    fallback_sep = preferred_sep or ','
-    header_idx = (
-        _find_header_line_index(non_empty_lines, fallback_sep) if non_empty_lines else 0
-    )
-    candidate_lines = non_empty_lines[header_idx:]
-    if candidate_lines:
-        return pd.read_csv(
-            StringIO(''.join(candidate_lines)),
-            sep=fallback_sep,
-            engine='python',
-            skipinitialspace=True,
-            on_bad_lines='skip',
-        )
-
-    return pd.read_csv(
-        path,
-        sep=fallback_sep,
-        engine='python',
-        skipinitialspace=True,
-        on_bad_lines='skip',
-    )
-
-
-def _extract_key_values_from_text(content: str) -> dict[str, float]:
-    key_values: dict[str, float] = {}
-    pattern = re.compile(
-        r'^\s*([^:=\n]+?)\s*[:=]\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)\s*([^\n]*)$'
-    )
-    for line in content.splitlines():
-        match = pattern.match(line)
-        if not match:
-            continue
-        key = _normalize_column_name(match.group(1))
-        value = float(match.group(2))
-        unit = _normalize_column_name(match.group(3))
-
-        # Normalize a few known engineering units directly when parsing keys.
-        if 'torr' in unit:
-            value = value * TORR_TO_PA
-        elif 'mtorr' in unit:
-            value = value * MTORR_TO_PA
-        elif ('lmin' in unit or 'lminute' in unit) and 'flow' in key:
-            value = value * LMIN_TO_M3_S
-        elif ('sccm' in unit or 'cm3min' in unit) and 'flow' in key:
-            value = value * SCCM_TO_M3_S
-
-        key_values[key] = value
-    return key_values
-
-
-def _parse_table_from_text(content: str) -> pd.DataFrame:
-    lines = [line.rstrip() for line in content.splitlines() if line.strip()]
-    if not lines:
-        return pd.DataFrame()
-
-    # Find the first likely temperature table header in the diagnostics text.
-    header_idx = None
-    for i, line in enumerate(lines):
-        if not re.search(r'[;,\t]', line):
-            continue
-        lower = line.lower()
-        if ('time' in lower or 'timestamp' in lower) and (
-            'temp' in lower or 'temperature' in lower
-        ):
-            header_idx = i
-            break
-
-    if header_idx is None:
-        return pd.DataFrame()
-
-    header_delimiter = _detect_delimiter_from_line(lines[header_idx])
-    if header_delimiter is None:
-        return pd.DataFrame()
-
-    # Collect only contiguous tabular rows after the header.
-    table_lines = [lines[header_idx]]
-    n_cols = _count_columns_for_delimiter(lines[header_idx], header_delimiter)
-    for line in lines[header_idx + 1 :]:
-        if not re.search(r'\d', line):
-            break
-        cols = next(
-            csv.reader(
-                [line],
-                delimiter=header_delimiter,
-                quotechar='"',
-                skipinitialspace=True,
-            )
-        )
-        if len(cols) < MIN_TABLE_DATA_COLUMNS:
-            break
-        if len(cols) != n_cols:
-            # Keep rows that still resemble the table.
-            if abs(len(cols) - n_cols) > 1:
-                break
-        table_lines.append(line)
-
-    if len(table_lines) < MIN_TABLE_ROWS:
-        return pd.DataFrame()
-
-    return pd.read_csv(
-        StringIO('\n'.join(table_lines)),
-        sep=header_delimiter,
-        engine='python',
-        skipinitialspace=True,
-        on_bad_lines='skip',
-    )
-
-
-def _find_column(df: pd.DataFrame, patterns: list[str]) -> str | None:
-    normalized = {_normalize_column_name(col): col for col in df.columns}
-    for pattern in patterns:
-        regex = re.compile(pattern)
-        for norm_col, col in normalized.items():
-            if regex.search(norm_col):
-                return col
-    return None
-
-
-def _to_numeric(series: pd.Series) -> pd.Series:
-    return pd.to_numeric(series, errors='coerce')
-
-
-def _to_datetime(series: pd.Series) -> pd.Series:
-    dt = pd.to_datetime(series, errors='coerce')
-    if dt.notna().sum() > 0:
-        return dt
-
-    # Fallback for HH:MM:SS style values without date.
-    td = pd.to_timedelta(series, errors='coerce')
-    if td.notna().sum() > 0:
-        ref = pd.Timestamp('1970-01-01')
-        return ref + td
-
-    return dt
-
-
-def _series_in_sccm_to_m3_s(series: pd.Series) -> pd.Series:
-    return _to_numeric(series) * SCCM_TO_M3_S
-
-
-def _pressure_to_pa(value: float | None) -> float | None:
-    if value is None or np.isnan(value):
-        return None
-    if value <= 0:
-        return value
-    # Typical RTP process pressures are often logged in torr around 100-800.
-    if value < PRESSURE_TORR_INTERPRETATION_MAX:
-        return value * TORR_TO_PA
-    return value
-
-
-def _temperature_to_kelvin(series: pd.Series) -> pd.Series:
-    values = _to_numeric(series)
-    finite = values[np.isfinite(values)]
-    if len(finite) == 0:
-        return values
-
-    median = float(np.nanmedian(finite))
-    # Heuristic: values in the RTP process are usually in celsius if centered
-    # below ~350, while kelvin logs are typically around 500-900.
-    if median < CELSIUS_MEDIAN_THRESHOLD:
-        return values + CELSIUS_TO_KELVIN_OFFSET
-    return values
-
-
-def _build_process_dataframe(
-    eklipse_df: pd.DataFrame,
-    t2b_df: pd.DataFrame,
-) -> pd.DataFrame:
-    time_col_eklipse = _find_column(eklipse_df, [r'timestamp', r'^time$'])
-    time_col_t2b = _find_column(t2b_df, [r'timestamp', r'^time$'])
-
-    eklipse = pd.DataFrame()
-    if time_col_eklipse is not None:
-        eklipse['timestamp'] = _to_datetime(eklipse_df[time_col_eklipse])
-
-    pressure_col = _find_column(
-        eklipse_df,
-        [r'capmanpressure$', r'pressure$', r'chamberpressure', r'processpressure'],
-    )
-    if pressure_col is not None:
-        eklipse['pressure_raw'] = _to_numeric(eklipse_df[pressure_col])
-
-    flow_col_map = {
-        'ar_flow_m3_s': [r'mfc1flow$', r'\bar\b.*flow', r'argon.*flow'],
-        'n2_flow_m3_s': [r'mfc2flow$', r'n2.*flow'],
-        'ph3_in_ar_flow_m3_s': [r'mfc4flow$', r'ph3.*flow'],
-        'h2s_in_ar_flow_m3_s': [r'mfc6flow$', r'h2s.*flow'],
-    }
-    for key, patterns in flow_col_map.items():
-        col = _find_column(eklipse_df, patterns)
-        if col is not None:
-            eklipse[key] = _series_in_sccm_to_m3_s(eklipse_df[col])
-        else:
-            eklipse[key] = 0.0
-
-    t2b = pd.DataFrame()
-    if time_col_t2b is not None:
-        t2b['timestamp'] = _to_datetime(t2b_df[time_col_t2b])
-
-    temp_col = _find_column(t2b_df, [r'temperature$', r'pyro.*temp', r'temp'])
-    if temp_col is not None:
-        t2b['temperature_k'] = _temperature_to_kelvin(t2b_df[temp_col])
-
-    if 'timestamp' in t2b and t2b['timestamp'].notna().sum() > 1:
-        t2b = t2b.sort_values('timestamp')
-    if 'timestamp' in eklipse and eklipse['timestamp'].notna().sum() > 1:
-        eklipse = eklipse.sort_values('timestamp')
-
-    # Prefer temperature timeline from diagnostics and align gas/pressure from
-    # Eklipse on nearest timestamp.
-    if not t2b.empty and 'timestamp' in t2b and t2b['timestamp'].notna().sum() > 1:
-        if 'timestamp' in eklipse and eklipse['timestamp'].notna().sum() > 1:
-            process = pd.merge_asof(
-                t2b,
-                eklipse,
-                on='timestamp',
-                direction='nearest',
-                tolerance=pd.Timedelta(seconds=5),
-            )
-        else:
-            process = t2b.copy()
-            for col in [
-                'pressure_raw',
-                'ar_flow_m3_s',
-                'n2_flow_m3_s',
-                'ph3_in_ar_flow_m3_s',
-                'h2s_in_ar_flow_m3_s',
-            ]:
-                process[col] = 0.0
-    else:
-        process = eklipse.copy()
-        temp_from_eklipse = _find_column(
-            eklipse_df,
-            [r'substrateheatertemperature$', r'temperature$', r'temp'],
-        )
-        if temp_from_eklipse is not None:
-            process['temperature_k'] = _temperature_to_kelvin(
-                eklipse_df[temp_from_eklipse]
-            )
-
-    process = process.dropna(subset=['timestamp'], how='all').copy()
-    if process.empty:
-        return process
-
-    process = process.sort_values('timestamp')
-    process['time_s'] = (
-        process['timestamp'] - process['timestamp'].iloc[0]
-    ).dt.total_seconds()
-
-    if 'temperature_k' not in process:
-        process['temperature_k'] = np.nan
-
-    process = process[np.isfinite(process['time_s'])]
-    return process
-
-
-def _extract_steps(process_df: pd.DataFrame) -> list[ParsedRTPStep]:
-    if (
-        process_df.empty
-        or process_df['temperature_k'].notna().sum() < MIN_POINTS_FOR_STEP_EXTRACTION
-    ):
-        return []
-
-    df = process_df[['time_s', 'temperature_k', 'pressure_raw']].copy()
-    for col in [
-        'ar_flow_m3_s',
-        'n2_flow_m3_s',
-        'ph3_in_ar_flow_m3_s',
-        'h2s_in_ar_flow_m3_s',
-    ]:
-        df[col] = process_df.get(col, 0.0)
-
-    df = df.dropna(subset=['time_s', 'temperature_k']).sort_values('time_s')
-    if len(df) < MIN_POINTS_FOR_STEP_EXTRACTION:
-        return []
-
-    # Segment the process by detecting a high-temperature plateau region.
-    temp_k = df['temperature_k'].to_numpy()
-    temp_range = float(np.nanmax(temp_k) - np.nanmin(temp_k))
-    plateau_tol = max(5.0, 0.03 * temp_range)
-    max_temp = float(np.nanmax(temp_k))
-    plateau_mask = temp_k >= (max_temp - plateau_tol)
-
-    if not np.any(plateau_mask):
-        i_max = int(np.nanargmax(temp_k))
-        bounds = [0, i_max, len(df) - 1]
-    else:
-        first = int(np.argmax(plateau_mask))
-        last = int(len(plateau_mask) - 1 - np.argmax(plateau_mask[::-1]))
-        bounds = [0, first, last, len(df) - 1]
-
-    # Keep strictly increasing boundaries.
-    cleaned_bounds: list[int] = []
-    for idx in bounds:
-        if not cleaned_bounds or idx > cleaned_bounds[-1]:
-            cleaned_bounds.append(idx)
-
-    # Map the segmented intervals to the canonical RTP phases.
-    step_names = ['Heating', 'Annealing', 'Cooling']
-    steps: list[ParsedRTPStep] = []
-    for i in range(len(cleaned_bounds) - 1):
-        start = cleaned_bounds[i]
-        end = cleaned_bounds[i + 1]
-        if end <= start:
-            continue
-        sl = df.iloc[start : end + 1]
-
-        duration_s = float(sl['time_s'].iloc[-1] - sl['time_s'].iloc[0])
-        if duration_s <= 0:
-            continue
-
-        step = ParsedRTPStep(
-            name=step_names[i] if i < len(step_names) else f'Step {i + 1}',
-            duration_s=duration_s,
-            initial_temperature_k=float(sl['temperature_k'].iloc[0]),
-            final_temperature_k=float(sl['temperature_k'].iloc[-1]),
-            pressure_pa=float(
-                _pressure_to_pa(float(np.nanmedian(sl['pressure_raw'])) or 0) or 0
-            ),
-            ar_flow_m3_s=float(np.nanmedian(sl['ar_flow_m3_s'])),
-            n2_flow_m3_s=float(np.nanmedian(sl['n2_flow_m3_s'])),
-            ph3_in_ar_flow_m3_s=float(np.nanmedian(sl['ph3_in_ar_flow_m3_s'])),
-            h2s_in_ar_flow_m3_s=float(np.nanmedian(sl['h2s_in_ar_flow_m3_s'])),
-        )
-        steps.append(step)
-
-    if not steps:
-        sl = df.iloc[[0, -1]]
-        steps.append(
-            ParsedRTPStep(
-                name='Annealing',
-                duration_s=float(sl['time_s'].iloc[-1] - sl['time_s'].iloc[0]),
-                initial_temperature_k=float(sl['temperature_k'].iloc[0]),
-                final_temperature_k=float(sl['temperature_k'].iloc[-1]),
-                pressure_pa=float(
-                    _pressure_to_pa(float(np.nanmedian(df['pressure_raw']))) or 0
-                ),
-                ar_flow_m3_s=float(np.nanmedian(df['ar_flow_m3_s'])),
-                n2_flow_m3_s=float(np.nanmedian(df['n2_flow_m3_s'])),
-                ph3_in_ar_flow_m3_s=float(np.nanmedian(df['ph3_in_ar_flow_m3_s'])),
-                h2s_in_ar_flow_m3_s=float(np.nanmedian(df['h2s_in_ar_flow_m3_s'])),
-            )
-        )
-
-    return steps
-
-
-def _derive_overview(
-    process_df: pd.DataFrame,
-    steps: list[ParsedRTPStep],
-) -> dict[str, float | None]:
-    if not steps:
-        return {
+def _empty_result() -> ParsedRTPData:
+    return ParsedRTPData(
+        used_gases=[],
+        base_pressure_pa=None,
+        base_pressure_ballast_pa=None,
+        rate_of_rise_pa_s=None,
+        chiller_flow_m3_s=None,
+        overview={
             'annealing_pressure': None,
             'annealing_time': None,
             'annealing_temperature': None,
@@ -498,25 +69,503 @@ def _derive_overview(
             'total_heating_time': None,
             'total_cooling_time': None,
             'end_of_process_temperature': None,
-        }
+        },
+        steps=[],
+    )
 
-    # Pick the most representative annealing step by weighted temperature and
-    # duration score. This is robust when extra setup/cleanup intervals exist.
-    anneal_idx = int(
-        np.argmax(
-            [
-                (0.7 * ((s.initial_temperature_k + s.final_temperature_k) / 2))
-                + (0.3 * s.duration_s)
-                for s in steps
-            ]
+
+def _ensure_deps() -> bool:
+    np_mod = globals().get('np')
+    if np_mod is None:
+        try:
+            import numpy as _np
+
+            globals()['np'] = _np
+        except Exception:
+            return False
+
+    pd_mod = globals().get('pd')
+    if pd_mod is None:
+        try:
+            import pandas as _pd
+
+            globals()['pd'] = _pd
+        except Exception:
+            return False
+
+    return True
+
+
+def _ncol(line: str, delimiter: str) -> int:
+    return len(
+        next(
+            csv.reader(
+                [line], delimiter=delimiter, quotechar='"', skipinitialspace=True
+            ),
+            [],
         )
     )
-    anneal = steps[anneal_idx]
 
-    total_heating = sum(s.duration_s for s in steps[:anneal_idx])
-    total_cooling = sum(s.duration_s for s in steps[anneal_idx + 1 :])
 
-    end_temp = steps[-1].final_temperature_k
+def _best_delimiter(line: str) -> str | None:
+    best_sep = None
+    best_cols = 1
+    for sep in [',', ';', '\t']:
+        try:
+            n = _ncol(line, sep)
+        except Exception:
+            continue
+        if n > best_cols:
+            best_cols = n
+            best_sep = sep
+    return best_sep
+
+
+def _normalize(name: str) -> str:
+    return re.sub(r'[^a-z0-9]+', '', str(name).lower())
+
+
+def _find_header_line_index(lines: list[str], delimiter: str) -> int:
+    best_idx = 0
+    best_cols = 1
+    for i, line in enumerate(lines[:50]):
+        if not line.strip():
+            continue
+        try:
+            n = _ncol(line, delimiter)
+        except Exception:
+            continue
+        if n > best_cols:
+            best_cols = n
+            best_idx = i
+    return best_idx
+
+
+def _read_csv_with_fallback(path: str):
+    if not _ensure_deps() or pd is None:
+        raise RuntimeError('pandas not available')
+
+    with open(path, encoding='utf-8', errors='ignore') as handle:
+        probe_lines = [line for line in handle if line.strip()][:MAX_PROBE_LINES]
+
+    if not probe_lines:
+        return pd.DataFrame()
+
+    preferred = _best_delimiter(probe_lines[0])
+    separators = [',', ';', '\t']
+    if preferred in separators:
+        separators.remove(preferred)
+        separators.insert(0, preferred)
+
+    for sep in separators:
+        try:
+            header_idx = _find_header_line_index(probe_lines, sep)
+            df = pd.read_csv(
+                path,
+                sep=sep,
+                engine='python',
+                skipinitialspace=True,
+                on_bad_lines='skip',
+                quotechar='"',
+                skiprows=header_idx,
+            )
+            if len(df.columns) > 1:
+                return df
+        except Exception:
+            continue
+
+    try:
+        return pd.read_csv(path, sep=None, engine='python', on_bad_lines='skip')
+    except Exception:
+        return pd.DataFrame()
+
+
+def _to_datetime(series):
+    if pd is None:
+        return series
+
+    dt = pd.to_datetime(series, errors='coerce', format='%Y/%m/%d_%H:%M:%S')
+    if dt.notna().sum() > 0:
+        return dt
+
+    dt = pd.to_datetime(series, errors='coerce')
+    if dt.notna().sum() > 0:
+        return dt
+
+    td = pd.to_timedelta(series, errors='coerce')
+    if td.notna().sum() > 0:
+        return pd.Timestamp('1970-01-01') + td
+
+    return dt
+
+
+def _to_num(series):
+    if pd is None:
+        return series
+    return pd.to_numeric(series, errors='coerce')
+
+
+def _pressure_to_pa(value: float | None) -> float | None:
+    if value is None or (np is not None and np.isnan(value)):
+        return None
+    if value <= 0:
+        return value
+    if value < PRESSURE_TORR_INTERPRETATION_MAX:
+        return value * TORR_TO_PA
+    return value
+
+
+def _temperature_to_kelvin(series):
+    values = _to_num(series)
+    finite = values[np.isfinite(values)]
+    if len(finite) == 0:
+        return values
+    median = float(np.nanmedian(finite))
+    if median < TEMPERATURE_CELSIUS_MAX_CUTOFF:
+        return values + CELSIUS_TO_KELVIN_OFFSET
+    return values
+
+
+def _extract_key_values(txt: str) -> dict[str, float]:
+    out: dict[str, float] = {}
+    rate_keys = {'rateofrise', 'riserate'}
+
+    def _convert_value(key: str, value: float, unit: str) -> float:
+        key_norm = _normalize(key)
+        unit_norm = _normalize(unit)
+
+        if 'mtorr' in unit_norm:
+            value *= MTORR_TO_PA
+        elif 'torr' in unit_norm:
+            value *= TORR_TO_PA
+
+        if ('lmin' in unit_norm or 'lminute' in unit_norm) and 'flow' in key_norm:
+            value *= LMIN_TO_M3_S
+        elif ('sccm' in unit_norm or 'cm3min' in unit_norm) and 'flow' in key_norm:
+            value *= SCCM_TO_M3_S
+
+        if (key_norm in rate_keys or ('rate' in key_norm and 'rise' in key_norm)) and (
+            'min' in unit_norm or 'minute' in unit_norm
+        ):
+            value /= 60
+
+        return value
+
+    pattern = re.compile(
+        r'^\s*([^:=\n]*?[A-Za-z][^:=\n]*?)\s*(?:[:=]\s*)?'
+        r'([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)\s*([^\n]*)$'
+    )
+
+    for line in txt.splitlines():
+        m = pattern.match(line)
+        if not m:
+            continue
+        key = _normalize(m.group(1))
+        value = float(m.group(2))
+        unit = _normalize(m.group(3))
+
+        out[key] = _convert_value(key, value, unit)
+
+    return out
+
+
+def _parse_t2b_table(txt: str):
+    if pd is None:
+        raise RuntimeError('pandas not loaded')
+
+    lines = [line.rstrip() for line in txt.splitlines() if line.strip()]
+    if not lines:
+        return pd.DataFrame()
+
+    # Case 1: explicit CSV/TSV table with timestamp + temperature header.
+    header_idx = None
+    for i, line in enumerate(lines):
+        low = line.lower()
+        if (
+            ('timestamp' in low or re.search(r'\btime\b', low))
+            and ('temp' in low or 'temperature' in low)
+            and re.search(r'[;,\t]', line)
+        ):
+            header_idx = i
+            break
+
+    if header_idx is not None:
+        table_lines = [lines[header_idx]]
+        sep = _best_delimiter(lines[header_idx]) or ','
+        ncols = _ncol(lines[header_idx], sep)
+        for line in lines[header_idx + 1 :]:
+            if not re.search(r'\d', line):
+                break
+            cols = next(
+                csv.reader(
+                    [line],
+                    delimiter=sep,
+                    quotechar='"',
+                    skipinitialspace=True,
+                ),
+                [],
+            )
+            if len(cols) < MIN_COLUMNS_FOR_TABLE_ROW:
+                break
+            if abs(len(cols) - ncols) > 1:
+                break
+            table_lines.append(line)
+
+        try:
+            return pd.read_csv(
+                StringIO('\n'.join(table_lines)),
+                sep=sep,
+                engine='python',
+                skipinitialspace=True,
+                on_bad_lines='skip',
+            )
+        except Exception:
+            return pd.DataFrame()
+
+    # Case 2: TrendLog-style rows: 2025/11/28_14:12:00 ...
+    rows: list[tuple[str, float]] = []
+    for line in lines:
+        parts = re.split(r'\s+', line.strip())
+        if len(parts) < MIN_TRENDLOG_PARTS:
+            continue
+        if not re.match(r'^\d{4}/\d{2}/\d{2}_\d{2}:\d{2}:\d{2}$', parts[0]):
+            continue
+
+        nums: list[float] = []
+        for token in parts[1:]:
+            if token in {'', '-'}:
+                continue
+            try:
+                nums.append(float(token))
+            except Exception:
+                continue
+
+        if len(nums) >= MIN_COLUMNS_FOR_TABLE_ROW:
+            rows.append((parts[0], nums[1]))
+
+    if not rows:
+        return pd.DataFrame()
+
+    return pd.DataFrame(
+        {
+            'Timestamp': [r[0] for r in rows],
+            'Temperature': [r[1] for r in rows],
+        }
+    )
+
+
+def _find_col(df, patterns: list[str]) -> str | None:
+    norm_map = {_normalize(c): c for c in df.columns}
+    for pattern in patterns:
+        rx = re.compile(pattern)
+        for norm, original in norm_map.items():
+            if rx.search(norm):
+                return original
+    return None
+
+
+def _build_process_df(eklipse_df, t2b_df):
+    if pd is None:
+        raise RuntimeError('pandas not loaded')
+
+    e = pd.DataFrame()
+    t = pd.DataFrame()
+
+    e_time = _find_col(eklipse_df, [r'timestamp', r'^time$', r'timestamp'])
+    if e_time is not None:
+        e['timestamp'] = _to_datetime(eklipse_df[e_time])
+
+    p_col = _find_col(
+        eklipse_df,
+        [r'capmanpressure$', r'chamberpressure', r'processpressure', r'pressure$'],
+    )
+    if p_col is not None:
+        e['pressure_raw'] = _to_num(eklipse_df[p_col])
+    else:
+        e['pressure_raw'] = np.nan
+
+    flow_map = {
+        'ar_flow_m3_s': [r'mfc1flow$', r'\bar\b.*flow', r'argon.*flow'],
+        'n2_flow_m3_s': [r'mfc2flow$', r'n2.*flow'],
+        'ph3_in_ar_flow_m3_s': [r'mfc4flow$', r'ph3.*flow'],
+        'h2s_in_ar_flow_m3_s': [r'mfc6flow$', r'h2s.*flow'],
+    }
+    for out_col, patterns in flow_map.items():
+        c = _find_col(eklipse_df, patterns)
+        if c is None:
+            e[out_col] = 0.0
+        else:
+            e[out_col] = _to_num(eklipse_df[c]).fillna(0) * SCCM_TO_M3_S
+
+    t_time = _find_col(t2b_df, [r'timestamp', r'^time$'])
+    t_temp = _find_col(t2b_df, [r'pyro.*temp', r'temperature$', r'temp'])
+    if t_time is not None:
+        t['timestamp'] = _to_datetime(t2b_df[t_time])
+    if t_temp is not None:
+        t['temperature_k'] = _temperature_to_kelvin(t2b_df[t_temp])
+
+    if 'timestamp' in e:
+        e = e.dropna(subset=['timestamp']).sort_values('timestamp')
+    if 'timestamp' in t:
+        t = t.dropna(subset=['timestamp']).sort_values('timestamp')
+
+    if not t.empty and not e.empty:
+        process = pd.merge_asof(
+            t,
+            e,
+            on='timestamp',
+            direction='nearest',
+            tolerance=pd.Timedelta(seconds=8),
+        )
+    elif not t.empty:
+        process = t.copy()
+        process['pressure_raw'] = np.nan
+        process['ar_flow_m3_s'] = 0.0
+        process['n2_flow_m3_s'] = 0.0
+        process['ph3_in_ar_flow_m3_s'] = 0.0
+        process['h2s_in_ar_flow_m3_s'] = 0.0
+    elif not e.empty:
+        process = e.copy()
+        e_temp = _find_col(eklipse_df, [r'temperature$', r'substrate.*temp', r'temp'])
+        if e_temp is not None:
+            process['temperature_k'] = _temperature_to_kelvin(eklipse_df[e_temp])
+        else:
+            process['temperature_k'] = np.nan
+    else:
+        return pd.DataFrame()
+
+    process = process.dropna(subset=['timestamp']).sort_values('timestamp')
+    if process.empty:
+        return process
+
+    process['time_s'] = (
+        process['timestamp'] - process['timestamp'].iloc[0]
+    ).dt.total_seconds()
+    process = process[np.isfinite(process['time_s'])].copy()
+    return process
+
+
+def _extract_steps(process_df) -> list[ParsedRTPStep]:
+    if (
+        process_df.empty
+        or process_df['temperature_k'].notna().sum() < MIN_POINTS_FOR_STEPS
+    ):
+        return []
+
+    df = process_df.dropna(subset=['temperature_k', 'time_s']).copy()
+    if len(df) < MIN_POINTS_FOR_STEPS:
+        return []
+
+    temp = df['temperature_k'].to_numpy()
+    time_s = df['time_s'].to_numpy()
+
+    max_temp = float(np.nanmax(temp))
+    min_temp = float(np.nanmin(temp))
+    band = max(5.0, 0.03 * (max_temp - min_temp))
+    plateau_mask = temp >= (max_temp - band)
+
+    if np.any(plateau_mask):
+        true_idx = np.where(plateau_mask)[0]
+        split_idx = np.where(np.diff(true_idx) > 1)[0]
+        runs: list[tuple[int, int]] = []
+
+        start = int(true_idx[0])
+        for split_pos in split_idx:
+            end = int(true_idx[split_pos])
+            runs.append((start, end))
+            start = int(true_idx[split_pos + 1])
+        runs.append((start, int(true_idx[-1])))
+
+        valid_runs = [
+            (s, e)
+            for s, e in runs
+            if (e - s + 1) >= MIN_PLATEAU_POINTS
+            and float(time_s[e] - time_s[s])
+            >= (MIN_ANNEALING_PLATEAU_DURATION_S - ANNEALING_DURATION_TOLERANCE_S)
+        ]
+        candidate_runs = valid_runs if valid_runs else runs
+
+        def _anneal_run_key(se: tuple[int, int]) -> tuple[float, float]:
+            s, e = se
+            run_max_temp = float(np.nanmax(temp[s : e + 1]))
+            run_duration = float(time_s[e] - time_s[s])
+            return (run_max_temp, run_duration)
+
+        i_start, i_end = max(
+            candidate_runs,
+            key=_anneal_run_key,
+        )
+        bounds = [0, i_start, i_end, len(df) - 1]
+    else:
+        i_peak = int(np.nanargmax(temp))
+        bounds = [0, i_peak, len(df) - 1]
+
+    uniq: list[int] = []
+    for b in bounds:
+        if not uniq or b > uniq[-1]:
+            uniq.append(b)
+
+    names = ['Heating', 'Annealing', 'Cooling']
+    steps: list[ParsedRTPStep] = []
+    for i in range(len(uniq) - 1):
+        s = uniq[i]
+        e = uniq[i + 1]
+        if e <= s:
+            continue
+        sl = df.iloc[s : e + 1]
+
+        duration = float(sl['time_s'].iloc[-1] - sl['time_s'].iloc[0])
+        if duration <= 0:
+            continue
+
+        pressure_pa = _pressure_to_pa(float(np.nanmedian(sl['pressure_raw'])))
+        step = ParsedRTPStep(
+            name=names[i] if i < len(names) else f'Step {i + 1}',
+            duration_s=duration,
+            initial_temperature_k=float(sl['temperature_k'].iloc[0]),
+            final_temperature_k=float(sl['temperature_k'].iloc[-1]),
+            pressure_pa=float(pressure_pa if pressure_pa is not None else 0.0),
+            ar_flow_m3_s=float(np.nanmedian(sl['ar_flow_m3_s'])),
+            n2_flow_m3_s=float(np.nanmedian(sl['n2_flow_m3_s'])),
+            ph3_in_ar_flow_m3_s=float(np.nanmedian(sl['ph3_in_ar_flow_m3_s'])),
+            h2s_in_ar_flow_m3_s=float(np.nanmedian(sl['h2s_in_ar_flow_m3_s'])),
+        )
+        steps.append(step)
+
+    if steps:
+        return steps
+
+    sl = df.iloc[[0, -1]]
+    pressure_pa = _pressure_to_pa(float(np.nanmedian(df['pressure_raw'])))
+    return [
+        ParsedRTPStep(
+            name='Annealing',
+            duration_s=float(sl['time_s'].iloc[-1] - sl['time_s'].iloc[0]),
+            initial_temperature_k=float(sl['temperature_k'].iloc[0]),
+            final_temperature_k=float(sl['temperature_k'].iloc[-1]),
+            pressure_pa=float(pressure_pa if pressure_pa is not None else 0.0),
+            ar_flow_m3_s=float(np.nanmedian(df['ar_flow_m3_s'])),
+            n2_flow_m3_s=float(np.nanmedian(df['n2_flow_m3_s'])),
+            ph3_in_ar_flow_m3_s=float(np.nanmedian(df['ph3_in_ar_flow_m3_s'])),
+            h2s_in_ar_flow_m3_s=float(np.nanmedian(df['h2s_in_ar_flow_m3_s'])),
+        )
+    ]
+
+
+def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
+    if not steps:
+        return _empty_result().overview
+
+    score = [
+        0.7 * ((s.initial_temperature_k + s.final_temperature_k) / 2)
+        + 0.3 * s.duration_s
+        for s in steps
+    ]
+    i = int(np.argmax(score))
+    anneal = steps[i]
+
+    total_heating = sum(s.duration_s for s in steps[:i])
+    total_cooling = sum(s.duration_s for s in steps[i + 1 :])
 
     return {
         'annealing_pressure': anneal.pressure_pa,
@@ -531,108 +580,96 @@ def _derive_overview(
         'annealing_h2s_in_ar_flow': anneal.h2s_in_ar_flow_m3_s,
         'total_heating_time': total_heating,
         'total_cooling_time': total_cooling,
-        'end_of_process_temperature': end_temp,
+        'end_of_process_temperature': steps[-1].final_temperature_k,
     }
 
 
-def _derive_general_values(
-    process_df: pd.DataFrame,
-    key_values: dict[str, float],
-) -> tuple[float | None, float | None, float | None, float | None]:
-    pressure_series = process_df.get('pressure_raw')
+def _derive_general_values(process_df, key_values: dict[str, float]):
     base_pressure = None
     base_pressure_ballast = None
     rate_of_rise = None
     chiller_flow = None
 
-    if pressure_series is not None and pressure_series.notna().sum() > 0:
-        pressure_pa = _to_numeric(pressure_series).apply(_pressure_to_pa)
-        n_head = max(3, int(0.1 * len(pressure_pa)))
-        baseline = pressure_pa.iloc[:n_head].dropna()
+    if not process_df.empty and process_df['pressure_raw'].notna().sum() > 0:
+        pressure_pa = _to_num(process_df['pressure_raw']).apply(_pressure_to_pa)
+        head_n = max(3, int(0.1 * len(pressure_pa)))
+        baseline = pressure_pa.iloc[:head_n].dropna()
         if not baseline.empty:
             base_pressure = float(np.nanmin(baseline))
             base_pressure_ballast = float(np.nanmedian(baseline))
 
-        # Estimate rate-of-rise in low-flow region near start.
-        if len(process_df) >= MIN_PROCESS_ROWS_FOR_RATE_OF_RISE:
-            total_flow = (
-                process_df.get('ar_flow_m3_s', 0)
-                + process_df.get('n2_flow_m3_s', 0)
-                + process_df.get('ph3_in_ar_flow_m3_s', 0)
-                + process_df.get('h2s_in_ar_flow_m3_s', 0)
-            )
-            static_cond = _to_numeric(total_flow).fillna(0) < STATIC_FLOW_THRESHOLD_M3_S
-            candidates = process_df.loc[static_cond]
-            if len(candidates) < MIN_LINEAR_FIT_POINTS:
-                candidates = process_df.iloc[: max(4, int(0.15 * len(process_df)))]
-
-            t = _to_numeric(candidates['time_s']).to_numpy()
-            p = (
-                _to_numeric(candidates.get('pressure_raw'))
-                .apply(_pressure_to_pa)
-                .to_numpy()
-            )
-            valid = np.isfinite(t) & np.isfinite(p)
-            if np.count_nonzero(valid) >= MIN_LINEAR_FIT_POINTS:
-                slope, _ = np.polyfit(t[valid], p[valid], 1)
-                rate_of_rise = float(slope)
-
-    # Allow explicit key/value diagnostics to override time-series estimates.
-    for key, value in key_values.items():
-        if 'basepressurewithoutballast' in key:
-            base_pressure = value
-        elif 'basepressurewithballast' in key:
-            base_pressure_ballast = value
-        elif 'rateofrise' in key:
-            if 'minute' in key or 'min' in key:
-                rate_of_rise = value / 60
-            else:
-                rate_of_rise = value
-        elif 'chiller' in key and 'flow' in key:
-            chiller_flow = value
+    for k, v in key_values.items():
+        if 'basepressure' in k and 'without' in k and 'ballast' in k:
+            base_pressure = v
+        elif 'basepressure' in k and 'with' in k and 'ballast' in k:
+            base_pressure_ballast = v
+        elif 'rateofrise' in k or 'riserate' in k or ('rate' in k and 'rise' in k):
+            rate_of_rise = v
+        elif 'chiller' in k and 'flow' in k:
+            chiller_flow = v
 
     return base_pressure, base_pressure_ballast, rate_of_rise, chiller_flow
+
+
+def _detect_used_gases(
+    steps: list[ParsedRTPStep], overview: dict[str, float | None]
+) -> list[str]:
+    annealing_step = next((s for s in steps if s.name == 'Annealing'), None)
+    if annealing_step is not None:
+        flow_values = {
+            'Ar': annealing_step.ar_flow_m3_s,
+            'N2': annealing_step.n2_flow_m3_s,
+            'PH3': annealing_step.ph3_in_ar_flow_m3_s,
+            'H2S': annealing_step.h2s_in_ar_flow_m3_s,
+        }
+    else:
+        # Fallback to overview-derived annealing values when the split failed.
+        flow_values = {
+            'Ar': overview.get('annealing_ar_flow'),
+            'N2': overview.get('annealing_n2_flow'),
+            'PH3': overview.get('annealing_ph3_in_ar_flow'),
+            'H2S': overview.get('annealing_h2s_in_ar_flow'),
+        }
+
+    return [
+        gas
+        for gas, flow in flow_values.items()
+        if flow is not None and float(flow) > MIN_USED_GAS_FLOW_M3_S
+    ]
 
 
 def parse_rtp_logfiles(
     eklipse_csv_path: str,
     t2b_diagnostics_txt_path: str,
 ) -> ParsedRTPData:
-    """Parse RTP Eklipse and diagnostics logs into a schema-friendly payload."""
-    eklipse_df = _read_csv_with_fallback(eklipse_csv_path)
+    """Parse RTP eklipse CSV + diagnostics TXT and return rtp.py-compatible data."""
+    if not _ensure_deps():
+        return _empty_result()
 
-    with open(t2b_diagnostics_txt_path, encoding='utf-8', errors='ignore') as handle:
-        t2b_content = handle.read()
+    try:
+        eklipse_df = _read_csv_with_fallback(eklipse_csv_path)
+        with open(t2b_diagnostics_txt_path, encoding='utf-8', errors='ignore') as h:
+            txt = h.read()
+        key_values = _extract_key_values(txt)
+        t2b_df = _parse_t2b_table(txt)
 
-    key_values = _extract_key_values_from_text(t2b_content)
-    t2b_df = _parse_table_from_text(t2b_content)
+        process_df = _build_process_df(eklipse_df, t2b_df)
+        steps = _extract_steps(process_df)
+        overview = _derive_overview(steps)
+        base_pressure, base_pressure_ballast, rate_of_rise, chiller_flow = (
+            _derive_general_values(process_df, key_values)
+        )
+        used_gases = _detect_used_gases(steps, overview)
 
-    process_df = _build_process_dataframe(eklipse_df, t2b_df)
-    steps = _extract_steps(process_df)
-    overview = _derive_overview(process_df, steps)
-
-    base_pressure, base_pressure_ballast, rate_of_rise, chiller_flow = (
-        _derive_general_values(process_df, key_values)
-    )
-
-    gas_flow_map: dict[str, Any] = {
-        'Ar': overview.get('annealing_ar_flow'),
-        'N2': overview.get('annealing_n2_flow'),
-        'PH3': overview.get('annealing_ph3_in_ar_flow'),
-        'H2S': overview.get('annealing_h2s_in_ar_flow'),
-    }
-    used_gases = [
-        gas
-        for gas, flow in gas_flow_map.items()
-        if flow is not None and float(flow) > MIN_USED_GAS_FLOW_M3_S
-    ]
-
-    return ParsedRTPData(
-        used_gases=used_gases,
-        base_pressure_pa=base_pressure,
-        base_pressure_ballast_pa=base_pressure_ballast,
-        rate_of_rise_pa_s=rate_of_rise,
-        chiller_flow_m3_s=chiller_flow,
-        overview=overview,
-        steps=steps,
-    )
+        return ParsedRTPData(
+            used_gases=used_gases,
+            base_pressure_pa=base_pressure,
+            base_pressure_ballast_pa=base_pressure_ballast,
+            rate_of_rise_pa_s=rate_of_rise,
+            chiller_flow_m3_s=chiller_flow,
+            overview=overview,
+            steps=steps,
+        )
+    except Exception:
+        # Never crash NOMAD normalization because of parser edge cases.
+        return _empty_result()
