@@ -1006,14 +1006,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 source.name = gas
                 step.sources.append(source)
 
-    def _autofill_material_space(self) -> None:
-        if self.overview is None:
-            self.overview = RTPOverview()
-
-        current_material_space = getattr(self.overview, 'material_space', None)
-        if isinstance(current_material_space, str) and current_material_space.strip():
-            return
-
+    def _get_input_sample_material_elements(self) -> list[str]:
         ordered_elements: list[str] = []
 
         def _append_symbol(raw_symbol) -> None:
@@ -1023,7 +1016,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             if symbol and symbol not in ordered_elements:
                 ordered_elements.append(symbol)
 
-        for rtp_sample in getattr(self, 'input_samples', []):
+        for rtp_sample in getattr(self, 'input_samples', []) or []:
             origin = getattr(rtp_sample, 'input_combi_lib', None)
             if origin is None:
                 continue
@@ -1039,13 +1032,33 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 continue
 
             for elem in layer_comp:
-                symbol = getattr(elem, 'element', elem)
-                _append_symbol(symbol)
+                _append_symbol(getattr(elem, 'element', elem))
+
+        return ordered_elements
+
+    def _autofill_material_space(self, overwrite: bool = False) -> None:
+        if self.overview is None:
+            self.overview = RTPOverview()
+
+        current_material_space = getattr(self.overview, 'material_space', None)
+        if (
+            not overwrite
+            and isinstance(current_material_space, str)
+            and current_material_space.strip()
+        ):
+            return
+
+        ordered_elements = self._get_input_sample_material_elements()
+        if not ordered_elements:
+            if overwrite or not current_material_space:
+                self.overview.material_space = None
+            return
 
         gas_to_element = {'PH3': 'P', 'H2S': 'S'}
         for gas, symbol in gas_to_element.items():
             if gas in (self.used_gases or []):
-                _append_symbol(symbol)
+                if symbol not in ordered_elements:
+                    ordered_elements.append(symbol)
 
         if ordered_elements:
             self.overview.material_space = '-'.join(ordered_elements)
@@ -1404,7 +1417,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         self._temperature_profile = temps
         self.figures = []
         self._sync_step_sources_from_used_gases()
-        self._autofill_material_space()
+        self._autofill_material_space(overwrite=bool(self.overwrite_existing_data))
         if self.overview is not None:
             self.add_libraries(archive, logger)
         self.plot_temperature_profile()
