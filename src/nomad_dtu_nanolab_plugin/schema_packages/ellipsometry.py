@@ -46,6 +46,67 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU Ellipsometry measurement schema')
 
 
+class DTUDeltaPsi(Section):
+    """Delta and Psi values for a specific angle of incidence.
+
+    This class stores the raw ellipsometric parameters (Psi and Delta) as a function
+    of wavelength for a specific angle of incidence. These are the fundamental
+    measured quantities in spectroscopic ellipsometry before modeling.
+    """
+
+    m_def = Section()
+
+    angle_of_incidence = Quantity(
+        type=np.float64,
+        unit='degree',
+        description='The angle of incidence for this measurement',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+
+    wavelength = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='nm',
+        description='The wavelength values in nm',
+    )
+
+    psi = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='degree',
+        description=(
+            'The Psi angle in degrees. Psi is related to the amplitude ratio '
+            'of p- and s-polarized light upon reflection.'
+        ),
+    )
+
+    psi_error = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='degree',
+        description='The standard error in Psi measurements',
+    )
+
+    delta = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='degree',
+        description=(
+            'The Delta angle in degrees. Delta is the phase difference '
+            'between p- and s-polarized light upon reflection.'
+        ),
+    )
+
+    delta_error = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='degree',
+        description='The standard error in Delta measurements',
+    )
+
+
 class EllipsometryMappingResult(MappingResult):
     """Results from a single ellipsometry measurement position.
 
@@ -135,7 +196,14 @@ class EllipsometryMappingResult(MappingResult):
         shape=['*'],
         description='The extinction coefficient k',
     )
-
+    delta_psi = SubSection(
+        section_def=DTUDeltaPsi,
+        repeats=True,
+        description=(
+            'The delta and psi values for each angle of incidence, stored as '
+            'repeated subsections (one per angle).'
+        ),
+    )
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `EllipsometryMappingResult` class.
@@ -191,7 +259,17 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     native_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
-        a_eln={'component': 'FileEditQuantity', 'label': 'native SESNAP file'},
+        a_eln={'component': 'FileEditQuantity', 'label': 'native .SESNAP snapshot file'},
+    )
+    native_data_file = Quantity(
+        type=str,
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
+        a_eln={'component': 'FileEditQuantity', 'label': 'native .SE file'},
+    )
+    tabulated_data_file = Quantity(
+        type=str,
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
+        a_eln={'component': 'FileEditQuantity', 'label': 'tabulated exported .txt file'},
     )
     n_and_k_file = Quantity(
         type=str,
@@ -317,12 +395,125 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
             return df
 
+    def read_tabulated_data_file(
+        self,
+        archive: 'EntryArchive',
+        logger: 'BoundLogger',
+    ) -> pd.DataFrame:
+        """
+        Read the tabulated raw ellipsometry data file (Psi/Delta vs wavelength).
+
+        This method parses the wide-format tabulated text file exported from
+        CompleteEASE containing raw Psi and Delta values at multiple angles
+        and positions.
+
+        Args:
+            archive (EntryArchive): The archive containing the section.
+            logger (BoundLogger): A structlog logger.
+
+        Returns:
+            pd.DataFrame: DataFrame with columns:
+                - parameter: 'Psi', 'Psi_err', 'Delta', 'Delta_err'
+                - angle: angle of incidence in degrees
+                - x_cm: X position in cm
+                - y_cm: Y position in cm
+                - wavelength_nm: wavelength in nm
+                - value: the measured value in degrees
+        """
+        if not self.tabulated_data_file:
+            logger.warning('No tabulated data file provided.')
+            return pd.DataFrame()
+
+        with archive.m_context.raw_file(self.tabulated_data_file) as file:
+            # Read the header row to get wavelength columns
+            # Note: CompleteEASE exports with UTF-8 BOM
+            with open(file.name, encoding='utf-8-sig') as f:
+                # Skip any empty lines at the beginning
+                header_line = ''
+                line_num = 0
+                while not header_line.strip():
+                    header_line = f.readline()
+                    line_num += 1
+                    if not header_line:  # EOF
+                        logger.error('Could not find header in tabulated file')
+                        return pd.DataFrame()
+
+            # Split header to get wavelength values
+            # Format: [empty]\tAOI\tX\tY\t211.012\t212.592\t...
+            # The first column is often empty (line starts with tab)
+            header_parts = header_line.strip().split('\t')
+            # Find where numeric wavelengths start (after AOI, X, Y)
+            wavelengths = []
+            for part in header_parts:
+                if not part.strip():
+                    continue
+                try:
+                    wl = float(part)
+                    wavelengths.append(wl)
+                except ValueError:
+                    # Not a number, skip (AOI, X, Y, or column names)
+                    continue
+
+            logger.info(f'Found {len(wavelengths)} wavelengths in header')
+
+            # Read all data rows - use utf-8-sig to handle BOM
+            # Skip the header line (which we already parsed)
+            df = pd.read_csv(
+                file.name,
+                sep='\t',
+                skiprows=line_num,
+                header=None,
+                index_col=False,
+                encoding='utf-8-sig',
+            )
+
+            # Remove empty rows and columns
+            df = df.dropna(how='all').dropna(axis=1, how='all')
+
+            # Columns are: [Parameter, AOI, X, Y, wavelength1, wavelength2, ...]
+            # Set column names
+            df.columns = ['parameter', 'angle', 'x_cm', 'y_cm'] + [
+                f'wl_{i}' for i in range(len(wavelengths))
+            ]
+
+            # Reshape from wide to long format
+            # Keep parameter, angle, x_cm, y_cm as identifiers
+            id_cols = ['parameter', 'angle', 'x_cm', 'y_cm']
+            value_cols = [f'wl_{i}' for i in range(len(wavelengths))]
+
+            # Melt the dataframe
+            df_long = df.melt(
+                id_vars=id_cols,
+                value_vars=value_cols,
+                var_name='wl_index',
+                value_name='value',
+            )
+
+            # Map wavelength index back to actual wavelength values
+            wl_mapping = {f'wl_{i}': wavelengths[i] for i in range(len(wavelengths))}
+            df_long['wavelength_nm'] = df_long['wl_index'].map(wl_mapping)
+
+            # Drop the wl_index column
+            df_long = df_long.drop(columns=['wl_index'])
+
+            # Clean up parameter names (remove extra spaces)
+            df_long['parameter'] = df_long['parameter'].str.strip()
+
+            logger.info(
+                f'Read tabulated data: {len(df_long)} records, '
+                f'{df_long["angle"].nunique()} angles, '
+                f'{len(df_long[df_long["parameter"]=="Psi"].groupby(["angle","x_cm","y_cm"]))} positions'
+            )
+
+            return df_long
+
     def write_ellipsometry_data(
         self,
         thickness_df: pd.DataFrame,
         nk_df: pd.DataFrame,
         archive: 'EntryArchive',
         logger: 'BoundLogger',
+        tabulated_df: pd.DataFrame | None = None,
     ) -> None:
         """
         Write method for populating the `DTUEllipsometryMeasurement` section.
@@ -458,6 +649,80 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
             result.normalize(archive, logger)
             results.append(result)
+
+        # Process tabulated raw ellipsometry data (Psi/Delta) if available
+        if tabulated_df is not None and not tabulated_df.empty:
+            logger.info('Processing raw Psi/Delta data from tabulated file')
+
+            # Group by position and angle to populate delta_psi subsections
+            # For each position in results, find matching tabulated data
+            for result in results:
+                x_pos = result.x_absolute.to('cm').magnitude
+                y_pos = result.y_absolute.to('cm').magnitude
+
+                # Find all unique angles for this position
+                pos_data = tabulated_df[
+                    (abs(tabulated_df['x_cm'] - x_pos) < 0.01)
+                    & (abs(tabulated_df['y_cm'] - y_pos) < 0.01)
+                ]
+
+                if pos_data.empty:
+                    continue
+
+                unique_angles = pos_data['angle'].unique()
+
+                # Create DTUDeltaPsi for each angle
+                delta_psi_list = []
+                for angle in unique_angles:
+                    # Get data for this angle
+                    angle_data = pos_data[pos_data['angle'] == angle]
+
+                    # Extract Psi data
+                    psi_data = angle_data[angle_data['parameter'] == 'Psi'].sort_values(
+                        'wavelength_nm'
+                    )
+                    psi_err_data = angle_data[
+                        angle_data['parameter'] == 'Psi_err'
+                    ].sort_values('wavelength_nm')
+
+                    # Extract Delta data
+                    delta_data = angle_data[
+                        angle_data['parameter'] == 'Delta'
+                    ].sort_values('wavelength_nm')
+                    delta_err_data = angle_data[
+                        angle_data['parameter'] == 'Delta_err'
+                    ].sort_values('wavelength_nm')
+
+                    if psi_data.empty or delta_data.empty:
+                        continue
+
+                    # Create DTUDeltaPsi instance
+                    delta_psi = DTUDeltaPsi(
+                        angle_of_incidence=angle * ureg('degree'),
+                        wavelength=psi_data['wavelength_nm'].to_numpy() * ureg('nm'),
+                        psi=psi_data['value'].to_numpy() * ureg('degree'),
+                        delta=delta_data['value'].to_numpy() * ureg('degree'),
+                    )
+
+                    # Add errors if available
+                    if not psi_err_data.empty:
+                        delta_psi.psi_error = (
+                            psi_err_data['value'].to_numpy() * ureg('degree')
+                        )
+                    if not delta_err_data.empty:
+                        delta_psi.delta_error = (
+                            delta_err_data['value'].to_numpy() * ureg('degree')
+                        )
+
+                    delta_psi_list.append(delta_psi)
+
+                # Assign delta_psi list to result
+                if delta_psi_list:
+                    result.delta_psi = delta_psi_list
+                    logger.debug(
+                        f'Added {len(delta_psi_list)} angle measurements '
+                        f'for position {result.position}'
+                    )
 
         # Merge results into this measurement
         ellipsometry = DTUEllipsometryMeasurement(
@@ -822,6 +1087,8 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         filename = None
         if self.native_file:
             filename = self.native_file
+        elif self.tabulated_data_file:
+            filename = self.tabulated_data_file
         elif self.n_and_k_file:
             filename = self.n_and_k_file
         elif self.thickness_file:
@@ -830,11 +1097,47 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             self.add_sample_reference(filename, 'Ellipsometry', archive, logger)
 
         # Import and process data files if they haven't been processed yet
-        if (self.n_and_k_file or self.thickness_file) and not self.results:
+        if (
+            self.n_and_k_file or self.thickness_file or self.tabulated_data_file
+        ) and not self.results:
             thickness_df = self.read_thickness_file(archive, logger)
             nk_df = self.read_n_and_k_file(archive, logger)
-            if not nk_df.empty:
-                self.write_ellipsometry_data(thickness_df, nk_df, archive, logger)
+            tabulated_df = self.read_tabulated_data_file(archive, logger)
+
+            # Process data - use tabulated file if available, otherwise use n&k
+            if not tabulated_df.empty:
+                # Tabulated file can provide both n&k and raw Psi/Delta
+                logger.info('Using tabulated data file as primary data source')
+                if nk_df.empty:
+                    # If we only have tabulated data, still create results structure
+                    # The delta_psi will be populated from tabulated_df
+                    logger.info('Only tabulated data available, creating results')
+                    # We'll need at least one position to create results
+                    # Extract unique positions from tabulated data
+                    unique_positions = (
+                        tabulated_df[['x_cm', 'y_cm']].drop_duplicates().values
+                    )
+                    # Create minimal nk_df for structure
+                    import pandas as pd
+
+                    nk_cols = ['Wavelength (nm)']
+                    for x, y in unique_positions:
+                        pos_str = f'({x},{y})'
+                        nk_cols.extend([f'n: {pos_str}', f'k: {pos_str}'])
+                    # Get wavelengths from tabulated data
+                    wavelengths = sorted(tabulated_df['wavelength_nm'].unique())
+                    nk_data = {'Wavelength (nm)': wavelengths}
+                    for col in nk_cols[1:]:
+                        nk_data[col] = [np.nan] * len(wavelengths)
+                    nk_df = pd.DataFrame(nk_data)
+
+                self.write_ellipsometry_data(
+                    thickness_df, nk_df, archive, logger, tabulated_df
+                )
+            elif not nk_df.empty:
+                self.write_ellipsometry_data(
+                    thickness_df, nk_df, archive, logger, None
+                )
 
         super().normalize(archive, logger)
 
