@@ -45,21 +45,32 @@ def _mock_rtp_for_material_space(
     return rtp
 
 
-def test_material_space_requires_input_sample_composition():
+def test_material_space_is_none_without_input_sample_composition():
+    """Gas-only runs must not produce a material_space."""
     rtp = _mock_rtp_for_material_space(used_gases=['PH3', 'H2S'])
 
-    DtuRTP._autofill_material_space(rtp, overwrite=True)
+    DtuRTP._autofill_material_space(rtp)
 
     assert rtp.overview.material_space is None
 
 
-def test_material_space_overwrite_uses_input_sample_then_adds_gas_elements():
+def test_material_space_is_none_when_stale_value_and_no_input_sample():
+    """A stale P-S must be cleared when no input sample is present."""
+    rtp = _mock_rtp_for_material_space(material_space='P-S', used_gases=['PH3', 'H2S'])
+
+    DtuRTP._autofill_material_space(rtp)
+
+    assert rtp.overview.material_space is None
+
+
+def test_material_space_derives_from_input_sample_and_adds_gas_elements():
+    """Input sample composition comes first; new gas-derived elements are appended."""
     rtp = _mock_rtp_for_material_space(
         material_space='P-S',
         used_gases=['PH3', 'H2S'],
         input_samples=[_mock_input_sample_with_elements('Sn', 'P')],
     )
 
-    DtuRTP._autofill_material_space(rtp, overwrite=True)
+    DtuRTP._autofill_material_space(rtp)
 
     assert rtp.overview.material_space == 'Sn-P-S'

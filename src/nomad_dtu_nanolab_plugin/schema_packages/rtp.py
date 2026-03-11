@@ -258,7 +258,9 @@ class RTPOverview(ArchiveSection):
             label='Annealing Temperature',
         ),
         unit='K',
-        description='Temperature during the annealing plateau of the RTP process.',
+        description=(
+            'Temperature (average) during the annealing plateau of the RTP process.'
+        ),
     )
     annealing_ar_flow = Quantity(
         type=np.float64,
@@ -798,6 +800,11 @@ class DTURTPSteps(CVDStep, ArchiveSection):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
+        # Ensure derived step_overview values (temperature ramp and partial
+        # pressures) are always computed during step normalization.
+        if self.step_overview is not None:
+            self.step_overview.normalize(archive, logger)
+
         # Clear existing sources
         self.sources = []
         # Get used_gases from DtuRTP main class
@@ -897,14 +904,14 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     )
     overwrite_existing_data = Quantity(
         type=bool,
-        default=False,
+        default=True,
         description=(
-            'Boolean to indicate if existing RTP data should be overwritten '
-            'by values parsed from log files.'
+            'Boolean to indicate if the data present in the entry should be '
+            'overwritten by data incoming from the log files.'
         ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.BoolEditQuantity,
-            label='Overwrite existing data?',
+            label='Overwrite existing data ?',
         ),
     )
     samples_susceptor_before = Quantity(
@@ -1036,22 +1043,19 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
 
         return ordered_elements
 
-    def _autofill_material_space(self, overwrite: bool = False) -> None:
+    def _autofill_material_space(self) -> None:
+        """Always recompute material_space from input-sample composition + gas elements.
+
+        - No input samples with composition → material_space is cleared to None.
+        - Input samples present → their elements first, then any new gas-derived
+          elements (PH3→P, H2S→S) appended if not already included.
+        """
         if self.overview is None:
             self.overview = RTPOverview()
 
-        current_material_space = getattr(self.overview, 'material_space', None)
-        if (
-            not overwrite
-            and isinstance(current_material_space, str)
-            and current_material_space.strip()
-        ):
-            return
-
         ordered_elements = self._get_input_sample_material_elements()
         if not ordered_elements:
-            if overwrite or not current_material_space:
-                self.overview.material_space = None
+            self.overview.material_space = None
             return
 
         gas_to_element = {'PH3': 'P', 'H2S': 'S'}
@@ -1060,8 +1064,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 if symbol not in ordered_elements:
                     ordered_elements.append(symbol)
 
-        if ordered_elements:
-            self.overview.material_space = '-'.join(ordered_elements)
+        self.overview.material_space = '-'.join(ordered_elements)
 
     def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         samples = []
@@ -1181,21 +1184,111 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
 
     ############################## PLOTS #################################
+    def _get_full_plot_time_range(self) -> tuple[float, float] | None:
+        series = getattr(self, '_log_time_s', []) or getattr(self, '_time', []) or []
+        if not series:
+            return None
+        return (float(series[0]), float(series[-1]))
+
+    def _build_phase_segments(self) -> list[tuple[str, float, float]]:
+        segments: list[tuple[str, float, float]] = []
+        cursor = 0.0
+        for step in getattr(self, 'steps', []) or []:
+            step_overview = getattr(step, 'step_overview', None)
+            if step_overview is None or step_overview.duration is None:
+                continue
+            duration = step_overview.duration
+            duration_s = (
+                float(duration.to('s').magnitude)
+                if hasattr(duration, 'to')
+                else float(getattr(duration, 'magnitude', duration))
+            )
+            if duration_s <= 0:
+                continue
+            name = (step.name or '').strip() or 'Step'
+            segments.append((name, cursor, cursor + duration_s))
+            cursor += duration_s
+        return segments
+
+    def _add_phase_delimiters(self, fig: go.Figure) -> None:
+        segments = getattr(self, '_phase_segments', []) or []
+        if not segments:
+            return
+
+        band_colors = ['rgba(120, 120, 120, 0.08)', 'rgba(120, 120, 120, 0.14)']
+        for idx, (name, start, end) in enumerate(segments):
+            fig.add_vrect(
+                x0=start,
+                x1=end,
+                fillcolor=band_colors[idx % len(band_colors)],
+                opacity=1.0,
+                layer='below',
+                line_width=0,
+            )
+            center = (start + end) / 2
+            fig.add_annotation(
+                x=center,
+                y=1.02,
+                xref='x',
+                yref='paper',
+                text=name,
+                showarrow=False,
+                font=dict(size=10, color='gray'),
+                xanchor='center',
+            )
+
     # Set up temperature profile plot
     def plot_temperature_profile(self) -> None:
+        time_s = getattr(self, '_time', []) or []
+        temperature_c = getattr(self, '_temperature_profile', []) or []
+        setpoint_c = getattr(self, '_temperature_setpoint_profile', []) or []
+        lamp_power = getattr(self, '_lamp_power_profile', []) or []
+
+        if not time_s or not temperature_c:
+            return
+
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(
-                x=self._time,
-                y=self._temperature_profile,
-                mode='lines+markers',
-                name='Temperature Profile',
+                x=time_s,
+                y=temperature_c,
+                mode='lines',
+                name='Actual Temperature',
             )
         )
+        if setpoint_c and len(setpoint_c) == len(time_s):
+            fig.add_trace(
+                go.Scatter(
+                    x=time_s,
+                    y=setpoint_c,
+                    mode='lines',
+                    name='Temperature Setpoint',
+                    line=dict(dash='dash'),
+                )
+            )
+        if lamp_power and len(lamp_power) == len(time_s):
+            fig.add_trace(
+                go.Scatter(
+                    x=time_s,
+                    y=lamp_power,
+                    mode='lines',
+                    name='Lamp Power',
+                    yaxis='y2',
+                )
+            )
+        self._add_phase_delimiters(fig)
+
+        x_range = self._get_full_plot_time_range()
         fig.update_layout(
-            title='RTP Temperature Profile',
+            title='RTP Temperature and Lamp Power',
             xaxis_title='Time / s',
             yaxis_title='Temperature / °C',
+            yaxis2=dict(
+                title='Lamp Power',
+                overlaying='y',
+                side='right',
+                showgrid=False,
+            ),
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
@@ -1204,12 +1297,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 showline=True,
                 showgrid=True,
                 zeroline=True,
-            ),
-            yaxis=dict(
-                fixedrange=False,
-                showline=True,
-                showgrid=True,
-                zeroline=True,
+                range=list(x_range) if x_range is not None else None,
             ),
         )
         plot_json = fig.to_plotly_json()
@@ -1219,6 +1307,91 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         self.figures.append(
             PlotlyFigure(
                 label='Temperature Profile',
+                figure=plot_json,
+            )
+        )
+
+    def plot_gas_flows_profile(self) -> None:
+        time_s = getattr(self, '_log_time_s', []) or []
+        if not time_s:
+            return
+
+        flow_series = {
+            'Ar Flow': getattr(self, '_log_ar_flow_sccm', []),
+            'N2 Flow': getattr(self, '_log_n2_flow_sccm', []),
+            'PH3 in Ar Flow': getattr(self, '_log_ph3_flow_sccm', []),
+            'H2S in Ar Flow': getattr(self, '_log_h2s_flow_sccm', []),
+        }
+
+        fig = go.Figure()
+        plotted = False
+        for name, values in flow_series.items():
+            if values and len(values) == len(time_s):
+                plotted = True
+                fig.add_trace(
+                    go.Scatter(
+                        x=time_s,
+                        y=values,
+                        mode='lines',
+                        name=name,
+                    )
+                )
+
+        if not plotted:
+            return
+
+        self._add_phase_delimiters(fig)
+        x_range = self._get_full_plot_time_range()
+
+        fig.update_layout(
+            title='RTP Gas Flows Evolution',
+            xaxis_title='Time / s',
+            yaxis_title='Flow / sccm',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(range=list(x_range) if x_range is not None else None),
+        )
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+        self.figures.append(
+            PlotlyFigure(
+                label='Gas Flows Evolution',
+                figure=plot_json,
+            )
+        )
+
+    def plot_pressure_profile(self) -> None:
+        time_s = getattr(self, '_log_time_s', []) or []
+        pressure_torr = getattr(self, '_log_pressure_torr', []) or []
+        if not time_s or not pressure_torr or len(pressure_torr) != len(time_s):
+            return
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=time_s,
+                y=pressure_torr,
+                mode='lines',
+                name='Chamber Pressure',
+            )
+        )
+        self._add_phase_delimiters(fig)
+        x_range = self._get_full_plot_time_range()
+        fig.update_layout(
+            title='RTP Pressure Evolution',
+            xaxis_title='Time / s',
+            yaxis_title='Pressure / torr',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(range=list(x_range) if x_range is not None else None),
+        )
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+        self.figures.append(
+            PlotlyFigure(
+                label='Pressure Evolution',
                 figure=plot_json,
             )
         )
@@ -1393,34 +1566,52 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 overwrite=bool(self.overwrite_existing_data),
             )
         super().normalize(archive, logger)
+        # Ensure nested step normalizers are executed so derived step_overview
+        # quantities (ramps and partial pressures) are populated reliably.
+        for step in getattr(self, 'steps', []) or []:
+            step.normalize(archive, logger)
+
         # Populate lab_id according to generated name
         if self.lab_id is None:
             self.lab_id = self.name.replace(' ', '_')
-        times, temps, current_time = [], [], 0
-        step: DTURTPSteps
-        for step in getattr(self, 'steps', []):  # Loop over all DTURTPSteps
-            step_overview = getattr(step, 'step_overview', None)
-            if (
-                step_overview is not None
-                and isinstance(step_overview.initial_temperature, ureg.Quantity)
-                and isinstance(step_overview.final_temperature, ureg.Quantity)
-                and isinstance(step_overview.duration, ureg.Quantity)
-            ):
-                # Add initial point for the step
-                temps.append(step_overview.initial_temperature.to('celsius').magnitude)
-                times.append(current_time)
-                # Add final point for the step
-                current_time += step_overview.duration or 0
-                temps.append(step_overview.final_temperature.to('celsius').magnitude)
-                times.append(current_time)
-        self._time = times
-        self._temperature_profile = temps
+        self._phase_segments = self._build_phase_segments()
+        log_time_s = getattr(self, '_log_time_s', []) or []
+        log_temp_c = getattr(self, '_log_temperature_c', []) or []
+        if log_time_s and log_temp_c and len(log_time_s) == len(log_temp_c):
+            self._time = log_time_s
+            self._temperature_profile = log_temp_c
+        else:
+            times, temps, current_time = [], [], 0
+            step: DTURTPSteps
+            for step in getattr(self, 'steps', []):  # Loop over all DTURTPSteps
+                step_overview = getattr(step, 'step_overview', None)
+                if (
+                    step_overview is not None
+                    and isinstance(step_overview.initial_temperature, ureg.Quantity)
+                    and isinstance(step_overview.final_temperature, ureg.Quantity)
+                    and isinstance(step_overview.duration, ureg.Quantity)
+                ):
+                    # Add initial point for the step
+                    temps.append(
+                        step_overview.initial_temperature.to('celsius').magnitude
+                    )
+                    times.append(current_time)
+                    # Add final point for the step
+                    current_time += step_overview.duration or 0
+                    temps.append(
+                        step_overview.final_temperature.to('celsius').magnitude
+                    )
+                    times.append(current_time)
+            self._time = times
+            self._temperature_profile = temps
         self.figures = []
         self._sync_step_sources_from_used_gases()
-        self._autofill_material_space(overwrite=bool(self.overwrite_existing_data))
+        self._autofill_material_space()
         if self.overview is not None:
             self.add_libraries(archive, logger)
         self.plot_temperature_profile()
+        self.plot_gas_flows_profile()
+        self.plot_pressure_profile()
         self.plot_susceptor()
 
         # Populate results with material elements for periodic table filtering
@@ -1656,6 +1847,18 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             overwrite or self.chiller_flow is None
         ) and parsed.chiller_flow_m3_s is not None:
             self.chiller_flow = parsed.chiller_flow_m3_s
+
+        # Store timeseries for plotting.
+        ts = parsed.timeseries or {}
+        self._log_time_s = ts.get('time_s', [])
+        self._log_temperature_c = ts.get('temperature_c', [])
+        self._temperature_setpoint_profile = ts.get('temperature_setpoint_c', [])
+        self._lamp_power_profile = ts.get('lamp_power', [])
+        self._log_pressure_torr = ts.get('pressure_torr', [])
+        self._log_ar_flow_sccm = ts.get('ar_flow_sccm', [])
+        self._log_n2_flow_sccm = ts.get('n2_flow_sccm', [])
+        self._log_ph3_flow_sccm = ts.get('ph3_in_ar_flow_sccm', [])
+        self._log_h2s_flow_sccm = ts.get('h2s_in_ar_flow_sccm', [])
 
         if self.overview is None:
             self.overview = RTPOverview()
