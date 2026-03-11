@@ -1,7 +1,10 @@
 import os.path
+from types import SimpleNamespace
 
 import pytest
 from nomad.client import normalize_all, parse
+
+from nomad_dtu_nanolab_plugin.schema_packages.rtp import DtuRTP, RTPOverview
 
 
 def test_schema():
@@ -16,3 +19,47 @@ def test_schema():
     assert entry_archive.data.steps[
         0
     ].step_overview.temperature_ramp.magnitude == pytest.approx(1.5277777777777777)
+
+
+def _mock_input_sample_with_elements(*elements: str):
+    composition = [SimpleNamespace(element=element) for element in elements]
+    layer_ref = SimpleNamespace(elemental_composition=composition)
+    origin = SimpleNamespace(
+        layers=[SimpleNamespace(reference=layer_ref)],
+        elemental_composition=composition,
+    )
+    return SimpleNamespace(input_combi_lib=origin)
+
+
+def _mock_rtp_for_material_space(
+    *, material_space=None, used_gases=None, input_samples=None
+):
+    rtp = SimpleNamespace(
+        overview=RTPOverview(material_space=material_space),
+        used_gases=used_gases,
+        input_samples=input_samples or [],
+    )
+    rtp._get_input_sample_material_elements = (  # noqa: SLF001
+        lambda: DtuRTP._get_input_sample_material_elements(rtp)
+    )
+    return rtp
+
+
+def test_material_space_requires_input_sample_composition():
+    rtp = _mock_rtp_for_material_space(used_gases=['PH3', 'H2S'])
+
+    DtuRTP._autofill_material_space(rtp, overwrite=True)
+
+    assert rtp.overview.material_space is None
+
+
+def test_material_space_overwrite_uses_input_sample_then_adds_gas_elements():
+    rtp = _mock_rtp_for_material_space(
+        material_space='P-S',
+        used_gases=['PH3', 'H2S'],
+        input_samples=[_mock_input_sample_with_elements('Sn', 'P')],
+    )
+
+    DtuRTP._autofill_material_space(rtp, overwrite=True)
+
+    assert rtp.overview.material_space == 'Sn-P-S'
