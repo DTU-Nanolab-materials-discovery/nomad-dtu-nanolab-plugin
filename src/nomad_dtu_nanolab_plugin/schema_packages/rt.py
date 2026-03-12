@@ -124,10 +124,6 @@ class RTResult(MappingResult):
     Results from a single spatial position containing multiple R/T spectra.
     """
 
-    m_def = Section(
-        description='RT measurement results at a specific position on the sample.',
-    )
-
     spectra = SubSection(
         section_def=RTSpectrum,
         repeats=True,
