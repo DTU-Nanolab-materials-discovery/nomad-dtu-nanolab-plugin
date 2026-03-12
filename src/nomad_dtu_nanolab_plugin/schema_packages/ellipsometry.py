@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU Ellipsometry measurement schema')
 
 
-class DTUDeltaPsi(Section):
+class DTUDeltaPsi(ArchiveSection):
     """Delta and Psi values for a specific angle of incidence.
 
     This class stores the raw ellipsometric parameters (Psi and Delta) as a function
