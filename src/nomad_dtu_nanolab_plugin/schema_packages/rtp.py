@@ -1014,6 +1014,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 step.sources.append(source)
 
     def _get_input_sample_material_elements(self) -> list[str]:
+        """Collect elements from input samples in their inherited composition order.
+
+        Returns elements in order: those from input samples (in order of appearance),
+        maintaining the sequence as they appear in the elemental composition.
+        """
         ordered_elements: list[str] = []
 
         def _append_symbol(raw_symbol) -> None:
@@ -1047,8 +1052,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         """Always recompute material_space from input-sample composition + gas elements.
 
         - No input samples with composition → material_space is cleared to None.
-        - Input samples present → their elements first, then any new gas-derived
-          elements (PH3→P, H2S→S) appended if not already included.
+        - Input samples present → their elements are used, with gas-derived elements
+          (PH3→P, H2S→S) inserted to maintain order: metals first (e.g. Sn),
+          then P, then S.
         """
         if self.overview is None:
             self.overview = RTPOverview()
@@ -1058,11 +1064,19 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             self.overview.material_space = None
             return
 
+        # Add gas-derived elements in the desired order: P before S
+        # This maintains the pattern: input elements (metals like Sn), then P, then S
         gas_to_element = {'PH3': 'P', 'H2S': 'S'}
-        for gas, symbol in gas_to_element.items():
+        for gas in ['PH3', 'H2S']:  # Maintain explicit order: P before S
             if gas in (self.used_gases or []):
+                symbol = gas_to_element[gas]
                 if symbol not in ordered_elements:
                     ordered_elements.append(symbol)
+
+        # Keep all non-P/S elements first, then force P then S at the end.
+        ordered_elements = [
+            element for element in ordered_elements if element not in {'P', 'S'}
+        ] + [element for element in ['P', 'S'] if element in ordered_elements]
 
         self.overview.material_space = '-'.join(ordered_elements)
 
@@ -1079,15 +1093,14 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             origin_layer = origin.layers[0].reference if origin.layers else None
 
             # Get elemental compositions
-            origin_elements = set(e.element for e in origin.elemental_composition)
-            rtp_elements = set(rtp_materialspace.split('-'))
+            origin_elements = [e.element for e in origin.elemental_composition]
+            rtp_elements = [e for e in rtp_materialspace.split('-') if e]
 
             # Merge for library
-            if rtp_elements == origin_elements:
+            if set(rtp_elements) == set(origin_elements):
                 elemental_composition = origin.elemental_composition
             else:
-                # Merge and remove duplicates, keep order from origin first
-                merged_elements = list(origin_elements) + [
+                merged_elements = origin_elements + [
                     e for e in rtp_elements if e not in origin_elements
                 ]
                 elemental_composition = [
@@ -1100,11 +1113,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 origin_layer is not None
                 and origin_layer.elemental_composition is not None
             ):
-                layer_origin_elements = set(
+                layer_origin_elements = [
                     e.element for e in origin_layer.elemental_composition
-                )
-                # Merge origin_layer and library compositions
-                merged_layer_elements = list(layer_origin_elements) + [
+                ]
+                merged_layer_elements = layer_origin_elements + [
                     e for e in rtp_elements if e not in layer_origin_elements
                 ]
                 layer_elemental_composition = [
@@ -1191,6 +1203,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         return (float(series[0]), float(series[-1]))
 
     def _build_phase_segments(self) -> list[tuple[str, float, float]]:
+        # Prefer log-file-derived boundaries (actual timestamps) when available.
+        log_segs = getattr(self, '_log_phase_segments', None)
+        if log_segs:
+            return log_segs
+
         segments: list[tuple[str, float, float]] = []
         cursor = 0.0
         for step in getattr(self, 'steps', []) or []:
@@ -1228,19 +1245,24 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             center = (start + end) / 2
             fig.add_annotation(
                 x=center,
-                y=1.02,
+                y=0.96,
                 xref='x',
                 yref='paper',
                 text=name,
                 showarrow=False,
                 font=dict(size=10, color='gray'),
                 xanchor='center',
+                yanchor='top',
             )
 
     # Set up temperature profile plot
     def plot_temperature_profile(self) -> None:
-        time_s = getattr(self, '_time', []) or []
-        temperature_c = getattr(self, '_temperature_profile', []) or []
+        time_s = getattr(self, '_log_time_s', []) or getattr(self, '_time', []) or []
+        temperature_c = (
+            getattr(self, '_log_temperature_c', [])
+            or getattr(self, '_temperature_profile', [])
+            or []
+        )
         setpoint_c = getattr(self, '_temperature_setpoint_profile', []) or []
         lamp_power = getattr(self, '_lamp_power_profile', []) or []
 
@@ -1284,7 +1306,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             xaxis_title='Time / s',
             yaxis_title='Temperature / °C',
             yaxis2=dict(
-                title='Lamp Power',
+                title='Lamp Power / %',
                 overlaying='y',
                 side='right',
                 showgrid=False,
@@ -1292,6 +1314,14 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
+            showlegend=True,
+            legend=dict(
+                orientation='h',
+                yanchor='top',
+                y=-0.15,
+                xanchor='center',
+                x=0.5,
+            ),
             xaxis=dict(
                 fixedrange=False,
                 showline=True,
@@ -1350,6 +1380,14 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
+            showlegend=True,
+            legend=dict(
+                orientation='h',
+                yanchor='top',
+                y=-0.15,
+                xanchor='center',
+                x=0.5,
+            ),
             xaxis=dict(range=list(x_range) if x_range is not None else None),
         )
         plot_json = fig.to_plotly_json()
@@ -1843,10 +1881,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             overwrite or self.rate_of_rise is None
         ) and parsed.rate_of_rise_pa_s is not None:
             self.rate_of_rise = parsed.rate_of_rise_pa_s
-        if (
-            overwrite or self.chiller_flow is None
-        ) and parsed.chiller_flow_m3_s is not None:
-            self.chiller_flow = parsed.chiller_flow_m3_s
+        # Chiller flow is not parsed from log files as it's set manually
+        # if (
+        #     overwrite or self.chiller_flow is None
+        # ) and parsed.chiller_flow_m3_s is not None:
+        #     self.chiller_flow = parsed.chiller_flow_m3_s
 
         # Store timeseries for plotting.
         ts = parsed.timeseries or {}
@@ -1859,6 +1898,13 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         self._log_n2_flow_sccm = ts.get('n2_flow_sccm', [])
         self._log_ph3_flow_sccm = ts.get('ph3_in_ar_flow_sccm', [])
         self._log_h2s_flow_sccm = ts.get('h2s_in_ar_flow_sccm', [])
+
+        # Store phase boundaries derived from actual log timestamps.
+        self._log_phase_segments = [
+            (ps.name, ps.start_time_s, ps.end_time_s)
+            for ps in parsed.steps
+            if ps.start_time_s is not None and ps.end_time_s is not None
+        ]
 
         if self.overview is None:
             self.overview = RTPOverview()
