@@ -204,6 +204,7 @@ class EllipsometryMappingResult(MappingResult):
             'repeated subsections (one per angle).'
         ),
     )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `EllipsometryMappingResult` class.
@@ -259,7 +260,10 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     native_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
-        a_eln={'component': 'FileEditQuantity', 'label': 'native .SESNAP snapshot file'},
+        a_eln={
+            'component': 'FileEditQuantity',
+            'label': 'native .SESNAP snapshot file',
+        },
     )
     native_data_file = Quantity(
         type=str,
@@ -269,7 +273,10 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     tabulated_data_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
-        a_eln={'component': 'FileEditQuantity', 'label': 'tabulated exported .txt file'},
+        a_eln={
+            'component': 'FileEditQuantity',
+            'label': 'tabulated exported .txt file',
+        },
     )
     n_and_k_file = Quantity(
         type=str,
@@ -499,10 +506,15 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             # Clean up parameter names (remove extra spaces)
             df_long['parameter'] = df_long['parameter'].str.strip()
 
+            num_positions = len(
+                df_long[df_long['parameter'] == 'Psi'].groupby(
+                    ['angle', 'x_cm', 'y_cm']
+                )
+            )
             logger.info(
                 f'Read tabulated data: {len(df_long)} records, '
                 f'{df_long["angle"].nunique()} angles, '
-                f'{len(df_long[df_long["parameter"]=="Psi"].groupby(["angle","x_cm","y_cm"]))} positions'
+                f'{num_positions} positions'
             )
 
             return df_long
@@ -661,9 +673,11 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 y_pos = result.y_absolute.to('cm').magnitude
 
                 # Find all unique angles for this position
+                # Use small tolerance for floating point comparison
+                POSITION_TOLERANCE_CM = 0.01
                 pos_data = tabulated_df[
-                    (abs(tabulated_df['x_cm'] - x_pos) < 0.01)
-                    & (abs(tabulated_df['y_cm'] - y_pos) < 0.01)
+                    (abs(tabulated_df['x_cm'] - x_pos) < POSITION_TOLERANCE_CM)
+                    & (abs(tabulated_df['y_cm'] - y_pos) < POSITION_TOLERANCE_CM)
                 ]
 
                 if pos_data.empty:
@@ -706,13 +720,13 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
                     # Add errors if available
                     if not psi_err_data.empty:
-                        delta_psi.psi_error = (
-                            psi_err_data['value'].to_numpy() * ureg('degree')
+                        delta_psi.psi_error = psi_err_data['value'].to_numpy() * ureg(
+                            'degree'
                         )
                     if not delta_err_data.empty:
-                        delta_psi.delta_error = (
-                            delta_err_data['value'].to_numpy() * ureg('degree')
-                        )
+                        delta_psi.delta_error = delta_err_data[
+                            'value'
+                        ].to_numpy() * ureg('degree')
 
                     delta_psi_list.append(delta_psi)
 
@@ -1135,9 +1149,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     thickness_df, nk_df, archive, logger, tabulated_df
                 )
             elif not nk_df.empty:
-                self.write_ellipsometry_data(
-                    thickness_df, nk_df, archive, logger, None
-                )
+                self.write_ellipsometry_data(thickness_df, nk_df, archive, logger, None)
 
         super().normalize(archive, logger)
 
