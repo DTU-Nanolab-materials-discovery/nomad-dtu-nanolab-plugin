@@ -40,6 +40,8 @@ class ParsedRTPStep:
     ph3_in_ar_flow_m3_s: float
     h2s_in_ar_flow_m3_s: float
     mean_temperature_k: float | None = None
+    start_time_s: float | None = None
+    end_time_s: float | None = None
 
 
 @dataclass
@@ -127,6 +129,34 @@ def _best_delimiter(line: str) -> str | None:
 
 def _normalize(name: str) -> str:
     return re.sub(r'[^a-z0-9]+', '', str(name).lower())
+
+
+def _extract_trendlog_column_names(lines: list[str]) -> list[str]:
+    known_columns = [
+        'Fixed SP - CH1',
+        'Process Value - CH1',
+        'Set Point - CH1',
+        'Manual MV - CH1',
+        'MV Monitor (Heating) - CH1',
+        'MV Monitor (Cooling) - CH1',
+    ]
+    normalized_map = {_normalize(name): name for name in known_columns}
+
+    for line in lines:
+        line_norm = _normalize(line)
+        if 'processvaluech1' not in line_norm:
+            continue
+
+        hits = [
+            (line_norm.find(norm_name), original_name)
+            for norm_name, original_name in normalized_map.items()
+            if norm_name in line_norm
+        ]
+        ordered = [name for _, name in sorted(hits) if _ >= 0]
+        if ordered:
+            return ordered
+
+    return known_columns
 
 
 def _find_header_line_index(lines: list[str], delimiter: str) -> int:
@@ -299,7 +329,13 @@ def _parse_t2b_table(txt: str):
         low = line.lower()
         if (
             ('timestamp' in low or re.search(r'\btime\b', low))
-            and ('temp' in low or 'temperature' in low)
+            and (
+                'temp' in low
+                or 'temperature' in low
+                or 'process value - ch1' in low
+                or 'set point - ch1' in low
+                or 'mv monitor' in low
+            )
             and re.search(r'[;,\t]', line)
         ):
             header_idx = i
@@ -339,7 +375,8 @@ def _parse_t2b_table(txt: str):
             return pd.DataFrame()
 
     # Case 2: TrendLog-style rows: 2025/11/28_14:12:00 ...
-    rows: list[tuple[str, float]] = []
+    trendlog_columns = _extract_trendlog_column_names(lines)
+    rows: list[dict[str, float | str]] = []
     for line in lines:
         parts = re.split(r'\s+', line.strip())
         if len(parts) < MIN_TRENDLOG_PARTS:
@@ -357,17 +394,17 @@ def _parse_t2b_table(txt: str):
                 continue
 
         if len(nums) >= MIN_COLUMNS_FOR_TABLE_ROW:
-            rows.append((parts[0], nums[1]))
+            row: dict[str, float | str] = {'Timestamp': parts[0]}
+            for idx, column_name in enumerate(trendlog_columns):
+                if idx >= len(nums):
+                    break
+                row[column_name] = nums[idx]
+            rows.append(row)
 
     if not rows:
         return pd.DataFrame()
 
-    return pd.DataFrame(
-        {
-            'Timestamp': [r[0] for r in rows],
-            'Temperature': [r[1] for r in rows],
-        }
-    )
+    return pd.DataFrame(rows)
 
 
 def _find_col(df, patterns: list[str]) -> str | None:
@@ -414,14 +451,38 @@ def _build_process_df(eklipse_df, t2b_df):
             e[out_col] = _to_num(eklipse_df[c]).fillna(0) * SCCM_TO_M3_S
 
     t_time = _find_col(t2b_df, [r'timestamp', r'^time$'])
-    t_temp = _find_col(t2b_df, [r'pyro.*temp', r'temperature$', r'temp'])
+    t_temp = _find_col(
+        t2b_df,
+        [
+            r'processvaluech1$',
+            r'processvalue.*ch1$',
+            r'pyro.*temp',
+            r'temperature$',
+            r'temp',
+        ],
+    )
     t_setpoint = _find_col(
         t2b_df,
-        [r'temp.*setpoint', r'setpoint.*temp', r'target.*temp', r'pyro.*sp'],
+        [
+            r'setpointch1$',
+            r'setpoint.*ch1$',
+            r'temp.*setpoint',
+            r'setpoint.*temp',
+            r'target.*temp',
+            r'pyro.*sp',
+        ],
     )
     t_lamp_power = _find_col(
         t2b_df,
-        [r'lamp.*power', r'power.*lamp', r'heater.*power', r'power.*percent'],
+        [
+            r'mvmonitorheaingch1$',
+            r'mvmonitorheatingch1$',
+            r'mvmonitor.*ch1$',
+            r'lamp.*power',
+            r'power.*lamp',
+            r'heater.*power',
+            r'power.*percent',
+        ],
     )
     if t_time is not None:
         t['timestamp'] = _to_datetime(t2b_df[t_time])
@@ -661,6 +722,8 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         step = ParsedRTPStep(
             name=names[i] if i < len(names) else f'Step {i + 1}',
             duration_s=duration,
+            start_time_s=float(sl['time_s'].iloc[0]),
+            end_time_s=float(sl['time_s'].iloc[-1]),
             initial_temperature_k=float(sl['temperature_k'].iloc[0]),
             final_temperature_k=float(sl['temperature_k'].iloc[-1]),
             pressure_pa=float(pressure_pa if pressure_pa is not None else 0.0),
@@ -687,6 +750,8 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         ParsedRTPStep(
             name='Annealing',
             duration_s=float(sl['time_s'].iloc[-1] - sl['time_s'].iloc[0]),
+            start_time_s=float(sl['time_s'].iloc[0]),
+            end_time_s=float(sl['time_s'].iloc[-1]),
             initial_temperature_k=float(sl['temperature_k'].iloc[0]),
             final_temperature_k=float(sl['temperature_k'].iloc[-1]),
             pressure_pa=float(pressure_pa if pressure_pa is not None else 0.0),
