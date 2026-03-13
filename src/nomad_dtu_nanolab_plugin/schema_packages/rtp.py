@@ -1252,11 +1252,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 else:
                     end_temp_c = None
 
-                if (
-                    time_s
-                    and temperature_c
-                    and len(time_s) == len(temperature_c)
-                ):
+                if time_s and temperature_c and len(time_s) == len(temperature_c):
                     reached_time = None
                     if end_temp_c is not None:
                         for t, temp in zip(time_s, temperature_c):
