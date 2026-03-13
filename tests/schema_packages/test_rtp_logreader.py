@@ -1,5 +1,6 @@
 import os.path
 
+import pandas as pd
 import pytest
 from nomad.client import normalize_all, parse
 
@@ -7,7 +8,9 @@ from nomad_dtu_nanolab_plugin.rtp_log_reader import (
     MIN_USED_GAS_FLOW_M3_S,
     ParsedRTPStep,
     _apply_parasitic_flow_cutoff,
+    _derive_end_of_process_temperature,
     _derive_overview,
+    _ensure_deps,
     _read_csv_with_fallback,
 )
 
@@ -232,3 +235,50 @@ def test_apply_parasitic_flow_cutoff_for_all_gases():
     assert _apply_parasitic_flow_cutoff(at_limit, 'N2') == pytest.approx(at_limit)
     assert _apply_parasitic_flow_cutoff(at_limit, 'PH3') == pytest.approx(at_limit)
     assert _apply_parasitic_flow_cutoff(at_limit, 'H2S') == pytest.approx(at_limit)
+
+
+def test_end_of_process_temperature_prefers_named_cooling_step():
+    assert _ensure_deps()
+
+    process_df = pd.DataFrame(
+        {
+            'time_s': [0.0, 5.0, 10.0, 15.0, 20.0],
+            'temperature_k': [900.0, 899.9, 850.0, 700.0, 650.0],
+            'ar_flow_m3_s': [2e-8, 2e-8, 2e-8, 0.0, 0.0],
+            'n2_flow_m3_s': [0.0, 0.0, 0.0, 0.0, 0.0],
+            'ph3_in_ar_flow_m3_s': [0.0, 0.0, 0.0, 0.0, 0.0],
+            'h2s_in_ar_flow_m3_s': [0.0, 0.0, 0.0, 0.0, 0.0],
+        }
+    )
+    steps = [
+        ParsedRTPStep(
+            name='Annealing',
+            duration_s=10.0,
+            initial_temperature_k=900.0,
+            final_temperature_k=899.9,
+            pressure_pa=1000.0,
+            ar_flow_m3_s=2e-8,
+            n2_flow_m3_s=0.0,
+            ph3_in_ar_flow_m3_s=0.0,
+            h2s_in_ar_flow_m3_s=0.0,
+            start_time_s=0.0,
+            end_time_s=10.0,
+        ),
+        ParsedRTPStep(
+            name='Cooling',
+            duration_s=10.0,
+            initial_temperature_k=850.0,
+            final_temperature_k=650.0,
+            pressure_pa=900.0,
+            ar_flow_m3_s=2e-8,
+            n2_flow_m3_s=0.0,
+            ph3_in_ar_flow_m3_s=0.0,
+            h2s_in_ar_flow_m3_s=0.0,
+            start_time_s=10.0,
+            end_time_s=20.0,
+        ),
+    ]
+
+    end_temp = _derive_end_of_process_temperature(process_df, steps)
+
+    assert end_temp == pytest.approx(700.0)
