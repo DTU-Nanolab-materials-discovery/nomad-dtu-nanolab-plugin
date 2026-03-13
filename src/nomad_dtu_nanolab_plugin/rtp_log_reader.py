@@ -26,6 +26,12 @@ MIN_ANNEALING_PLATEAU_DURATION_S = 1.0
 ANNEALING_DURATION_TOLERANCE_S = 0.05
 MIN_PLATEAU_POINTS = 2
 PLATEAU_TEMPERATURE_DELTA_TOLERANCE_K = 1e-6
+RATE_OF_RISE_WINDOW_S = 60.0
+ANNEAL_SEGMENT_INDEX = 1
+STANDARD_SEGMENT_BOUND_COUNT = 4
+FLAT_SEGMENT_DELTA_TEMPERATURE_K = 5.0
+ORDINAL_SECOND = 2
+ORDINAL_THIRD = 3
 
 
 @dataclass
@@ -34,7 +40,7 @@ class ParsedRTPStep:
     duration_s: float
     initial_temperature_k: float
     final_temperature_k: float
-    pressure_pa: float
+    pressure_pa: float | None
     ar_flow_m3_s: float
     n2_flow_m3_s: float
     ph3_in_ar_flow_m3_s: float
@@ -450,6 +456,36 @@ def _build_process_df(eklipse_df, t2b_df):
         else:
             e[out_col] = _to_num(eklipse_df[c]).fillna(0) * SCCM_TO_M3_S
 
+    # Optional diagnostic columns for base pressure and rate-of-rise derivation.
+    ballast_col = _find_col(
+        eklipse_df,
+        [r'ballast.*valve', r'valve.*ballast', r'pcballast', r'ballast'],
+    )
+    if ballast_col is not None:
+        e['ballast'] = _to_num(eklipse_df[ballast_col]).fillna(0)
+
+    vent_col = _find_col(
+        eklipse_df,
+        [r'ventline', r'vent.*line', r'pcvent', r'vent'],
+    )
+    if vent_col is not None:
+        e['vent_line'] = _to_num(eklipse_df[vent_col]).fillna(0)
+
+    throttle_closed_col = _find_col(
+        eklipse_df,
+        [r'throttle.*clos', r'clos.*throttle'],
+    )
+    throttle_pos_col = _find_col(
+        eklipse_df,
+        [r'throttle.*pos(?:ition)?', r'rtpthrottle', r'throttlevalve', r'throttle'],
+    )
+    if throttle_closed_col is not None:
+        # Binary column: 1 = throttle valve is closed, 0 = open.
+        e['throttle_closed'] = _to_num(eklipse_df[throttle_closed_col]).fillna(0)
+    elif throttle_pos_col is not None:
+        # Position column: 0 = fully closed.
+        e['throttle_position'] = _to_num(eklipse_df[throttle_pos_col]).fillna(-1)
+
     t_time = _find_col(t2b_df, [r'timestamp', r'^time$'])
     t_temp = _find_col(
         t2b_df,
@@ -614,12 +650,15 @@ def _extract_timeseries(process_df) -> dict[str, list[float]]:
 
     if 'pressure_raw' in df:
         pa_series = _to_num(df['pressure_raw']).apply(_pressure_to_pa)
-        out['pressure_torr'] = [
+        pressure_torr = [
             (float(v) / TORR_TO_PA)
             if v is not None and np.isfinite(v)
             else float('nan')
             for v in pa_series.to_list()
         ]
+        # Keep pressure series empty when no finite pressure samples exist.
+        if any(np.isfinite(v) for v in pressure_torr):
+            out['pressure_torr'] = pressure_torr
 
     flow_cols = {
         'ar_flow_sccm': 'ar_flow_m3_s',
@@ -697,19 +736,66 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         if not uniq or b > uniq[-1]:
             uniq.append(b)
 
-    names = ['Heating', 'Annealing', 'Cooling']
-    steps: list[ParsedRTPStep] = []
+    # In the standard 3-segment split the annealing plateau is segment index 1.
+    anneal_segment_idx = (
+        ANNEAL_SEGMENT_INDEX if len(uniq) == STANDARD_SEGMENT_BOUND_COUNT else None
+    )
+
+    def _segment_base_name(seg_df, is_anneal: bool) -> str:
+        if is_anneal:
+            return 'Annealing'
+        delta_t = float(seg_df['temperature_k'].iloc[-1]) - float(
+            seg_df['temperature_k'].iloc[0]
+        )
+        if abs(delta_t) < FLAT_SEGMENT_DELTA_TEMPERATURE_K:
+            return 'Plateau'
+        return 'Heating' if delta_t > 0 else 'Cooling'
+
+    def _ordinal_prefix(n: int) -> str:
+        if n == ORDINAL_SECOND:
+            return '2nd'
+        if n == ORDINAL_THIRD:
+            return '3rd'
+        return f'{n}th'
+
+    # First pass: collect valid segments and their base names.
+    seg_slices: list[tuple[int, int]] = []
+    base_names: list[str] = []
     for i in range(len(uniq) - 1):
         s = uniq[i]
         e = uniq[i + 1]
         if e <= s:
             continue
         sl = df.iloc[s : e + 1]
-
         duration = float(sl['time_s'].iloc[-1] - sl['time_s'].iloc[0])
         if duration <= 0:
             continue
+        seg_slices.append((s, e))
+        base_names.append(
+            _segment_base_name(
+                sl, anneal_segment_idx is not None and i == anneal_segment_idx
+            )
+        )
 
+    # Second pass: add ordinal suffix only when a base name appears more than once.
+    # The first occurrence keeps the plain name; later ones get "2nd", "3rd", etc.
+    name_count: dict[str, int] = {}
+    for bn in base_names:
+        name_count[bn] = name_count.get(bn, 0) + 1
+    name_seen: dict[str, int] = {}
+    final_names: list[str] = []
+    for bn in base_names:
+        if name_count[bn] == 1:
+            final_names.append(bn)
+        else:
+            name_seen[bn] = name_seen.get(bn, 0) + 1
+            n = name_seen[bn]
+            final_names.append(f'{_ordinal_prefix(n)} {bn}' if n > 1 else bn)
+
+    steps: list[ParsedRTPStep] = []
+    for (s, e), name in zip(seg_slices, final_names):
+        sl = df.iloc[s : e + 1]
+        duration = float(sl['time_s'].iloc[-1] - sl['time_s'].iloc[0])
         pressure_pa = _pressure_to_pa(float(np.nanmedian(sl['pressure_raw'])))
         ar_flow = _apply_parasitic_flow_cutoff(
             float(np.nanmedian(sl['ar_flow_m3_s'])),
@@ -720,13 +806,13 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
             'N2',
         )
         step = ParsedRTPStep(
-            name=names[i] if i < len(names) else f'Step {i + 1}',
+            name=name,
             duration_s=duration,
             start_time_s=float(sl['time_s'].iloc[0]),
             end_time_s=float(sl['time_s'].iloc[-1]),
             initial_temperature_k=float(sl['temperature_k'].iloc[0]),
             final_temperature_k=float(sl['temperature_k'].iloc[-1]),
-            pressure_pa=float(pressure_pa if pressure_pa is not None else 0.0),
+            pressure_pa=pressure_pa,
             ar_flow_m3_s=ar_flow,
             n2_flow_m3_s=n2_flow,
             ph3_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
@@ -754,7 +840,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
             end_time_s=float(sl['time_s'].iloc[-1]),
             initial_temperature_k=float(sl['temperature_k'].iloc[0]),
             final_temperature_k=float(sl['temperature_k'].iloc[-1]),
-            pressure_pa=float(pressure_pa if pressure_pa is not None else 0.0),
+            pressure_pa=pressure_pa,
             ar_flow_m3_s=_apply_parasitic_flow_cutoff(
                 float(np.nanmedian(df['ar_flow_m3_s'])),
                 'Ar',
@@ -837,8 +923,134 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
         'annealing_h2s_in_ar_flow': anneal.h2s_in_ar_flow_m3_s,
         'total_heating_time': total_heating,
         'total_cooling_time': total_cooling,
-        'end_of_process_temperature': steps[-1].final_temperature_k,
+        'end_of_process_temperature': None,
     }
+
+
+def _derive_end_of_process_temperature(
+    process_df, steps: list[ParsedRTPStep]
+) -> float | None:
+    """Derive end-of-process temperature from cooling gas shutoff moment.
+
+    End-of-process is defined as the first point during the cooling step where all
+    process gases are off (below parasitic-flow threshold), after they were on.
+    """
+    end_temp_k = None
+
+    def _is_cooling_step(step: ParsedRTPStep) -> bool:
+        name = (step.name or '').lower()
+        if 'cool' in name:
+            return True
+        return (
+            step.final_temperature_k - step.initial_temperature_k
+            < -PLATEAU_TEMPERATURE_DELTA_TOLERANCE_K
+        )
+
+    if (
+        process_df is not None
+        and not process_df.empty
+        and 'time_s' in process_df
+        and 'temperature_k' in process_df
+    ):
+        cooling_step = next(
+            (step for step in steps if 'cool' in (step.name or '').lower()), None
+        )
+        if cooling_step is None:
+            cooling_step = next(
+                (step for step in steps if _is_cooling_step(step)),
+                None,
+            )
+        flow_cols = [
+            'ar_flow_m3_s',
+            'n2_flow_m3_s',
+            'ph3_in_ar_flow_m3_s',
+            'h2s_in_ar_flow_m3_s',
+        ]
+
+        if cooling_step is not None and not any(
+            col not in process_df.columns for col in flow_cols
+        ):
+            df = process_df.copy()
+            time_arr = _to_num(df['time_s']).to_numpy(dtype=float)
+            temp_arr = _to_num(df['temperature_k']).to_numpy(dtype=float)
+
+            cooling_mask = np.isfinite(time_arr)
+            if cooling_step.start_time_s is not None:
+                cooling_mask &= time_arr >= float(cooling_step.start_time_s)
+            if cooling_step.end_time_s is not None:
+                cooling_mask &= time_arr <= float(cooling_step.end_time_s)
+
+            idx = np.where(cooling_mask)[0]
+            if len(idx) > 0:
+                flow_stack = np.column_stack(
+                    [
+                        np.abs(_to_num(df[col]).fillna(0).to_numpy(dtype=float))[idx]
+                        for col in flow_cols
+                    ]
+                )
+                gas_on = np.any(flow_stack > MIN_USED_GAS_FLOW_M3_S, axis=1)
+
+                shutoff_rel_idx = None
+                if np.any(gas_on):
+                    for i in range(len(gas_on)):
+                        if not gas_on[i] and np.any(gas_on[:i]):
+                            shutoff_rel_idx = i
+                            break
+                else:
+                    # Cooling started with gases already off.
+                    shutoff_rel_idx = 0
+
+                if shutoff_rel_idx is not None:
+                    temp_k = temp_arr[idx[shutoff_rel_idx]]
+                    if np.isfinite(temp_k):
+                        end_temp_k = float(temp_k)
+
+    return end_temp_k
+
+
+def _compute_rate_of_rise(
+    time_s_arr, pressure_pa_arr, static_mask, window_s=RATE_OF_RISE_WINDOW_S
+):
+    """Return rate of rise (Pa/s) from the first qualifying static-vacuum window.
+
+    Scans *time_s_arr* for the first contiguous run where *static_mask* is True
+    for at least *window_s* seconds.  Within that run the algorithm:
+
+    1. Finds the minimum-pressure index – the chamber base pressure P_min.
+    2. Finds the pressure *window_s* seconds later, P_end.
+    3. Returns ``(P_end - P_min) / window_s``.
+    """
+    n = len(time_s_arr)
+    i = 0
+    while i < n:
+        if not static_mask[i]:
+            i += 1
+            continue
+        run_start = i
+        j = i + 1
+        while j < n and static_mask[j]:
+            j += 1
+        run_end = j - 1
+        t_run_start = time_s_arr[run_start]
+        t_run_end = time_s_arr[run_end]
+        if (t_run_end - t_run_start) >= window_s:
+            run_pressures = pressure_pa_arr[run_start : run_end + 1]
+            run_times = time_s_arr[run_start : run_end + 1]
+            if not np.any(np.isfinite(run_pressures)):
+                i = j
+                continue
+            min_rel = int(np.nanargmin(run_pressures))
+            p_min = float(run_pressures[min_rel])
+            t_min = float(run_times[min_rel])
+            future = run_times >= t_min + window_s
+            if not np.any(future):
+                i = j
+                continue
+            p_end = float(run_pressures[int(np.argmax(future))])
+            if np.isfinite(p_min) and np.isfinite(p_end):
+                return (p_end - p_min) / window_s
+        i = j
+    return None
 
 
 def _derive_general_values(process_df, key_values: dict[str, float]):
@@ -846,24 +1058,92 @@ def _derive_general_values(process_df, key_values: dict[str, float]):
     base_pressure_ballast = None
     rate_of_rise = None
     chiller_flow = None
+    has_ballast_column = False
+    has_vent_column = False
+    has_throttle_column = False
 
     if not process_df.empty and process_df['pressure_raw'].notna().sum() > 0:
         pressure_pa = _to_num(process_df['pressure_raw']).apply(_pressure_to_pa)
-        head_n = max(3, int(0.1 * len(pressure_pa)))
-        baseline = pressure_pa.iloc[:head_n].dropna()
-        if not baseline.empty:
-            base_pressure = float(np.nanmin(baseline))
-            base_pressure_ballast = float(np.nanmedian(baseline))
+        p_arr = pressure_pa.values.astype(float)
+        has_ballast_column = 'ballast' in process_df.columns
 
+        if has_ballast_column:
+            # Use Eklipse ballast on/off column to split pre- and post-ballast
+            # pressure series.
+            ballast = _to_num(process_df['ballast']).fillna(0).values
+            on_positions = np.where(ballast == 1)[0]
+            if len(on_positions) > 0:
+                first_on = int(on_positions[0])
+                pre_valid = p_arr[:first_on][np.isfinite(p_arr[:first_on])]
+                if len(pre_valid) > 0:
+                    base_pressure = float(np.nanmin(pre_valid))
+                post_valid = p_arr[on_positions][np.isfinite(p_arr[on_positions])]
+                if len(post_valid) > 0:
+                    base_pressure_ballast = float(np.nanmin(post_valid))
+            else:
+                # Ballast column present but never turned on.
+                valid = p_arr[np.isfinite(p_arr)]
+                if len(valid) > 0:
+                    base_pressure = float(np.nanmin(valid))
+        else:
+            # Without ballast signal, do not derive base pressures.
+            base_pressure = None
+
+        # Rate of rise from a static-vacuum period (vent line off + throttle closed).
+        has_vent_column = 'vent_line' in process_df.columns
+        has_throttle_closed = 'throttle_closed' in process_df.columns
+        has_throttle_pos = 'throttle_position' in process_df.columns
+        has_throttle_column = has_throttle_closed or has_throttle_pos
+        if 'time_s' in process_df.columns and has_vent_column and has_throttle_column:
+            time_arr = _to_num(process_df['time_s']).values.astype(float)
+            static_mask = np.ones(len(process_df), dtype=bool)
+            vent = _to_num(process_df['vent_line']).fillna(1).values
+            static_mask &= vent == 0
+            if has_throttle_closed:
+                throt = _to_num(process_df['throttle_closed']).fillna(0).values
+                static_mask &= throt == 1  # 1 = throttle valve closed
+            elif has_throttle_pos:
+                throt = _to_num(process_df['throttle_position']).fillna(1).values
+                static_mask &= throt == 0  # 0 = fully closed position
+            rate_of_rise = _compute_rate_of_rise(time_arr, p_arr, static_mask)
+        else:
+            # Columns needed to identify a static-vacuum window are absent;
+            # keep empty so the user can decide whether to fill it manually.
+            rate_of_rise = None
+
+        if not has_ballast_column and base_pressure_ballast is None:
+            # No ballast column available; keep empty for manual entry.
+            base_pressure_ballast = None
+
+    # Override with values parsed from the diagnostics text-file when present.
     for k, v in key_values.items():
-        if 'basepressure' in k and 'without' in k and 'ballast' in k:
+        if (
+            'basepressure' in k
+            and 'without' in k
+            and 'ballast' in k
+            and has_ballast_column
+        ):
             base_pressure = v
-        elif 'basepressure' in k and 'with' in k and 'ballast' in k:
+        elif (
+            'basepressure' in k
+            and 'with' in k
+            and 'ballast' in k
+            and has_ballast_column
+        ):
             base_pressure_ballast = v
-        elif 'rateofrise' in k or 'riserate' in k or ('rate' in k and 'rise' in k):
+        elif (
+            ('rateofrise' in k or 'riserate' in k or ('rate' in k and 'rise' in k))
+            and has_vent_column
+            and has_throttle_column
+        ):
             rate_of_rise = v
         elif 'chiller' in k and 'flow' in k:
             chiller_flow = v
+
+    if not has_ballast_column and base_pressure_ballast is None:
+        base_pressure_ballast = None
+    if (not has_vent_column or not has_throttle_column) and rate_of_rise is None:
+        rate_of_rise = None
 
     return base_pressure, base_pressure_ballast, rate_of_rise, chiller_flow
 
@@ -913,6 +1193,9 @@ def parse_rtp_logfiles(
         process_df = _build_process_df(eklipse_df, t2b_df)
         steps = _extract_steps(process_df)
         overview = _derive_overview(steps)
+        overview['end_of_process_temperature'] = _derive_end_of_process_temperature(
+            process_df, steps
+        )
         base_pressure, base_pressure_ballast, rate_of_rise, chiller_flow = (
             _derive_general_values(process_df, key_values)
         )

@@ -62,6 +62,8 @@ RTP_GAS_FRACTION = {
     'PH3': 0.1,
     'H2S': 0.1,
 }
+POST_END_PROCESS_WINDOW_S = 30.0
+MIN_USED_GAS_FLOW_SCCM = 1.0
 
 
 #################### DEFINE INPUT_SAMPLES (SUBSECTION) ######################
@@ -805,16 +807,19 @@ class DTURTPSteps(CVDStep, ArchiveSection):
         if self.step_overview is not None:
             self.step_overview.normalize(archive, logger)
 
-        # Clear existing sources
-        self.sources = []
-        # Get used_gases from DtuRTP main class
+        # Populate step sources from parent used_gases, but do not overwrite
+        # existing user data unless the parent explicitly requests overwrite.
         parent = getattr(self, 'm_parent', None)
+        overwrite_sources = bool(getattr(parent, 'overwrite_existing_data', False))
         if parent is not None and hasattr(parent, 'used_gases'):
-            for gas in parent.used_gases or []:
-                source = DtuRTPSources()
-                source.sources = [gas]
-                source.name = gas
-                self.sources.append(source)
+            gases = [gas for gas in (parent.used_gases or []) if gas]
+            if gases and (overwrite_sources or not (self.sources or [])):
+                self.sources = []
+                for gas in gases:
+                    source = DtuRTPSources()
+                    source.sources = [gas]
+                    source.name = gas
+                    self.sources.append(source)
 
 
 ###################### 1ST LEVEL CLASS (RTP) #################################
@@ -1003,9 +1008,13 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     )
 
     ############################## CREATING RTP SAMPLE LIBRARY ######################
-    def _sync_step_sources_from_used_gases(self) -> None:
+    def _sync_step_sources_from_used_gases(self, overwrite: bool = False) -> None:
         gases = [gas for gas in (self.used_gases or []) if gas]
+        if not gases:
+            return
         for step in getattr(self, 'steps', []) or []:
+            if not overwrite and (step.sources or []):
+                continue
             step.sources = []
             for gas in gases:
                 source = DtuRTPSources()
@@ -1197,10 +1206,113 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
 
     ############################## PLOTS #################################
     def _get_full_plot_time_range(self) -> tuple[float, float] | None:
+        """Return plot range from heating start to 30 s after process end temp.
+
+        Falls back to full available range when phase labels or temperature
+        samples are missing.
+        """
         series = getattr(self, '_log_time_s', []) or getattr(self, '_time', []) or []
         if not series:
             return None
-        return (float(series[0]), float(series[-1]))
+
+        start_time = float(series[0])
+        end_time = float(series[-1])
+
+        segments = getattr(self, '_phase_segments', []) or []
+        if segments:
+            heating_segment = next(
+                (segment for segment in segments if 'heat' in segment[0].lower()),
+                None,
+            )
+            if heating_segment is not None:
+                start_time = float(heating_segment[1])
+
+            cooling_segment = next(
+                (segment for segment in segments if 'cool' in segment[0].lower()),
+                None,
+            )
+            if cooling_segment is not None:
+                cooling_start = float(cooling_segment[1])
+                cooling_end = float(cooling_segment[2])
+                end_time = cooling_end
+
+                time_s = getattr(self, '_log_time_s', []) or getattr(self, '_time', [])
+                temperature_c = getattr(self, '_log_temperature_c', []) or getattr(
+                    self, '_temperature_profile', []
+                )
+                end_temp = None
+                if self.overview is not None:
+                    end_temp = getattr(
+                        self.overview, 'end_of_process_temperature', None
+                    )
+                if hasattr(end_temp, 'to'):
+                    end_temp_c = float(end_temp.to('celsius').magnitude)
+                elif end_temp is not None:
+                    end_temp_c = float(end_temp) - 273.15
+                else:
+                    end_temp_c = None
+
+                if (
+                    time_s
+                    and temperature_c
+                    and len(time_s) == len(temperature_c)
+                ):
+                    reached_time = None
+                    if end_temp_c is not None:
+                        for t, temp in zip(time_s, temperature_c):
+                            t_f = float(t)
+                            if t_f < cooling_start:
+                                continue
+                            if t_f > cooling_end:
+                                break
+                            if np.isfinite(temp) and float(temp) <= end_temp_c:
+                                reached_time = t_f
+                                break
+
+                    # Fallback: infer end-of-process directly from gas shutoff
+                    # timing in the cooling segment if overview end temperature
+                    # is missing or not reached in plotted data.
+                    if reached_time is None:
+                        ar = getattr(self, '_log_ar_flow_sccm', []) or []
+                        n2 = getattr(self, '_log_n2_flow_sccm', []) or []
+                        ph3 = getattr(self, '_log_ph3_flow_sccm', []) or []
+                        h2s = getattr(self, '_log_h2s_flow_sccm', []) or []
+                        if (
+                            len(ar) == len(time_s)
+                            and len(n2) == len(time_s)
+                            and len(ph3) == len(time_s)
+                            and len(h2s) == len(time_s)
+                        ):
+                            had_gas_on = False
+                            for t, ar_f, n2_f, ph3_f, h2s_f in zip(
+                                time_s, ar, n2, ph3, h2s
+                            ):
+                                t_f = float(t)
+                                if t_f < cooling_start:
+                                    continue
+                                if t_f > cooling_end:
+                                    break
+
+                                flows = [ar_f, n2_f, ph3_f, h2s_f]
+                                gas_on = any(
+                                    np.isfinite(flow)
+                                    and abs(float(flow)) > MIN_USED_GAS_FLOW_SCCM
+                                    for flow in flows
+                                )
+                                if gas_on:
+                                    had_gas_on = True
+                                elif had_gas_on:
+                                    reached_time = t_f
+                                    break
+
+                    if reached_time is not None:
+                        end_time = min(
+                            float(series[-1]), reached_time + POST_END_PROCESS_WINDOW_S
+                        )
+
+        end_time = max(end_time, start_time)
+
+        return (start_time, end_time)
 
     def _build_phase_segments(self) -> list[tuple[str, float, float]]:
         # Prefer log-file-derived boundaries (actual timestamps) when available.
@@ -1232,12 +1344,29 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         if not segments:
             return
 
-        band_colors = ['rgba(120, 120, 120, 0.08)', 'rgba(120, 120, 120, 0.14)']
-        for idx, (name, start, end) in enumerate(segments):
+        def _phase_fill_color(name: str) -> str:
+            n = name.lower()
+            if 'heat' in n:
+                return 'rgba(255, 160, 60, 0.18)'
+            if 'cool' in n:
+                return 'rgba(60, 140, 255, 0.18)'
+            if 'anneal' in n:
+                return 'rgba(150, 150, 150, 0.18)'
+            return 'rgba(120, 120, 120, 0.10)'
+
+        def _phase_font_color(name: str) -> str:
+            n = name.lower()
+            if 'heat' in n:
+                return 'rgba(200, 100, 0, 1)'
+            if 'cool' in n:
+                return 'rgba(0, 80, 200, 1)'
+            return 'rgba(80, 80, 80, 1)'
+
+        for name, start, end in segments:
             fig.add_vrect(
                 x0=start,
                 x1=end,
-                fillcolor=band_colors[idx % len(band_colors)],
+                fillcolor=_phase_fill_color(name),
                 opacity=1.0,
                 layer='below',
                 line_width=0,
@@ -1250,7 +1379,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 yref='paper',
                 text=name,
                 showarrow=False,
-                font=dict(size=10, color='gray'),
+                font=dict(size=13, color=_phase_font_color(name)),
                 xanchor='center',
                 yanchor='top',
             )
@@ -1324,6 +1453,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             ),
             xaxis=dict(
                 fixedrange=False,
+                autorange=False if x_range is not None else True,
                 showline=True,
                 showgrid=True,
                 zeroline=True,
@@ -1388,7 +1518,20 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 xanchor='center',
                 x=0.5,
             ),
-            xaxis=dict(range=list(x_range) if x_range is not None else None),
+            xaxis=dict(
+                fixedrange=False,
+                autorange=False if x_range is not None else True,
+                showline=True,
+                showgrid=True,
+                zeroline=True,
+                range=list(x_range) if x_range is not None else None,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                showline=True,
+                showgrid=True,
+                zeroline=True,
+            ),
         )
         plot_json = fig.to_plotly_json()
         plot_json['config'] = dict(scrollZoom=False)
@@ -1403,6 +1546,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         time_s = getattr(self, '_log_time_s', []) or []
         pressure_torr = getattr(self, '_log_pressure_torr', []) or []
         if not time_s or not pressure_torr or len(pressure_torr) != len(time_s):
+            return
+        pressure_arr = np.asarray(pressure_torr, dtype=float)
+        if not np.isfinite(pressure_arr).any():
             return
 
         fig = go.Figure()
@@ -1423,7 +1569,20 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
-            xaxis=dict(range=list(x_range) if x_range is not None else None),
+            xaxis=dict(
+                fixedrange=False,
+                autorange=False if x_range is not None else True,
+                showline=True,
+                showgrid=True,
+                zeroline=True,
+                range=list(x_range) if x_range is not None else None,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                showline=True,
+                showgrid=True,
+                zeroline=True,
+            ),
         )
         plot_json = fig.to_plotly_json()
         plot_json['config'] = dict(scrollZoom=False)
@@ -1643,7 +1802,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             self._time = times
             self._temperature_profile = temps
         self.figures = []
-        self._sync_step_sources_from_used_gases()
+        self._sync_step_sources_from_used_gases(
+            overwrite=bool(self.overwrite_existing_data)
+        )
         self._autofill_material_space()
         if self.overview is not None:
             self.add_libraries(archive, logger)
@@ -1888,22 +2049,32 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
 
         # Store timeseries for plotting.
         ts = parsed.timeseries or {}
-        self._log_time_s = ts.get('time_s', [])
-        self._log_temperature_c = ts.get('temperature_c', [])
-        self._temperature_setpoint_profile = ts.get('temperature_setpoint_c', [])
-        self._lamp_power_profile = ts.get('lamp_power', [])
-        self._log_pressure_torr = ts.get('pressure_torr', [])
-        self._log_ar_flow_sccm = ts.get('ar_flow_sccm', [])
-        self._log_n2_flow_sccm = ts.get('n2_flow_sccm', [])
-        self._log_ph3_flow_sccm = ts.get('ph3_in_ar_flow_sccm', [])
-        self._log_h2s_flow_sccm = ts.get('h2s_in_ar_flow_sccm', [])
+        if overwrite or not getattr(self, '_log_time_s', []):
+            self._log_time_s = ts.get('time_s', [])
+        if overwrite or not getattr(self, '_log_temperature_c', []):
+            self._log_temperature_c = ts.get('temperature_c', [])
+        if overwrite or not getattr(self, '_temperature_setpoint_profile', []):
+            self._temperature_setpoint_profile = ts.get('temperature_setpoint_c', [])
+        if overwrite or not getattr(self, '_lamp_power_profile', []):
+            self._lamp_power_profile = ts.get('lamp_power', [])
+        if overwrite or not getattr(self, '_log_pressure_torr', []):
+            self._log_pressure_torr = ts.get('pressure_torr', [])
+        if overwrite or not getattr(self, '_log_ar_flow_sccm', []):
+            self._log_ar_flow_sccm = ts.get('ar_flow_sccm', [])
+        if overwrite or not getattr(self, '_log_n2_flow_sccm', []):
+            self._log_n2_flow_sccm = ts.get('n2_flow_sccm', [])
+        if overwrite or not getattr(self, '_log_ph3_flow_sccm', []):
+            self._log_ph3_flow_sccm = ts.get('ph3_in_ar_flow_sccm', [])
+        if overwrite or not getattr(self, '_log_h2s_flow_sccm', []):
+            self._log_h2s_flow_sccm = ts.get('h2s_in_ar_flow_sccm', [])
 
         # Store phase boundaries derived from actual log timestamps.
-        self._log_phase_segments = [
-            (ps.name, ps.start_time_s, ps.end_time_s)
-            for ps in parsed.steps
-            if ps.start_time_s is not None and ps.end_time_s is not None
-        ]
+        if overwrite or not getattr(self, '_log_phase_segments', []):
+            self._log_phase_segments = [
+                (ps.name, ps.start_time_s, ps.end_time_s)
+                for ps in parsed.steps
+                if ps.start_time_s is not None and ps.end_time_s is not None
+            ]
 
         if self.overview is None:
             self.overview = RTPOverview()
@@ -1939,11 +2110,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
 
         if overwrite or not self.steps:
             self.steps = []
-            for i, parsed_step in enumerate(parsed.steps, start=1):
-                step = DTURTPSteps(name=f'{parsed_step.name} {i}')
+            for parsed_step in parsed.steps:
+                step = DTURTPSteps(name=parsed_step.name)
                 step.step_overview = RTPStepOverview(
                     duration=parsed_step.duration_s,
-                    pressure=parsed_step.pressure_pa,
                     step_ar_flow=parsed_step.ar_flow_m3_s,
                     step_n2_flow=parsed_step.n2_flow_m3_s,
                     step_ph3_in_ar_flow=parsed_step.ph3_in_ar_flow_m3_s,
@@ -1951,4 +2121,6 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     initial_temperature=parsed_step.initial_temperature_k,
                     final_temperature=parsed_step.final_temperature_k,
                 )
+                if parsed_step.pressure_pa is not None:
+                    step.step_overview.pressure = parsed_step.pressure_pa
                 self.steps.append(step)
