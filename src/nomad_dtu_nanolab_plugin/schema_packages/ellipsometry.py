@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
-from nomad.datamodel.data import Schema
+from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
@@ -44,6 +44,9 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 m_package = Package(name='DTU Ellipsometry measurement schema')
+
+
+COORDINATE_MATCH_TOLERANCE_CM = 0.01
 
 
 class DTUDeltaPsi(ArchiveSection):
@@ -609,7 +612,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             # Use fuzzy matching to handle potential floating-point rounding differences
             # between the two export files
             thickness_data = None
-            tolerance = 0.01  # Tolerance in cm (0.1 mm) for coordinate matching
+            tolerance = COORDINATE_MATCH_TOLERANCE_CM
 
             # Try exact coordinate match first
             if (x_pos, y_pos) in thickness_map:
@@ -650,8 +653,12 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 position=pos_str,
                 x_absolute=x_pos * ureg('cm'),
                 y_absolute=y_pos * ureg('cm'),
-                thickness=thickness_nm * ureg('nm'),
-                roughness=roughness_nm * ureg('nm'),
+                thickness=(
+                    thickness_nm * ureg('nm') if thickness_nm is not None else None
+                ),
+                roughness=(
+                    roughness_nm * ureg('nm') if roughness_nm is not None else None
+                ),
                 mse=mse,
                 epsilon_inf=epsilon_inf,
                 ir_pole_amp=ir_pole_amp,
@@ -665,6 +672,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         # Process tabulated raw ellipsometry data (Psi/Delta) if available
         if tabulated_df is not None and not tabulated_df.empty:
             logger.info('Processing raw Psi/Delta data from tabulated file')
+            position_tolerance_cm = COORDINATE_MATCH_TOLERANCE_CM
 
             # Group by position and angle to populate delta_psi subsections
             # For each position in results, find matching tabulated data
@@ -673,11 +681,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 y_pos = result.y_absolute.to('cm').magnitude
 
                 # Find all unique angles for this position
-                # Use small tolerance for floating point comparison
-                POSITION_TOLERANCE_CM = 0.01
                 pos_data = tabulated_df[
-                    (abs(tabulated_df['x_cm'] - x_pos) < POSITION_TOLERANCE_CM)
-                    & (abs(tabulated_df['y_cm'] - y_pos) < POSITION_TOLERANCE_CM)
+                    (abs(tabulated_df['x_cm'] - x_pos) < position_tolerance_cm)
+                    & (abs(tabulated_df['y_cm'] - y_pos) < position_tolerance_cm)
                 ]
 
                 if pos_data.empty:
