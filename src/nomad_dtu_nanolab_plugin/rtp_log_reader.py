@@ -1117,12 +1117,7 @@ def _derive_general_values(process_df, key_values: dict[str, float]):
 
     # Override with values parsed from the diagnostics text-file when present.
     for k, v in key_values.items():
-        if (
-            'basepressure' in k
-            and 'without' in k
-            and 'ballast' in k
-            and has_ballast_column
-        ):
+        if 'basepressure' in k and 'without' in k and 'ballast' in k:
             base_pressure = v
         elif (
             'basepressure' in k
