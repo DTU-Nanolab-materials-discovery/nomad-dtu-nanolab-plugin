@@ -11,6 +11,7 @@ The data is imported from tab-separated text files exported from CompleteEASE,
 including n&k optical constants and thickness/fit parameter maps.
 """
 
+import ast
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -522,6 +523,176 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
             return df_long
 
+    @staticmethod #means that it is just helper function (does not need self)
+    def _extract_nk_position_columns(nk_df: pd.DataFrame) -> dict[str, dict[str, str]]:
+        """Extract n/k column names grouped by position string."""
+        positions: dict[str, dict[str, str]] = {}
+        for col in nk_df.columns[1:]:  # Skip first column (wavelength/energy)
+            if col.startswith('n: '):
+                pos_str = col.split('n: ')[1]
+                positions.setdefault(pos_str, {})['n_col'] = col
+            elif col.startswith('k: '):
+                pos_str = col.split('k: ')[1]
+                positions.setdefault(pos_str, {})['k_col'] = col
+        return positions
+
+    @staticmethod #means that it is just helper function (does not need self)
+    def _parse_position_string(
+        pos_str: str, logger: 'BoundLogger'
+    ) -> tuple[float, float] | None:
+        """Parse a position string like '(-1.8,0)' into x/y floats."""
+        try:
+            parsed = ast.literal_eval(pos_str)
+        except (ValueError, SyntaxError) as exc:
+            logger.warning(f'Could not parse position {pos_str}: {exc}')
+            return None
+
+        if not isinstance(parsed, (tuple, list)) or len(parsed) < 2:
+            logger.warning(f'Invalid position format: {pos_str}')
+            return None
+
+        try:
+            return float(parsed[0]), float(parsed[1])
+        except (TypeError, ValueError) as exc:
+            logger.warning(f'Could not convert position {pos_str} to floats: {exc}')
+            return None
+
+    @staticmethod #means that it is just helper function (does not need self)
+    def _build_thickness_map(
+        thickness_df: pd.DataFrame, logger: 'BoundLogger'
+    ) -> dict[tuple[float, float], dict[str, float]]:
+        """Build coordinate-indexed thickness metadata map."""
+        if thickness_df.empty:
+            return {}
+
+        required_cols = [
+            'X (cm)',
+            'Y (cm)',
+            'MSE',
+            'Roughness (nm)',
+            'Thickness # 1 (nm)',
+            'E Inf',
+            'IR Amp',
+        ]
+        missing_cols = [col for col in required_cols if col not in thickness_df.columns]
+        if missing_cols:
+            logger.warning(
+                f'Thickness file is missing required columns: {missing_cols}'
+            )
+            return {}
+
+        thickness_map: dict[tuple[float, float], dict[str, float]] = {}
+        for _, row in thickness_df.iterrows():
+            try:
+                x_pos = float(row['X (cm)'])
+                y_pos = float(row['Y (cm)'])
+                thickness_map[(x_pos, y_pos)] = {
+                    'thickness': float(row['Thickness # 1 (nm)']),
+                    'roughness': float(row['Roughness (nm)']),
+                    'mse': float(row['MSE']),
+                    'epsilon_inf': float(row['E Inf']),
+                    'ir_pole_amp': float(row['IR Amp']),
+                }
+            except (TypeError, ValueError) as exc:
+                logger.warning(f'Skipping invalid thickness row: {exc}')
+        return thickness_map
+
+    @staticmethod #means that it is just helper function (does not need self)
+    def _match_by_coordinate_tolerance(
+        x_pos: float,
+        y_pos: float,
+        coordinate_map: dict[tuple[float, float], dict[str, float]],
+        tolerance: float,
+    ) -> dict[str, float] | None:
+        """Match exact coordinate first, then by tolerance."""
+        exact = coordinate_map.get((x_pos, y_pos))
+        if exact is not None:
+            return exact
+
+        for (x_candidate, y_candidate), data in coordinate_map.items():
+            if (
+                abs(x_candidate - x_pos) < tolerance
+                and abs(y_candidate - y_pos) < tolerance
+            ):
+                return data
+        return None
+
+    @staticmethod #means that it is just helper function (does not need self)
+    def _populate_delta_psi_from_tabulated(
+        results: list[EllipsometryMappingResult],
+        tabulated_df: pd.DataFrame,
+        logger: 'BoundLogger',
+    ) -> None:
+        """Populate/refresh raw Psi/Delta data for existing result positions."""
+        if tabulated_df.empty:
+            return
+
+        logger.info('Processing raw Psi/Delta data from tabulated file')
+        position_tolerance_cm = COORDINATE_MATCH_TOLERANCE_CM
+
+        for result in results:
+            # Refresh data each run so reprocessing replaces stale values.
+            result.delta_psi = []
+
+            x_pos = result.x_absolute.to('cm').magnitude
+            y_pos = result.y_absolute.to('cm').magnitude
+
+            pos_data = tabulated_df[
+                (abs(tabulated_df['x_cm'] - x_pos) < position_tolerance_cm)
+                & (abs(tabulated_df['y_cm'] - y_pos) < position_tolerance_cm)
+            ]
+
+            if pos_data.empty:
+                continue
+
+            unique_angles = pos_data['angle'].unique()
+
+            delta_psi_list = []
+            for angle in unique_angles:
+                angle_data = pos_data[pos_data['angle'] == angle]
+
+                psi_data = angle_data[angle_data['parameter'] == 'Psi'].sort_values(
+                    'wavelength_nm'
+                )
+                psi_err_data = angle_data[
+                    angle_data['parameter'] == 'Psi_err'
+                ].sort_values('wavelength_nm')
+
+                delta_data = angle_data[angle_data['parameter'] == 'Delta'].sort_values(
+                    'wavelength_nm'
+                )
+                delta_err_data = angle_data[
+                    angle_data['parameter'] == 'Delta_err'
+                ].sort_values('wavelength_nm')
+
+                if psi_data.empty or delta_data.empty:
+                    continue
+
+                delta_psi = DTUDeltaPsi(
+                    angle_of_incidence=angle * ureg('degree'),
+                    wavelength=psi_data['wavelength_nm'].to_numpy() * ureg('nm'),
+                    psi=psi_data['value'].to_numpy() * ureg('degree'),
+                    delta=delta_data['value'].to_numpy() * ureg('degree'),
+                )
+
+                if not psi_err_data.empty:
+                    delta_psi.psi_error = psi_err_data['value'].to_numpy() * ureg(
+                        'degree'
+                    )
+                if not delta_err_data.empty:
+                    delta_psi.delta_error = delta_err_data['value'].to_numpy() * ureg(
+                        'degree'
+                    )
+
+                delta_psi_list.append(delta_psi)
+
+            if delta_psi_list:
+                result.delta_psi = delta_psi_list
+                logger.debug(
+                    f'Added {len(delta_psi_list)} angle measurements '
+                    f'for position {result.position}'
+                )
+
     def write_ellipsometry_data(
         self,
         thickness_df: pd.DataFrame,
@@ -539,69 +710,29 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             archive (EntryArchive): The archive containing the section.
             logger (BoundLogger): A structlog logger.
         """
+        if nk_df.empty:
+            logger.warning('No n and k data available. Skipping result creation.')
+            return
+
         results = []
 
         # Get wavelength column (first column)
         wavelength = nk_df.iloc[:, 0].to_numpy() * ureg('nm')
 
-        # Parse the n and k columns to extract position information
-        # CompleteEASE names columns as 'n: (x,y)' and 'k: (x,y)' where (x,y)
-        # are the stage coordinates in cm. We extract these to match with
-        # thickness data.
-        # Example columns: 'n: (-1.8,0)', 'k: (-1.8,0)', 'n: (-1.6,0)', ...
-        # Dictionary: position_string -> {'n_col': ..., 'k_col': ...}
-        positions = {}
-        for col in nk_df.columns[1:]:  # Skip first column (wavelength/energy)
-            if col.startswith('n: '):
-                pos_str = col.split('n: ')[1]  # Extract '(x,y)' part
-                if pos_str not in positions:
-                    positions[pos_str] = {}
-                positions[pos_str]['n_col'] = col
-            elif col.startswith('k: '):
-                pos_str = col.split('k: ')[1]  # Extract '(x,y)' part
-                if pos_str not in positions:
-                    positions[pos_str] = {}
-                positions[pos_str]['k_col'] = col
-
-        # Create a mapping from position coordinates to thickness and fit
-        # parameters. This allows us to merge data from the two separate
-        # export files.
-        # Dictionary: (x, y) -> {'thickness': ..., 'roughness': ..., ...}
-        thickness_map = {}
-        if not thickness_df.empty:
-            # Expected columns from CompleteEASE thickness export:
-            # 'X (cm)', 'Y (cm)', 'MSE', 'Absolute MSE', 'Roughness (nm)',
-            # 'Thickness # 1 (nm)', 'E Inf', 'IR Amp', etc.
-
-            # Build a lookup table indexed by (x, y) coordinates
-            # This enables matching thickness data with n&k data by position
-            for _, row in thickness_df.iterrows():
-                x_pos = float(row['X (cm)'])
-                y_pos = float(row['Y (cm)'])
-                mse = float(row['MSE'])
-                roughness_nm = float(row['Roughness (nm)'])
-                thickness_nm = float(row['Thickness # 1 (nm)'])
-                epsilon_inf = float(row['E Inf'])
-                ir_pole_amp = float(row['IR Amp'])
-
-                thickness_map[(x_pos, y_pos)] = {
-                    'thickness': thickness_nm,
-                    'roughness': roughness_nm,
-                    'mse': mse,
-                    'epsilon_inf': epsilon_inf,
-                    'ir_pole_amp': ir_pole_amp,
-                }
+        # Parse the n/k position columns and prepare optional thickness lookup.
+        positions = self._extract_nk_position_columns(nk_df)
+        thickness_map = self._build_thickness_map(thickness_df, logger)
 
         # Create a result for each position
         for pos_str, cols in positions.items():
-            # Parse position (e.g., '(-1.8,0)' -> x=-1.8, y=0)
-            try:
-                pos_tuple = eval(pos_str)  # Safe here as we control the format
-                x_pos = float(pos_tuple[0])
-                y_pos = float(pos_tuple[1])
-            except Exception as e:
-                logger.warning(f'Could not parse position {pos_str}: {e}')
+            if 'n_col' not in cols or 'k_col' not in cols:
+                logger.warning(f'Incomplete n/k columns for position: {pos_str}')
                 continue
+
+            parsed_pos = self._parse_position_string(pos_str, logger)
+            if parsed_pos is None:
+                continue
+            x_pos, y_pos = parsed_pos
 
             # Get n and k values - IMPORTANT: use .to_numpy() to get
             # clean numpy arrays
@@ -611,21 +742,12 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             # Match thickness data to n&k data by position coordinates
             # Use fuzzy matching to handle potential floating-point rounding differences
             # between the two export files
-            thickness_data = None
-            tolerance = COORDINATE_MATCH_TOLERANCE_CM
-
-            # Try exact coordinate match first
-            if (x_pos, y_pos) in thickness_map:
-                thickness_data = thickness_map[(x_pos, y_pos)]
-            else:
-                # Try fuzzy match (within tolerance)
-                for (x_thick, y_thick), data in thickness_map.items():
-                    if (
-                        abs(x_thick - x_pos) < tolerance
-                        and abs(y_thick - y_pos) < tolerance
-                    ):
-                        thickness_data = data
-                        break
+            thickness_data = self._match_by_coordinate_tolerance(
+                x_pos,
+                y_pos,
+                thickness_map,
+                COORDINATE_MATCH_TOLERANCE_CM,
+            )
 
             if thickness_data is None:
                 logger.warning(
@@ -669,80 +791,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             result.normalize(archive, logger)
             results.append(result)
 
-        # Process tabulated raw ellipsometry data (Psi/Delta) if available
+        # Process tabulated raw ellipsometry data (Psi/Delta) if available.
         if tabulated_df is not None and not tabulated_df.empty:
-            logger.info('Processing raw Psi/Delta data from tabulated file')
-            position_tolerance_cm = COORDINATE_MATCH_TOLERANCE_CM
-
-            # Group by position and angle to populate delta_psi subsections
-            # For each position in results, find matching tabulated data
-            for result in results:
-                x_pos = result.x_absolute.to('cm').magnitude
-                y_pos = result.y_absolute.to('cm').magnitude
-
-                # Find all unique angles for this position
-                pos_data = tabulated_df[
-                    (abs(tabulated_df['x_cm'] - x_pos) < position_tolerance_cm)
-                    & (abs(tabulated_df['y_cm'] - y_pos) < position_tolerance_cm)
-                ]
-
-                if pos_data.empty:
-                    continue
-
-                unique_angles = pos_data['angle'].unique()
-
-                # Create DTUDeltaPsi for each angle
-                delta_psi_list = []
-                for angle in unique_angles:
-                    # Get data for this angle
-                    angle_data = pos_data[pos_data['angle'] == angle]
-
-                    # Extract Psi data
-                    psi_data = angle_data[angle_data['parameter'] == 'Psi'].sort_values(
-                        'wavelength_nm'
-                    )
-                    psi_err_data = angle_data[
-                        angle_data['parameter'] == 'Psi_err'
-                    ].sort_values('wavelength_nm')
-
-                    # Extract Delta data
-                    delta_data = angle_data[
-                        angle_data['parameter'] == 'Delta'
-                    ].sort_values('wavelength_nm')
-                    delta_err_data = angle_data[
-                        angle_data['parameter'] == 'Delta_err'
-                    ].sort_values('wavelength_nm')
-
-                    if psi_data.empty or delta_data.empty:
-                        continue
-
-                    # Create DTUDeltaPsi instance
-                    delta_psi = DTUDeltaPsi(
-                        angle_of_incidence=angle * ureg('degree'),
-                        wavelength=psi_data['wavelength_nm'].to_numpy() * ureg('nm'),
-                        psi=psi_data['value'].to_numpy() * ureg('degree'),
-                        delta=delta_data['value'].to_numpy() * ureg('degree'),
-                    )
-
-                    # Add errors if available
-                    if not psi_err_data.empty:
-                        delta_psi.psi_error = psi_err_data['value'].to_numpy() * ureg(
-                            'degree'
-                        )
-                    if not delta_err_data.empty:
-                        delta_psi.delta_error = delta_err_data[
-                            'value'
-                        ].to_numpy() * ureg('degree')
-
-                    delta_psi_list.append(delta_psi)
-
-                # Assign delta_psi list to result
-                if delta_psi_list:
-                    result.delta_psi = delta_psi_list
-                    logger.debug(
-                        f'Added {len(delta_psi_list)} angle measurements '
-                        f'for position {result.position}'
-                    )
+            self._populate_delta_psi_from_tabulated(results, tabulated_df, logger)
 
         # Merge results into this measurement
         ellipsometry = DTUEllipsometryMeasurement(
@@ -1117,45 +1168,39 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             self.add_sample_reference(filename, 'Ellipsometry', archive, logger)
 
         # Import and process data files if they haven't been processed yet
-        if (
-            self.n_and_k_file or self.thickness_file or self.tabulated_data_file
-        ) and not self.results:
+        if self.n_and_k_file or self.thickness_file or self.tabulated_data_file:
+            if (
+                not self.n_and_k_file
+                or not self.thickness_file
+                or not self.tabulated_data_file
+            ):
+                raise ValueError(
+                    'n_and_k_file, thickness_file, and tabulated_data_file must all '
+                    'be provided '
+                    'for ellipsometry normalization.'
+                )
+
             thickness_df = self.read_thickness_file(archive, logger)
             nk_df = self.read_n_and_k_file(archive, logger)
-            tabulated_df = self.read_tabulated_data_file(archive, logger)
-
-            # Process data - use tabulated file if available, otherwise use n&k
-            if not tabulated_df.empty:
-                # Tabulated file can provide both n&k and raw Psi/Delta
-                logger.info('Using tabulated data file as primary data source')
-                if nk_df.empty:
-                    # If we only have tabulated data, still create results structure
-                    # The delta_psi will be populated from tabulated_df
-                    logger.info('Only tabulated data available, creating results')
-                    # We'll need at least one position to create results
-                    # Extract unique positions from tabulated data
-                    unique_positions = (
-                        tabulated_df[['x_cm', 'y_cm']].drop_duplicates().values
-                    )
-                    # Create minimal nk_df for structure
-                    import pandas as pd
-
-                    nk_cols = ['Wavelength (nm)']
-                    for x, y in unique_positions:
-                        pos_str = f'({x},{y})'
-                        nk_cols.extend([f'n: {pos_str}', f'k: {pos_str}'])
-                    # Get wavelengths from tabulated data
-                    wavelengths = sorted(tabulated_df['wavelength_nm'].unique())
-                    nk_data = {'Wavelength (nm)': wavelengths}
-                    for col in nk_cols[1:]:
-                        nk_data[col] = [np.nan] * len(wavelengths)
-                    nk_df = pd.DataFrame(nk_data)
-
-                self.write_ellipsometry_data(
-                    thickness_df, nk_df, archive, logger, tabulated_df
+            if nk_df.empty or thickness_df.empty:
+                raise ValueError(
+                    'n_and_k_file and thickness_file could not be parsed into data.'
                 )
-            elif not nk_df.empty:
+
+            tabulated_df = self.read_tabulated_data_file(archive, logger)
+            if tabulated_df.empty:
+                raise ValueError('tabulated_data_file could not be parsed into data.')
+
+            # Build base results once, then optionally enrich with tabulated data.
+            if not self.results:
                 self.write_ellipsometry_data(thickness_df, nk_df, archive, logger, None)
+
+            # Reprocessing path: update delta_psi on existing results without
+            # rebuilding base n/k-thickness results.
+            if self.results:
+                self._populate_delta_psi_from_tabulated(
+                    self.results, tabulated_df, logger
+                )
 
         super().normalize(archive, logger)
 
