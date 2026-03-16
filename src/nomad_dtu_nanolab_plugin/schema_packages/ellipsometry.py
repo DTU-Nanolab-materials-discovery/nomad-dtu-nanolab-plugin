@@ -1167,17 +1167,32 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if filename:
             self.add_sample_reference(filename, 'Ellipsometry', archive, logger)
 
+        #make sure .SE and .SEsnap are uploaded to force user to provide
+        # necessary files for bookkeeping
+        if not self.native_file or not self.snapshot_file:
+            raise ValueError(
+                'Both native_file and snapshot_file must be provided for ellipsometry normalization.'
+            )
+
         # Import and process data files if they haven't been processed yet
         if self.n_and_k_file or self.thickness_file or self.tabulated_data_file:
+            # For initial normalization, we require both n/k and thickness files to create results.
             if (
                 not self.n_and_k_file
                 or not self.thickness_file
-                or not self.tabulated_data_file
             ):
                 raise ValueError(
-                    'n_and_k_file, thickness_file, and tabulated_data_file must all '
+                    'n_and_k_file and thickness_file must both '
                     'be provided '
                     'for ellipsometry normalization.'
+                )
+            
+            # tabulated_data_file is optional since it contains raw Psi/Delta data
+            # we still want to flag that it is missing with a warning 
+            if not self.tabulated_data_file:
+                logger.warning(
+                    'No tabulated data file provided. '
+                    'Raw Psi/Delta data will not be included.'
                 )
 
             thickness_df = self.read_thickness_file(archive, logger)
