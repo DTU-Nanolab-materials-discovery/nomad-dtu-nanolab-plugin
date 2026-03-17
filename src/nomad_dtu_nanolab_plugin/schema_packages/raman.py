@@ -16,7 +16,6 @@ Key Features:
 Schema Structure:
     - RamanResult: Individual spectrum at a specific position
     - RamanMeasurement: Collection of spectra from a mapping measurement
-    - DTUSampleAlignment: Sample positioning information
 
 Typical Workflow:
     1. User uploads WDF file via NOMAD ELN
@@ -37,29 +36,22 @@ import numpy as np
 import plotly.graph_objects as go
 from nomad.datamodel.data import Schema
 from nomad.datamodel.datamodel import EntryArchive
-from nomad.datamodel.metainfo.annotations import (
-    BrowserAdaptors,
-    BrowserAnnotation,
-    ELNAnnotation,
-    ELNComponentEnum,
-)
+from nomad.datamodel.metainfo.annotations import (BrowserAdaptors,
+                                                  BrowserAnnotation,
+                                                  ELNAnnotation,
+                                                  ELNComponentEnum)
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
-from nomad_measurements.mapping.schema import (
-    MappingResult,
-    RectangularSampleAlignment,
-)
+from nomad_measurements.mapping.schema import (MappingResult,
+                                               RectangularSampleAlignment)
 from nomad_measurements.utils import merge_sections
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
-from nomad_dtu_nanolab_plugin.raman_map_parser import (
-    MappingRamanMeas,
-)
-from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    DtuNanolabMeasurement,
-)
+from nomad_dtu_nanolab_plugin.raman_map_parser import MappingRamanMeas
+from nomad_dtu_nanolab_plugin.schema_packages.basesections import \
+    DtuNanolabMeasurement
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -282,7 +274,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
                     # TODO: improve the following extraction of metadata
                     # for now we defauly back to manual extraction
-                    """ 
+                    """
                     # Extract accumulation count
                     if hasattr(reader, 'accumulation_count'):
                         self.accumulation_count = reader.accumulation_count
