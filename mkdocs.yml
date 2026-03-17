@@ -13,6 +13,7 @@ nav:
           - Understanding Schemas: how_to/getting-started-with-schemas.md
       - Data Upload & Management:
           - Upload Sputtering Data: how_to/upload-sputtering-data.md
+          - Add Autosampler RT Measurements: how_to/add-autosampler-measurements.md
           - Add EDX Measurements: how_to/add-edx-measurements.md
           - Add Raman Measurements: how_to/add-raman-measurements.md
           - Add XRD Measurements: how_to/add-xrd-measurements.md

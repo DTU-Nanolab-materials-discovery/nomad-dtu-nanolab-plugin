@@ -59,7 +59,7 @@ Measurement techniques for materials characterization:
 - **[Photoluminescence (PL)](pl.md)** - Optical emission and bandgap characterization
 - **[Ellipsometry](ellipsometry.md)** - Optical constants and film thickness
 - **[Raman Spectroscopy](raman.md)** - Vibrational modes and material fingerprinting
-- **[RT Measurements](rt.md)** - Room temperature electrical and optical measurements
+- **[RT Measurements](rt.md)** - Reflection/transmission autosampler optical measurements
 
 ## Data Analysis
 

@@ -1,77 +1,49 @@
-# RT Measurements
+# Reflection/Transmission (RT) Measurements
 
-RT (Room Temperature) measurements encompass various electrical and optical characterization techniques performed at ambient conditions. These provide quick, non-destructive assessment of material properties.
+These schemas support high-throughput optical measurements from the **Agilent Cary 7000 UMS + UMA autosampler** workflow.
 
 ## Overview
 
-This schema package defines:
+This schema package defines two complementary entry types:
 
-- **RTMeasurement** - Room temperature electrical and optical measurements with flexible parameter documentation
+- **DtuAutosamplerMeasurement**: experiment container that ingests the autosampler data files and creates per-sample measurement archives.
+- **RTMeasurement**: measurement archive containing position-resolved reflection and transmission spectra.
 
-RT measurements extend [BaseMeasurement](basesections.md), providing:
+The data model is designed for combinatorial mapping and keeps full provenance between raw files, grid mapping, and generated RT results.
 
-- Links to measured [samples](samples.md) and [instrument](instruments.md)
-- Flexible parameter definitions for various measurement types
-- Electrical properties (resistance, conductivity, carrier concentration)
-- Optical properties (transmission, reflection, absorption)
-- Quick screening data
+## Input Files
 
-## Typical Usage
+The autosampler workflow uses three file types:
 
-1. **Select samples**: Reference [samples](samples.md) to characterize
-2. **Choose measurement type**: Electrical (I-V, Hall, 4-point probe) or optical (transmission, reflection)
-3. **Configure setup**: Probe configuration, voltage/current ranges, light sources
-4. **Record data**: Measurement results and conditions
-5. **Extract properties**: Calculate conductivity, mobility, bandgap, etc.
+- **Data file (`.csv`)**: exported spectra and metadata from Agilent software.
+- **Grid/config file (`*_grid.csv`)**: maps autosampler positions to sample names and sample coordinates.
+- **Raw batch file (`.bsw`)**: native instrument batch file for traceability and provenance.
 
-## Common RT Measurement Types
+## Typical Workflow
 
-### Electrical Measurements
+1. Generate a measurement map with the grid-generator notebook.
+2. Use the generated `*_polar.csv` in the autosampler software to run the measurement.
+3. Export measurement data as `.csv` from Agilent software.
+4. Upload the `.csv` data file and the matching `*_grid.csv` into `DtuAutosamplerMeasurement`.
+5. Let normalization generate one or more `RTMeasurement` entries automatically.
 
-- **Four-point probe**: Sheet resistance, conductivity
-- **Hall effect**: Carrier concentration, mobility, type (n or p)
-- **I-V curves**: Diode characteristics, contact resistance
-- **Capacitance-voltage**: Depletion width, doping profiles
+## What RT Captures
 
-### Optical Measurements
-
-- **Transmission**: Optical transparency, absorption edge
-- **Reflection**: Surface reflectivity, optical constants
-- **Absorption**: Calculated from transmission and reflection
-- **Quick PL**: Simple emission screening (detailed PL in [PL measurements](pl.md))
-
-## What RT Measurements Tell You
-
-- **Electrical conductivity**: Is the material conductive?
-- **Carrier type**: n-type or p-type semiconductor
-- **Carrier concentration**: Doping level or defect density
-- **Mobility**: Charge transport quality
-- **Optical bandgap**: From absorption edge (Tauc plot)
-- **Transparency**: For transparent conductor applications
-
-## RT Screening for Combinatorial Libraries
-
-For [combinatorial samples](samples.md):
-
-1. **Quick assessment**: Fast measurements across composition space
-2. **Identify trends**: Composition-property relationships
-3. **Guide selection**: Choose promising samples for detailed characterization
-4. **Pre-screening**: Before time-consuming measurements like [XRD](xrd.md), [XPS](xps.md)
-
-## Key Parameters
-
-- **Probe configuration**: Two-point, four-point, Hall bar geometry
-- **Current/voltage**: Applied bias, current range
-- **Magnetic field**: For Hall measurements
-- **Light source**: Wavelength, intensity for optical measurements
-- **Environment**: Air, vacuum, controlled atmosphere
+- Reflection and transmission spectra per position.
+- Measurement geometry (sample angle, detector angle, polarization).
+- Spatially resolved maps through `x/y` coordinates from the grid file.
+- Derived visualization (stacked spectra and configuration-specific maps).
 
 ## Related Schemas
 
-- **Measured samples**: [Samples](samples.md) from [Sputtering](sputtering.md), [RTP](rtp.md)
-- **Instrument**: [DTUInstrument](instruments.md) (probe stations, optical setups)
-- **Detailed optical**: [PL](pl.md), [Ellipsometry](ellipsometry.md) for advanced characterization
-- **Analysis**: [Jupyter Analysis](analysis.md) for property extraction, Tauc plots
+- **Samples and libraries**: [Samples](samples.md)
+- **Shared measurement base**: [Base Measurement Infrastructure](basesections.md)
+- **Other optical methods**: [PL](pl.md), [Ellipsometry](ellipsometry.md), [Raman](raman.md)
+- **Analysis workflows**: [Jupyter Analysis](analysis.md)
+
+## How-To Guide
+
+For a complete upload procedure, see [Add Autosampler Reflection/Transmission Measurements](../how_to/add-autosampler-measurements.md).
 
 ---
 
