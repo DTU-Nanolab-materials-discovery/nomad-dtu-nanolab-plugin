@@ -1,20 +1,15 @@
 from typing import TYPE_CHECKING
 
 from nomad.datamodel.data import Schema
-from nomad.datamodel.metainfo.annotations import (
-    BrowserAnnotation,
-)
+from nomad.datamodel.metainfo.annotations import BrowserAnnotation
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
-from nomad_measurements.mapping.schema import (
-    MappingResult,
-    RectangularSampleAlignment,
-)
+from nomad_measurements.mapping.schema import (MappingResult,
+                                               RectangularSampleAlignment)
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
-from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    DtuNanolabMeasurement,
-)
+from nomad_dtu_nanolab_plugin.schema_packages.basesections import \
+    DtuNanolabMeasurement
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -34,12 +29,6 @@ class RTResult(MappingResult):
         # TODO: Add code for calculating the relative positions of the measurements.
 
 
-class DTUSampleAlignment(RectangularSampleAlignment):
-    m_def = Section(
-        description='The alignment of the sample on the stage.',
-    )
-
-
 class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
@@ -56,7 +45,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         repeats=True,
     )
     sample_alignment = SubSection(
-        section_def=DTUSampleAlignment,
+        section_def=RectangularSampleAlignment,
         description='The alignment of the sample.',
     )
 
