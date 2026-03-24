@@ -64,6 +64,9 @@ RTP_GAS_FRACTION = {
 }
 POST_END_PROCESS_WINDOW_S = 30.0
 MIN_USED_GAS_FLOW_SCCM = 1.0
+TORR_TO_PA = 133.322368421
+SCCM_TO_M3_S = 1e-6 / 60
+CELSIUS_TO_KELVIN_OFFSET = 273.15
 
 
 #################### DEFINE INPUT_SAMPLES (SUBSECTION) ######################
@@ -2048,21 +2051,69 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         if overwrite or not getattr(self, '_log_time_s', []):
             self._log_time_s = ts.get('time_s', [])
         if overwrite or not getattr(self, '_log_temperature_c', []):
-            self._log_temperature_c = ts.get('temperature_c', [])
+            if 'temperature_k' in ts:
+                self._log_temperature_c = [
+                    (float(v) - CELSIUS_TO_KELVIN_OFFSET)
+                    if np.isfinite(v)
+                    else float('nan')
+                    for v in ts.get('temperature_k', [])
+                ]
+            else:
+                self._log_temperature_c = ts.get('temperature_c', [])
         if overwrite or not getattr(self, '_temperature_setpoint_profile', []):
-            self._temperature_setpoint_profile = ts.get('temperature_setpoint_c', [])
+            if 'temperature_setpoint_k' in ts:
+                self._temperature_setpoint_profile = [
+                    (float(v) - CELSIUS_TO_KELVIN_OFFSET)
+                    if np.isfinite(v)
+                    else float('nan')
+                    for v in ts.get('temperature_setpoint_k', [])
+                ]
+            else:
+                self._temperature_setpoint_profile = ts.get(
+                    'temperature_setpoint_c', []
+                )
         if overwrite or not getattr(self, '_lamp_power_profile', []):
             self._lamp_power_profile = ts.get('lamp_power', [])
         if overwrite or not getattr(self, '_log_pressure_torr', []):
-            self._log_pressure_torr = ts.get('pressure_torr', [])
+            if 'pressure_pa' in ts:
+                self._log_pressure_torr = [
+                    (float(v) / TORR_TO_PA) if np.isfinite(v) else float('nan')
+                    for v in ts.get('pressure_pa', [])
+                ]
+            else:
+                self._log_pressure_torr = ts.get('pressure_torr', [])
         if overwrite or not getattr(self, '_log_ar_flow_sccm', []):
-            self._log_ar_flow_sccm = ts.get('ar_flow_sccm', [])
+            if 'ar_flow_m3_s' in ts:
+                self._log_ar_flow_sccm = [
+                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
+                    for v in ts.get('ar_flow_m3_s', [])
+                ]
+            else:
+                self._log_ar_flow_sccm = ts.get('ar_flow_sccm', [])
         if overwrite or not getattr(self, '_log_n2_flow_sccm', []):
-            self._log_n2_flow_sccm = ts.get('n2_flow_sccm', [])
+            if 'n2_flow_m3_s' in ts:
+                self._log_n2_flow_sccm = [
+                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
+                    for v in ts.get('n2_flow_m3_s', [])
+                ]
+            else:
+                self._log_n2_flow_sccm = ts.get('n2_flow_sccm', [])
         if overwrite or not getattr(self, '_log_ph3_flow_sccm', []):
-            self._log_ph3_flow_sccm = ts.get('ph3_in_ar_flow_sccm', [])
+            if 'ph3_in_ar_flow_m3_s' in ts:
+                self._log_ph3_flow_sccm = [
+                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
+                    for v in ts.get('ph3_in_ar_flow_m3_s', [])
+                ]
+            else:
+                self._log_ph3_flow_sccm = ts.get('ph3_in_ar_flow_sccm', [])
         if overwrite or not getattr(self, '_log_h2s_flow_sccm', []):
-            self._log_h2s_flow_sccm = ts.get('h2s_in_ar_flow_sccm', [])
+            if 'h2s_in_ar_flow_m3_s' in ts:
+                self._log_h2s_flow_sccm = [
+                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
+                    for v in ts.get('h2s_in_ar_flow_m3_s', [])
+                ]
+            else:
+                self._log_h2s_flow_sccm = ts.get('h2s_in_ar_flow_sccm', [])
 
         # Store phase boundaries derived from actual log timestamps.
         if overwrite or not getattr(self, '_log_phase_segments', []):
