@@ -84,6 +84,17 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
         categories=[DTUNanolabCategory],
         label='Jupyter Analysis Template',
     )
+    active = Quantity(
+        type=bool,
+        default=True,
+        description=(
+            'Controls whether this template is shown as active in the Analysis & Templates app.'
+            'Set to false to hide it by default.',
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+        ),
+    )
     template_notebook = Quantity(
         type=str,
         a_eln=ELNAnnotation(
