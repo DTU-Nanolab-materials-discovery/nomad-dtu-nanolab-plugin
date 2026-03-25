@@ -281,7 +281,13 @@ def _extract_key_values(txt: str) -> dict[str, float]:
 
 
 def _parse_t2b_table(txt: str):
-    """Parse T2B diagnostics TrendLog rows."""
+    """Parse T2B diagnostics table with metadata+CSV structure.
+
+    Expected primary structure:
+    - key/value metadata lines
+    - blank line(s)
+    - CSV table starting with a timestamp header
+    """
     if pd is None:
         raise RuntimeError('pandas not loaded')
 
@@ -289,7 +295,44 @@ def _parse_t2b_table(txt: str):
     if not lines:
         return pd.DataFrame()
 
-    # TrendLog-style rows, e.g. 2025/11/28_14:12:00 ...
+    # Primary path: CSV-style diagnostics block, e.g.:
+    # Timestamp,Temperature
+    # 2025-12-09 14:53:05,25
+    header_idx = None
+    for i, line in enumerate(lines):
+        line_norm = _normalize(line)
+        if 'timestamp' in line_norm and any(d in line for d in [',', ';', '\t']):
+            header_idx = i
+            break
+
+    if header_idx is not None:
+        header_line = lines[header_idx]
+        delimiter = ','
+        try:
+            sniff = csv.Sniffer().sniff(header_line, delimiters=',;\t')
+            delimiter = sniff.delimiter
+        except Exception:
+            if header_line.count(';') > header_line.count(','):
+                delimiter = ';'
+
+        csv_block = '\n'.join(lines[header_idx:])
+        try:
+            csv_df = pd.read_csv(
+                io.StringIO(csv_block),
+                sep=delimiter,
+                engine='python',
+                skipinitialspace=True,
+                on_bad_lines='skip',
+                quotechar='"',
+            )
+            has_timestamp = _find_col(csv_df, [r'timestamp', r'^time$']) is not None
+            has_values = len(csv_df.columns) >= MIN_COLUMNS_FOR_TABLE_ROW
+            if has_timestamp and has_values:
+                return csv_df
+        except Exception:
+            pass
+
+    # Secondary fallback: TrendLog-style rows, e.g. 2025/11/28_14:12:00 ...
     trendlog_columns = _extract_trendlog_column_names(lines)
     rows: list[dict[str, float | str]] = []
     for line in lines:
@@ -315,46 +358,6 @@ def _parse_t2b_table(txt: str):
                     break
                 row[column_name] = nums[idx]
             rows.append(row)
-
-    if not rows:
-        # Fallback for CSV-style diagnostics blocks, e.g.:
-        # Timestamp,Temperature
-        # 2025-12-09 14:53:05,25
-        header_idx = None
-        for i, line in enumerate(lines):
-            line_norm = _normalize(line)
-            if 'timestamp' in line_norm and any(d in line for d in [',', ';', '\t']):
-                header_idx = i
-                break
-
-        if header_idx is None:
-            return pd.DataFrame()
-
-        header_line = lines[header_idx]
-        delimiter = ','
-        try:
-            sniff = csv.Sniffer().sniff(header_line, delimiters=',;\t')
-            delimiter = sniff.delimiter
-        except Exception:
-            if header_line.count(';') > header_line.count(','):
-                delimiter = ';'
-
-        csv_block = '\n'.join(lines[header_idx:])
-        try:
-            fallback_df = pd.read_csv(
-                io.StringIO(csv_block),
-                sep=delimiter,
-                engine='python',
-                skipinitialspace=True,
-                on_bad_lines='skip',
-                quotechar='"',
-            )
-        except Exception:
-            return pd.DataFrame()
-
-        has_timestamp = _find_col(fallback_df, [r'timestamp', r'^time$']) is not None
-        has_values = len(fallback_df.columns) >= MIN_COLUMNS_FOR_TABLE_ROW
-        return fallback_df if has_timestamp and has_values else pd.DataFrame()
 
     return pd.DataFrame(rows)
 
@@ -455,11 +458,8 @@ def _build_process_df(eklipse_df, t2b_df):
     t_temp = _find_col(
         t2b_df,
         [  # add more options if different logfiles in the future
-            r'processvaluech1$',
             r'processvalue.*ch1$',
-            r'^temperature$',
-            r'temperaturec$',
-            r'temperature.*',
+            r'^temperature(c)?$',
         ],
     )
     t_setpoint = _find_col(
@@ -472,7 +472,6 @@ def _build_process_df(eklipse_df, t2b_df):
     t_lamp_power = _find_col(
         t2b_df,
         [  # add more options if different logfiles in the future
-            r'mvmonitorheatingch1$',
             r'mvmonitorheatingch1$',
         ],
     )
