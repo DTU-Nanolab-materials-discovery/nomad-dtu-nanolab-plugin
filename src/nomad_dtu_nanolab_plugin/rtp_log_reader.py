@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import io
 import re
 import warnings
 from dataclasses import dataclass
@@ -316,7 +317,44 @@ def _parse_t2b_table(txt: str):
             rows.append(row)
 
     if not rows:
-        return pd.DataFrame()
+        # Fallback for CSV-style diagnostics blocks, e.g.:
+        # Timestamp,Temperature
+        # 2025-12-09 14:53:05,25
+        header_idx = None
+        for i, line in enumerate(lines):
+            line_norm = _normalize(line)
+            if 'timestamp' in line_norm and any(d in line for d in [',', ';', '\t']):
+                header_idx = i
+                break
+
+        if header_idx is None:
+            return pd.DataFrame()
+
+        header_line = lines[header_idx]
+        delimiter = ','
+        try:
+            sniff = csv.Sniffer().sniff(header_line, delimiters=',;\t')
+            delimiter = sniff.delimiter
+        except Exception:
+            if header_line.count(';') > header_line.count(','):
+                delimiter = ';'
+
+        csv_block = '\n'.join(lines[header_idx:])
+        try:
+            fallback_df = pd.read_csv(
+                io.StringIO(csv_block),
+                sep=delimiter,
+                engine='python',
+                skipinitialspace=True,
+                on_bad_lines='skip',
+                quotechar='"',
+            )
+        except Exception:
+            return pd.DataFrame()
+
+        has_timestamp = _find_col(fallback_df, [r'timestamp', r'^time$']) is not None
+        has_values = len(fallback_df.columns) >= MIN_COLUMNS_FOR_TABLE_ROW
+        return fallback_df if has_timestamp and has_values else pd.DataFrame()
 
     return pd.DataFrame(rows)
 
