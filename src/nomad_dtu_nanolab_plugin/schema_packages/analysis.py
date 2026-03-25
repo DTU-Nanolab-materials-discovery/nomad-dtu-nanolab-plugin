@@ -223,7 +223,7 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
     font-size: 2.25rem;
     line-height: 1.4em;
     font-weight: 600;
-    padding: 30px 200px 0px 30px;"> 
+    padding: 30px 200px 0px 30px;">
         {self.name}</h1>
 <p style="font-size: 1.25em; font-style: italic; padding: 5px 200px 30px 30px;">
     {user}</p>
@@ -240,7 +240,7 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
                 nbformat.v4.new_markdown_cell(
                     source="""Add your analysis code here.
 You can use the `analysis` variable to access the data.
-You can add figures and steps to the `analysis` variable and save them by calling 
+You can add figures and steps to the `analysis` variable and save them by calling
 `analysis.save()`.
 
 The steps and figures from any previous runs will already be in the `analysis` variable.
