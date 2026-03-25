@@ -2041,10 +2041,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             overwrite or self.rate_of_rise is None
         ) and parsed.rate_of_rise_pa_s is not None:
             self.rate_of_rise = parsed.rate_of_rise_pa_s
-        if (
-            overwrite or self.chiller_flow is None
-        ) and parsed.chiller_flow_m3_s is not None:
-            self.chiller_flow = parsed.chiller_flow_m3_s
+        # Chiller flow is intentionally not inferred from logs.
 
         # Store timeseries for plotting.
         ts = parsed.timeseries or {}

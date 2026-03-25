@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import warnings
 from dataclasses import dataclass
+import csv
 
 """RTP log parsing helpers used during NOMAD normalization.
 
@@ -61,6 +62,8 @@ class ParsedRTPData:
     base_pressure_pa: float | None
     base_pressure_ballast_pa: float | None
     rate_of_rise_pa_s: float | None
+    # Kept for schema compatibility, intentionally not parsed from logs.
+    chiller_flow_m3_s: float | None
     overview: dict[str, float | None]
     steps: list[ParsedRTPStep]
     timeseries: dict[str, list[float]]
@@ -156,15 +159,35 @@ def _read_csv_with_fallback(path: str):
     try:
         with open(path, encoding='utf-8', errors='ignore') as handle:
             header_idx = 0
+            header_line = ''
             for i, line in enumerate(handle):
                 line_norm = _normalize(line)
                 if 'timestamp' in line_norm and 'mfc1flow' in line_norm:
                     header_idx = i
+                    header_line = line
                     break
+
+            # Generic fallback for tests/simpler CSVs that still have a timestamp header.
+            if not header_line:
+                handle.seek(0)
+                for i, line in enumerate(handle):
+                    if 'timestamp' in _normalize(line):
+                        header_idx = i
+                        header_line = line
+                        break
+
+        delimiter = ','
+        if header_line:
+            try:
+                sniff = csv.Sniffer().sniff(header_line, delimiters=',;\t')
+                delimiter = sniff.delimiter
+            except Exception:
+                if header_line.count(';') > header_line.count(','):
+                    delimiter = ';'
 
         return pd.read_csv(
             path,
-            sep=',',
+            sep=delimiter,
             engine='python',
             skipinitialspace=True,
             on_bad_lines='skip',
@@ -1081,6 +1104,7 @@ def parse_rtp_logfiles(
             base_pressure_pa=base_pressure,
             base_pressure_ballast_pa=base_pressure_ballast,
             rate_of_rise_pa_s=rate_of_rise,
+            chiller_flow_m3_s=None,
             overview=overview,
             steps=steps,
             timeseries=timeseries,
