@@ -749,14 +749,6 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         sl = df.iloc[s : e + 1]
         duration = float(sl['time_s'].iloc[-1] - sl['time_s'].iloc[0])
         pressure_pa = _pressure_to_pa(float(np.nanmedian(sl['pressure_raw'])))
-        ar_flow = _apply_parasitic_flow_cutoff(
-            float(np.nanmedian(sl['ar_flow_m3_s'])),
-            'Ar',
-        )
-        n2_flow = _apply_parasitic_flow_cutoff(
-            float(np.nanmedian(sl['n2_flow_m3_s'])),
-            'N2',
-        )
         step = ParsedRTPStep(
             name=name,
             duration_s=duration,
@@ -765,8 +757,14 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
             initial_temperature_k=float(sl['temperature_k'].iloc[0]),
             final_temperature_k=float(sl['temperature_k'].iloc[-1]),
             pressure_pa=pressure_pa,
-            ar_flow_m3_s=ar_flow,
-            n2_flow_m3_s=n2_flow,
+            ar_flow_m3_s=_apply_parasitic_flow_cutoff(
+                float(np.nanmedian(sl['ar_flow_m3_s'])),
+                'Ar',
+            ),
+            n2_flow_m3_s=_apply_parasitic_flow_cutoff(
+                float(np.nanmedian(sl['n2_flow_m3_s'])),
+                'N2',
+            ),
             ph3_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
                 float(np.nanmedian(sl['ph3_in_ar_flow_m3_s'])),
                 'PH3',
@@ -842,7 +840,7 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
     )
     if anneal_idx is None:
         # Fallback if no step is explicitly labeled as annealing.
-        score = [
+        score = [  # Annealing is usually the warmest step and somewhat long.
             0.7 * ((s.initial_temperature_k + s.final_temperature_k) / 2)
             + 0.3 * s.duration_s
             for s in steps
@@ -964,11 +962,15 @@ def _derive_end_of_process_temperature(
 def _compute_rate_of_rise(
     time_s_arr, pressure_pa_arr, start_mask, window_s=RATE_OF_RISE_WINDOW_S
 ):
-    """Compute rate of rise (Pa/s) from the first valid static start point.
+    """Compute rate of rise (Pa/s) from the first valid static vacuum start point.
 
-    start_mask marks rows where static conditions are satisfied.
+    start_mask marks rows where static conditions are satisfied:
+        -Throttle valve is closed (1, "closed" column)
+        -Vent valve is closed (0, "vent_line" column)
+        -Throttle NOT open (0, if the open column exists)
+        -Throttle position at 0 (fully closed, if that column exists)
     We take the first such row i0 and return:
-    (P(i_at_or_after_t0_plus_window) - P(i0)) / window_s.
+    (P(t0+window_s) - P(i0)) / window_s.
     """
     start_idx = np.where(start_mask)[0]
     if len(start_idx) == 0:
@@ -1022,15 +1024,30 @@ def _derive_general_values(process_df, key_values: dict[str, float]):
                     base_pressure = float(np.nanmin(pre_valid))
                 post_valid = p_arr[on_positions][np.isfinite(p_arr[on_positions])]
                 if len(post_valid) > 0:
-                    base_pressure_ballast = float(np.nanmin(post_valid))
+                    base_pressure_ballast = float(np.nanmax(post_valid))
             else:
                 # Ballast column exists but was never turned on.
+                # This is normal for runs using only inert gases
+                # (Ar, N2) without toxic gases.
                 valid = p_arr[np.isfinite(p_arr)]
                 if len(valid) > 0:
                     base_pressure = float(np.nanmin(valid))
+                # base_pressure_ballast remains None (no ballast activation)
         else:
-            # No ballast signal, so we do not derive base pressures.
+            # No ballast signal, so we cannot distinguish pressure with/without ballast.
+            # Therefore, neither base pressure can be derived.
+            warnings.warn(
+                'Ballast valve column not found in Eklipse log.',
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            warnings.warn(
+                'Base pressure values cannot be derived; set to None.',
+                RuntimeWarning,
+                stacklevel=2,
+            )
             base_pressure = None
+            base_pressure_ballast = None
 
         # Derive rate of rise from the first moment where throttle is closed
         # and vent is closed. Optionally require open=0 and position=0 when present.
@@ -1059,27 +1076,6 @@ def _derive_general_values(process_df, key_values: dict[str, float]):
                 )
                 start_mask &= throt_pos == 0
             rate_of_rise = _compute_rate_of_rise(time_arr, p_arr, start_mask)
-
-        if not has_ballast_column and base_pressure_ballast is None:
-            # No ballast column available, so keep this empty for manual entry.
-            base_pressure_ballast = None
-
-    # Override from diagnostics text when those values are available.
-    for k, v in key_values.items():
-        if 'basepressure' in k and 'without' in k and 'ballast' in k:
-            base_pressure = v
-        elif (
-            'basepressure' in k
-            and 'with' in k
-            and 'ballast' in k
-            and has_ballast_column
-        ):
-            base_pressure_ballast = v
-
-    if not has_ballast_column and base_pressure_ballast is None:
-        base_pressure_ballast = None
-    if (not has_vent_column or not has_throttle_column) and rate_of_rise is None:
-        rate_of_rise = None
 
     return base_pressure, base_pressure_ballast, rate_of_rise
 
