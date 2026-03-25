@@ -39,8 +39,8 @@ def test_rtp_logreader_populates_process_data():
     assert 'PH3' in data.used_gases
     assert 'H2S' in data.used_gases
 
-    # 11 l/min from diagnostics log.
-    assert data.chiller_flow.magnitude == pytest.approx(11e-3 / 60)
+    # Chiller flow is not inferred from logs.
+    assert data.chiller_flow is None
 
     # 1.1 torr from diagnostics log.
     assert data.base_pressure.to('torr').magnitude == pytest.approx(1.1, abs=1e-3)
