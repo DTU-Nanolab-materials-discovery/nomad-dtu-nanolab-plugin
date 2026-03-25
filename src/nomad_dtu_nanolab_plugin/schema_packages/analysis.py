@@ -86,11 +86,11 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
     )
     active = Quantity(
         type=bool,
-        default=True,
-        description=(
-            'Controls whether this template is shown as active in the Analysis & Templates app.'
-            'Set to false to hide it by default.',
-        ),
+        description="""
+            Controls whether this template is shown as active in the 
+            Analysis and Templates app. 
+            Set to false to hide it by default.
+        """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.BoolEditQuantity,
         ),
@@ -138,6 +138,10 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
+        #small script to ensure the default value of active is True, and app-searchable
+        if self.active is None:
+            self.active = True
+        # notebook generation logic
         if (
             self.generate_notebook
             and self.from_analysis

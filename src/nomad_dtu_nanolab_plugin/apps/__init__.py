@@ -611,7 +611,7 @@ analysis = AppEntryPoint(
                     options=2,
                 ),
                 MenuItemTerms(
-                    title='Active',
+                    title='Active Template',
                     search_quantity=f'data.active#{analysis_template_schema}',
                     options=2,
                 ),
