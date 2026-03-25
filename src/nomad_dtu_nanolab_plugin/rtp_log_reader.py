@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import csv
 import re
 import warnings
 from dataclasses import dataclass
-import csv
 
 """RTP log parsing helpers used during NOMAD normalization.
 
@@ -167,7 +167,7 @@ def _read_csv_with_fallback(path: str):
                     header_line = line
                     break
 
-            # Generic fallback for tests/simpler CSVs that still have a timestamp header.
+            # Generic fallback for tests/simpler CSVs that still have a timestamp header
             if not header_line:
                 handle.seek(0)
                 for i, line in enumerate(handle):
