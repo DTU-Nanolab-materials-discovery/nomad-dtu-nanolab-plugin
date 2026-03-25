@@ -138,7 +138,7 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-        #small script to ensure the default value of active is True, and app-searchable
+        # small script to ensure the default value of active is True, and app-searchable
         if self.active is None:
             self.active = True
         # notebook generation logic
