@@ -457,6 +457,9 @@ def _build_process_df(eklipse_df, t2b_df):
         [  # add more options if different logfiles in the future
             r'processvaluech1$',
             r'processvalue.*ch1$',
+            r'^temperature$',
+            r'temperaturec$',
+            r'temperature.*',
         ],
     )
     t_setpoint = _find_col(
