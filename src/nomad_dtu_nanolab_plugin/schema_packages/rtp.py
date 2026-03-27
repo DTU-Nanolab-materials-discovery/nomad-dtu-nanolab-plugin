@@ -1,3 +1,4 @@
+import re
 import tempfile
 import time
 import warnings
@@ -92,7 +93,7 @@ class DtuRTPInputSampleMounting(ArchiveSection):
     )
     name = Quantity(
         type=str,
-        description='The name of the input sample mounting.',
+        description='The name of the input sample.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.StringEditQuantity,
         ),
@@ -131,7 +132,7 @@ class DtuRTPInputSampleMounting(ArchiveSection):
     )
     position_x = Quantity(
         type=np.float64,
-        description='The x-coordinate of the input sample on the susceptor.',
+        description='The center x-coordinate of the input sample on the susceptor.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
@@ -140,7 +141,7 @@ class DtuRTPInputSampleMounting(ArchiveSection):
     )
     position_y = Quantity(
         type=np.float64,
-        description='The y-coordinate of the input sample on the susceptor.',
+        description='The center y-coordinate of the input sample on the susceptor.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
@@ -150,7 +151,7 @@ class DtuRTPInputSampleMounting(ArchiveSection):
     rotation = Quantity(
         type=np.float64,
         description="""
-            The angle between the initial position in the "mother" sample
+            MANUAL INPUT. The angle between the initial position in the "mother" sample
             and the position on the susceptor.
         """,
         a_eln=ELNAnnotation(
@@ -188,6 +189,13 @@ class DtuRTPInputSampleMounting(ArchiveSection):
             }
             if self.relative_position in positions:
                 self.position_x, self.position_y = positions[self.relative_position]
+            elif self.position_x is None or self.position_y is None:
+                warnings.warn(
+                    f'Sample mounting position coordinates could not be determined '
+                    f'(relative_position={self.relative_position} not recognized, '
+                    f'position_x={self.position_x}, position_y={self.position_y})',
+                    UserWarning,
+                )
 
         if self.relative_position is not None:
             self.name = self.relative_position
@@ -233,7 +241,7 @@ class RTPOverview(ArchiveSection):
             component=ELNComponentEnum.StringEditQuantity,
             label='Material space',
         ),
-        description='The material space explored by the RTP process.',
+        description='The elements present in your film before/after the RTP process.',
     )
     annealing_pressure = Quantity(
         type=np.float64,
@@ -275,8 +283,8 @@ class RTPOverview(ArchiveSection):
             label='Ar Flow',
         ),
         unit='m**3/s',
-        description='Argon flow used during the annealing plateau of the RTP process.'
-        'The unit "cm^3/minute" is used equal to sccm.',
+        description='Argon flow (average) used during the annealing plateau of the'
+        ' RTP process. The unit "cm^3/minute" is used equal to sccm.',
     )
     annealing_n2_flow = Quantity(
         type=np.float64,
@@ -286,7 +294,7 @@ class RTPOverview(ArchiveSection):
             label='N2 Flow',
         ),
         unit='m**3/s',
-        description='Nitrogen flow used during the annealing plateau of the'
+        description='Nitrogen flow (average) used during the annealing plateau of the'
         ' RTP process. The unit "cm^3/minute" is used equal to sccm.',
     )
     annealing_ph3_in_ar_flow = Quantity(
@@ -297,7 +305,7 @@ class RTPOverview(ArchiveSection):
             label='PH3 in Ar Flow',
         ),
         unit='m**3/s',
-        description='Phosphine flow used during the annealing plateau of'
+        description='Phosphine flow (average) used during the annealing plateau of'
         ' the RTP process. The unit "cm^3/minute" is used equal to sccm.',
     )
     annealing_h2s_in_ar_flow = Quantity(
@@ -308,8 +316,8 @@ class RTPOverview(ArchiveSection):
             label='H2S in Ar Flow',
         ),
         unit='m**3/s',
-        description='H2S flow used during the annealing plateau of the RTP process.'
-        'The unit "cm^3/minute" is used equal to sccm.',
+        description='H2S flow (average) used during the annealing plateau of the'
+        ' RTP process. The unit "cm^3/minute" is used equal to sccm.',
     )
     total_heating_time = Quantity(
         type=np.float64,
@@ -319,8 +327,8 @@ class RTPOverview(ArchiveSection):
             label='Total heating up time',
         ),
         unit='s',
-        description='Total time spent until maximum (main annealing plateau)'
-        'temperature is reached.',
+        description='Total time spent until maximum temperature '
+        '(main annealing plateau) is reached.',
     )
     total_cooling_time = Quantity(
         type=np.float64,
@@ -341,7 +349,7 @@ class RTPOverview(ArchiveSection):
             label='End of process temperature',
         ),
         unit='K',
-        description='Temperature at the cooling state of the RTP process, when the'
+        description='Temperature, during the cooling phase of the RTP process, when the'
         ' gases are shut off and final pump-purge procedure is initiated to '
         'remove samples from chamber.',
     )
@@ -352,8 +360,10 @@ class RTPOverview(ArchiveSection):
             label='PH3 Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of PH3 during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure of PH3 (average) during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
     annealing_h2s_partial_pressure = Quantity(
         type=np.float64,
@@ -362,8 +372,10 @@ class RTPOverview(ArchiveSection):
             label='H2S Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of H2S during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure of H2S (average) during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
     annealing_n2_partial_pressure = Quantity(
         type=np.float64,
@@ -372,8 +384,10 @@ class RTPOverview(ArchiveSection):
             label='N2 Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of N2 during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure of N2 (average) during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
     annealing_ar_partial_pressure = Quantity(
         type=np.float64,
@@ -382,8 +396,10 @@ class RTPOverview(ArchiveSection):
             label='Ar Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of Ar during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure of Ar (average) during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
 
     def calc_partial_pressure(self):
@@ -413,6 +429,21 @@ class RTPOverview(ArchiveSection):
             + annealing_n2_flow
             + annealing_ph3_in_ar_flow
         )
+
+        if total_flow == 0:
+            warnings.warn(
+                'Total annealing gas flow is zero. '
+                'Partial pressures cannot be meaningfully calculated.',
+                UserWarning,
+            )
+            return
+
+        if self.annealing_pressure is None:
+            warnings.warn(
+                'Annealing pressure is None. Partial pressures cannot be calculated.',
+                UserWarning,
+            )
+            return
 
         total_pressure = self.annealing_pressure.magnitude
 
@@ -473,6 +504,12 @@ class RTPOverview(ArchiveSection):
             flow is not None and getattr(flow, 'magnitude', flow) != 0 for flow in flows
         ):
             self.calc_partial_pressure()
+        else:
+            warnings.warn(
+                'No detectable annealing gas flows. '
+                'Partial pressures will not be calculated.',
+                UserWarning,
+            )
 
 
 ##################### STEPS (SUBSECTION) ######################################
@@ -520,7 +557,7 @@ class RTPStepOverview(ArchiveSection):
             label='Pressure',
         ),
         unit='Pa',
-        description='Pressure in the RTP chamber during the step.',
+        description='Pressure (average) in the RTP chamber during the step.',
     )
     step_ar_flow = Quantity(
         type=np.float64,
@@ -530,7 +567,7 @@ class RTPStepOverview(ArchiveSection):
             label='Ar Flow',
         ),
         unit='m**3/s',
-        description='Argon flow rate used during the step.'
+        description='Argon flow rate (average) used during the step.'
         'The unit "cm^3/minute" is used equal to sccm.',
     )
     step_n2_flow = Quantity(
@@ -541,7 +578,7 @@ class RTPStepOverview(ArchiveSection):
             label='N2 Flow',
         ),
         unit='m**3/s',
-        description='Nitrogen flow rate used during the step. '
+        description='Nitrogen flow rate (average) used during the step. '
         'The unit "cm^3/minute" is used equal to sccm.',
     )
     step_ph3_in_ar_flow = Quantity(
@@ -552,7 +589,7 @@ class RTPStepOverview(ArchiveSection):
             label='PH3 in Ar Flow',
         ),
         unit='m**3/s',
-        description='Phosphine flow rate used during the step.'
+        description='Phosphine flow rate (average) used during the step.'
         'The unit "cm^3/minute" is used equal to sccm.',
     )
     step_h2s_in_ar_flow = Quantity(
@@ -563,7 +600,7 @@ class RTPStepOverview(ArchiveSection):
             label='H2S in ArFlow',
         ),
         unit='m**3/s',
-        description='H2S flow rate used during the step.'
+        description='H2S flow rate (average) used during the step.'
         'The unit "cm^3/minute" is used equal to sccm.',
     )
     initial_temperature = Quantity(
@@ -574,7 +611,7 @@ class RTPStepOverview(ArchiveSection):
             label='Initial Temperature',
         ),
         unit='K',
-        description='Temperature at the beginning of the step.',
+        description='Temperature at the start of the step.',
     )
     final_temperature = Quantity(
         type=np.float64,
@@ -593,7 +630,7 @@ class RTPStepOverview(ArchiveSection):
             label='Temperature ramp rate. ',
         ),
         unit='K/s',
-        description='Rate of temperature increase or decrease during the step',
+        description='Rate of temperature increase/decrease during the step.',
     )
     step_ph3_partial_pressure = Quantity(
         type=np.float64,
@@ -602,8 +639,10 @@ class RTPStepOverview(ArchiveSection):
             label='PH3 Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of PH3 during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure (average) of PH3 during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
     step_h2s_partial_pressure = Quantity(
         type=np.float64,
@@ -612,8 +651,10 @@ class RTPStepOverview(ArchiveSection):
             label='H2S Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of H2S during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure (average) of H2S during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
     step_n2_partial_pressure = Quantity(
         type=np.float64,
@@ -622,8 +663,10 @@ class RTPStepOverview(ArchiveSection):
             label='N2 Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of N2 during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure (average) of N2 during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
     step_ar_partial_pressure = Quantity(
         type=np.float64,
@@ -632,8 +675,10 @@ class RTPStepOverview(ArchiveSection):
             label='Ar Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of Ar during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure (average) of Ar during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
 
     def calc_ramp(self):
@@ -683,6 +728,21 @@ class RTPStepOverview(ArchiveSection):
         total_flow = (
             step_ar_flow + step_h2s_in_ar_flow + step_n2_flow + step_ph3_in_ar_flow
         )
+
+        if total_flow == 0:
+            warnings.warn(
+                'Total gas flow is zero in step. '
+                'Partial pressures cannot be meaningfully calculated.',
+                UserWarning,
+            )
+            return
+
+        if self.pressure is None:
+            warnings.warn(
+                'Step pressure is None. Partial pressures cannot be calculated.',
+                UserWarning,
+            )
+            return
 
         total_pressure = self.pressure.magnitude
 
@@ -736,13 +796,35 @@ class RTPStepOverview(ArchiveSection):
             flow is not None and getattr(flow, 'magnitude', flow) != 0 for flow in flows
         ):
             self.calc_partial_pressure()
+        else:
+            warnings.warn(
+                'No detectable step gas flows. '
+                'Partial pressures will not be calculated.',
+                UserWarning,
+            )
+
+        # Check if parent step is an annealing step
+        parent_step = getattr(self, 'm_parent', None)
+        parent_step_name = getattr(parent_step, 'name', '') if parent_step else ''
+        is_annealing = (
+            re.match(r'^\s*anneal(?:ing)?\b', parent_step_name, re.IGNORECASE)
+            is not None
+        )
 
         if (
             self.initial_temperature is not None
             and self.final_temperature is not None
             and self.initial_temperature != self.final_temperature
+            and not is_annealing
         ):
             self.calc_ramp()
+        elif is_annealing and self.initial_temperature != self.final_temperature:
+            warnings.warn(
+                f'Step "{parent_step_name}" identified as annealing: '
+                'skipping temperature_ramp calculation '
+                '(annealing steps are isothermal by definition)',
+                UserWarning,
+            )
 
 
 class DtuRTPSources(CVDSource, ArchiveSection):
@@ -753,7 +835,9 @@ class DtuRTPSources(CVDSource, ArchiveSection):
     sources = Quantity(
         type=str,
         shape=['*'],
-        description='Automatically generated list of sources (gases) for this step',
+        description=(
+            'Automatically generated list of used sources (gases) during this step.'
+        ),
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -890,7 +974,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity, label='Gas/Pressure log file'
         ),
-        description='Cell to upload the gas/pressurelog file obtained with Eklipse.',
+        description=(
+            'MANUAL INPUT. Cell to upload the gas/pressure log file '
+            'obtained with Eklipse.'
+        ),
     )
     log_file_T2BDiagnostics = Quantity(
         type=str,
@@ -898,13 +985,17 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             component=ELNComponentEnum.FileEditQuantity, label='Temperature log file'
         ),
         description=(
-            'Cell to upload the temperature log file obtained with T2BDiagnostics.'
+            'MANUAL INPUT. Cell to upload the temperature log file '
+            'obtained with T2BDiagnostics.'
         ),
     )
     process_log_files = Quantity(
         type=bool,
         default=True,
-        description='Boolean to indicate if the RTP log files should be processed.',
+        description=(
+            'MANUAL INPUT. Boolean to indicate if the RTP log files should '
+            'be processed.'
+        ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.BoolEditQuantity,
             label='Process log files',
@@ -914,8 +1005,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         type=bool,
         default=True,
         description=(
-            'Boolean to indicate if the data present in the entry should be '
-            'overwritten by data incoming from the log files.'
+            'MANUAL INPUT. Boolean to indicate if the data present in the '
+            'entry should be overwritten by data incoming from the log files.'
         ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.BoolEditQuantity,
@@ -926,25 +1017,29 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         type=str,
         a_eln={
             'component': 'FileEditQuantity',
-            'label': 'Image of the samples on susceptor before RTP process',
+            'label': 'Image of the samples on susceptor before the RTP process.',
         },
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
-        description='Cell to upload the image of the samples on susceptor before the'
-        'RTP process.',
+        description=(
+            'MANUAL INPUT. Cell to upload the image of the samples on '
+            'susceptor before the RTP process.'
+        ),
     )
     samples_susceptor_after = Quantity(
         type=str,
         a_eln={
             'component': 'FileEditQuantity',
-            'label': 'Image of the samples on susceptor after RTP process',
+            'label': 'Image of the samples on susceptor after the RTP process.',
         },
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
-        description='Cell to upload the image of the samples on susceptor after the'
-        'RTP process.',
+        description=(
+            'MANUAL INPUT. Cell to upload the image of the samples on '
+            'susceptor after the RTP process.'
+        ),
     )
     used_gases = Quantity(
         type=str,
@@ -953,7 +1048,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             component=ELNComponentEnum.StringEditQuantity,
             label='Used gases',
         ),
-        description='Gases used in the process.',
+        description='Gases used in the RTP process.',
     )
     #################### GENERAL CHECKS ######################
     base_pressure = Quantity(
@@ -964,7 +1059,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             defaultDisplayUnit='mtorr',
         ),
         unit='Pa',
-        description='Base pressure when ballast is OFF',
+        description='RTP chamber base pressure when ballast is OFF.',
     )
     base_pressure_ballast = Quantity(
         type=np.float64,
@@ -974,7 +1069,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             defaultDisplayUnit='mtorr',
         ),
         unit='Pa',
-        description='Base pressure when ballast is ON.',
+        description='RTP chamber base pressure when ballast is ON.',
     )
     rate_of_rise = Quantity(
         type=np.float64,
@@ -985,7 +1080,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         ),
         unit='Pa/s',
         description='Rate of rise of the pressure in the RTP chamber during static '
-        'vacuum',
+        'vacuum conditions.',
     )
     chiller_flow = Quantity(
         type=np.float64,
@@ -995,7 +1090,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             label='Chiller Flow',
         ),
         unit='m**3/s',
-        description='Chiller flow rate during the RTP process.',
+        description='MANUAL INPUT. Chiller flow rate during the RTP process.',
     )
     ############################## SUBSECTIONS ########################################
     input_samples = SubSection(
@@ -1395,6 +1490,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         lamp_power = getattr(self, '_lamp_power_profile', []) or []
 
         if not time_s or not temperature_c:
+            warnings.warn(
+                'Temperature timeseries plot cannot be created: '
+                'time or temperature data missing from process logs',
+                UserWarning,
+            )
             return
 
         fig = go.Figure()
@@ -1545,9 +1645,19 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         time_s = getattr(self, '_log_time_s', []) or []
         pressure_torr = getattr(self, '_log_pressure_torr', []) or []
         if not time_s or not pressure_torr or len(pressure_torr) != len(time_s):
+            warnings.warn(
+                'Pressure profile plot cannot be created: '
+                'time or pressure data missing or mismatched in length',
+                UserWarning,
+            )
             return
         pressure_arr = np.asarray(pressure_torr, dtype=float)
         if not np.isfinite(pressure_arr).any():
+            warnings.warn(
+                'Pressure profile plot cannot be created: '
+                'all pressure values are NaN or infinite',
+                UserWarning,
+            )
             return
 
         fig = go.Figure()
@@ -1633,6 +1743,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         if hasattr(y, 'magnitude'):
             y = y.to('mm').magnitude
         if rotation is None:
+            warnings.warn(
+                f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}' "
+                'has no rotation specified; defaulting to 0 radians.',
+                UserWarning,
+            )
             angle_rad = 0.0
         elif hasattr(rotation, 'to'):
             angle_rad = float(rotation.to('rad').magnitude)
@@ -1777,9 +1892,17 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             self._time = log_time_s
             self._temperature_profile = log_temp_c
         else:
+            if not log_time_s or not log_temp_c:
+                warnings.warn(
+                    'Temperature timeseries data from logs not available '
+                    'or incomplete. Reconstructing profile from step '
+                    'definitions.',
+                    UserWarning,
+                )
             times, temps, current_time = [], [], 0
             step: DTURTPSteps
-            for step in getattr(self, 'steps', []):  # Loop over all DTURTPSteps
+            steps_list = getattr(self, 'steps', []) or []
+            for step in steps_list:  # Loop over all DTURTPSteps
                 step_overview = getattr(step, 'step_overview', None)
                 if (
                     step_overview is not None
@@ -1798,6 +1921,12 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                         step_overview.final_temperature.to('celsius').magnitude
                     )
                     times.append(current_time)
+            if not times or not temps:
+                warnings.warn(
+                    'No valid steps found to construct temperature profile. '
+                    'Temperature profile will be empty.',
+                    UserWarning,
+                )
             self._time = times
             self._temperature_profile = temps
         self.figures = []
@@ -2028,6 +2157,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         # Keep explicitly entered values by default; optionally overwrite.
         if overwrite or self.used_gases in (None, []):
             self.used_gases = parsed.used_gases
+        if not self.used_gases:
+            warnings.warn(
+                'No process gases detected in RTP logs. All used_gases are empty.',
+                UserWarning,
+            )
 
         if (
             overwrite or self.base_pressure is None

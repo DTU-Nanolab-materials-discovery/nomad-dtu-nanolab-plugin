@@ -55,6 +55,8 @@ class ParsedRTPStep:
     mean_temperature_k: float | None = None
     start_time_s: float | None = None
     end_time_s: float | None = None
+    real_start_time_s: float | None = None
+    real_start_temperature_k: float | None = None
 
 
 @dataclass
@@ -568,6 +570,7 @@ def _build_process_df(eklipse_df, t2b_df):
 def _extract_timeseries(process_df) -> dict[str, list[float]]:
     """Export process channels into SI-unit time-series arrays."""
     if process_df is None or process_df.empty:
+        warnings.warn('Process dataframe is empty, no timeseries data available')
         return {}
 
     df = process_df.copy()
@@ -584,6 +587,9 @@ def _extract_timeseries(process_df) -> dict[str, list[float]]:
     }
 
     if 'time_s' not in df:
+        warnings.warn(
+            'Time column missing from process data, cannot extract timeseries'
+        )
         return out
 
     out['time_s'] = [float(v) for v in _to_num(df['time_s']).fillna(0).to_list()]
@@ -592,6 +598,8 @@ def _extract_timeseries(process_df) -> dict[str, list[float]]:
         out['temperature_k'] = [
             float(v) for v in _to_num(df['temperature_k']).to_list()
         ]
+    else:
+        warnings.warn('Temperature data missing from process logs')
 
     if 'temperature_setpoint_k' in df:
         out['temperature_setpoint_k'] = [
@@ -627,16 +635,135 @@ def _extract_timeseries(process_df) -> dict[str, list[float]]:
     return out
 
 
+def _find_heating_real_start(
+    step_df: pd.DataFrame,
+) -> tuple[float | None, float | None]:
+    """Find the real start time of a heating step.
+
+    Real start is defined as the first moment when setpoint temperature
+    meets or exceeds the actual temperature during heating.
+
+    Returns: (real_start_time_s, real_start_temperature_k) or (None, None)
+    """
+    if 'temperature_setpoint_k' not in step_df.columns:
+        warnings.warn(
+            'Temperature setpoint data missing; cannot identify real heating start '
+            '(setpoint-vs-actual crossover)'
+        )
+        return None, None
+    if 'temperature_k' not in step_df.columns:
+        warnings.warn('Temperature data missing; cannot identify real heating start')
+        return None, None
+    if 'time_s' not in step_df.columns:
+        warnings.warn('Time data missing; cannot identify real heating start timing')
+        return None, None
+
+    try:
+        time_arr = _to_num(step_df['time_s']).to_numpy()
+        temp_arr = _to_num(step_df['temperature_k']).to_numpy()
+        setpoint_arr = _to_num(step_df['temperature_setpoint_k']).to_numpy()
+
+        # Find where setpoint >= actual temperature (setpoint is trying to drive system)
+        # Looking for the first valid crossover point
+        for i in range(len(temp_arr)):
+            if not (
+                np.isfinite(time_arr[i])
+                and np.isfinite(temp_arr[i])
+                and np.isfinite(setpoint_arr[i])
+            ):
+                continue
+            # Real heating starts when setpoint first meets/exceeds actual temp
+            if float(setpoint_arr[i]) >= float(temp_arr[i]):
+                return float(time_arr[i]), float(temp_arr[i])
+
+        # If no crossover found, return None
+        warnings.warn(
+            'No heating real start detected: setpoint temperature never '
+            'met or exceeded actual temperature during step.'
+        )
+        return None, None
+    except Exception as e:
+        warnings.warn(
+            f'Error detecting heating real start time: {e}. Using step boundary values.'
+        )
+        return None, None
+
+
+def _find_gas_shutoff_time(step_df) -> float | None:
+    """
+    Find the time at which gases shut off during a step.
+
+    Returns the timestamp (in seconds) when the first gas turns off after at
+    least one gas was active, or None if gases remain active throughout the
+    step or never activate. Uses the same threshold (MIN_USED_GAS_FLOW_M3_S)
+    as the plot construction logic.
+    """
+    if (
+        step_df.empty
+        or 'time_s' not in step_df.columns
+        or not all(
+            col in step_df.columns
+            for col in [
+                'ar_flow_m3_s',
+                'n2_flow_m3_s',
+                'ph3_in_ar_flow_m3_s',
+                'h2s_in_ar_flow_m3_s',
+            ]
+        )
+    ):
+        return None
+
+    time_arr = step_df['time_s'].to_numpy()
+    ar_arr = step_df['ar_flow_m3_s'].to_numpy()
+    n2_arr = step_df['n2_flow_m3_s'].to_numpy()
+    ph3_arr = step_df['ph3_in_ar_flow_m3_s'].to_numpy()
+    h2s_arr = step_df['h2s_in_ar_flow_m3_s'].to_numpy()
+
+    if len(time_arr) != len(ar_arr):
+        return None
+
+    try:
+        had_gas_on = False
+        for t, ar_f, n2_f, ph3_f, h2s_f in zip(
+            time_arr, ar_arr, n2_arr, ph3_arr, h2s_arr
+        ):
+            flows = [ar_f, n2_f, ph3_f, h2s_f]
+            # Check if any gas flow is above the threshold
+            gas_on = any(
+                np.isfinite(flow) and abs(float(flow)) > MIN_USED_GAS_FLOW_M3_S
+                for flow in flows
+            )
+            if gas_on:
+                had_gas_on = True
+            elif had_gas_on:
+                # First point where all gases turn off after being on
+                return float(t)
+        # Gases never shut off (remain active until step end)
+        return None
+    except Exception as e:
+        warnings.warn(f'Error detecting gas shutoff time: {e}')
+        return None
+
+
 def _extract_steps(process_df) -> list[ParsedRTPStep]:
     """Split the run into RTP-style heating, annealing, and cooling steps."""
-    if (
-        process_df.empty
-        or process_df['temperature_k'].notna().sum() < MIN_POINTS_FOR_STEPS
-    ):
+    if process_df.empty:
+        warnings.warn('Cannot extract steps: process dataframe is empty')
+        return []
+    if process_df['temperature_k'].notna().sum() < MIN_POINTS_FOR_STEPS:
+        warnings.warn(
+            f'Cannot extract steps: insufficient temperature data points '
+            f'({process_df["temperature_k"].notna().sum()} < {MIN_POINTS_FOR_STEPS}). '
+            f'Falling back to single annealing step.'
+        )
         return []
 
     df = process_df.dropna(subset=['temperature_k', 'time_s']).copy()
     if len(df) < MIN_POINTS_FOR_STEPS:
+        warnings.warn(
+            f'Insufficient temperature data after dropna: {len(df)} points < '
+            f'{MIN_POINTS_FOR_STEPS} minimum. Falling back to single annealing step.'
+        )
         return []
 
     temp = df['temperature_k'].to_numpy()
@@ -747,30 +874,67 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
     steps: list[ParsedRTPStep] = []
     for (s, e), name in zip(seg_slices, final_names):
         sl = df.iloc[s : e + 1]
+
+        # Find gas shutoff time to limit median window for static values
+        shutoff_time = _find_gas_shutoff_time(sl)
+        # Use trimmed slice if shutoff detected, otherwise use full step
+        sl_for_static = (
+            sl[sl['time_s'] <= shutoff_time] if shutoff_time is not None else sl
+        )
+
         duration = float(sl['time_s'].iloc[-1] - sl['time_s'].iloc[0])
-        pressure_pa = _pressure_to_pa(float(np.nanmedian(sl['pressure_raw'])))
+        pressure_pa = _pressure_to_pa(
+            float(np.nanmedian(sl_for_static['pressure_raw']))
+        )
+
+        # Check if this is a heating step and find real start time
+        initial_temp = float(sl['temperature_k'].iloc[0])
+        final_temp = float(sl['temperature_k'].iloc[-1])
+        is_heating = (
+            final_temp > initial_temp
+            and abs(final_temp - initial_temp) >= FLAT_SEGMENT_DELTA_TEMPERATURE_K
+        )
+
+        real_start_time = None
+        real_start_temp = None
+        if is_heating:
+            real_start_time, real_start_temp = _find_heating_real_start(sl)
+
+        # Use real values if found, otherwise use step boundary values
+        start_time = (
+            real_start_time
+            if real_start_time is not None
+            else float(sl['time_s'].iloc[0])
+        )
+        initial_temperature = (
+            real_start_temp if real_start_temp is not None else initial_temp
+        )
+        duration = float(sl['time_s'].iloc[-1] - start_time)
+
         step = ParsedRTPStep(
             name=name,
             duration_s=duration,
-            start_time_s=float(sl['time_s'].iloc[0]),
+            start_time_s=start_time,
             end_time_s=float(sl['time_s'].iloc[-1]),
-            initial_temperature_k=float(sl['temperature_k'].iloc[0]),
-            final_temperature_k=float(sl['temperature_k'].iloc[-1]),
+            initial_temperature_k=initial_temperature,
+            final_temperature_k=final_temp,
             pressure_pa=pressure_pa,
+            real_start_time_s=real_start_time,
+            real_start_temperature_k=real_start_temp,
             ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(sl['ar_flow_m3_s'])),
+                float(np.nanmedian(sl_for_static['ar_flow_m3_s'])),
                 'Ar',
             ),
             n2_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(sl['n2_flow_m3_s'])),
+                float(np.nanmedian(sl_for_static['n2_flow_m3_s'])),
                 'N2',
             ),
             ph3_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(sl['ph3_in_ar_flow_m3_s'])),
+                float(np.nanmedian(sl_for_static['ph3_in_ar_flow_m3_s'])),
                 'PH3',
             ),
             h2s_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(sl['h2s_in_ar_flow_m3_s'])),
+                float(np.nanmedian(sl_for_static['h2s_in_ar_flow_m3_s'])),
                 'H2S',
             ),
             mean_temperature_k=float(np.nanmean(sl['temperature_k'])),
@@ -780,8 +944,19 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
     if steps:
         return steps
 
+    # Fallback: single annealing step across entire run
+    warnings.warn(
+        'No distinct heating/cooling steps identified. Using single annealing step.'
+    )
     sl = df.iloc[[0, -1]]
-    pressure_pa = _pressure_to_pa(float(np.nanmedian(df['pressure_raw'])))
+
+    # Find gas shutoff time to limit median window for static values
+    shutoff_time = _find_gas_shutoff_time(df)
+    if shutoff_time is not None:
+        df_for_static = df[df['time_s'] <= shutoff_time]
+    else:
+        df_for_static = df
+    pressure_pa = _pressure_to_pa(float(np.nanmedian(df_for_static['pressure_raw'])))
     return [
         ParsedRTPStep(
             name='Annealing',
@@ -792,19 +967,19 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
             final_temperature_k=float(sl['temperature_k'].iloc[-1]),
             pressure_pa=pressure_pa,
             ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(df['ar_flow_m3_s'])),
+                float(np.nanmedian(df_for_static['ar_flow_m3_s'])),
                 'Ar',
             ),
             n2_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(df['n2_flow_m3_s'])),
+                float(np.nanmedian(df_for_static['n2_flow_m3_s'])),
                 'N2',
             ),
             ph3_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(df['ph3_in_ar_flow_m3_s'])),
+                float(np.nanmedian(df_for_static['ph3_in_ar_flow_m3_s'])),
                 'PH3',
             ),
             h2s_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(df['h2s_in_ar_flow_m3_s'])),
+                float(np.nanmedian(df_for_static['h2s_in_ar_flow_m3_s'])),
                 'H2S',
             ),
             mean_temperature_k=float(np.nanmean(df['temperature_k'])),
@@ -815,6 +990,10 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
 def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
     """Compute high-level overview values from the extracted steps."""
     if not steps:
+        warnings.warn(
+            'Cannot derive overview: no steps were extracted from process data. '
+            'All overview values will be None.'
+        )
         return _empty_result().overview
 
     def _is_annealing_name(name: str) -> bool:
@@ -840,6 +1019,11 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
     )
     if anneal_idx is None:
         # Fallback if no step is explicitly labeled as annealing.
+        warnings.warn(
+            'No step explicitly named as "annealing" found. '
+            'Using heuristic (highest mean temperature + duration) to '
+            'select annealing step.'
+        )
         score = [  # Annealing is usually the warmest step and somewhat long.
             0.7 * ((s.initial_temperature_k + s.final_temperature_k) / 2)
             + 0.3 * s.duration_s
@@ -848,6 +1032,15 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
         anneal_idx = int(np.argmax(score))
 
     anneal = steps[anneal_idx]
+
+    # Warn about missing annealing step data
+    if anneal.pressure_pa is None:
+        warnings.warn('Annealing pressure could not be extracted from process data')
+    if anneal.mean_temperature_k is None:
+        warnings.warn(
+            'Annealing mean temperature is None; using average of initial and final '
+            'temperatures instead'
+        )
 
     total_heating = 0.0
     total_cooling = 0.0
@@ -897,64 +1090,95 @@ def _derive_end_of_process_temperature(
             < -PLATEAU_TEMPERATURE_DELTA_TOLERANCE_K
         )
 
-    if (
-        process_df is not None
-        and not process_df.empty
-        and 'time_s' in process_df
-        and 'temperature_k' in process_df
-    ):
+    if process_df is None or process_df.empty:
+        warnings.warn(
+            'Cannot derive end-of-process temperature: '
+            'process dataframe is empty or None'
+        )
+        return end_temp_k
+    if 'time_s' not in process_df or 'temperature_k' not in process_df:
+        warnings.warn(
+            'Cannot derive end-of-process temperature: '
+            'time or temperature data missing from process logs'
+        )
+        return end_temp_k
+
+    cooling_step = next(
+        (step for step in steps if 'cool' in (step.name or '').lower()), None
+    )
+    if cooling_step is None:
         cooling_step = next(
-            (step for step in steps if 'cool' in (step.name or '').lower()), None
+            (step for step in steps if _is_cooling_step(step)),
+            None,
         )
         if cooling_step is None:
-            cooling_step = next(
-                (step for step in steps if _is_cooling_step(step)),
-                None,
+            warnings.warn(
+                'No cooling step identified in process. '
+                'Cannot determine end-of-process temperature.'
             )
-        flow_cols = [
-            'ar_flow_m3_s',
-            'n2_flow_m3_s',
-            'ph3_in_ar_flow_m3_s',
-            'h2s_in_ar_flow_m3_s',
-        ]
 
-        if cooling_step is not None and not any(
-            col not in process_df.columns for col in flow_cols
-        ):
-            df = process_df.copy()
-            time_arr = _to_num(df['time_s']).to_numpy(dtype=float)
-            temp_arr = _to_num(df['temperature_k']).to_numpy(dtype=float)
+    flow_cols = [
+        'ar_flow_m3_s',
+        'n2_flow_m3_s',
+        'ph3_in_ar_flow_m3_s',
+        'h2s_in_ar_flow_m3_s',
+    ]
 
-            cooling_mask = np.isfinite(time_arr)
-            if cooling_step.start_time_s is not None:
-                cooling_mask &= time_arr >= float(cooling_step.start_time_s)
-            if cooling_step.end_time_s is not None:
-                cooling_mask &= time_arr <= float(cooling_step.end_time_s)
+    if cooling_step is not None and not any(
+        col not in process_df.columns for col in flow_cols
+    ):
+        df = process_df.copy()
+        time_arr = _to_num(df['time_s']).to_numpy(dtype=float)
+        temp_arr = _to_num(df['temperature_k']).to_numpy(dtype=float)
 
-            idx = np.where(cooling_mask)[0]
-            if len(idx) > 0:
-                flow_stack = np.column_stack(
-                    [
-                        np.abs(_to_num(df[col]).fillna(0).to_numpy(dtype=float))[idx]
-                        for col in flow_cols
-                    ]
-                )
-                gas_on = np.any(flow_stack > MIN_USED_GAS_FLOW_M3_S, axis=1)
+        cooling_mask = np.isfinite(time_arr)
+        if cooling_step.start_time_s is not None:
+            cooling_mask &= time_arr >= float(cooling_step.start_time_s)
+        if cooling_step.end_time_s is not None:
+            cooling_mask &= time_arr <= float(cooling_step.end_time_s)
 
-                shutoff_rel_idx = None
-                if np.any(gas_on):
-                    for i in range(len(gas_on)):
-                        if not gas_on[i] and np.any(gas_on[:i]):
-                            shutoff_rel_idx = i
-                            break
+        idx = np.where(cooling_mask)[0]
+        if len(idx) > 0:
+            flow_stack = np.column_stack(
+                [
+                    np.abs(_to_num(df[col]).fillna(0).to_numpy(dtype=float))[idx]
+                    for col in flow_cols
+                ]
+            )
+            gas_on = np.any(flow_stack > MIN_USED_GAS_FLOW_M3_S, axis=1)
+
+            shutoff_rel_idx = None
+            if np.any(gas_on):
+                for i in range(len(gas_on)):
+                    if not gas_on[i] and np.any(gas_on[:i]):
+                        shutoff_rel_idx = i
+                        break
+            else:
+                # Cooling already starts with gases off.
+                shutoff_rel_idx = 0
+
+            if shutoff_rel_idx is not None:
+                temp_k = temp_arr[idx[shutoff_rel_idx]]
+                if np.isfinite(temp_k):
+                    end_temp_k = float(temp_k)
                 else:
-                    # Cooling already starts with gases off.
-                    shutoff_rel_idx = 0
-
-                if shutoff_rel_idx is not None:
-                    temp_k = temp_arr[idx[shutoff_rel_idx]]
-                    if np.isfinite(temp_k):
-                        end_temp_k = float(temp_k)
+                    warnings.warn(
+                        'Gas shutoff time identified in cooling step, '
+                        'but temperature at shutoff is NaN or infinite'
+                    )
+            else:
+                warnings.warn(
+                    'No gas shutoff detected during cooling. '
+                    'End-of-process temperature remains None.'
+                )
+    elif cooling_step is None:
+        # Already warned above
+        pass
+    else:
+        warnings.warn(
+            'One or more gas flow columns missing from process data. '
+            'Cannot determine gas shutoff for end-of-process temperature.'
+        )
 
     return end_temp_k
 
@@ -1022,13 +1246,28 @@ def _derive_general_values(process_df, key_values: dict[str, float]):
                 pre_valid = p_arr[:first_on][np.isfinite(p_arr[:first_on])]
                 if len(pre_valid) > 0:
                     base_pressure = float(np.nanmin(pre_valid))
+                else:
+                    warnings.warn(
+                        'No valid pressure data before ballast activation. '
+                        'Base pressure remains None.'
+                    )
                 post_valid = p_arr[on_positions][np.isfinite(p_arr[on_positions])]
                 if len(post_valid) > 0:
                     base_pressure_ballast = float(np.nanmax(post_valid))
+                else:
+                    warnings.warn(
+                        'No valid pressure data after ballast activation. '
+                        'Ballast base pressure remains None.'
+                    )
             else:
                 # Ballast column exists but was never turned on.
                 # This is normal for runs using only inert gases
                 # (Ar, N2) without toxic gases.
+                warnings.warn(
+                    'Ballast valve was never activated. Assuming '
+                    'inert-only process (Ar, N2). Base pressure will be '
+                    'set; ballast pressure remains None.'
+                )
                 valid = p_arr[np.isfinite(p_arr)]
                 if len(valid) > 0:
                     base_pressure = float(np.nanmin(valid))
@@ -1076,6 +1315,12 @@ def _derive_general_values(process_df, key_values: dict[str, float]):
                 )
                 start_mask &= throt_pos == 0
             rate_of_rise = _compute_rate_of_rise(time_arr, p_arr, start_mask)
+            if rate_of_rise is None:
+                warnings.warn(
+                    'Rate of rise could not be computed: '
+                    'insufficient data points matching static vacuum conditions '
+                    '(vent closed & throttle closed)'
+                )
 
     return base_pressure, base_pressure_ballast, rate_of_rise
 
@@ -1094,6 +1339,10 @@ def _detect_used_gases(
         }
     else:
         # Fall back to overview annealing flows if step splitting did not succeed.
+        warnings.warn(
+            'No explicit annealing step found. Using overview annealing flows '
+            'to detect used gases.'
+        )
         flow_values = {
             'Ar': overview.get('annealing_ar_flow'),
             'N2': overview.get('annealing_n2_flow'),
@@ -1101,11 +1350,20 @@ def _detect_used_gases(
             'H2S': overview.get('annealing_h2s_in_ar_flow'),
         }
 
-    return [
+    used_gases = [
         gas
         for gas, flow in flow_values.items()
         if flow is not None and float(flow) > MIN_USED_GAS_FLOW_M3_S
     ]
+
+    if not used_gases:
+        warnings.warn(
+            'No process gases detected as being used during annealing. '
+            'All gas flows are either None or below the threshold '
+            f'({MIN_USED_GAS_FLOW_M3_S} m³/s).'
+        )
+
+    return used_gases
 
 
 def parse_rtp_logfiles(
@@ -1135,6 +1393,13 @@ def parse_rtp_logfiles(
         used_gases = _detect_used_gases(steps, overview)
         timeseries = _extract_timeseries(process_df)
 
+        if not steps:
+            warnings.warn('No process steps extracted from log files')
+        if base_pressure is None:
+            warnings.warn('Base pressure could not be determined from process data')
+        if rate_of_rise is None:
+            warnings.warn('Rate of rise could not be calculated from process data')
+
         return ParsedRTPData(
             used_gases=used_gases,
             base_pressure_pa=base_pressure,
@@ -1145,6 +1410,9 @@ def parse_rtp_logfiles(
             steps=steps,
             timeseries=timeseries,
         )
-    except Exception:
+    except Exception as e:
         # Never let parser edge cases crash NOMAD normalization.
+        warnings.warn(
+            f'RTP log parsing encountered critical error: {e}. Returning empty result.'
+        )
         return _empty_result()
