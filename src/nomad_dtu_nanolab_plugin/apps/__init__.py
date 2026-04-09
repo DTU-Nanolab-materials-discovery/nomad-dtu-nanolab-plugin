@@ -577,6 +577,11 @@ analysis = AppEntryPoint(
                 label='Name',
             ),
             Column(
+                search_quantity=f'data.template_notebook#{analysis_template_schema}',
+                selected=True,
+                label='Template notebook',
+            ),
+            Column(
                 search_quantity='entry_create_time',
                 selected=True,
                 label='Entry Create Time',
@@ -603,6 +608,11 @@ analysis = AppEntryPoint(
                 MenuItemTerms(
                     title='Entry Type',
                     search_quantity='entry_type',
+                    options=2,
+                ),
+                MenuItemTerms(
+                    title='Active Template',
+                    search_quantity=f'data.active#{analysis_template_schema}',
                     options=2,
                 ),
             ],
