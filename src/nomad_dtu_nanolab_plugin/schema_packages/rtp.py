@@ -1,5 +1,9 @@
+import re
+import tempfile
 import time
 import warnings
+from contextlib import ExitStack
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -32,6 +36,7 @@ from nomad_material_processing.vapor_deposition.cvd.general import (
 from nomad_measurements.utils import create_archive
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.rtp_log_reader import parse_rtp_logfiles
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
     DTUCombinatorialLibrary,
     DtuLibraryReference,
@@ -58,6 +63,11 @@ RTP_GAS_FRACTION = {
     'PH3': 0.1,
     'H2S': 0.1,
 }
+POST_END_PROCESS_WINDOW_S = 30.0
+MIN_USED_GAS_FLOW_SCCM = 1.0
+TORR_TO_PA = 133.322368421
+SCCM_TO_M3_S = 1e-6 / 60
+CELSIUS_TO_KELVIN_OFFSET = 273.15
 
 
 #################### DEFINE INPUT_SAMPLES (SUBSECTION) ######################
@@ -83,7 +93,7 @@ class DtuRTPInputSampleMounting(ArchiveSection):
     )
     name = Quantity(
         type=str,
-        description='The name of the input sample mounting.',
+        description='The name of the input sample.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.StringEditQuantity,
         ),
@@ -122,7 +132,7 @@ class DtuRTPInputSampleMounting(ArchiveSection):
     )
     position_x = Quantity(
         type=np.float64,
-        description='The x-coordinate of the input sample on the susceptor.',
+        description='The center x-coordinate of the input sample on the susceptor.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
@@ -131,7 +141,7 @@ class DtuRTPInputSampleMounting(ArchiveSection):
     )
     position_y = Quantity(
         type=np.float64,
-        description='The y-coordinate of the input sample on the susceptor.',
+        description='The center y-coordinate of the input sample on the susceptor.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
@@ -141,7 +151,7 @@ class DtuRTPInputSampleMounting(ArchiveSection):
     rotation = Quantity(
         type=np.float64,
         description="""
-            The angle between the initial position in the "mother" sample
+            MANUAL INPUT. The angle between the initial position in the "mother" sample
             and the position on the susceptor.
         """,
         a_eln=ELNAnnotation(
@@ -179,6 +189,14 @@ class DtuRTPInputSampleMounting(ArchiveSection):
             }
             if self.relative_position in positions:
                 self.position_x, self.position_y = positions[self.relative_position]
+            elif self.position_x is None or self.position_y is None:
+                warnings.warn(
+                    f'Sample mounting position coordinates could not be determined '
+                    f'(relative_position={self.relative_position} not recognized, '
+                    f'position_x={self.position_x}, position_y={self.position_y})',
+                    UserWarning,
+                )
+
         if self.relative_position is not None:
             self.name = self.relative_position
         elif self.position_x is not None and self.position_y is not None:
@@ -223,7 +241,7 @@ class RTPOverview(ArchiveSection):
             component=ELNComponentEnum.StringEditQuantity,
             label='Material space',
         ),
-        description='The material space explored by the RTP process.',
+        description='The elements present in your film before/after the RTP process.',
     )
     annealing_pressure = Quantity(
         type=np.float64,
@@ -253,7 +271,9 @@ class RTPOverview(ArchiveSection):
             label='Annealing Temperature',
         ),
         unit='K',
-        description='Temperature during the annealing plateau of the RTP process.',
+        description=(
+            'Temperature (average) during the annealing plateau of the RTP process.'
+        ),
     )
     annealing_ar_flow = Quantity(
         type=np.float64,
@@ -263,8 +283,8 @@ class RTPOverview(ArchiveSection):
             label='Ar Flow',
         ),
         unit='m**3/s',
-        description='Argon flow used during the annealing plateau of the RTP process.'
-        'The unit "cm^3/minute" is used equal to sccm.',
+        description='Argon flow (average) used during the annealing plateau of the'
+        ' RTP process. The unit "cm^3/minute" is used equal to sccm.',
     )
     annealing_n2_flow = Quantity(
         type=np.float64,
@@ -274,7 +294,7 @@ class RTPOverview(ArchiveSection):
             label='N2 Flow',
         ),
         unit='m**3/s',
-        description='Nitrogen flow used during the annealing plateau of the'
+        description='Nitrogen flow (average) used during the annealing plateau of the'
         ' RTP process. The unit "cm^3/minute" is used equal to sccm.',
     )
     annealing_ph3_in_ar_flow = Quantity(
@@ -285,7 +305,7 @@ class RTPOverview(ArchiveSection):
             label='PH3 in Ar Flow',
         ),
         unit='m**3/s',
-        description='Phosphine flow used during the annealing plateau of'
+        description='Phosphine flow (average) used during the annealing plateau of'
         ' the RTP process. The unit "cm^3/minute" is used equal to sccm.',
     )
     annealing_h2s_in_ar_flow = Quantity(
@@ -296,8 +316,8 @@ class RTPOverview(ArchiveSection):
             label='H2S in Ar Flow',
         ),
         unit='m**3/s',
-        description='H2S flow used during the annealing plateau of the RTP process.'
-        'The unit "cm^3/minute" is used equal to sccm.',
+        description='H2S flow (average) used during the annealing plateau of the'
+        ' RTP process. The unit "cm^3/minute" is used equal to sccm.',
     )
     total_heating_time = Quantity(
         type=np.float64,
@@ -307,8 +327,8 @@ class RTPOverview(ArchiveSection):
             label='Total heating up time',
         ),
         unit='s',
-        description='Total time spent until maximum (main annealing plateau)'
-        'temperature is reached.',
+        description='Total time spent until maximum temperature '
+        '(main annealing plateau) is reached.',
     )
     total_cooling_time = Quantity(
         type=np.float64,
@@ -329,7 +349,7 @@ class RTPOverview(ArchiveSection):
             label='End of process temperature',
         ),
         unit='K',
-        description='Temperature at the cooling state of the RTP process, when the'
+        description='Temperature, during the cooling phase of the RTP process, when the'
         ' gases are shut off and final pump-purge procedure is initiated to '
         'remove samples from chamber.',
     )
@@ -340,8 +360,10 @@ class RTPOverview(ArchiveSection):
             label='PH3 Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of PH3 during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure of PH3 (average) during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
     annealing_h2s_partial_pressure = Quantity(
         type=np.float64,
@@ -350,8 +372,10 @@ class RTPOverview(ArchiveSection):
             label='H2S Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of H2S during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure of H2S (average) during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
     annealing_n2_partial_pressure = Quantity(
         type=np.float64,
@@ -360,8 +384,10 @@ class RTPOverview(ArchiveSection):
             label='N2 Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of N2 during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure of N2 (average) during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
     annealing_ar_partial_pressure = Quantity(
         type=np.float64,
@@ -370,8 +396,10 @@ class RTPOverview(ArchiveSection):
             label='Ar Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of Ar during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure of Ar (average) during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
 
     def calc_partial_pressure(self):
@@ -401,6 +429,21 @@ class RTPOverview(ArchiveSection):
             + annealing_n2_flow
             + annealing_ph3_in_ar_flow
         )
+
+        if total_flow == 0:
+            warnings.warn(
+                'Total annealing gas flow is zero. '
+                'Partial pressures cannot be meaningfully calculated.',
+                UserWarning,
+            )
+            return
+
+        if self.annealing_pressure is None:
+            warnings.warn(
+                'Annealing pressure is None. Partial pressures cannot be calculated.',
+                UserWarning,
+            )
+            return
 
         total_pressure = self.annealing_pressure.magnitude
 
@@ -461,6 +504,12 @@ class RTPOverview(ArchiveSection):
             flow is not None and getattr(flow, 'magnitude', flow) != 0 for flow in flows
         ):
             self.calc_partial_pressure()
+        else:
+            warnings.warn(
+                'No detectable annealing gas flows. '
+                'Partial pressures will not be calculated.',
+                UserWarning,
+            )
 
 
 ##################### STEPS (SUBSECTION) ######################################
@@ -508,7 +557,7 @@ class RTPStepOverview(ArchiveSection):
             label='Pressure',
         ),
         unit='Pa',
-        description='Pressure in the RTP chamber during the step.',
+        description='Pressure (average) in the RTP chamber during the step.',
     )
     step_ar_flow = Quantity(
         type=np.float64,
@@ -518,7 +567,7 @@ class RTPStepOverview(ArchiveSection):
             label='Ar Flow',
         ),
         unit='m**3/s',
-        description='Argon flow rate used during the step.'
+        description='Argon flow rate (average) used during the step.'
         'The unit "cm^3/minute" is used equal to sccm.',
     )
     step_n2_flow = Quantity(
@@ -529,7 +578,7 @@ class RTPStepOverview(ArchiveSection):
             label='N2 Flow',
         ),
         unit='m**3/s',
-        description='Nitrogen flow rate used during the step. '
+        description='Nitrogen flow rate (average) used during the step. '
         'The unit "cm^3/minute" is used equal to sccm.',
     )
     step_ph3_in_ar_flow = Quantity(
@@ -540,7 +589,7 @@ class RTPStepOverview(ArchiveSection):
             label='PH3 in Ar Flow',
         ),
         unit='m**3/s',
-        description='Phosphine flow rate used during the step.'
+        description='Phosphine flow rate (average) used during the step.'
         'The unit "cm^3/minute" is used equal to sccm.',
     )
     step_h2s_in_ar_flow = Quantity(
@@ -551,7 +600,7 @@ class RTPStepOverview(ArchiveSection):
             label='H2S in ArFlow',
         ),
         unit='m**3/s',
-        description='H2S flow rate used during the step.'
+        description='H2S flow rate (average) used during the step.'
         'The unit "cm^3/minute" is used equal to sccm.',
     )
     initial_temperature = Quantity(
@@ -562,7 +611,7 @@ class RTPStepOverview(ArchiveSection):
             label='Initial Temperature',
         ),
         unit='K',
-        description='Temperature at the beginning of the step.',
+        description='Temperature at the start of the step.',
     )
     final_temperature = Quantity(
         type=np.float64,
@@ -581,7 +630,7 @@ class RTPStepOverview(ArchiveSection):
             label='Temperature ramp rate. ',
         ),
         unit='K/s',
-        description='Rate of temperature increase or decrease during the step',
+        description='Rate of temperature increase/decrease during the step.',
     )
     step_ph3_partial_pressure = Quantity(
         type=np.float64,
@@ -590,8 +639,10 @@ class RTPStepOverview(ArchiveSection):
             label='PH3 Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of PH3 during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure (average) of PH3 during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
     step_h2s_partial_pressure = Quantity(
         type=np.float64,
@@ -600,8 +651,10 @@ class RTPStepOverview(ArchiveSection):
             label='H2S Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of H2S during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure (average) of H2S during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
     step_n2_partial_pressure = Quantity(
         type=np.float64,
@@ -610,8 +663,10 @@ class RTPStepOverview(ArchiveSection):
             label='N2 Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of N2 during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure (average) of N2 during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
     step_ar_partial_pressure = Quantity(
         type=np.float64,
@@ -620,8 +675,10 @@ class RTPStepOverview(ArchiveSection):
             label='Ar Partial Pressure',
         ),
         unit='Pa',
-        description='Partial pressure of Ar during the annealing plateau of the'
-        ' RTP process.',
+        description=(
+            'Partial pressure (average) of Ar during the annealing plateau '
+            'of the RTP process.'
+        ),
     )
 
     def calc_ramp(self):
@@ -671,6 +728,21 @@ class RTPStepOverview(ArchiveSection):
         total_flow = (
             step_ar_flow + step_h2s_in_ar_flow + step_n2_flow + step_ph3_in_ar_flow
         )
+
+        if total_flow == 0:
+            warnings.warn(
+                'Total gas flow is zero in step. '
+                'Partial pressures cannot be meaningfully calculated.',
+                UserWarning,
+            )
+            return
+
+        if self.pressure is None:
+            warnings.warn(
+                'Step pressure is None. Partial pressures cannot be calculated.',
+                UserWarning,
+            )
+            return
 
         total_pressure = self.pressure.magnitude
 
@@ -724,13 +796,35 @@ class RTPStepOverview(ArchiveSection):
             flow is not None and getattr(flow, 'magnitude', flow) != 0 for flow in flows
         ):
             self.calc_partial_pressure()
+        else:
+            warnings.warn(
+                'No detectable step gas flows. '
+                'Partial pressures will not be calculated.',
+                UserWarning,
+            )
+
+        # Check if parent step is an annealing step
+        parent_step = getattr(self, 'm_parent', None)
+        parent_step_name = getattr(parent_step, 'name', '') if parent_step else ''
+        is_annealing = (
+            re.match(r'^\s*anneal(?:ing)?\b', parent_step_name, re.IGNORECASE)
+            is not None
+        )
 
         if (
             self.initial_temperature is not None
             and self.final_temperature is not None
             and self.initial_temperature != self.final_temperature
+            and not is_annealing
         ):
             self.calc_ramp()
+        elif is_annealing and self.initial_temperature != self.final_temperature:
+            warnings.warn(
+                f'Step "{parent_step_name}" identified as annealing: '
+                'skipping temperature_ramp calculation '
+                '(annealing steps are isothermal by definition)',
+                UserWarning,
+            )
 
 
 class DtuRTPSources(CVDSource, ArchiveSection):
@@ -741,7 +835,9 @@ class DtuRTPSources(CVDSource, ArchiveSection):
     sources = Quantity(
         type=str,
         shape=['*'],
-        description='Automatically generated list of sources (gases) for this step',
+        description=(
+            'Automatically generated list of used sources (gases) during this step.'
+        ),
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -793,16 +889,24 @@ class DTURTPSteps(CVDStep, ArchiveSection):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        # Clear existing sources
-        self.sources = []
-        # Get used_gases from DtuRTP main class
+        # Ensure derived step_overview values (temperature ramp and partial
+        # pressures) are always computed during step normalization.
+        if self.step_overview is not None:
+            self.step_overview.normalize(archive, logger)
+
+        # Populate step sources from parent used_gases, but do not overwrite
+        # existing user data unless the parent explicitly requests overwrite.
         parent = getattr(self, 'm_parent', None)
+        overwrite_sources = bool(getattr(parent, 'overwrite_existing_data', False))
         if parent is not None and hasattr(parent, 'used_gases'):
-            for gas in parent.used_gases:
-                source = DtuRTPSources()
-                source.sources = [gas]
-                source.name = gas
-                self.sources.append(source)
+            gases = [gas for gas in (parent.used_gases or []) if gas]
+            if gases and (overwrite_sources or not (self.sources or [])):
+                self.sources = []
+                for gas in gases:
+                    source = DtuRTPSources()
+                    source.sources = [gas]
+                    source.name = gas
+                    self.sources.append(source)
 
 
 ###################### 1ST LEVEL CLASS (RTP) #################################
@@ -831,6 +935,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     'location',
                     'log_file_eklipse',
                     'log_file_T2BDiagnostics',
+                    'process_log_files',
+                    'overwrite_existing_data',
                     'samples_susceptor_before',
                     'samples_susceptor_after',
                     'base_pressure',
@@ -866,48 +972,74 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     log_file_eklipse = Quantity(
         type=str,
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.FileEditQuantity, label='Gases log file'
+            component=ELNComponentEnum.FileEditQuantity, label='Gas/Pressure log file'
         ),
-        description='Cell to upload the gases log file from the RTP process.',
+        description=(
+            'MANUAL INPUT. Cell to upload the gas/pressure log file '
+            'obtained with Eklipse.'
+        ),
     )
     log_file_T2BDiagnostics = Quantity(
         type=str,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity, label='Temperature log file'
         ),
-        description='Cell to upload the temperature log file from the RTP process.',
+        description=(
+            'MANUAL INPUT. Cell to upload the temperature log file '
+            'obtained with T2BDiagnostics.'
+        ),
     )
-    # log_file_pressure = Quantity(
-    #    type=str,
-    #    a_eln=ELNAnnotation(
-    #        component=ELNComponentEnum.FileEditQuantity,
-    #        label = 'Pressure log file'
-    #    ),
-    #    description='Cell to upload the pressure log file from the RTP process.',
-    # )
+    process_log_files = Quantity(
+        type=bool,
+        default=True,
+        description=(
+            'MANUAL INPUT. Boolean to indicate if the RTP log files should '
+            'be processed.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+            label='Process log files',
+        ),
+    )
+    overwrite_existing_data = Quantity(
+        type=bool,
+        default=True,
+        description=(
+            'MANUAL INPUT. Boolean to indicate if the data present in the '
+            'entry should be overwritten by data incoming from the log files.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+            label='Overwrite existing data ?',
+        ),
+    )
     samples_susceptor_before = Quantity(
         type=str,
         a_eln={
             'component': 'FileEditQuantity',
-            'label': 'Image of the samples on susceptor before RTP process',
+            'label': 'Image of the samples on susceptor before the RTP process.',
         },
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
-        description='Cell to upload the image of the samples on susceptor before the'
-        'RTP process.',
+        description=(
+            'MANUAL INPUT. Cell to upload the image of the samples on '
+            'susceptor before the RTP process.'
+        ),
     )
     samples_susceptor_after = Quantity(
         type=str,
         a_eln={
             'component': 'FileEditQuantity',
-            'label': 'Image of the samples on susceptor after RTP process',
+            'label': 'Image of the samples on susceptor after the RTP process.',
         },
         a_browser=BrowserAnnotation(
             adaptor=BrowserAdaptors.RawFileAdaptor,
         ),
-        description='Cell to upload the image of the samples on susceptor after the'
-        'RTP process.',
+        description=(
+            'MANUAL INPUT. Cell to upload the image of the samples on '
+            'susceptor after the RTP process.'
+        ),
     )
     used_gases = Quantity(
         type=str,
@@ -916,7 +1048,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             component=ELNComponentEnum.StringEditQuantity,
             label='Used gases',
         ),
-        description='Gases used in the process.',
+        description='Gases used in the RTP process.',
     )
     #################### GENERAL CHECKS ######################
     base_pressure = Quantity(
@@ -927,7 +1059,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             defaultDisplayUnit='mtorr',
         ),
         unit='Pa',
-        description='Base pressure when ballast is OFF',
+        description='RTP chamber base pressure when ballast is OFF.',
     )
     base_pressure_ballast = Quantity(
         type=np.float64,
@@ -937,7 +1069,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             defaultDisplayUnit='mtorr',
         ),
         unit='Pa',
-        description='Base pressure when ballast is ON.',
+        description='RTP chamber base pressure when ballast is ON.',
     )
     rate_of_rise = Quantity(
         type=np.float64,
@@ -948,7 +1080,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         ),
         unit='Pa/s',
         description='Rate of rise of the pressure in the RTP chamber during static '
-        'vacuum',
+        'vacuum conditions.',
     )
     chiller_flow = Quantity(
         type=np.float64,
@@ -958,7 +1090,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             label='Chiller Flow',
         ),
         unit='m**3/s',
-        description='Chiller flow rate during the RTP process.',
+        description='MANUAL INPUT. Chiller flow rate during the RTP process.',
     )
     ############################## SUBSECTIONS ########################################
     input_samples = SubSection(
@@ -974,26 +1106,108 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     )
 
     ############################## CREATING RTP SAMPLE LIBRARY ######################
+    def _sync_step_sources_from_used_gases(self, overwrite: bool = False) -> None:
+        gases = [gas for gas in (self.used_gases or []) if gas]
+        if not gases:
+            return
+        for step in getattr(self, 'steps', []) or []:
+            if not overwrite and (step.sources or []):
+                continue
+            step.sources = []
+            for gas in gases:
+                source = DtuRTPSources()
+                source.sources = [gas]
+                source.name = gas
+                step.sources.append(source)
+
+    def _get_input_sample_material_elements(self) -> list[str]:
+        """Collect elements from input samples in their inherited composition order.
+
+        Returns elements in order: those from input samples (in order of appearance),
+        maintaining the sequence as they appear in the elemental composition.
+        """
+        ordered_elements: list[str] = []
+
+        def _append_symbol(raw_symbol) -> None:
+            if raw_symbol is None:
+                return
+            symbol = str(raw_symbol).strip()
+            if symbol and symbol not in ordered_elements:
+                ordered_elements.append(symbol)
+
+        for rtp_sample in getattr(self, 'input_samples', []) or []:
+            origin = getattr(rtp_sample, 'input_combi_lib', None)
+            if origin is None:
+                continue
+
+            layer_ref = (
+                origin.layers[0].reference if getattr(origin, 'layers', None) else None
+            )
+            layer_comp = getattr(layer_ref, 'elemental_composition', None)
+            if layer_comp is None:
+                layer_comp = getattr(origin, 'elemental_composition', None)
+
+            if not layer_comp:
+                continue
+
+            for elem in layer_comp:
+                _append_symbol(getattr(elem, 'element', elem))
+
+        return ordered_elements
+
+    def _autofill_material_space(self) -> None:
+        """Always recompute material_space from input-sample composition + gas elements.
+
+        - No input samples with composition → material_space is cleared to None.
+        - Input samples present → their elements are used, with gas-derived elements
+          (PH3→P, H2S→S) inserted to maintain order: metals first (e.g. Sn),
+          then P, then S.
+        """
+        if self.overview is None:
+            self.overview = RTPOverview()
+
+        ordered_elements = self._get_input_sample_material_elements()
+        if not ordered_elements:
+            self.overview.material_space = None
+            return
+
+        # Add gas-derived elements in the desired order: P before S
+        # This maintains the pattern: input elements (metals like Sn), then P, then S
+        gas_to_element = {'PH3': 'P', 'H2S': 'S'}
+        for gas in ['PH3', 'H2S']:  # Maintain explicit order: P before S
+            if gas in (self.used_gases or []):
+                symbol = gas_to_element[gas]
+                if symbol not in ordered_elements:
+                    ordered_elements.append(symbol)
+
+        # Keep all non-P/S elements first, then force P then S at the end.
+        ordered_elements = [
+            element for element in ordered_elements if element not in {'P', 'S'}
+        ] + [element for element in ['P', 'S'] if element in ordered_elements]
+
+        self.overview.material_space = '-'.join(ordered_elements)
+
     def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         samples = []
         rtp_name = self.name
         rtp_datetime = self.datetime
         rtp_materialspace = self.overview.material_space
+        if not rtp_materialspace:
+            return
         for rtp_sample in self.input_samples:
             # Get the the input sample and original sample
             origin = rtp_sample.input_combi_lib
             origin_layer = origin.layers[0].reference if origin.layers else None
 
             # Get elemental compositions
-            origin_elements = set(e.element for e in origin.elemental_composition)
-            rtp_elements = set(rtp_materialspace.split('-'))
+            origin_elements = [e.element for e in origin.elemental_composition]
+            rtp_elements = [e for e in rtp_materialspace.split('-') if e]
 
             # Merge for library
-            if rtp_elements == origin_elements:
+            if set(rtp_elements) == set(origin_elements):
                 elemental_composition = origin.elemental_composition
             else:
-                # Merge and remove duplicates, keep order from origin first
-                merged_elements = list(origin_elements) + [
+                merged_elements = origin_elements + [
                     e for e in rtp_elements if e not in origin_elements
                 ]
                 elemental_composition = [
@@ -1006,11 +1220,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 origin_layer is not None
                 and origin_layer.elemental_composition is not None
             ):
-                layer_origin_elements = set(
+                layer_origin_elements = [
                     e.element for e in origin_layer.elemental_composition
-                )
-                # Merge origin_layer and library compositions
-                merged_layer_elements = list(layer_origin_elements) + [
+                ]
+                merged_layer_elements = layer_origin_elements + [
                     e for e in rtp_elements if e not in layer_origin_elements
                 ]
                 layer_elemental_composition = [
@@ -1090,35 +1303,260 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
 
     ############################## PLOTS #################################
+    def _get_full_plot_time_range(self) -> tuple[float, float] | None:
+        """Return plot range from heating start to 30 s after process end temp.
+
+        Falls back to full available range when phase labels or temperature
+        samples are missing.
+        """
+        series = getattr(self, '_log_time_s', []) or getattr(self, '_time', []) or []
+        if not series:
+            return None
+
+        start_time = float(series[0])
+        end_time = float(series[-1])
+
+        segments = getattr(self, '_phase_segments', []) or []
+        if segments:
+            heating_segment = next(
+                (segment for segment in segments if 'heat' in segment[0].lower()),
+                None,
+            )
+            if heating_segment is not None:
+                start_time = float(heating_segment[1])
+
+            cooling_segment = next(
+                (segment for segment in segments if 'cool' in segment[0].lower()),
+                None,
+            )
+            if cooling_segment is not None:
+                cooling_start = float(cooling_segment[1])
+                cooling_end = float(cooling_segment[2])
+                end_time = cooling_end
+
+                time_s = getattr(self, '_log_time_s', []) or getattr(self, '_time', [])
+                temperature_c = getattr(self, '_log_temperature_c', []) or getattr(
+                    self, '_temperature_profile', []
+                )
+                end_temp = None
+                if self.overview is not None:
+                    end_temp = getattr(
+                        self.overview, 'end_of_process_temperature', None
+                    )
+                if hasattr(end_temp, 'to'):
+                    end_temp_c = float(end_temp.to('celsius').magnitude)
+                elif end_temp is not None:
+                    end_temp_c = float(end_temp) - 273.15
+                else:
+                    end_temp_c = None
+
+                if time_s and temperature_c and len(time_s) == len(temperature_c):
+                    reached_time = None
+                    if end_temp_c is not None:
+                        for t, temp in zip(time_s, temperature_c):
+                            t_f = float(t)
+                            if t_f < cooling_start:
+                                continue
+                            if t_f > cooling_end:
+                                break
+                            if np.isfinite(temp) and float(temp) <= end_temp_c:
+                                reached_time = t_f
+                                break
+
+                    # Fallback: infer end-of-process directly from gas shutoff
+                    # timing in the cooling segment if overview end temperature
+                    # is missing or not reached in plotted data.
+                    if reached_time is None:
+                        ar = getattr(self, '_log_ar_flow_sccm', []) or []
+                        n2 = getattr(self, '_log_n2_flow_sccm', []) or []
+                        ph3 = getattr(self, '_log_ph3_flow_sccm', []) or []
+                        h2s = getattr(self, '_log_h2s_flow_sccm', []) or []
+                        if (
+                            len(ar) == len(time_s)
+                            and len(n2) == len(time_s)
+                            and len(ph3) == len(time_s)
+                            and len(h2s) == len(time_s)
+                        ):
+                            had_gas_on = False
+                            for t, ar_f, n2_f, ph3_f, h2s_f in zip(
+                                time_s, ar, n2, ph3, h2s
+                            ):
+                                t_f = float(t)
+                                if t_f < cooling_start:
+                                    continue
+                                if t_f > cooling_end:
+                                    break
+
+                                flows = [ar_f, n2_f, ph3_f, h2s_f]
+                                gas_on = any(
+                                    np.isfinite(flow)
+                                    and abs(float(flow)) > MIN_USED_GAS_FLOW_SCCM
+                                    for flow in flows
+                                )
+                                if gas_on:
+                                    had_gas_on = True
+                                elif had_gas_on:
+                                    reached_time = t_f
+                                    break
+
+                    if reached_time is not None:
+                        end_time = min(
+                            float(series[-1]), reached_time + POST_END_PROCESS_WINDOW_S
+                        )
+
+        end_time = max(end_time, start_time)
+
+        return (start_time, end_time)
+
+    def _build_phase_segments(self) -> list[tuple[str, float, float]]:
+        # Prefer log-file-derived boundaries (actual timestamps) when available.
+        log_segs = getattr(self, '_log_phase_segments', None)
+        if log_segs:
+            return log_segs
+
+        segments: list[tuple[str, float, float]] = []
+        cursor = 0.0
+        for step in getattr(self, 'steps', []) or []:
+            step_overview = getattr(step, 'step_overview', None)
+            if step_overview is None or step_overview.duration is None:
+                continue
+            duration = step_overview.duration
+            duration_s = (
+                float(duration.to('s').magnitude)
+                if hasattr(duration, 'to')
+                else float(getattr(duration, 'magnitude', duration))
+            )
+            if duration_s <= 0:
+                continue
+            name = (step.name or '').strip() or 'Step'
+            segments.append((name, cursor, cursor + duration_s))
+            cursor += duration_s
+        return segments
+
+    def _add_phase_delimiters(self, fig: go.Figure) -> None:
+        segments = getattr(self, '_phase_segments', []) or []
+        if not segments:
+            return
+
+        def _phase_fill_color(name: str) -> str:
+            n = name.lower()
+            if 'heat' in n:
+                return 'rgba(255, 160, 60, 0.18)'
+            if 'cool' in n:
+                return 'rgba(60, 140, 255, 0.18)'
+            if 'anneal' in n:
+                return 'rgba(150, 150, 150, 0.18)'
+            return 'rgba(120, 120, 120, 0.10)'
+
+        def _phase_font_color(name: str) -> str:
+            n = name.lower()
+            if 'heat' in n:
+                return 'rgba(200, 100, 0, 1)'
+            if 'cool' in n:
+                return 'rgba(0, 80, 200, 1)'
+            return 'rgba(80, 80, 80, 1)'
+
+        for name, start, end in segments:
+            fig.add_vrect(
+                x0=start,
+                x1=end,
+                fillcolor=_phase_fill_color(name),
+                opacity=1.0,
+                layer='below',
+                line_width=0,
+            )
+            center = (start + end) / 2
+            fig.add_annotation(
+                x=center,
+                y=0.96,
+                xref='x',
+                yref='paper',
+                text=name,
+                showarrow=False,
+                font=dict(size=13, color=_phase_font_color(name)),
+                xanchor='center',
+                yanchor='top',
+            )
+
     # Set up temperature profile plot
     def plot_temperature_profile(self) -> None:
+        time_s = getattr(self, '_log_time_s', []) or getattr(self, '_time', []) or []
+        temperature_c = (
+            getattr(self, '_log_temperature_c', [])
+            or getattr(self, '_temperature_profile', [])
+            or []
+        )
+        setpoint_c = getattr(self, '_temperature_setpoint_profile', []) or []
+        lamp_power = getattr(self, '_lamp_power_profile', []) or []
+
+        if not time_s or not temperature_c:
+            warnings.warn(
+                'Temperature timeseries plot cannot be created: '
+                'time or temperature data missing from process logs',
+                UserWarning,
+            )
+            return
+
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(
-                x=self._time,
-                y=self._temperature_profile,
-                mode='lines+markers',
-                name='Temperature Profile',
+                x=time_s,
+                y=temperature_c,
+                mode='lines',
+                name='Actual Temperature',
             )
         )
+        if setpoint_c and len(setpoint_c) == len(time_s):
+            fig.add_trace(
+                go.Scatter(
+                    x=time_s,
+                    y=setpoint_c,
+                    mode='lines',
+                    name='Temperature Setpoint',
+                    line=dict(dash='dash'),
+                )
+            )
+        if lamp_power and len(lamp_power) == len(time_s):
+            fig.add_trace(
+                go.Scatter(
+                    x=time_s,
+                    y=lamp_power,
+                    mode='lines',
+                    name='Lamp Power',
+                    yaxis='y2',
+                )
+            )
+        self._add_phase_delimiters(fig)
+
+        x_range = self._get_full_plot_time_range()
         fig.update_layout(
-            title='RTP Temperature Profile',
+            title='RTP Temperature and Lamp Power',
             xaxis_title='Time / s',
             yaxis_title='Temperature / °C',
+            yaxis2=dict(
+                title='Lamp Power / %',
+                overlaying='y',
+                side='right',
+                showgrid=False,
+            ),
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
+            showlegend=True,
+            legend=dict(
+                orientation='h',
+                yanchor='top',
+                y=-0.15,
+                xanchor='center',
+                x=0.5,
+            ),
             xaxis=dict(
                 fixedrange=False,
+                autorange=False if x_range is not None else True,
                 showline=True,
                 showgrid=True,
                 zeroline=True,
-            ),
-            yaxis=dict(
-                fixedrange=False,
-                showline=True,
-                showgrid=True,
-                zeroline=True,
+                range=list(x_range) if x_range is not None else None,
             ),
         )
         plot_json = fig.to_plotly_json()
@@ -1132,12 +1570,145 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
         )
 
+    def plot_gas_flows_profile(self) -> None:
+        time_s = getattr(self, '_log_time_s', []) or []
+        if not time_s:
+            return
+
+        flow_series = {
+            'Ar Flow': getattr(self, '_log_ar_flow_sccm', []),
+            'N2 Flow': getattr(self, '_log_n2_flow_sccm', []),
+            'PH3 in Ar Flow': getattr(self, '_log_ph3_flow_sccm', []),
+            'H2S in Ar Flow': getattr(self, '_log_h2s_flow_sccm', []),
+        }
+
+        fig = go.Figure()
+        plotted = False
+        for name, values in flow_series.items():
+            if values and len(values) == len(time_s):
+                plotted = True
+                fig.add_trace(
+                    go.Scatter(
+                        x=time_s,
+                        y=values,
+                        mode='lines',
+                        name=name,
+                    )
+                )
+
+        if not plotted:
+            return
+
+        self._add_phase_delimiters(fig)
+        x_range = self._get_full_plot_time_range()
+
+        fig.update_layout(
+            title='RTP Gas Flows Evolution',
+            xaxis_title='Time / s',
+            yaxis_title='Flow / sccm',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            showlegend=True,
+            legend=dict(
+                orientation='h',
+                yanchor='top',
+                y=-0.15,
+                xanchor='center',
+                x=0.5,
+            ),
+            xaxis=dict(
+                fixedrange=False,
+                autorange=False if x_range is not None else True,
+                showline=True,
+                showgrid=True,
+                zeroline=True,
+                range=list(x_range) if x_range is not None else None,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                showline=True,
+                showgrid=True,
+                zeroline=True,
+            ),
+        )
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+        self.figures.append(
+            PlotlyFigure(
+                label='Gas Flows Evolution',
+                figure=plot_json,
+            )
+        )
+
+    def plot_pressure_profile(self) -> None:
+        time_s = getattr(self, '_log_time_s', []) or []
+        pressure_torr = getattr(self, '_log_pressure_torr', []) or []
+        if not time_s or not pressure_torr or len(pressure_torr) != len(time_s):
+            warnings.warn(
+                'Pressure profile plot cannot be created: '
+                'time or pressure data missing or mismatched in length',
+                UserWarning,
+            )
+            return
+        pressure_arr = np.asarray(pressure_torr, dtype=float)
+        if not np.isfinite(pressure_arr).any():
+            warnings.warn(
+                'Pressure profile plot cannot be created: '
+                'all pressure values are NaN or infinite',
+                UserWarning,
+            )
+            return
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=time_s,
+                y=pressure_torr,
+                mode='lines',
+                name='Chamber Pressure',
+            )
+        )
+        self._add_phase_delimiters(fig)
+        x_range = self._get_full_plot_time_range()
+        fig.update_layout(
+            title='RTP Pressure Evolution',
+            xaxis_title='Time / s',
+            yaxis_title='Pressure / torr',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
+                autorange=False if x_range is not None else True,
+                showline=True,
+                showgrid=True,
+                zeroline=True,
+                range=list(x_range) if x_range is not None else None,
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                showline=True,
+                showgrid=True,
+                zeroline=True,
+            ),
+        )
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+        self.figures.append(
+            PlotlyFigure(
+                label='Pressure Evolution',
+                figure=plot_json,
+            )
+        )
+
     # Helper function to plot a sample on the susceptor. It is called in the next.
     def plot_sample_on_susceptor(self, fig, input_sample):
         geometry = getattr(input_sample.input_combi_lib, 'geometry', None)
         rel_pos = getattr(input_sample, 'relative_position', None)
         x = getattr(input_sample, 'position_x', None)
         y = getattr(input_sample, 'position_y', None)
+        rotation = getattr(input_sample, 'rotation', None)
         if rel_pos is None and x is None and y is None:
             warnings.warn(
                 f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}'"
@@ -1171,13 +1742,38 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             x = x.to('mm').magnitude
         if hasattr(y, 'magnitude'):
             y = y.to('mm').magnitude
+        if rotation is None:
+            warnings.warn(
+                f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}' "
+                'has no rotation specified; defaulting to 0 radians.',
+                UserWarning,
+            )
+            angle_rad = 0.0
+        elif hasattr(rotation, 'to'):
+            angle_rad = float(rotation.to('rad').magnitude)
+        else:
+            angle_rad = float(rotation)
+
         half_w, half_l = width / 2, length / 2
+        local_corners = [
+            (-half_w, -half_l),
+            (half_w, -half_l),
+            (half_w, half_l),
+            (-half_w, half_l),
+        ]
+        cos_a = float(np.cos(angle_rad))
+        sin_a = float(np.sin(angle_rad))
+        rotated_corners = [
+            (
+                x + (cx * cos_a - cy * sin_a),
+                y + (cx * sin_a + cy * cos_a),
+            )
+            for cx, cy in local_corners
+        ]
+        path = 'M ' + ' L '.join(f'{px},{py}' for px, py in rotated_corners) + ' Z'
         fig.add_shape(
-            type='rect',
-            x0=x - half_w,
-            y0=y - half_l,
-            x1=x + half_w,
-            y1=y + half_l,
+            type='path',
+            path=path,
             line=dict(color='blue', width=2),
             fillcolor='rgba(100,100,255,0.3)',
         )
@@ -1270,33 +1866,79 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+        if (
+            self.log_file_eklipse
+            and self.log_file_T2BDiagnostics
+            and self.process_log_files
+        ):
+            self.parse_log_files(
+                archive,
+                logger,
+                overwrite=bool(self.overwrite_existing_data),
+            )
         super().normalize(archive, logger)
+        # Ensure nested step normalizers are executed so derived step_overview
+        # quantities (ramps and partial pressures) are populated reliably.
+        for step in getattr(self, 'steps', []) or []:
+            step.normalize(archive, logger)
+
         # Populate lab_id according to generated name
         if self.lab_id is None:
             self.lab_id = self.name.replace(' ', '_')
-        times, temps, current_time = [], [], 0
-        step: DTURTPSteps
-        for step in getattr(self, 'steps', []):  # Loop over all DTURTPSteps
-            step_overview = getattr(step, 'step_overview', None)
-            if (
-                step_overview is not None
-                and isinstance(step_overview.initial_temperature, ureg.Quantity)
-                and isinstance(step_overview.final_temperature, ureg.Quantity)
-                and isinstance(step_overview.duration, ureg.Quantity)
-            ):
-                # Add initial point for the step
-                temps.append(step_overview.initial_temperature.to('celsius').magnitude)
-                times.append(current_time)
-                # Add final point for the step
-                current_time += step_overview.duration or 0
-                temps.append(step_overview.final_temperature.to('celsius').magnitude)
-                times.append(current_time)
-        self._time = times
-        self._temperature_profile = temps
+        self._phase_segments = self._build_phase_segments()
+        log_time_s = getattr(self, '_log_time_s', []) or []
+        log_temp_c = getattr(self, '_log_temperature_c', []) or []
+        if log_time_s and log_temp_c and len(log_time_s) == len(log_temp_c):
+            self._time = log_time_s
+            self._temperature_profile = log_temp_c
+        else:
+            if not log_time_s or not log_temp_c:
+                warnings.warn(
+                    'Temperature timeseries data from logs not available '
+                    'or incomplete. Reconstructing profile from step '
+                    'definitions.',
+                    UserWarning,
+                )
+            times, temps, current_time = [], [], 0
+            step: DTURTPSteps
+            steps_list = getattr(self, 'steps', []) or []
+            for step in steps_list:  # Loop over all DTURTPSteps
+                step_overview = getattr(step, 'step_overview', None)
+                if (
+                    step_overview is not None
+                    and isinstance(step_overview.initial_temperature, ureg.Quantity)
+                    and isinstance(step_overview.final_temperature, ureg.Quantity)
+                    and isinstance(step_overview.duration, ureg.Quantity)
+                ):
+                    # Add initial point for the step
+                    temps.append(
+                        step_overview.initial_temperature.to('celsius').magnitude
+                    )
+                    times.append(current_time)
+                    # Add final point for the step
+                    current_time += step_overview.duration or 0
+                    temps.append(
+                        step_overview.final_temperature.to('celsius').magnitude
+                    )
+                    times.append(current_time)
+            if not times or not temps:
+                warnings.warn(
+                    'No valid steps found to construct temperature profile. '
+                    'Temperature profile will be empty.',
+                    UserWarning,
+                )
+            self._time = times
+            self._temperature_profile = temps
         self.figures = []
+        self._sync_step_sources_from_used_gases(
+            overwrite=bool(self.overwrite_existing_data)
+        )
+        self._autofill_material_space()
         if self.overview is not None:
             self.add_libraries(archive, logger)
         self.plot_temperature_profile()
+        self.plot_gas_flows_profile()
+        self.plot_pressure_profile()
         self.plot_susceptor()
 
         # Populate results with material elements for periodic table filtering
@@ -1307,3 +1949,356 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 archive.results.material = Material()
             elements = self.overview.material_space.split('-')
             archive.results.material.elements = elements
+
+    def parse_log_files(
+        self,
+        archive: 'EntryArchive',
+        logger: 'BoundLogger',
+        overwrite: bool = False,
+    ) -> None:
+        """Parse RTP gas and diagnostics log files and populate RTP quantities."""
+        if not self.log_file_eklipse or not self.log_file_T2BDiagnostics:
+            return
+
+        def _sanitize_path_value(path_value: str) -> str:
+            raw = str(path_value).strip().strip('"').strip("'")
+            # Some serialized paths can contain escaped control chars where
+            # backslashes were interpreted (e.g. "\raw" -> "\r" + "aw").
+            raw = raw.replace('\r', '/').replace('\n', '/').replace('\t', '/')
+            raw = raw.replace('\\', '/')
+            return raw
+
+        def _candidate_raw_paths(path_value: str) -> list[str]:
+            normalized = _sanitize_path_value(path_value)
+            candidates = [normalized]
+
+            if normalized.startswith('./'):
+                candidates.append(normalized[2:])
+            if normalized.startswith('/'):
+                candidates.append(normalized.lstrip('/'))
+            if '/raw/' in normalized:
+                candidates.append(normalized.split('/raw/', 1)[1])
+            if normalized.startswith('raw/'):
+                candidates.append(normalized[4:])
+
+            filename = normalized.rsplit('/', 1)[-1]
+            if filename:
+                candidates.append(filename)
+
+            deduped: list[str] = []
+            for candidate in candidates:
+                if candidate and candidate not in deduped:
+                    deduped.append(candidate)
+            return deduped
+
+        def _resolve_input_path(
+            path_value: str, expected_suffix: str
+        ) -> tuple[str, str]:
+            last_exc: Exception | None = None
+            for candidate in _candidate_raw_paths(path_value):
+                try:
+                    with archive.m_context.raw_file(candidate, 'r'):
+                        return ('raw', candidate)
+                except Exception as exc:
+                    last_exc = exc
+
+            # Fallback for local processing where values can point to staging
+            # paths directly (e.g. .volumes/fs/staging/.../raw/file.csv).
+            fs_candidates = _candidate_raw_paths(path_value)
+            fs_candidates.insert(0, _sanitize_path_value(path_value))
+
+            base_dirs = [
+                Path.cwd(),
+                Path(__file__).resolve().parents[5],
+                Path(__file__).resolve().parents[4],
+                Path(__file__).resolve().parents[3],
+                Path(__file__).resolve().parents[4] / 'nomad-FAIR',
+            ]
+            for candidate in fs_candidates:
+                try:
+                    p = Path(candidate)
+                    if p.is_file():
+                        return ('fs', str(p))
+
+                    if not p.is_absolute():
+                        for base in base_dirs:
+                            resolved = (base / p).resolve()
+                            if resolved.is_file():
+                                return ('fs', str(resolved))
+                except Exception:
+                    continue
+
+            # Final fallback: find staged file by basename under .volumes staging.
+            filename = _sanitize_path_value(path_value).rsplit('/', 1)[-1]
+            if filename:
+                for base in base_dirs:
+                    try:
+                        staging_root = (base / '.volumes' / 'fs' / 'staging').resolve()
+                        if not staging_root.exists():
+                            continue
+                        for hit in staging_root.rglob(filename):
+                            if hit.is_file() and 'raw' in hit.parts:
+                                return ('fs', str(hit))
+                    except Exception:
+                        continue
+
+                # Broader fallback inspired by sputter parser pragmatism:
+                # search all known .volumes/fs trees regardless of subfolder.
+                for base in base_dirs:
+                    try:
+                        fs_root = (base / '.volumes' / 'fs').resolve()
+                        if not fs_root.exists():
+                            continue
+                        for hit in fs_root.rglob(filename):
+                            if hit.is_file():
+                                return ('fs', str(hit))
+                    except Exception:
+                        continue
+
+            # Format-driven fallback for variable file names:
+            # search latest matching file by expected extension and typical RTP naming.
+            suffix = expected_suffix.lower().lstrip('.')
+            for base in base_dirs:
+                try:
+                    fs_root = (base / '.volumes' / 'fs').resolve()
+                    if not fs_root.exists():
+                        continue
+
+                    pattern = f'*.{suffix}'
+                    candidates = [
+                        hit
+                        for hit in fs_root.rglob(pattern)
+                        if hit.is_file() and 'raw' in hit.parts
+                    ]
+
+                    if not candidates:
+                        continue
+
+                    if suffix == 'csv':
+                        preferred = [
+                            p
+                            for p in candidates
+                            if 'recording set' in p.name.lower()
+                            or '_rtp_' in p.name.lower()
+                        ]
+                    else:
+                        preferred = [
+                            p
+                            for p in candidates
+                            if 'logfile' in p.name.lower() or '_rtp_' in p.name.lower()
+                        ]
+
+                    pool = preferred if preferred else candidates
+                    newest = max(pool, key=lambda p: p.stat().st_mtime)
+                    return ('fs', str(newest))
+                except Exception:
+                    continue
+
+            if last_exc is not None:
+                raise last_exc
+            raise FileNotFoundError(path_value)
+
+        try:
+            eklipse_kind, eklipse_ref = _resolve_input_path(
+                self.log_file_eklipse, 'csv'
+            )
+            diagnostics_kind, diagnostics_ref = _resolve_input_path(
+                self.log_file_T2BDiagnostics, 'txt'
+            )
+
+            with ExitStack() as stack:
+
+                def _materialize_raw_to_temp(raw_ref: str, suffix: str) -> str:
+                    raw_handle = stack.enter_context(
+                        archive.m_context.raw_file(raw_ref, 'r')
+                    )
+                    temp_file = tempfile.NamedTemporaryFile(
+                        mode='w',
+                        encoding='utf-8',
+                        delete=False,
+                        suffix=suffix,
+                        newline='',
+                    )
+                    try:
+                        temp_file.write(raw_handle.read())
+                    finally:
+                        temp_file.close()
+                    stack.callback(
+                        lambda p=temp_file.name: Path(p).unlink(missing_ok=True)
+                    )
+                    return temp_file.name
+
+                if eklipse_kind == 'raw':
+                    eklipse_suffix = (
+                        '.csv' if eklipse_ref.lower().endswith('.csv') else '.txt'
+                    )
+                    eklipse_path = _materialize_raw_to_temp(eklipse_ref, eklipse_suffix)
+                else:
+                    eklipse_path = eklipse_ref
+
+                if diagnostics_kind == 'raw':
+                    diagnostics_suffix = (
+                        '.txt' if diagnostics_ref.lower().endswith('.txt') else '.csv'
+                    )
+                    diagnostics_path = _materialize_raw_to_temp(
+                        diagnostics_ref, diagnostics_suffix
+                    )
+                else:
+                    diagnostics_path = diagnostics_ref
+
+                parsed = parse_rtp_logfiles(
+                    eklipse_csv_path=eklipse_path,
+                    t2b_diagnostics_txt_path=diagnostics_path,
+                )
+        except Exception as exc:
+            logger.warning(f'Failed to parse RTP log files: {exc}')
+            return
+
+        # Keep explicitly entered values by default; optionally overwrite.
+        if overwrite or self.used_gases in (None, []):
+            self.used_gases = parsed.used_gases
+        if not self.used_gases:
+            warnings.warn(
+                'No process gases detected in RTP logs. All used_gases are empty.',
+                UserWarning,
+            )
+
+        if (
+            overwrite or self.base_pressure is None
+        ) and parsed.base_pressure_pa is not None:
+            self.base_pressure = parsed.base_pressure_pa
+        if (
+            overwrite or self.base_pressure_ballast is None
+        ) and parsed.base_pressure_ballast_pa is not None:
+            self.base_pressure_ballast = parsed.base_pressure_ballast_pa
+        if (
+            overwrite or self.rate_of_rise is None
+        ) and parsed.rate_of_rise_pa_s is not None:
+            self.rate_of_rise = parsed.rate_of_rise_pa_s
+        # Chiller flow is intentionally not inferred from logs.
+
+        # Store timeseries for plotting.
+        ts = parsed.timeseries or {}
+        if overwrite or not getattr(self, '_log_time_s', []):
+            self._log_time_s = ts.get('time_s', [])
+        if overwrite or not getattr(self, '_log_temperature_c', []):
+            if 'temperature_k' in ts:
+                self._log_temperature_c = [
+                    (float(v) - CELSIUS_TO_KELVIN_OFFSET)
+                    if np.isfinite(v)
+                    else float('nan')
+                    for v in ts.get('temperature_k', [])
+                ]
+            else:
+                self._log_temperature_c = ts.get('temperature_c', [])
+        if overwrite or not getattr(self, '_temperature_setpoint_profile', []):
+            if 'temperature_setpoint_k' in ts:
+                self._temperature_setpoint_profile = [
+                    (float(v) - CELSIUS_TO_KELVIN_OFFSET)
+                    if np.isfinite(v)
+                    else float('nan')
+                    for v in ts.get('temperature_setpoint_k', [])
+                ]
+            else:
+                self._temperature_setpoint_profile = ts.get(
+                    'temperature_setpoint_c', []
+                )
+        if overwrite or not getattr(self, '_lamp_power_profile', []):
+            self._lamp_power_profile = ts.get('lamp_power', [])
+        if overwrite or not getattr(self, '_log_pressure_torr', []):
+            if 'pressure_pa' in ts:
+                self._log_pressure_torr = [
+                    (float(v) / TORR_TO_PA) if np.isfinite(v) else float('nan')
+                    for v in ts.get('pressure_pa', [])
+                ]
+            else:
+                self._log_pressure_torr = ts.get('pressure_torr', [])
+        if overwrite or not getattr(self, '_log_ar_flow_sccm', []):
+            if 'ar_flow_m3_s' in ts:
+                self._log_ar_flow_sccm = [
+                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
+                    for v in ts.get('ar_flow_m3_s', [])
+                ]
+            else:
+                self._log_ar_flow_sccm = ts.get('ar_flow_sccm', [])
+        if overwrite or not getattr(self, '_log_n2_flow_sccm', []):
+            if 'n2_flow_m3_s' in ts:
+                self._log_n2_flow_sccm = [
+                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
+                    for v in ts.get('n2_flow_m3_s', [])
+                ]
+            else:
+                self._log_n2_flow_sccm = ts.get('n2_flow_sccm', [])
+        if overwrite or not getattr(self, '_log_ph3_flow_sccm', []):
+            if 'ph3_in_ar_flow_m3_s' in ts:
+                self._log_ph3_flow_sccm = [
+                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
+                    for v in ts.get('ph3_in_ar_flow_m3_s', [])
+                ]
+            else:
+                self._log_ph3_flow_sccm = ts.get('ph3_in_ar_flow_sccm', [])
+        if overwrite or not getattr(self, '_log_h2s_flow_sccm', []):
+            if 'h2s_in_ar_flow_m3_s' in ts:
+                self._log_h2s_flow_sccm = [
+                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
+                    for v in ts.get('h2s_in_ar_flow_m3_s', [])
+                ]
+            else:
+                self._log_h2s_flow_sccm = ts.get('h2s_in_ar_flow_sccm', [])
+
+        # Store phase boundaries derived from actual log timestamps.
+        if overwrite or not getattr(self, '_log_phase_segments', []):
+            self._log_phase_segments = [
+                (ps.name, ps.start_time_s, ps.end_time_s)
+                for ps in parsed.steps
+                if ps.start_time_s is not None and ps.end_time_s is not None
+            ]
+
+        if self.overview is None:
+            self.overview = RTPOverview()
+
+        if overwrite or self.overview.annealing_pressure is None:
+            self.overview.annealing_pressure = parsed.overview.get('annealing_pressure')
+        if overwrite or self.overview.annealing_time is None:
+            self.overview.annealing_time = parsed.overview.get('annealing_time')
+        if overwrite or self.overview.annealing_temperature is None:
+            self.overview.annealing_temperature = parsed.overview.get(
+                'annealing_temperature'
+            )
+        if overwrite or self.overview.annealing_ar_flow is None:
+            self.overview.annealing_ar_flow = parsed.overview.get('annealing_ar_flow')
+        if overwrite or self.overview.annealing_n2_flow is None:
+            self.overview.annealing_n2_flow = parsed.overview.get('annealing_n2_flow')
+        if overwrite or self.overview.annealing_ph3_in_ar_flow is None:
+            self.overview.annealing_ph3_in_ar_flow = parsed.overview.get(
+                'annealing_ph3_in_ar_flow'
+            )
+        if overwrite or self.overview.annealing_h2s_in_ar_flow is None:
+            self.overview.annealing_h2s_in_ar_flow = parsed.overview.get(
+                'annealing_h2s_in_ar_flow'
+            )
+        if overwrite or self.overview.total_heating_time is None:
+            self.overview.total_heating_time = parsed.overview.get('total_heating_time')
+        if overwrite or self.overview.total_cooling_time is None:
+            self.overview.total_cooling_time = parsed.overview.get('total_cooling_time')
+        if overwrite or self.overview.end_of_process_temperature is None:
+            self.overview.end_of_process_temperature = parsed.overview.get(
+                'end_of_process_temperature'
+            )
+
+        if overwrite or not self.steps:
+            self.steps = []
+            for parsed_step in parsed.steps:
+                step = DTURTPSteps(name=parsed_step.name)
+                step.step_overview = RTPStepOverview(
+                    duration=parsed_step.duration_s,
+                    step_ar_flow=parsed_step.ar_flow_m3_s,
+                    step_n2_flow=parsed_step.n2_flow_m3_s,
+                    step_ph3_in_ar_flow=parsed_step.ph3_in_ar_flow_m3_s,
+                    step_h2s_in_ar_flow=parsed_step.h2s_in_ar_flow_m3_s,
+                    initial_temperature=parsed_step.initial_temperature_k,
+                    final_temperature=parsed_step.final_temperature_k,
+                )
+                if parsed_step.pressure_pa is not None:
+                    step.step_overview.pressure = parsed_step.pressure_pa
+                self.steps.append(step)
