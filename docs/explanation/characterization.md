@@ -22,7 +22,7 @@ For complete materials characterization:
 - **Structure**: [XRD](../reference/xrd.md) + [Raman](../reference/raman.md) (crystalline + amorphous)
 - **Composition**: [EDX](../reference/edx.md) (bulk) + [XPS](../reference/xps.md) (surface)
 - **Optical**: [PL](../reference/pl.md) (emission) + [Ellipsometry](../reference/ellipsometry.md) (absorption)
-- **Electrical**: [RT measurements](../reference/rt.md) (conductivity, carriers)
+- **Optical (autosampler)**: [RT measurements](../reference/rt.md) (reflection/transmission mapping)
 
 This multi-technique approach reveals relationships between composition, structure, and properties.
 
