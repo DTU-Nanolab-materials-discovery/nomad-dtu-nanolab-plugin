@@ -241,7 +241,8 @@ class RTPOverview(ArchiveSection):
             component=ELNComponentEnum.StringEditQuantity,
             label='Material space',
         ),
-        description='The elements present in your film before/after the RTP process.',
+        description='The elements present in your film before and/or after '
+        'the RTP process.',
     )
     annealing_pressure = Quantity(
         type=np.float64,
@@ -251,7 +252,8 @@ class RTPOverview(ArchiveSection):
             label='Annealing Pressure',
         ),
         unit='Pa',
-        description='Pressure in the RTP chamber during the annealing plateau',
+        description='Pressure (average) in the RTP chamber during the annealing '
+        'plateau',
     )
     annealing_time = Quantity(
         type=np.float64,
@@ -280,7 +282,7 @@ class RTPOverview(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm^3/minute',
-            label='Ar Flow',
+            label='Annealing Ar Flow',
         ),
         unit='m**3/s',
         description='Argon flow (average) used during the annealing plateau of the'
@@ -291,7 +293,7 @@ class RTPOverview(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm^3/minute',
-            label='N2 Flow',
+            label='Annealing N2 Flow',
         ),
         unit='m**3/s',
         description='Nitrogen flow (average) used during the annealing plateau of the'
@@ -302,7 +304,7 @@ class RTPOverview(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm^3/minute',
-            label='PH3 in Ar Flow',
+            label='Annealing PH3 in Ar Flow',
         ),
         unit='m**3/s',
         description='Phosphine flow (average) used during the annealing plateau of'
@@ -313,7 +315,7 @@ class RTPOverview(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm^3/minute',
-            label='H2S in Ar Flow',
+            label='Annealing H2S in Ar Flow',
         ),
         unit='m**3/s',
         description='H2S flow (average) used during the annealing plateau of the'
@@ -349,15 +351,15 @@ class RTPOverview(ArchiveSection):
             label='End of process temperature',
         ),
         unit='K',
-        description='Temperature, during the cooling phase of the RTP process, when the'
-        ' gases are shut off and final pump-purge procedure is initiated to '
-        'remove samples from chamber.',
+        description='Temperature during the cooling phase of the RTP process '
+        'at which gas flows are shut off and the final pump-purge procedure '
+        'is initiated before removing the samples from the chamber.',
     )
     annealing_ph3_partial_pressure = Quantity(
         type=np.float64,
         a_eln=ELNAnnotation(
             defaultDisplayUnit='torr',
-            label='PH3 Partial Pressure',
+            label='Annealing PH3 Partial Pressure',
         ),
         unit='Pa',
         description=(
@@ -369,7 +371,7 @@ class RTPOverview(ArchiveSection):
         type=np.float64,
         a_eln=ELNAnnotation(
             defaultDisplayUnit='torr',
-            label='H2S Partial Pressure',
+            label='Annealing H2S Partial Pressure',
         ),
         unit='Pa',
         description=(
@@ -381,7 +383,7 @@ class RTPOverview(ArchiveSection):
         type=np.float64,
         a_eln=ELNAnnotation(
             defaultDisplayUnit='torr',
-            label='N2 Partial Pressure',
+            label='Annealing N2 Partial Pressure',
         ),
         unit='Pa',
         description=(
@@ -393,7 +395,7 @@ class RTPOverview(ArchiveSection):
         type=np.float64,
         a_eln=ELNAnnotation(
             defaultDisplayUnit='torr',
-            label='Ar Partial Pressure',
+            label='Annealing Ar Partial Pressure',
         ),
         unit='Pa',
         description=(
@@ -1105,7 +1107,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         repeats=True,
     )
 
-    ############################## CREATING RTP SAMPLE LIBRARY ######################
+    ####### MATERIAL SPACE, SOURCES AND RTP SAMPLE LIBRARY FUNCTIONS #################
     def _sync_step_sources_from_used_gases(self, overwrite: bool = False) -> None:
         gases = [gas for gas in (self.used_gases or []) if gas]
         if not gases:
@@ -1171,19 +1173,19 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             self.overview.material_space = None
             return
 
-        # Add gas-derived elements in the desired order: P before S
-        # This maintains the pattern: input elements (metals like Sn), then P, then S
-        gas_to_element = {'PH3': 'P', 'H2S': 'S'}
-        for gas in ['PH3', 'H2S']:  # Maintain explicit order: P before S
+        # Add gas-derived elements in the desired order: P before S, N after S
+        # This maintains the pattern: input elements (metal), then P, then S, then N
+        gas_to_element = {'PH3': 'P', 'H2S': 'S', 'N2': 'N', 'NH3': 'N'}
+        for gas in ['PH3', 'H2S', 'N2', 'NH3']:  # Maintain explicit order: P before S
             if gas in (self.used_gases or []):
                 symbol = gas_to_element[gas]
                 if symbol not in ordered_elements:
                     ordered_elements.append(symbol)
 
-        # Keep all non-P/S elements first, then force P then S at the end.
+        # Keep all non-P/S/N elements first, then force P then S then N at the end.
         ordered_elements = [
-            element for element in ordered_elements if element not in {'P', 'S'}
-        ] + [element for element in ['P', 'S'] if element in ordered_elements]
+            element for element in ordered_elements if element not in {'P', 'S', 'N'}
+        ] + [element for element in ['P', 'S', 'N'] if element in ordered_elements]
 
         self.overview.material_space = '-'.join(ordered_elements)
 
@@ -1457,6 +1459,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             return 'rgba(80, 80, 80, 1)'
 
         for name, start, end in segments:
+            duration_s = max(float(end) - float(start), 0.0)
+            # Keep labels left-aligned but offset from the phase boundary line.
+            label_margin_s = min(2.0, 0.15 * duration_s)
             fig.add_vrect(
                 x0=start,
                 x1=end,
@@ -1465,16 +1470,15 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 layer='below',
                 line_width=0,
             )
-            center = (start + end) / 2
             fig.add_annotation(
-                x=center,
+                x=float(start) + label_margin_s,
                 y=0.96,
                 xref='x',
                 yref='paper',
                 text=name,
                 showarrow=False,
                 font=dict(size=13, color=_phase_font_color(name)),
-                xanchor='center',
+                xanchor='left',
                 yanchor='top',
             )
 
@@ -2149,6 +2153,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 parsed = parse_rtp_logfiles(
                     eklipse_csv_path=eklipse_path,
                     t2b_diagnostics_txt_path=diagnostics_path,
+                    logger=logger,
                 )
         except Exception as exc:
             logger.warning(f'Failed to parse RTP log files: {exc}')

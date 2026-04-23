@@ -236,7 +236,7 @@ def _pressure_to_pa(value: float | None) -> float | None:
 
 
 def _apply_parasitic_flow_cutoff(flow_m3_s: float, gas: str) -> float:
-    """Zero out tiny gas flows we treat as instrumentation background.
+    """Zero out small gas flows we treat as instrumentation background.
 
     Any gas channel below 1 sccm is considered parasitic and set to 0.
     """
@@ -366,7 +366,7 @@ def _parse_t2b_table(txt: str):
 
 def _find_col(df, patterns: list[str]) -> str | None:
     """Return the first dataframe column matching any normalized regex.
-    In case we use this parser for other dataframes types (lab equipment changeso
+    In case we use this parser for other dataframes types (lab equipment changes
     or different lab)."""
     norm_map = {_normalize(c): c for c in df.columns}
     for pattern in patterns:
@@ -411,6 +411,19 @@ def _build_process_df(eklipse_df, t2b_df):
         'h2s_in_ar_flow_m3_s': [r'mfc6flow$'],
     }
     for out_col, patterns in flow_map.items():
+        c = _find_col(eklipse_df, patterns)
+        if c is None:
+            e[out_col] = 0.0
+        else:
+            e[out_col] = _to_num(eklipse_df[c]).fillna(0) * SCCM_TO_M3_S
+
+    flow_setpoint_map = {  # add more options if different logfiles in the future
+        'ar_flow_setpoint_m3_s': [r'mfc1setpoint$'],
+        'n2_flow_setpoint_m3_s': [r'mfc2setpoint$'],
+        'ph3_in_ar_flow_setpoint_m3_s': [r'mfc4setpoint$'],
+        'h2s_in_ar_flow_setpoint_m3_s': [r'mfc6setpoint$'],
+    }
+    for out_col, patterns in flow_setpoint_map.items():
         c = _find_col(eklipse_df, patterns)
         if c is None:
             e[out_col] = 0.0
@@ -745,6 +758,107 @@ def _find_gas_shutoff_time(step_df) -> float | None:
         return None
 
 
+def _find_cooling_vent_activation_time(step_df) -> float | None:
+    """Find vent activation time during cooling.
+
+    Returns the first timestamp where vent line is active (1) and throttle
+    is closed (1).
+    Returns None if required signals are unavailable or no such point exists
+    in the provided step slice.
+    """
+    required = ['time_s', 'vent_line', 'throttle_closed']
+    if step_df.empty or any(col not in step_df.columns for col in required):
+        return None
+
+    try:
+        time_arr = _to_num(step_df['time_s']).to_numpy(dtype=float)
+        vent_arr = _to_num(step_df['vent_line']).to_numpy(dtype=float)
+        throttle_closed_arr = _to_num(step_df['throttle_closed']).to_numpy(dtype=float)
+        mask = (
+            np.isfinite(time_arr)
+            & np.isfinite(vent_arr)
+            & np.isfinite(throttle_closed_arr)
+            & (vent_arr == 1)
+            & (throttle_closed_arr == 1)
+        )
+        idx = np.where(mask)[0]
+        if len(idx) == 0:
+            return None
+        return float(time_arr[int(idx[0])])
+    except Exception as e:
+        warnings.warn(f'Error detecting cooling vent activation time: {e}')
+        return None
+
+
+def _find_setpoint_pre_drop_time(step_df, min_flow_threshold=1e-6) -> float | None:
+    """Return the timestamp just before the first gas that was ON turns OFF.
+
+    A gas is considered ON if its setpoint is finite and above `MIN_USED_GAS_FLOW_M3_S`.
+    A gas is considered OFF if its setpoint is zero or <= threshold.
+
+    Returns None if:
+      - required columns missing
+      - no gas ever turns ON
+      - no ON→OFF transition occurs
+    """
+    required = [
+        'time_s',
+        'ar_flow_setpoint_m3_s',
+        'n2_flow_setpoint_m3_s',
+        'ph3_in_ar_flow_setpoint_m3_s',
+        'h2s_in_ar_flow_setpoint_m3_s',
+    ]
+    if step_df.empty or any(col not in step_df.columns for col in required):
+        return None
+
+    try:
+        time_arr = _to_num(step_df['time_s']).to_numpy(dtype=float)
+
+        gas_cols = [
+            'ar_flow_setpoint_m3_s',
+            'n2_flow_setpoint_m3_s',
+            'ph3_in_ar_flow_setpoint_m3_s',
+            'h2s_in_ar_flow_setpoint_m3_s',
+        ]
+
+        gas_arrays = [_to_num(step_df[col]).to_numpy(dtype=float) for col in gas_cols]
+
+        # Determine ON/OFF state for each gas at each sample
+        gas_on = np.array(
+            [
+                [np.isfinite(v) and v > MIN_USED_GAS_FLOW_M3_S for v in gas_values]
+                for gas_values in zip(*gas_arrays)
+            ]
+        )  # shape: (num_samples, num_gases)
+
+        # If no gas is ever ON, nothing to detect
+        if not np.any(gas_on):
+            return None
+
+        # Track previous state to detect transitions
+        prev_state = gas_on[0]
+
+        for i in range(1, len(gas_on)):
+            current_state = gas_on[i]
+
+            # A transition occurs if any gas was ON and is now OFF
+            turned_off = prev_state & ~current_state
+
+            if np.any(turned_off):
+                # Return timestamp of the previous sample
+                if np.isfinite(time_arr[i - 1]):
+                    return float(time_arr[i - 1])
+                return None
+
+            prev_state = current_state
+
+        return None
+
+    except Exception as e:
+        warnings.warn(f'Error detecting setpoint pre-drop time: {e}')
+        return None
+
+
 def _extract_steps(process_df) -> list[ParsedRTPStep]:
     """Split the run into RTP-style heating, annealing, and cooling steps."""
     if process_df.empty:
@@ -754,7 +868,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         warnings.warn(
             f'Cannot extract steps: insufficient temperature data points '
             f'({process_df["temperature_k"].notna().sum()} < {MIN_POINTS_FOR_STEPS}). '
-            f'Falling back to single annealing step.'
+            f'Falling back to single step.'
         )
         return []
 
@@ -762,7 +876,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
     if len(df) < MIN_POINTS_FOR_STEPS:
         warnings.warn(
             f'Insufficient temperature data after dropna: {len(df)} points < '
-            f'{MIN_POINTS_FOR_STEPS} minimum. Falling back to single annealing step.'
+            f'{MIN_POINTS_FOR_STEPS} minimum. Falling back to single step.'
         )
         return []
 
@@ -771,7 +885,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
 
     max_temp = float(np.nanmax(temp))
     min_temp = float(np.nanmin(temp))
-    band = max(5.0, 0.03 * (max_temp - min_temp))
+    band = 0.005 * (max_temp - min_temp)
     plateau_mask = temp >= (max_temp - band)
 
     if np.any(plateau_mask):
@@ -875,17 +989,16 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
     for (s, e), name in zip(seg_slices, final_names):
         sl = df.iloc[s : e + 1]
 
-        # Find gas shutoff time to limit median window for static values
+        # Find gas shutoff time to define the mean-value window.
         shutoff_time = _find_gas_shutoff_time(sl)
-        # Use trimmed slice if shutoff detected, otherwise use full step
-        sl_for_static = (
+        # Use trimmed slice if shutoff detected, otherwise use full step.
+        # This is the default for both pressure and flows.
+        pressure_average_window_df = (
             sl[sl['time_s'] <= shutoff_time] if shutoff_time is not None else sl
         )
+        flow_average_window_df = pressure_average_window_df
 
         duration = float(sl['time_s'].iloc[-1] - sl['time_s'].iloc[0])
-        pressure_pa = _pressure_to_pa(
-            float(np.nanmedian(sl_for_static['pressure_raw']))
-        )
 
         # Check if this is a heating step and find real start time
         initial_temp = float(sl['temperature_k'].iloc[0])
@@ -894,11 +1007,48 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
             final_temp > initial_temp
             and abs(final_temp - initial_temp) >= FLAT_SEGMENT_DELTA_TEMPERATURE_K
         )
+        is_cooling = (
+            final_temp < initial_temp
+            and abs(final_temp - initial_temp) >= FLAT_SEGMENT_DELTA_TEMPERATURE_K
+        )
 
         real_start_time = None
         real_start_temp = None
         if is_heating:
             real_start_time, real_start_temp = _find_heating_real_start(sl)
+
+        # For cooling, use MFC setpoint drop for flow averaging when available,
+        # and keep vent-open timing for pressure averaging.
+        if is_cooling:
+            setpoint_pre_drop_time = _find_setpoint_pre_drop_time(sl)
+            vent_activation_time = _find_cooling_vent_activation_time(sl)
+
+            # FLOW window
+            if setpoint_pre_drop_time is not None:
+                flow_cutoff = setpoint_pre_drop_time
+            else:
+                flow_cutoff = None
+
+            # PRESSURE window uses same cutoff if available, else falls back
+            if setpoint_pre_drop_time is not None:
+                pressure_cutoff = setpoint_pre_drop_time
+            else:
+                pressure_cutoff = vent_activation_time
+
+            # Apply windows
+            if flow_cutoff is not None:
+                flow_average_window_df = sl[sl['time_s'] <= flow_cutoff]
+                if flow_average_window_df.empty:
+                    flow_average_window_df = sl
+
+            if pressure_cutoff is not None:
+                pressure_average_window_df = sl[sl['time_s'] <= pressure_cutoff]
+                if pressure_average_window_df.empty:
+                    pressure_average_window_df = sl
+
+        pressure_pa = _pressure_to_pa(
+            float(np.nanmean(pressure_average_window_df['pressure_raw']))
+        )
 
         # Use real values if found, otherwise use step boundary values
         start_time = (
@@ -922,19 +1072,19 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
             real_start_time_s=real_start_time,
             real_start_temperature_k=real_start_temp,
             ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(sl_for_static['ar_flow_m3_s'])),
+                float(np.nanmean(flow_average_window_df['ar_flow_m3_s'])),
                 'Ar',
             ),
             n2_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(sl_for_static['n2_flow_m3_s'])),
+                float(np.nanmean(flow_average_window_df['n2_flow_m3_s'])),
                 'N2',
             ),
             ph3_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(sl_for_static['ph3_in_ar_flow_m3_s'])),
+                float(np.nanmean(flow_average_window_df['ph3_in_ar_flow_m3_s'])),
                 'PH3',
             ),
             h2s_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(sl_for_static['h2s_in_ar_flow_m3_s'])),
+                float(np.nanmean(flow_average_window_df['h2s_in_ar_flow_m3_s'])),
                 'H2S',
             ),
             mean_temperature_k=float(np.nanmean(sl['temperature_k'])),
@@ -950,13 +1100,13 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
     )
     sl = df.iloc[[0, -1]]
 
-    # Find gas shutoff time to limit median window for static values
+    # Find gas shutoff time to limit median window for average values
     shutoff_time = _find_gas_shutoff_time(df)
     if shutoff_time is not None:
-        df_for_static = df[df['time_s'] <= shutoff_time]
+        df_for_average = df[df['time_s'] <= shutoff_time]
     else:
-        df_for_static = df
-    pressure_pa = _pressure_to_pa(float(np.nanmedian(df_for_static['pressure_raw'])))
+        df_for_average = df
+    pressure_pa = _pressure_to_pa(float(np.nanmean(df_for_average['pressure_raw'])))
     return [
         ParsedRTPStep(
             name='Annealing',
@@ -967,19 +1117,19 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
             final_temperature_k=float(sl['temperature_k'].iloc[-1]),
             pressure_pa=pressure_pa,
             ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(df_for_static['ar_flow_m3_s'])),
+                float(np.nanmean(df_for_average['ar_flow_m3_s'])),
                 'Ar',
             ),
             n2_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(df_for_static['n2_flow_m3_s'])),
+                float(np.nanmean(df_for_average['n2_flow_m3_s'])),
                 'N2',
             ),
             ph3_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(df_for_static['ph3_in_ar_flow_m3_s'])),
+                float(np.nanmean(df_for_average['ph3_in_ar_flow_m3_s'])),
                 'PH3',
             ),
             h2s_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmedian(df_for_static['h2s_in_ar_flow_m3_s'])),
+                float(np.nanmean(df_for_average['h2s_in_ar_flow_m3_s'])),
                 'H2S',
             ),
             mean_temperature_k=float(np.nanmean(df['temperature_k'])),
@@ -1192,7 +1342,7 @@ def _compute_rate_of_rise(
         -Throttle valve is closed (1, "closed" column)
         -Vent valve is closed (0, "vent_line" column)
         -Throttle NOT open (0, if the open column exists)
-        -Throttle position at 0 (fully closed, if that column exists)
+        -Throttle position is 0 and 3 samples earlier was 100
     We take the first such row i0 and return:
     (P(t0+window_s) - P(i0)) / window_s.
     """
@@ -1222,7 +1372,9 @@ def _compute_rate_of_rise(
     return (p1 - p0) / float(window_s)
 
 
-def _derive_general_values(process_df, key_values: dict[str, float]):
+def _derive_general_values(
+    process_df, key_values: dict[str, float], logger=None
+):
     """Derive base pressure, ballast pressure and rate of rise."""
     base_pressure = None
     base_pressure_ballast = None
@@ -1251,12 +1403,28 @@ def _derive_general_values(process_df, key_values: dict[str, float]):
                         'No valid pressure data before ballast activation. '
                         'Base pressure remains None.'
                     )
-                post_valid = p_arr[on_positions][np.isfinite(p_arr[on_positions])]
+
+                # Ballast-pressure window: from ballast activation until vent reopens.
+                post_start = first_on
+                post_end = len(p_arr)
+                if 'vent_line' in process_df.columns:
+                    vent = (
+                        _to_num(process_df['vent_line']).fillna(0).values.astype(float)
+                    )
+                    vent_positions = np.where(
+                        (np.arange(len(vent)) > first_on) & (vent == 1)
+                    )[0]
+                    if len(vent_positions) > 0:
+                        post_end = int(vent_positions[0])
+
+                post_slice = p_arr[post_start:post_end]
+                post_valid = post_slice[np.isfinite(post_slice)]
                 if len(post_valid) > 0:
-                    base_pressure_ballast = float(np.nanmax(post_valid))
+                    base_pressure_ballast = float(np.nanmean(post_valid))
                 else:
                     warnings.warn(
-                        'No valid pressure data after ballast activation. '
+                        'No valid pressure data in ballast window '
+                        '(ballast on until vent reopen). '
                         'Ballast base pressure remains None.'
                     )
             else:
@@ -1288,34 +1456,52 @@ def _derive_general_values(process_df, key_values: dict[str, float]):
             base_pressure = None
             base_pressure_ballast = None
 
-        # Derive rate of rise from the first moment where throttle is closed
-        # and vent is closed. Optionally require open=0 and position=0 when present.
+        # Derive rate of rise from the first moment where throttle valve is closed,
+        # vent valve is closed, throttle position is 0 now and was 100 three
+        # samples earlier.
+        # Optionally require throttle valve open=0.
         has_vent_column = 'vent_line' in process_df.columns
         has_throttle_closed = 'throttle_closed' in process_df.columns
         has_throttle_open = 'throttle_open' in process_df.columns
         has_throttle_pos = 'throttle_position' in process_df.columns
         has_throttle_column = has_throttle_closed
-        if 'time_s' in process_df.columns and has_vent_column and has_throttle_column:
+        if (
+            'time_s' in process_df.columns
+            and has_vent_column
+            and has_throttle_column
+            and has_throttle_pos
+        ):
             time_arr = _to_num(process_df['time_s']).values.astype(float)
             vent = _to_num(process_df['vent_line']).values.astype(float)
             throt_closed = _to_num(process_df['throttle_closed']).values.astype(float)
+            throt_pos = _to_num(process_df['throttle_position']).values.astype(float)
+            throt_pos_3_back = np.concatenate((np.full(3, np.nan), throt_pos[:-3]))
 
             start_mask = (
                 np.isfinite(time_arr)
                 & np.isfinite(p_arr)
                 & (vent == 0)
                 & (throt_closed == 1)
+                & (throt_pos == 0)
+                & np.isclose(throt_pos_3_back, 100.0)
             )
             if has_throttle_open:
                 throt_open = _to_num(process_df['throttle_open']).values.astype(float)
                 start_mask &= throt_open == 0
-            if has_throttle_pos:
-                throt_pos = _to_num(process_df['throttle_position']).values.astype(
-                    float
-                )
-                start_mask &= throt_pos == 0
+
+            start_idx = np.where(start_mask)[0]
             rate_of_rise = _compute_rate_of_rise(time_arr, p_arr, start_mask)
-            if rate_of_rise is None:
+            if rate_of_rise is not None and len(start_idx) > 0:
+                match_time_s = float(time_arr[int(start_idx[0])])
+                message = (
+                    'Rate-of-rise start condition matched at '
+                    f'timestamp {match_time_s:.3f} s.'
+                )
+                if logger is not None:
+                    logger.warning(message)
+                else:
+                    warnings.warn(message)
+            else:
                 warnings.warn(
                     'Rate of rise could not be computed: '
                     'insufficient data points matching static vacuum conditions '
@@ -1369,6 +1555,7 @@ def _detect_used_gases(
 def parse_rtp_logfiles(
     eklipse_csv_path: str,
     t2b_diagnostics_txt_path: str,
+    logger=None,
 ) -> ParsedRTPData:
     """Parse RTP log files and return schema-ready process, step, and overview data."""
     if not _ensure_deps():
@@ -1388,7 +1575,7 @@ def parse_rtp_logfiles(
             process_df, steps
         )
         base_pressure, base_pressure_ballast, rate_of_rise = _derive_general_values(
-            process_df, key_values
+            process_df, key_values, logger=logger
         )
         used_gases = _detect_used_gases(steps, overview)
         timeseries = _extract_timeseries(process_df)
