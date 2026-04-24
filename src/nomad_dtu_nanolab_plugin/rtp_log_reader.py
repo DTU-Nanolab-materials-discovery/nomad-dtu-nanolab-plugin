@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 import re
-import warnings
 from dataclasses import dataclass
 
 """RTP log parsing helpers used during NOMAD normalization.
@@ -19,6 +19,7 @@ and time-series channels.
 # Keep heavy imports out of module load so NOMAD startup stays stable.
 np = None
 pd = None
+logger = logging.getLogger(__name__)
 
 # Unit conversions and parser thresholds.
 TORR_TO_PA = 133.322368421
@@ -33,12 +34,18 @@ MIN_ANNEALING_PLATEAU_DURATION_S = 1.0
 ANNEALING_DURATION_TOLERANCE_S = 0.05
 MIN_PLATEAU_POINTS = 2
 PLATEAU_TEMPERATURE_DELTA_TOLERANCE_K = 1e-6
-RATE_OF_RISE_WINDOW_S = 60.0
 ANNEAL_SEGMENT_INDEX = 1
 STANDARD_SEGMENT_BOUND_COUNT = 4
 FLAT_SEGMENT_DELTA_TEMPERATURE_K = 5.0
 ORDINAL_SECOND = 2
 ORDINAL_THIRD = 3
+RATE_OF_RISE_MAX_START_CAPMAN_PRESSURE_MTORR = 15.0
+RATE_OF_RISE_MAX_CAPMAN_PRESSURE_PA = (
+    RATE_OF_RISE_MAX_START_CAPMAN_PRESSURE_MTORR * 1e-3 * TORR_TO_PA
+)
+RATE_OF_RISE_MAX_THROTTLE_POSITION = 100.0
+RATE_OF_RISE_MIN_STATIC_SAMPLES = 10
+RATE_OF_RISE_MIN_VALID_POINTS = 2
 
 
 @dataclass
@@ -389,10 +396,8 @@ def _build_process_df(eklipse_df, t2b_df):
     if e_time is not None:
         e['timestamp'] = _to_datetime(eklipse_df[e_time])
     else:
-        warnings.warn(
-            'Eklipse timestamp column not found; Eklipse data cannot be time-aligned.',
-            RuntimeWarning,
-            stacklevel=2,
+        logger.warning(
+            'Eklipse timestamp column not found; Eklipse data cannot be time-aligned.'
         )
 
     p_col = _find_col(
@@ -493,9 +498,8 @@ def _build_process_df(eklipse_df, t2b_df):
     if t_time is not None:
         t['timestamp'] = _to_datetime(t2b_df[t_time])
     else:
-        warnings.warn(
+        logger.warning(
             'T2B timestamp column not found; T2B data cannot be time-aligned.',
-            RuntimeWarning,
             stacklevel=2,
         )
     if t_temp is not None:
@@ -509,19 +513,17 @@ def _build_process_df(eklipse_df, t2b_df):
     if 'timestamp' in e:
         e = e.dropna(subset=['timestamp']).sort_values('timestamp')
         if e.empty:
-            warnings.warn(
+            logger.warning(
                 'Eklipse timestamps could not be parsed; Eklipse dataframe'
                 ' is empty after filtering.',
-                RuntimeWarning,
                 stacklevel=2,
             )
     if 'timestamp' in t:
         t = t.dropna(subset=['timestamp']).sort_values('timestamp')
         if t.empty:
-            warnings.warn(
+            logger.warning(
                 'T2B timestamps could not be parsed; T2B dataframe'
                 ' is empty after filtering.',
-                RuntimeWarning,
                 stacklevel=2,
             )
 
@@ -583,7 +585,7 @@ def _build_process_df(eklipse_df, t2b_df):
 def _extract_timeseries(process_df) -> dict[str, list[float]]:
     """Export process channels into SI-unit time-series arrays."""
     if process_df is None or process_df.empty:
-        warnings.warn('Process dataframe is empty, no timeseries data available')
+        logger.warning('Process dataframe is empty, no timeseries data available')
         return {}
 
     df = process_df.copy()
@@ -600,7 +602,7 @@ def _extract_timeseries(process_df) -> dict[str, list[float]]:
     }
 
     if 'time_s' not in df:
-        warnings.warn(
+        logger.warning(
             'Time column missing from process data, cannot extract timeseries'
         )
         return out
@@ -612,7 +614,7 @@ def _extract_timeseries(process_df) -> dict[str, list[float]]:
             float(v) for v in _to_num(df['temperature_k']).to_list()
         ]
     else:
-        warnings.warn('Temperature data missing from process logs')
+        logger.warning('Temperature data missing from process logs')
 
     if 'temperature_setpoint_k' in df:
         out['temperature_setpoint_k'] = [
@@ -659,16 +661,16 @@ def _find_heating_real_start(
     Returns: (real_start_time_s, real_start_temperature_k) or (None, None)
     """
     if 'temperature_setpoint_k' not in step_df.columns:
-        warnings.warn(
+        logger.warning(
             'Temperature setpoint data missing; cannot identify real heating start '
             '(setpoint-vs-actual crossover)'
         )
         return None, None
     if 'temperature_k' not in step_df.columns:
-        warnings.warn('Temperature data missing; cannot identify real heating start')
+        logger.warning('Temperature data missing; cannot identify real heating start')
         return None, None
     if 'time_s' not in step_df.columns:
-        warnings.warn('Time data missing; cannot identify real heating start timing')
+        logger.warning('Time data missing; cannot identify real heating start timing')
         return None, None
 
     try:
@@ -690,13 +692,13 @@ def _find_heating_real_start(
                 return float(time_arr[i]), float(temp_arr[i])
 
         # If no crossover found, return None
-        warnings.warn(
+        logger.warning(
             'No heating real start detected: setpoint temperature never '
             'met or exceeded actual temperature during step.'
         )
         return None, None
     except Exception as e:
-        warnings.warn(
+        logger.warning(
             f'Error detecting heating real start time: {e}. Using step boundary values.'
         )
         return None, None
@@ -754,7 +756,7 @@ def _find_gas_shutoff_time(step_df) -> float | None:
         # Gases never shut off (remain active until step end)
         return None
     except Exception as e:
-        warnings.warn(f'Error detecting gas shutoff time: {e}')
+        logger.warning(f'Error detecting gas shutoff time: {e}')
         return None
 
 
@@ -786,7 +788,7 @@ def _find_cooling_vent_activation_time(step_df) -> float | None:
             return None
         return float(time_arr[int(idx[0])])
     except Exception as e:
-        warnings.warn(f'Error detecting cooling vent activation time: {e}')
+        logger.warning(f'Error detecting cooling vent activation time: {e}')
         return None
 
 
@@ -799,7 +801,7 @@ def _find_setpoint_pre_drop_time(step_df, min_flow_threshold=1e-6) -> float | No
     Returns None if:
       - required columns missing
       - no gas ever turns ON
-      - no ON→OFF transition occurs
+      - no ONâ†’OFF transition occurs
     """
     required = [
         'time_s',
@@ -855,17 +857,17 @@ def _find_setpoint_pre_drop_time(step_df, min_flow_threshold=1e-6) -> float | No
         return None
 
     except Exception as e:
-        warnings.warn(f'Error detecting setpoint pre-drop time: {e}')
+        logger.warning(f'Error detecting setpoint pre-drop time: {e}')
         return None
 
 
 def _extract_steps(process_df) -> list[ParsedRTPStep]:
     """Split the run into RTP-style heating, annealing, and cooling steps."""
     if process_df.empty:
-        warnings.warn('Cannot extract steps: process dataframe is empty')
+        logger.warning('Cannot extract steps: process dataframe is empty')
         return []
     if process_df['temperature_k'].notna().sum() < MIN_POINTS_FOR_STEPS:
-        warnings.warn(
+        logger.warning(
             f'Cannot extract steps: insufficient temperature data points '
             f'({process_df["temperature_k"].notna().sum()} < {MIN_POINTS_FOR_STEPS}). '
             f'Falling back to single step.'
@@ -874,7 +876,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
 
     df = process_df.dropna(subset=['temperature_k', 'time_s']).copy()
     if len(df) < MIN_POINTS_FOR_STEPS:
-        warnings.warn(
+        logger.warning(
             f'Insufficient temperature data after dropna: {len(df)} points < '
             f'{MIN_POINTS_FOR_STEPS} minimum. Falling back to single step.'
         )
@@ -1095,7 +1097,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         return steps
 
     # Fallback: single annealing step across entire run
-    warnings.warn(
+    logger.warning(
         'No distinct heating/cooling steps identified. Using single annealing step.'
     )
     sl = df.iloc[[0, -1]]
@@ -1140,7 +1142,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
 def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
     """Compute high-level overview values from the extracted steps."""
     if not steps:
-        warnings.warn(
+        logger.warning(
             'Cannot derive overview: no steps were extracted from process data. '
             'All overview values will be None.'
         )
@@ -1169,7 +1171,7 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
     )
     if anneal_idx is None:
         # Fallback if no step is explicitly labeled as annealing.
-        warnings.warn(
+        logger.warning(
             'No step explicitly named as "annealing" found. '
             'Using heuristic (highest mean temperature + duration) to '
             'select annealing step.'
@@ -1185,9 +1187,9 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
 
     # Warn about missing annealing step data
     if anneal.pressure_pa is None:
-        warnings.warn('Annealing pressure could not be extracted from process data')
+        logger.warning('Annealing pressure could not be extracted from process data')
     if anneal.mean_temperature_k is None:
-        warnings.warn(
+        logger.warning(
             'Annealing mean temperature is None; using average of initial and final '
             'temperatures instead'
         )
@@ -1241,13 +1243,13 @@ def _derive_end_of_process_temperature(
         )
 
     if process_df is None or process_df.empty:
-        warnings.warn(
+        logger.warning(
             'Cannot derive end-of-process temperature: '
             'process dataframe is empty or None'
         )
         return end_temp_k
     if 'time_s' not in process_df or 'temperature_k' not in process_df:
-        warnings.warn(
+        logger.warning(
             'Cannot derive end-of-process temperature: '
             'time or temperature data missing from process logs'
         )
@@ -1262,7 +1264,7 @@ def _derive_end_of_process_temperature(
             None,
         )
         if cooling_step is None:
-            warnings.warn(
+            logger.warning(
                 'No cooling step identified in process. '
                 'Cannot determine end-of-process temperature.'
             )
@@ -1312,12 +1314,12 @@ def _derive_end_of_process_temperature(
                 if np.isfinite(temp_k):
                     end_temp_k = float(temp_k)
                 else:
-                    warnings.warn(
+                    logger.warning(
                         'Gas shutoff time identified in cooling step, '
                         'but temperature at shutoff is NaN or infinite'
                     )
             else:
-                warnings.warn(
+                logger.warning(
                     'No gas shutoff detected during cooling. '
                     'End-of-process temperature remains None.'
                 )
@@ -1325,7 +1327,7 @@ def _derive_end_of_process_temperature(
         # Already warned above
         pass
     else:
-        warnings.warn(
+        logger.warning(
             'One or more gas flow columns missing from process data. '
             'Cannot determine gas shutoff for end-of-process temperature.'
         )
@@ -1333,49 +1335,55 @@ def _derive_end_of_process_temperature(
     return end_temp_k
 
 
-def _compute_rate_of_rise(
-    time_s_arr, pressure_pa_arr, start_mask, window_s=RATE_OF_RISE_WINDOW_S
-):
-    """Compute rate of rise (Pa/s) from the first valid static vacuum start point.
+def _compute_rate_of_rise(time_s_arr, pressure_pa_arr, start_mask):
+    """Compute rate of rise (Pa/s) from first to last valid static-vacuum point.
 
     start_mask marks rows where static conditions are satisfied:
         -Throttle valve is closed (1, "closed" column)
         -Vent valve is closed (0, "vent_line" column)
         -Throttle NOT open (0, if the open column exists)
-        -Throttle position is 0 and 3 samples earlier was 100
-    We take the first such row i0 and return:
-    (P(t0+window_s) - P(i0)) / window_s.
+        -Throttle position is 0 and before it was not zero
+        -All gas flows are below the parasitic cutoff
+        -Ballast valve is off (0, "ballast" column)
+        -Pressure valve capman pressure is below 11mTorr
+        -These conditions are met for at least 10 samples (to avoid false starts)
+    We use the first and last rows that satisfy start_mask and return:
+    (P(last) - P(first)) / (t(last) - t(first)).
     """
     start_idx = np.where(start_mask)[0]
-    if len(start_idx) == 0:
+    if len(start_idx) < RATE_OF_RISE_MIN_VALID_POINTS:
         return None
 
-    i0 = int(start_idx[0])
-    p0 = float(pressure_pa_arr[i0])
-    t0 = float(time_s_arr[i0])
-    if not np.isfinite(p0) or not np.isfinite(t0):
+    i_first = int(start_idx[0])
+    i_last = int(start_idx[-1])
+
+    t_first = float(time_s_arr[i_first])
+    t_last = float(time_s_arr[i_last])
+    p_first = float(pressure_pa_arr[i_first])
+    p_last = float(pressure_pa_arr[i_last])
+
+    if not (
+        np.isfinite(t_first)
+        and np.isfinite(t_last)
+        and np.isfinite(p_first)
+        and np.isfinite(p_last)
+    ):
         return None
 
-    target_time = t0 + float(window_s)
-    future_idx = np.where(
-        np.isfinite(time_s_arr)
-        & np.isfinite(pressure_pa_arr)
-        & (time_s_arr >= target_time)
-    )[0]
-    if len(future_idx) == 0:
+    window_s = t_last - t_first
+    if window_s <= 0:
         return None
 
-    p1 = float(pressure_pa_arr[int(future_idx[0])])
-    if not np.isfinite(p1):
-        return None
-
-    return (p1 - p0) / float(window_s)
+    return (p_last - p_first) / window_s
 
 
-def _derive_general_values(
-    process_df, key_values: dict[str, float], logger=None
-):
+def _derive_general_values(process_df, key_values: dict[str, float], logger=None):
     """Derive base pressure, ballast pressure and rate of rise."""
+
+    def _emit_rate_warning(message: str) -> None:
+        if logger is not None:
+            logger.warning(message)
+
     base_pressure = None
     base_pressure_ballast = None
     # Not read from diagnostics metadata; compute from logfile signals when possible.
@@ -1399,7 +1407,7 @@ def _derive_general_values(
                 if len(pre_valid) > 0:
                     base_pressure = float(np.nanmin(pre_valid))
                 else:
-                    warnings.warn(
+                    logger.warning(
                         'No valid pressure data before ballast activation. '
                         'Base pressure remains None.'
                     )
@@ -1422,7 +1430,7 @@ def _derive_general_values(
                 if len(post_valid) > 0:
                     base_pressure_ballast = float(np.nanmean(post_valid))
                 else:
-                    warnings.warn(
+                    logger.warning(
                         'No valid pressure data in ballast window '
                         '(ballast on until vent reopen). '
                         'Ballast base pressure remains None.'
@@ -1431,7 +1439,7 @@ def _derive_general_values(
                 # Ballast column exists but was never turned on.
                 # This is normal for runs using only inert gases
                 # (Ar, N2) without toxic gases.
-                warnings.warn(
+                logger.warning(
                     'Ballast valve was never activated. Assuming '
                     'inert-only process (Ar, N2). Base pressure will be '
                     'set; ballast pressure remains None.'
@@ -1443,70 +1451,194 @@ def _derive_general_values(
         else:
             # No ballast signal, so we cannot distinguish pressure with/without ballast.
             # Therefore, neither base pressure can be derived.
-            warnings.warn(
-                'Ballast valve column not found in Eklipse log.',
-                RuntimeWarning,
-                stacklevel=2,
-            )
-            warnings.warn(
-                'Base pressure values cannot be derived; set to None.',
-                RuntimeWarning,
-                stacklevel=2,
+            logger.warning(
+                'Ballast valve column not found in Eklipse log. '
+                'Cannot compute base_pressure and base_pressure_ballast;'
+                ' both remain None.'
             )
             base_pressure = None
             base_pressure_ballast = None
 
-        # Derive rate of rise from the first moment where throttle valve is closed,
-        # vent valve is closed, throttle position is 0 now and was 100 three
-        # samples earlier.
-        # Optionally require throttle valve open=0.
+        # Derive rate of rise from static-vacuum points where all conditions hold:
+        # vent closed, throttle closed, throttle transitioned to 0, all process gas
+        # flows below cutoff, ballast off, and pressure below 11 mTorr.
+        # Keep only runs that stay valid for at least RATE_OF_RISE_MIN_STATIC_SAMPLES.
+        # Throttle valve open=0 is mandatory.
         has_vent_column = 'vent_line' in process_df.columns
         has_throttle_closed = 'throttle_closed' in process_df.columns
         has_throttle_open = 'throttle_open' in process_df.columns
         has_throttle_pos = 'throttle_position' in process_df.columns
+        has_gas_flow_columns = all(
+            col in process_df.columns
+            for col in [
+                'ar_flow_m3_s',
+                'n2_flow_m3_s',
+                'ph3_in_ar_flow_m3_s',
+                'h2s_in_ar_flow_m3_s',
+            ]
+        )
         has_throttle_column = has_throttle_closed
         if (
             'time_s' in process_df.columns
             and has_vent_column
             and has_throttle_column
+            and has_throttle_open
             and has_throttle_pos
+            and has_ballast_column
+            and has_gas_flow_columns
         ):
             time_arr = _to_num(process_df['time_s']).values.astype(float)
             vent = _to_num(process_df['vent_line']).values.astype(float)
             throt_closed = _to_num(process_df['throttle_closed']).values.astype(float)
+            throt_open = _to_num(process_df['throttle_open']).values.astype(float)
             throt_pos = _to_num(process_df['throttle_position']).values.astype(float)
-            throt_pos_3_back = np.concatenate((np.full(3, np.nan), throt_pos[:-3]))
+            ballast = _to_num(process_df['ballast']).values.astype(float)
+            ar_flow = _to_num(process_df['ar_flow_m3_s']).values.astype(float)
+            n2_flow = _to_num(process_df['n2_flow_m3_s']).values.astype(float)
+            ph3_flow = _to_num(process_df['ph3_in_ar_flow_m3_s']).values.astype(float)
+            h2s_flow = _to_num(process_df['h2s_in_ar_flow_m3_s']).values.astype(float)
+            gas_static = (
+                np.isfinite(ar_flow)
+                & np.isfinite(n2_flow)
+                & np.isfinite(ph3_flow)
+                & np.isfinite(h2s_flow)
+                & (np.abs(ar_flow) < MIN_USED_GAS_FLOW_M3_S)
+                & (np.abs(n2_flow) < MIN_USED_GAS_FLOW_M3_S)
+                & (np.abs(ph3_flow) < MIN_USED_GAS_FLOW_M3_S)
+                & (np.abs(h2s_flow) < MIN_USED_GAS_FLOW_M3_S)
+            )
 
-            start_mask = (
+            static_vacuum_mask = (
                 np.isfinite(time_arr)
                 & np.isfinite(p_arr)
                 & (vent == 0)
                 & (throt_closed == 1)
-                & (throt_pos == 0)
-                & np.isclose(throt_pos_3_back, 100.0)
+                & (throt_open == 0)
+                & gas_static
+                & (ballast == 0)
             )
-            if has_throttle_open:
-                throt_open = _to_num(process_df['throttle_open']).values.astype(float)
-                start_mask &= throt_open == 0
+            throttle_motion_mask = (
+                np.isfinite(throt_pos)
+                & (throt_pos > 0)
+                & (throt_pos < RATE_OF_RISE_MAX_THROTTLE_POSITION)
+            )
+            throttle_settled_mask = np.isfinite(throt_pos) & (throt_pos == 0)
+            pressure_start_mask = p_arr < RATE_OF_RISE_MAX_CAPMAN_PRESSURE_PA
+
+            # Build valid static-vacuum runs first, then prefer one that contains
+            # a settled zero-position sample after an in-motion throttle segment.
+            start_mask = np.zeros_like(static_vacuum_mask, dtype=bool)
+            static_idx = np.where(static_vacuum_mask)[0]
+            valid_runs: list[np.ndarray] = []
+            if len(static_idx) > 0:
+                run_edges = np.where(np.diff(static_idx) > 1)[0]
+                run_starts = np.concatenate(([0], run_edges + 1))
+                run_ends = np.concatenate((run_edges, [len(static_idx) - 1]))
+                for rs, re in zip(run_starts, run_ends):
+                    run = static_idx[int(rs) : int(re) + 1]
+                    if len(run) >= RATE_OF_RISE_MIN_STATIC_SAMPLES:
+                        valid_runs.append(run)
+
+            selected_run: np.ndarray | None = None
+            start_point_mask = (
+                static_vacuum_mask & throttle_settled_mask & pressure_start_mask
+            )
+            for run in valid_runs:
+                # Prefer a run that contains a zero-position sample below 15 mTorr
+                # after the throttle has already been in motion within that run.
+                run_motion_positions = np.where(throttle_motion_mask[run])[0]
+                if len(run_motion_positions) == 0:
+                    continue
+
+                first_motion_idx = int(run[run_motion_positions[0]])
+                run_candidates = run[start_point_mask[run]]
+                if np.any(run_candidates >= first_motion_idx):
+                    selected_run = run
+                    break
+            if selected_run is None and valid_runs:
+                selected_run = valid_runs[0]
+                _emit_rate_warning(
+                    'Rate-of-rise settled start sample with throttle position 0 and '
+                    'pressure below 15 mTorr was not found inside static-vacuum '
+                    'window; falling back to first valid static-vacuum run.'
+                )
+
+            if selected_run is not None:
+                start_candidates = selected_run[start_point_mask[selected_run]]
+                if len(start_candidates) > 0:
+                    start_point = int(start_candidates[0])
+                    run_start_time_s = float(time_arr[int(selected_run[0])])
+                    run_end_time_s = float(time_arr[int(selected_run[-1])])
+                    start_time_s = float(time_arr[start_point])
+                    start_throttle_pos = float(throt_pos[start_point])
+                    start_mask[start_point : int(selected_run[-1]) + 1] = True
+                    _emit_rate_warning(
+                        'Rate-of-rise window selected from '
+                        f'{run_start_time_s:.3f} s to {run_end_time_s:.3f} s; '
+                        f'start sample at {start_time_s:.3f} s with throttle '
+                        f'position {start_throttle_pos:.3f}.'
+                    )
+                else:
+                    _emit_rate_warning(
+                        'Rate-of-rise run was found, but no settled static sample '
+                        'with throttle position 0 and pressure below 15 mTorr '
+                        'was present in that run.'
+                    )
 
             start_idx = np.where(start_mask)[0]
             rate_of_rise = _compute_rate_of_rise(time_arr, p_arr, start_mask)
             if rate_of_rise is not None and len(start_idx) > 0:
                 match_time_s = float(time_arr[int(start_idx[0])])
+                end_time_s = float(time_arr[int(start_idx[-1])])
                 message = (
-                    'Rate-of-rise start condition matched at '
-                    f'timestamp {match_time_s:.3f} s.'
+                    'Rate-of-rise static-vacuum window matched from '
+                    f'{match_time_s:.3f} s to {end_time_s:.3f} s.'
                 )
                 if logger is not None:
                     logger.warning(message)
                 else:
-                    warnings.warn(message)
+                    logger.warning(message)
             else:
-                warnings.warn(
+                _emit_rate_warning(
                     'Rate of rise could not be computed: '
-                    'insufficient data points matching static vacuum conditions '
-                    '(vent closed & throttle closed)'
+                    'need at least two valid points from a static-vacuum run of '
+                    f'{RATE_OF_RISE_MIN_STATIC_SAMPLES}+ samples '
+                    '(vent/throttle static, gas flows below cutoff, ballast off, '
+                    'and first sample below 15 mTorr with 0 < throttle position < 100)'
                 )
+        else:
+            missing_requirements: list[str] = []
+            if 'time_s' not in process_df.columns:
+                missing_requirements.append('time_s')
+            if not has_vent_column:
+                missing_requirements.append('vent_line')
+            if not has_throttle_column:
+                missing_requirements.append('throttle_closed')
+            if not has_throttle_open:
+                missing_requirements.append('throttle_open')
+            if not has_throttle_pos:
+                missing_requirements.append('throttle_position')
+            if not has_ballast_column:
+                missing_requirements.append('ballast')
+            if not has_gas_flow_columns:
+                missing_requirements.extend(
+                    [
+                        'ar_flow_m3_s',
+                        'n2_flow_m3_s',
+                        'ph3_in_ar_flow_m3_s',
+                        'h2s_in_ar_flow_m3_s',
+                    ]
+                )
+
+            _emit_rate_warning(
+                'Rate of rise could not be computed: missing required column(s): '
+                + ', '.join(sorted(set(missing_requirements)))
+            )
+    else:
+        _emit_rate_warning(
+            'Rate of rise could not be computed: process data is empty or pressure '
+            'samples are missing.'
+        )
 
     return base_pressure, base_pressure_ballast, rate_of_rise
 
@@ -1525,7 +1657,7 @@ def _detect_used_gases(
         }
     else:
         # Fall back to overview annealing flows if step splitting did not succeed.
-        warnings.warn(
+        logger.warning(
             'No explicit annealing step found. Using overview annealing flows '
             'to detect used gases.'
         )
@@ -1543,10 +1675,10 @@ def _detect_used_gases(
     ]
 
     if not used_gases:
-        warnings.warn(
+        logger.warning(
             'No process gases detected as being used during annealing. '
             'All gas flows are either None or below the threshold '
-            f'({MIN_USED_GAS_FLOW_M3_S} m³/s).'
+            f'({MIN_USED_GAS_FLOW_M3_S} mÂ³/s).'
         )
 
     return used_gases
@@ -1554,7 +1686,8 @@ def _detect_used_gases(
 
 def parse_rtp_logfiles(
     eklipse_csv_path: str,
-    t2b_diagnostics_txt_path: str,
+    t2b_diagnostics_txt_path: str | None = None,
+    t2b_diagnostics_txt_paths: list[str] | None = None,
     logger=None,
 ) -> ParsedRTPData:
     """Parse RTP log files and return schema-ready process, step, and overview data."""
@@ -1563,10 +1696,51 @@ def parse_rtp_logfiles(
 
     try:
         eklipse_df = _read_csv_with_fallback(eklipse_csv_path)
-        with open(t2b_diagnostics_txt_path, encoding='utf-8', errors='ignore') as h:
-            txt = h.read()
-        key_values = _extract_key_values(txt)
-        t2b_df = _parse_t2b_table(txt)
+        diagnostics_paths: list[str] = []
+        if t2b_diagnostics_txt_paths:
+            diagnostics_paths.extend([p for p in t2b_diagnostics_txt_paths if p])
+        if t2b_diagnostics_txt_path:
+            diagnostics_paths.append(t2b_diagnostics_txt_path)
+
+        deduped_diagnostics_paths: list[str] = []
+        for path in diagnostics_paths:
+            if path not in deduped_diagnostics_paths:
+                deduped_diagnostics_paths.append(path)
+
+        if not deduped_diagnostics_paths:
+            raise FileNotFoundError(
+                'No temperature diagnostics logfile path was provided.'
+            )
+
+        key_values: dict[str, float] = {}
+        t2b_tables = []
+        for diagnostics_path in deduped_diagnostics_paths:
+            with open(diagnostics_path, encoding='utf-8', errors='ignore') as h:
+                txt = h.read()
+            # Keep the first occurrence of each key from metadata across files.
+            for key, value in _extract_key_values(txt).items():
+                if key not in key_values:
+                    key_values[key] = value
+            t2b_tables.append(_parse_t2b_table(txt))
+
+        if len(t2b_tables) == 1:
+            t2b_df = t2b_tables[0]
+        else:
+            t2b_df = pd.concat(t2b_tables, ignore_index=True, sort=False)
+            t_time = _find_col(t2b_df, [r'timestamp', r'^time$'])
+            if t_time is not None:
+                t2b_df['_parsed_timestamp'] = _to_datetime(t2b_df[t_time])
+                t2b_df = (
+                    t2b_df.sort_values('_parsed_timestamp')
+                    .drop_duplicates(subset=['_parsed_timestamp'], keep='first')
+                    .drop(columns=['_parsed_timestamp'])
+                    .reset_index(drop=True)
+                )
+            else:
+                logger.warning(
+                    'Could not find a timestamp column while stacking multiple '
+                    'temperature logfiles; keeping concatenated row order as-is.'
+                )
 
         process_df = _build_process_df(eklipse_df, t2b_df)
         steps = _extract_steps(process_df)
@@ -1581,11 +1755,7 @@ def parse_rtp_logfiles(
         timeseries = _extract_timeseries(process_df)
 
         if not steps:
-            warnings.warn('No process steps extracted from log files')
-        if base_pressure is None:
-            warnings.warn('Base pressure could not be determined from process data')
-        if rate_of_rise is None:
-            warnings.warn('Rate of rise could not be calculated from process data')
+            logger.warning('No process steps extracted from log files')
 
         return ParsedRTPData(
             used_gases=used_gases,
@@ -1599,7 +1769,7 @@ def parse_rtp_logfiles(
         )
     except Exception as e:
         # Never let parser edge cases crash NOMAD normalization.
-        warnings.warn(
+        logger.warning(
             f'RTP log parsing encountered critical error: {e}. Returning empty result.'
         )
         return _empty_result()

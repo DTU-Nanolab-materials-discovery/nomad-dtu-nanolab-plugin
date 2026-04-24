@@ -1,7 +1,7 @@
+import logging
 import re
 import tempfile
 import time
-import warnings
 from contextlib import ExitStack
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -55,6 +55,7 @@ configuration: 'RTPEntryPoint' = config.get_plugin_entry_point(
 )
 
 m_package = Package(name='DTU RTP schema')
+logger = logging.getLogger(__name__)
 
 # volume fraction in the respective gas mixture (the complementary gas is Ar)
 RTP_GAS_FRACTION = {
@@ -68,6 +69,14 @@ MIN_USED_GAS_FLOW_SCCM = 1.0
 TORR_TO_PA = 133.322368421
 SCCM_TO_M3_S = 1e-6 / 60
 CELSIUS_TO_KELVIN_OFFSET = 273.15
+
+
+def _warn_once(obj, key: str, logger, message: str) -> None:
+    """Emit a warning only once per object instance for a given key."""
+    if getattr(obj, key, False):
+        return
+    logger.warning(message)
+    setattr(obj, key, True)
 
 
 #################### DEFINE INPUT_SAMPLES (SUBSECTION) ######################
@@ -190,11 +199,10 @@ class DtuRTPInputSampleMounting(ArchiveSection):
             if self.relative_position in positions:
                 self.position_x, self.position_y = positions[self.relative_position]
             elif self.position_x is None or self.position_y is None:
-                warnings.warn(
+                logger.warning(
                     f'Sample mounting position coordinates could not be determined '
                     f'(relative_position={self.relative_position} not recognized, '
-                    f'position_x={self.position_x}, position_y={self.position_y})',
-                    UserWarning,
+                    f'position_x={self.position_x}, position_y={self.position_y})'
                 )
 
         if self.relative_position is not None:
@@ -433,17 +441,15 @@ class RTPOverview(ArchiveSection):
         )
 
         if total_flow == 0:
-            warnings.warn(
+            logger.warning(
                 'Total annealing gas flow is zero. '
-                'Partial pressures cannot be meaningfully calculated.',
-                UserWarning,
+                'Partial pressures cannot be meaningfully calculated.'
             )
             return
 
         if self.annealing_pressure is None:
-            warnings.warn(
-                'Annealing pressure is None. Partial pressures cannot be calculated.',
-                UserWarning,
+            logger.warning(
+                'Annealing pressure is None. Partial pressures cannot be calculated.'
             )
             return
 
@@ -507,10 +513,12 @@ class RTPOverview(ArchiveSection):
         ):
             self.calc_partial_pressure()
         else:
-            warnings.warn(
+            _warn_once(
+                self,
+                '_warned_no_annealing_gas_flows',
+                logger,
                 'No detectable annealing gas flows. '
                 'Partial pressures will not be calculated.',
-                UserWarning,
             )
 
 
@@ -693,10 +701,9 @@ class RTPStepOverview(ArchiveSection):
             or self.final_temperature is None
             or self.duration is None
         ):
-            warnings.warn(
+            logger.warning(
                 'Cannot calculate temperature ramp: initial_temperature,'
-                ' final_temperature, or duration is missing.',
-                UserWarning,
+                ' final_temperature, or duration is missing.'
             )
             return
 
@@ -732,17 +739,15 @@ class RTPStepOverview(ArchiveSection):
         )
 
         if total_flow == 0:
-            warnings.warn(
+            logger.warning(
                 'Total gas flow is zero in step. '
-                'Partial pressures cannot be meaningfully calculated.',
-                UserWarning,
+                'Partial pressures cannot be meaningfully calculated.'
             )
             return
 
         if self.pressure is None:
-            warnings.warn(
-                'Step pressure is None. Partial pressures cannot be calculated.',
-                UserWarning,
+            logger.warning(
+                'Step pressure is None. Partial pressures cannot be calculated.'
             )
             return
 
@@ -799,10 +804,12 @@ class RTPStepOverview(ArchiveSection):
         ):
             self.calc_partial_pressure()
         else:
-            warnings.warn(
+            _warn_once(
+                self,
+                '_warned_no_step_gas_flows',
+                logger,
                 'No detectable step gas flows. '
                 'Partial pressures will not be calculated.',
-                UserWarning,
             )
 
         # Check if parent step is an annealing step
@@ -821,11 +828,13 @@ class RTPStepOverview(ArchiveSection):
         ):
             self.calc_ramp()
         elif is_annealing and self.initial_temperature != self.final_temperature:
-            warnings.warn(
+            _warn_once(
+                self,
+                '_annealing_ramp_warning_emitted',
+                logger,
                 f'Step "{parent_step_name}" identified as annealing: '
                 'skipping temperature_ramp calculation '
                 '(annealing steps are isothermal by definition)',
-                UserWarning,
             )
 
 
@@ -937,6 +946,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     'location',
                     'log_file_eklipse',
                     'log_file_T2BDiagnostics',
+                    'log_files_T2BDiagnostics',
                     'process_log_files',
                     'overwrite_existing_data',
                     'samples_susceptor_before',
@@ -989,6 +999,19 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         description=(
             'MANUAL INPUT. Cell to upload the temperature log file '
             'obtained with T2BDiagnostics.'
+        ),
+    )
+    log_files_T2BDiagnostics = Quantity(
+        type=str,
+        shape=['*'],
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+            label='Additional temperature log files',
+        ),
+        description=(
+            'MANUAL INPUT. Optional additional CX-thermo/T2BDiagnostics '
+            'temperature log files. Files are stacked by timestamp before '
+            'merging with pressure data.'
         ),
     )
     process_log_files = Quantity(
@@ -1160,9 +1183,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     def _autofill_material_space(self) -> None:
         """Always recompute material_space from input-sample composition + gas elements.
 
-        - No input samples with composition → material_space is cleared to None.
-        - Input samples present → their elements are used, with gas-derived elements
-          (PH3→P, H2S→S) inserted to maintain order: metals first (e.g. Sn),
+        - No input samples with composition â†’ material_space is cleared to None.
+        - Input samples present â†’ their elements are used, with gas-derived elements
+          (PH3â†’P, H2Sâ†’S) inserted to maintain order: metals first (e.g. Sn),
           then P, then S.
         """
         if self.overview is None:
@@ -1233,14 +1256,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     for e in merged_layer_elements
                 ]
             else:
-                warnings.warn(
-                    (
-                        f'Could not determine elemental composition for the '
-                        f"new layer of sample '{rtp_sample.name}'. "
-                        'No origin layer or missing elemental composition in origin'
-                        ' layer.'
-                    ),
-                    UserWarning,
+                logger.warning(
+                    f'Could not determine elemental composition for the '
+                    f"new layer of sample '{rtp_sample.name}'. "
+                    'No origin layer or missing elemental composition in origin'
+                    ' layer.'
                 )
 
             # Create new layer and library only if an input sample has been specified
@@ -1297,11 +1317,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             for library in samples
         ]
         if not samples:
-            warnings.warn(
+            logger.warning(
                 'No RTP sample libraries were created. '
                 'Check that input_samples have valid input_combi_lib and name and'
-                'that overview.material_space is filled.',
-                UserWarning,
+                'that overview.material_space is filled.'
             )
 
     ############################## PLOTS #################################
@@ -1439,6 +1458,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         segments = getattr(self, '_phase_segments', []) or []
         if not segments:
             return
+        x_trim = self._get_full_plot_time_range()
 
         def _phase_fill_color(name: str) -> str:
             n = name.lower()
@@ -1459,26 +1479,36 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             return 'rgba(80, 80, 80, 1)'
 
         for name, start, end in segments:
-            duration_s = max(float(end) - float(start), 0.0)
-            # Keep labels left-aligned but offset from the phase boundary line.
-            label_margin_s = min(2.0, 0.15 * duration_s)
+            start_f = float(start)
+            end_f = float(end)
             fig.add_vrect(
-                x0=start,
-                x1=end,
+                x0=start_f,
+                x1=end_f,
                 fillcolor=_phase_fill_color(name),
                 opacity=1.0,
                 layer='below',
                 line_width=0,
             )
+
+            if x_trim is not None:
+                trimmed_start = max(start_f, float(x_trim[0]))
+                trimmed_end = min(end_f, float(x_trim[1]))
+                if trimmed_end <= trimmed_start:
+                    continue
+            else:
+                trimmed_start = start_f
+                trimmed_end = end_f
+
+            label_x = 0.5 * (trimmed_start + trimmed_end)
             fig.add_annotation(
-                x=float(start) + label_margin_s,
+                x=label_x,
                 y=0.96,
                 xref='x',
                 yref='paper',
                 text=name,
                 showarrow=False,
                 font=dict(size=13, color=_phase_font_color(name)),
-                xanchor='left',
+                xanchor='center',
                 yanchor='top',
             )
 
@@ -1494,10 +1524,12 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         lamp_power = getattr(self, '_lamp_power_profile', []) or []
 
         if not time_s or not temperature_c:
-            warnings.warn(
+            _warn_once(
+                self,
+                '_warned_missing_temperature_timeseries_plot_data',
+                logger,
                 'Temperature timeseries plot cannot be created: '
                 'time or temperature data missing from process logs',
-                UserWarning,
             )
             return
 
@@ -1536,7 +1568,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         fig.update_layout(
             title='RTP Temperature and Lamp Power',
             xaxis_title='Time / s',
-            yaxis_title='Temperature / °C',
+            yaxis_title='Temperature / Â°C',
             yaxis2=dict(
                 title='Lamp Power / %',
                 overlaying='y',
@@ -1649,18 +1681,22 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         time_s = getattr(self, '_log_time_s', []) or []
         pressure_torr = getattr(self, '_log_pressure_torr', []) or []
         if not time_s or not pressure_torr or len(pressure_torr) != len(time_s):
-            warnings.warn(
+            _warn_once(
+                self,
+                '_warned_missing_pressure_profile_data',
+                logger,
                 'Pressure profile plot cannot be created: '
                 'time or pressure data missing or mismatched in length',
-                UserWarning,
             )
             return
         pressure_arr = np.asarray(pressure_torr, dtype=float)
         if not np.isfinite(pressure_arr).any():
-            warnings.warn(
+            _warn_once(
+                self,
+                '_warned_invalid_pressure_profile_values',
+                logger,
                 'Pressure profile plot cannot be created: '
                 'all pressure values are NaN or infinite',
-                UserWarning,
             )
             return
 
@@ -1714,11 +1750,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         y = getattr(input_sample, 'position_y', None)
         rotation = getattr(input_sample, 'rotation', None)
         if rel_pos is None and x is None and y is None:
-            warnings.warn(
+            logger.warning(
                 f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}'"
                 ' has no relative position, x, or y set.'
-                ' It will be placed at the center by default.',
-                UserWarning,
+                ' It will be placed at the center by default.'
             )
         if geometry is not None:
             width = getattr(geometry, 'width', 10)
@@ -1747,10 +1782,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         if hasattr(y, 'magnitude'):
             y = y.to('mm').magnitude
         if rotation is None:
-            warnings.warn(
+            logger.warning(
                 f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}' "
-                'has no rotation specified; defaulting to 0 radians.',
-                UserWarning,
+                'has no rotation specified; defaulting to 0 radians.'
             )
             angle_rad = 0.0
         elif hasattr(rotation, 'to'):
@@ -1870,11 +1904,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        if (
-            self.log_file_eklipse
-            and self.log_file_T2BDiagnostics
-            and self.process_log_files
-        ):
+        has_temperature_input = bool(self.log_file_T2BDiagnostics) or bool(
+            self.log_files_T2BDiagnostics
+        )
+        if self.log_file_eklipse and has_temperature_input and self.process_log_files:
             self.parse_log_files(
                 archive,
                 logger,
@@ -1897,11 +1930,13 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             self._temperature_profile = log_temp_c
         else:
             if not log_time_s or not log_temp_c:
-                warnings.warn(
+                _warn_once(
+                    self,
+                    '_warned_reconstruct_temperature_profile',
+                    logger,
                     'Temperature timeseries data from logs not available '
                     'or incomplete. Reconstructing profile from step '
                     'definitions.',
-                    UserWarning,
                 )
             times, temps, current_time = [], [], 0
             step: DTURTPSteps
@@ -1926,10 +1961,12 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     )
                     times.append(current_time)
             if not times or not temps:
-                warnings.warn(
+                _warn_once(
+                    self,
+                    '_warned_empty_reconstructed_temperature_profile',
+                    logger,
                     'No valid steps found to construct temperature profile. '
                     'Temperature profile will be empty.',
-                    UserWarning,
                 )
             self._time = times
             self._temperature_profile = temps
@@ -1961,7 +1998,20 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         overwrite: bool = False,
     ) -> None:
         """Parse RTP gas and diagnostics log files and populate RTP quantities."""
-        if not self.log_file_eklipse or not self.log_file_T2BDiagnostics:
+        diagnostics_inputs = []
+        if self.log_file_T2BDiagnostics:
+            diagnostics_inputs.append(self.log_file_T2BDiagnostics)
+        diagnostics_inputs.extend(
+            [path for path in (self.log_files_T2BDiagnostics or []) if path]
+        )
+
+        # Keep order stable but avoid duplicate entries.
+        deduped_diagnostics_inputs = []
+        for path in diagnostics_inputs:
+            if path not in deduped_diagnostics_inputs:
+                deduped_diagnostics_inputs.append(path)
+
+        if not self.log_file_eklipse or not deduped_diagnostics_inputs:
             return
 
         def _sanitize_path_value(path_value: str) -> str:
@@ -2106,9 +2156,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             eklipse_kind, eklipse_ref = _resolve_input_path(
                 self.log_file_eklipse, 'csv'
             )
-            diagnostics_kind, diagnostics_ref = _resolve_input_path(
-                self.log_file_T2BDiagnostics, 'txt'
-            )
+            resolved_diagnostics_refs = [
+                _resolve_input_path(path, 'txt') for path in deduped_diagnostics_inputs
+            ]
 
             with ExitStack() as stack:
 
@@ -2140,19 +2190,25 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 else:
                     eklipse_path = eklipse_ref
 
-                if diagnostics_kind == 'raw':
-                    diagnostics_suffix = (
-                        '.txt' if diagnostics_ref.lower().endswith('.txt') else '.csv'
-                    )
-                    diagnostics_path = _materialize_raw_to_temp(
-                        diagnostics_ref, diagnostics_suffix
-                    )
-                else:
-                    diagnostics_path = diagnostics_ref
+                diagnostics_paths = []
+                for diagnostics_kind, diagnostics_ref in resolved_diagnostics_refs:
+                    if diagnostics_kind == 'raw':
+                        diagnostics_suffix = (
+                            '.txt'
+                            if diagnostics_ref.lower().endswith('.txt')
+                            else '.csv'
+                        )
+                        diagnostics_paths.append(
+                            _materialize_raw_to_temp(
+                                diagnostics_ref, diagnostics_suffix
+                            )
+                        )
+                    else:
+                        diagnostics_paths.append(diagnostics_ref)
 
                 parsed = parse_rtp_logfiles(
                     eklipse_csv_path=eklipse_path,
-                    t2b_diagnostics_txt_path=diagnostics_path,
+                    t2b_diagnostics_txt_paths=diagnostics_paths,
                     logger=logger,
                 )
         except Exception as exc:
@@ -2163,9 +2219,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         if overwrite or self.used_gases in (None, []):
             self.used_gases = parsed.used_gases
         if not self.used_gases:
-            warnings.warn(
-                'No process gases detected in RTP logs. All used_gases are empty.',
-                UserWarning,
+            logger.warning(
+                'No process gases detected in RTP logs. All used_gases are empty.'
             )
 
         if (
