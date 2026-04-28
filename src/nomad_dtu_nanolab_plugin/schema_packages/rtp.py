@@ -945,8 +945,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     'lab_id',
                     'location',
                     'log_file_eklipse',
-                    'log_file_T2BDiagnostics',
-                    'log_files_T2BDiagnostics',
+                    'log_file_CXThermoDiagnostics',
+                    'log_files_CXThermoDiagnostics',
                     'process_log_files',
                     'overwrite_existing_data',
                     'samples_susceptor_before',
@@ -991,27 +991,18 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             'obtained with Eklipse.'
         ),
     )
-    log_file_T2BDiagnostics = Quantity(
-        type=str,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.FileEditQuantity, label='Temperature log file'
-        ),
-        description=(
-            'MANUAL INPUT. Cell to upload the temperature log file '
-            'obtained with T2BDiagnostics.'
-        ),
-    )
-    log_files_T2BDiagnostics = Quantity(
+    log_files_CXThermoDiagnostics = Quantity(
         type=str,
         shape=['*'],
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
-            label='Additional temperature log files',
+            label='Temperature log files',
         ),
         description=(
-            'MANUAL INPUT. Optional additional CX-thermo/T2BDiagnostics '
-            'temperature log files. Files are stacked by timestamp before '
-            'merging with pressure data.'
+            'MANUAL INPUT. Temperature log files obtained with CX-Thermo. '
+            'If one file is provided, it is used directly. '
+            'If multiple files are provided, '
+            'they are stacked by timestamp before merging with pressure data.'
         ),
     )
     process_log_files = Quantity(
@@ -1330,12 +1321,18 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         Falls back to full available range when phase labels or temperature
         samples are missing.
         """
+
+        def _to_seconds(value) -> float:
+            if hasattr(value, 'to'):
+                return float(value.to('s').magnitude)
+            return float(getattr(value, 'magnitude', value))
+
         series = getattr(self, '_log_time_s', []) or getattr(self, '_time', []) or []
         if not series:
             return None
 
-        start_time = float(series[0])
-        end_time = float(series[-1])
+        start_time = _to_seconds(series[0])
+        end_time = _to_seconds(series[-1])
 
         segments = getattr(self, '_phase_segments', []) or []
         if segments:
@@ -1344,15 +1341,15 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 None,
             )
             if heating_segment is not None:
-                start_time = float(heating_segment[1])
+                start_time = _to_seconds(heating_segment[1])
 
             cooling_segment = next(
                 (segment for segment in segments if 'cool' in segment[0].lower()),
                 None,
             )
             if cooling_segment is not None:
-                cooling_start = float(cooling_segment[1])
-                cooling_end = float(cooling_segment[2])
+                cooling_start = _to_seconds(cooling_segment[1])
+                cooling_end = _to_seconds(cooling_segment[2])
                 end_time = cooling_end
 
                 time_s = getattr(self, '_log_time_s', []) or getattr(self, '_time', [])
@@ -1904,9 +1901,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        has_temperature_input = bool(self.log_file_T2BDiagnostics) or bool(
-            self.log_files_T2BDiagnostics
-        )
+        has_temperature_input = bool(self.log_files_CXThermoDiagnostics)
         if self.log_file_eklipse and has_temperature_input and self.process_log_files:
             self.parse_log_files(
                 archive,
@@ -1998,14 +1993,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         overwrite: bool = False,
     ) -> None:
         """Parse RTP gas and diagnostics log files and populate RTP quantities."""
-        diagnostics_inputs = []
-        if self.log_file_T2BDiagnostics:
-            diagnostics_inputs.append(self.log_file_T2BDiagnostics)
-        diagnostics_inputs.extend(
-            [path for path in (self.log_files_T2BDiagnostics or []) if path]
-        )
-
-        # Keep order stable but avoid duplicate entries.
+        # Collect and deduplicate temperature logfile paths
+        diagnostics_inputs = [
+            path for path in (self.log_files_CXThermoDiagnostics or []) if path
+        ]
         deduped_diagnostics_inputs = []
         for path in diagnostics_inputs:
             if path not in deduped_diagnostics_inputs:
@@ -2208,7 +2199,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
 
                 parsed = parse_rtp_logfiles(
                     eklipse_csv_path=eklipse_path,
-                    t2b_diagnostics_txt_paths=diagnostics_paths,
+                    cx_thermo_diagnostics_txt_paths=diagnostics_paths,
                     logger=logger,
                 )
         except Exception as exc:
