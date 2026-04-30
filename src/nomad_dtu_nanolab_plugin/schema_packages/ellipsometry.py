@@ -578,6 +578,8 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             'E Inf',
             'IR Amp',
         ]
+        #TODO: implement other columns to read Tauc-Lorentz and Drude oscilators if available
+        #TODO: implement reading the Errors as well if available
         missing_cols = [col for col in required_cols if col not in thickness_df.columns]
         if missing_cols:
             logger.warning(
@@ -1173,9 +1175,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         # make sure .SE and .SEsnap are uploaded to force user to provide
         # necessary files for bookkeeping
-        if not self.native_file or not self.snapshot_file:
+        if not self.native_file or not self.native_data_file:
             raise ValueError(
-                'Both native_file and snapshot_file must be provided for '
+                'Both native_file and native_data_file must be provided for '
                 'ellipsometry normalization.'
             )
 
@@ -1206,7 +1208,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 )
 
             tabulated_df = self.read_tabulated_data_file(archive, logger)
-            if tabulated_df.empty:
+            if self.tabulated_data_file and tabulated_df.empty:
                 raise ValueError('tabulated_data_file could not be parsed into data.')
 
             # Build base results once, then optionally enrich with tabulated data.
