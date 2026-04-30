@@ -578,8 +578,10 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             'E Inf',
             'IR Amp',
         ]
-        #TODO: implement other columns to read Tauc-Lorentz and Drude oscilators if available
         #TODO: implement reading the Errors as well if available
+
+        #TODO: implement other columns to read Tauc-Lorentz and
+        # Drude oscilators if available
         missing_cols = [col for col in required_cols if col not in thickness_df.columns]
         if missing_cols:
             logger.warning(
