@@ -524,7 +524,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
             return df_long
 
-    @staticmethod #means that it is just helper function (does not need self)
+    @staticmethod  # means that it is just helper function (does not need self)
     def _extract_nk_position_columns(nk_df: pd.DataFrame) -> dict[str, dict[str, str]]:
         """Extract n/k column names grouped by position string."""
         positions: dict[str, dict[str, str]] = {}
@@ -537,7 +537,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 positions.setdefault(pos_str, {})['k_col'] = col
         return positions
 
-    @staticmethod #means that it is just helper function (does not need self)
+    @staticmethod  # means that it is just helper function (does not need self)
     def _parse_position_string(
         pos_str: str, logger: 'BoundLogger'
     ) -> tuple[float, float] | None:
@@ -561,7 +561,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             logger.warning(f'Could not convert position {pos_str} to floats: {exc}')
             return None
 
-    @staticmethod #means that it is just helper function (does not need self)
+    @staticmethod  # means that it is just helper function (does not need self)
     def _build_thickness_map(
         thickness_df: pd.DataFrame, logger: 'BoundLogger'
     ) -> dict[tuple[float, float], dict[str, float]]:
@@ -601,7 +601,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 logger.warning(f'Skipping invalid thickness row: {exc}')
         return thickness_map
 
-    @staticmethod #means that it is just helper function (does not need self)
+    @staticmethod  # means that it is just helper function (does not need self)
     def _match_by_coordinate_tolerance(
         x_pos: float,
         y_pos: float,
@@ -621,7 +621,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 return data
         return None
 
-    @staticmethod #means that it is just helper function (does not need self)
+    @staticmethod  # means that it is just helper function (does not need self)
     def _populate_delta_psi_from_tabulated(
         results: list[EllipsometryMappingResult],
         tabulated_df: pd.DataFrame,
@@ -1171,7 +1171,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if filename:
             self.add_sample_reference(filename, 'Ellipsometry', archive, logger)
 
-        #make sure .SE and .SEsnap are uploaded to force user to provide
+        # make sure .SE and .SEsnap are uploaded to force user to provide
         # necessary files for bookkeeping
         if not self.native_file or not self.snapshot_file:
             raise ValueError(
@@ -1183,18 +1183,15 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if self.n_and_k_file or self.thickness_file or self.tabulated_data_file:
             # For initial normalization, we require both n/k and thickness files
             # to create results.
-            if (
-                not self.n_and_k_file
-                or not self.thickness_file
-            ):
+            if not self.n_and_k_file or not self.thickness_file:
                 raise ValueError(
                     'n_and_k_file and thickness_file must both '
                     'be provided '
                     'for ellipsometry normalization.'
                 )
-            
+
             # tabulated_data_file is optional since it contains raw Psi/Delta data
-            # we still want to flag that it is missing with a warning 
+            # we still want to flag that it is missing with a warning
             if not self.tabulated_data_file:
                 logger.warning(
                     'No tabulated data file provided. '
