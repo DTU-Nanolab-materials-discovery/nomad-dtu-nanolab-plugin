@@ -12,6 +12,7 @@ including n&k optical constants and thickness/fit parameter maps.
 """
 
 import ast
+import re
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -49,6 +50,8 @@ m_package = Package(name='DTU Ellipsometry measurement schema')
 
 COORDINATE_MATCH_TOLERANCE_CM = 0.01
 MIN_POSITION_TUPLE_LENGTH = 2
+EPSILON_INF_COLUMN_CANDIDATES = ('E Inf', 'Einf')
+IR_POLE_AMP_COLUMN_CANDIDATES = ('IR Amp',)
 
 
 class DTUDeltaPsi(ArchiveSection):
@@ -185,6 +188,33 @@ class EllipsometryMappingResult(MappingResult):
         ),
     )
 
+    bandgap = Quantity(
+        type=np.float64,
+        unit='eV',
+        description='The optical bandgap energy extracted from the fit.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+
+    carrier_concentration = Quantity(
+        type=np.float64,
+        unit='1 / cm ** 3',
+        description='The fitted carrier concentration.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+
+    mobility = Quantity(
+        type=np.float64,
+        unit='cm^2 / volt / second',
+        description='The fitted carrier mobility.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+
     wavelength = Quantity(
         type=np.dtype(np.float64),
         shape=['*'],
@@ -306,6 +336,16 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             'from Woolam, containing thickness and other parameters for each position'
             '(see https://dtu-nanolab-materials-discovery.github.io/nomad-dtu-nanolab-plugin/'
             'for details on the data export procedure)'
+        ),
+    )
+    effective_carrier_mass = Quantity(
+        type=np.float64,
+        description=(
+            'The effective carrier mass in units of the electron rest mass '
+            '(m*/m0), entered manually by the user.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
         ),
     )
     metadata = SubSection(
@@ -562,9 +602,67 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             return None
 
     @staticmethod  # means that it is just helper function (does not need self)
+    def _find_single_indexed_column(
+        columns: pd.Index, prefix: str, logger: 'BoundLogger'
+    ) -> str | None:
+        """Find a column like Eg1/N1/mu1 where numeric suffix can vary."""
+        pattern = re.compile(rf'^{re.escape(prefix)}(\d+)$', re.IGNORECASE)
+        matches = []
+        for col in columns:
+            match = pattern.match(str(col).strip())
+            if match:
+                matches.append((int(match.group(1)), col))
+
+        if not matches:
+            return None
+
+        if len(matches) > 1:
+            sorted_matches = sorted(matches, key=lambda item: item[0])
+            logger.warning(
+                f'Multiple {prefix} columns found. Using {sorted_matches[0][1]}.'
+            )
+            return sorted_matches[0][1]
+
+        return matches[0][1]
+
+    @staticmethod  # means that it is just helper function (does not need self)
+    def _find_single_carrier_pair_columns(
+        columns: pd.Index, logger: 'BoundLogger'
+    ) -> tuple[str | None, str | None]:
+        """Find matching Nx/mux pair (same numeric suffix)."""
+        n_pattern = re.compile(r'^N(\d+)$', re.IGNORECASE)
+        mu_pattern = re.compile(r'^mu(\d+)$', re.IGNORECASE)
+
+        n_matches: dict[int, str] = {}
+        mu_matches: dict[int, str] = {}
+
+        for col in columns:
+            col_str = str(col).strip()
+            n_match = n_pattern.match(col_str)
+            if n_match:
+                n_matches[int(n_match.group(1))] = col
+
+            mu_match = mu_pattern.match(col_str)
+            if mu_match:
+                mu_matches[int(mu_match.group(1))] = col
+
+        common_indices = sorted(set(n_matches) & set(mu_matches))
+        if not common_indices:
+            return None, None
+
+        if len(common_indices) > 1:
+            logger.warning(
+                'Multiple N/mu pairs found. '
+                f'Using N{common_indices[0]}/mu{common_indices[0]}.'
+            )
+
+        idx = common_indices[0]
+        return n_matches[idx], mu_matches[idx]
+
+    @staticmethod  # means that it is just helper function (does not need self)
     def _build_thickness_map(
         thickness_df: pd.DataFrame, logger: 'BoundLogger'
-    ) -> dict[tuple[float, float], dict[str, float]]:
+    ) -> dict[tuple[float, float], dict[str, float | None]]:
         """Build coordinate-indexed thickness metadata map."""
         if thickness_df.empty:
             return {}
@@ -575,8 +673,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             'MSE',
             'Roughness (nm)',
             'Thickness # 1 (nm)',
-            'E Inf',
-            'IR Amp',
         ]
         # TODO: implement reading the Errors as well if available
 
@@ -589,7 +685,38 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
             return {}
 
-        thickness_map: dict[tuple[float, float], dict[str, float]] = {}
+        epsilon_inf_col = next(
+            (col for col in EPSILON_INF_COLUMN_CANDIDATES if col in thickness_df.columns),
+            None,
+        )
+        ir_pole_amp_col = next(
+            (col for col in IR_POLE_AMP_COLUMN_CANDIDATES if col in thickness_df.columns),
+            None,
+        )
+        bandgap_col = DTUEllipsometryMeasurement._find_single_indexed_column(
+            thickness_df.columns, 'Eg', logger
+        )
+        (
+            carrier_concentration_col,
+            mobility_col,
+        ) = DTUEllipsometryMeasurement._find_single_carrier_pair_columns(
+            thickness_df.columns, logger
+        )
+
+        if epsilon_inf_col is None:
+            logger.warning('No epsilon_inf column found in thickness file.')
+        if ir_pole_amp_col is None:
+            logger.warning('No ir_pole_amp column found in thickness file.')
+
+        def _optional_float(row: pd.Series, column: str | None) -> float | None:
+            if column is None:
+                return None
+            value = row.get(column)
+            if pd.isna(value):
+                return None
+            return float(value)
+
+        thickness_map: dict[tuple[float, float], dict[str, float | None]] = {}
         for _, row in thickness_df.iterrows():
             try:
                 x_pos = float(row['X (cm)'])
@@ -598,8 +725,13 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     'thickness': float(row['Thickness # 1 (nm)']),
                     'roughness': float(row['Roughness (nm)']),
                     'mse': float(row['MSE']),
-                    'epsilon_inf': float(row['E Inf']),
-                    'ir_pole_amp': float(row['IR Amp']),
+                    'epsilon_inf': _optional_float(row, epsilon_inf_col),
+                    'ir_pole_amp': _optional_float(row, ir_pole_amp_col),
+                    'bandgap': _optional_float(row, bandgap_col),
+                    'carrier_concentration': _optional_float(
+                        row, carrier_concentration_col
+                    ),
+                    'mobility': _optional_float(row, mobility_col),
                 }
             except (TypeError, ValueError) as exc:
                 logger.warning(f'Skipping invalid thickness row: {exc}')
@@ -609,9 +741,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     def _match_by_coordinate_tolerance(
         x_pos: float,
         y_pos: float,
-        coordinate_map: dict[tuple[float, float], dict[str, float]],
+        coordinate_map: dict[tuple[float, float], dict[str, float | None]],
         tolerance: float,
-    ) -> dict[str, float] | None:
+    ) -> dict[str, float | None] | None:
         """Match exact coordinate first, then by tolerance."""
         exact = coordinate_map.get((x_pos, y_pos))
         if exact is not None:
@@ -777,6 +909,13 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             ir_pole_amp = (
                 thickness_data['ir_pole_amp'] if thickness_data is not None else None
             )
+            bandgap = thickness_data['bandgap'] if thickness_data is not None else None
+            carrier_concentration = (
+                thickness_data['carrier_concentration']
+                if thickness_data is not None
+                else None
+            )
+            mobility = thickness_data['mobility'] if thickness_data is not None else None
 
             # Create result
             result = EllipsometryMappingResult(
@@ -792,6 +931,17 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 mse=mse,
                 epsilon_inf=epsilon_inf,
                 ir_pole_amp=ir_pole_amp,
+                bandgap=bandgap * ureg('eV') if bandgap is not None else None,
+                carrier_concentration=(
+                    carrier_concentration * ureg('1 / cm ** 3')
+                    if carrier_concentration is not None
+                    else None
+                ),
+                mobility=(
+                    mobility * ureg('cm^2 / volt / second')
+                    if mobility is not None
+                    else None
+                ),
                 wavelength=wavelength,
                 n=n_values,
                 k=k_values,
@@ -1147,6 +1297,25 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         mse_fig = self._create_parameter_map('mse', 'Mean Squared Error', '')
         if mse_fig:
             self.figures.append(mse_fig)
+
+        # ===== Plot 6: Bandgap Spatial Map (optional) =====
+        bandgap_fig = self._create_parameter_map('bandgap', 'Bandgap', 'eV')
+        if bandgap_fig:
+            self.figures.append(bandgap_fig)
+
+        # ===== Plot 7: Carrier Concentration Spatial Map (optional) =====
+        carrier_concentration_fig = self._create_parameter_map(
+            'carrier_concentration', 'Carrier Concentration', '1 / cm ** 3'
+        )
+        if carrier_concentration_fig:
+            self.figures.append(carrier_concentration_fig)
+
+        # ===== Plot 8: Mobility Spatial Map (optional) =====
+        mobility_fig = self._create_parameter_map(
+            'mobility', 'Mobility', 'cm^2 / volt / second'
+        )
+        if mobility_fig:
+            self.figures.append(mobility_fig)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
