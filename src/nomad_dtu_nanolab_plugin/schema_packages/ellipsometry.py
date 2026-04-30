@@ -48,6 +48,7 @@ m_package = Package(name='DTU Ellipsometry measurement schema')
 
 
 COORDINATE_MATCH_TOLERANCE_CM = 0.01
+MIN_POSITION_TUPLE_LENGTH = 2
 
 
 class DTUDeltaPsi(ArchiveSection):
@@ -547,7 +548,10 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             logger.warning(f'Could not parse position {pos_str}: {exc}')
             return None
 
-        if not isinstance(parsed, (tuple, list)) or len(parsed) < 2:
+        if (
+            not isinstance(parsed, (tuple, list))
+            or len(parsed) < MIN_POSITION_TUPLE_LENGTH
+        ):
             logger.warning(f'Invalid position format: {pos_str}')
             return None
 
@@ -1171,12 +1175,14 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         # necessary files for bookkeeping
         if not self.native_file or not self.snapshot_file:
             raise ValueError(
-                'Both native_file and snapshot_file must be provided for ellipsometry normalization.'
+                'Both native_file and snapshot_file must be provided for '
+                'ellipsometry normalization.'
             )
 
         # Import and process data files if they haven't been processed yet
         if self.n_and_k_file or self.thickness_file or self.tabulated_data_file:
-            # For initial normalization, we require both n/k and thickness files to create results.
+            # For initial normalization, we require both n/k and thickness files
+            # to create results.
             if (
                 not self.n_and_k_file
                 or not self.thickness_file
