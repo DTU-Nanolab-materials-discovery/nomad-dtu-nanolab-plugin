@@ -686,11 +686,19 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             return {}
 
         epsilon_inf_col = next(
-            (col for col in EPSILON_INF_COLUMN_CANDIDATES if col in thickness_df.columns),
+            (
+                col
+                for col in EPSILON_INF_COLUMN_CANDIDATES
+                if col in thickness_df.columns
+            ),
             None,
         )
         ir_pole_amp_col = next(
-            (col for col in IR_POLE_AMP_COLUMN_CANDIDATES if col in thickness_df.columns),
+            (
+                col
+                for col in IR_POLE_AMP_COLUMN_CANDIDATES
+                if col in thickness_df.columns
+            ),
             None,
         )
         bandgap_col = DTUEllipsometryMeasurement._find_single_indexed_column(
@@ -915,7 +923,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 if thickness_data is not None
                 else None
             )
-            mobility = thickness_data['mobility'] if thickness_data is not None else None
+            mobility = (
+                thickness_data['mobility'] if thickness_data is not None else None
+            )
 
             # Create result
             result = EllipsometryMappingResult(
