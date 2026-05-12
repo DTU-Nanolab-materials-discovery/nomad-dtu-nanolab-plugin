@@ -106,6 +106,7 @@ class MappingRamanMeas:
 
     def __init__(self):
         self.raman_meas_list = []
+        self.wdf_reader = None  # Store WDFReader for metadata access
 
     def read_wdf_mapping(self, folder, filename_list, verbose=False):
         """Read WDF file(s) and extract Raman spectra and optical images.
@@ -149,6 +150,9 @@ class MappingRamanMeas:
         for filename in filename_list:
             file_path = os.path.join(folder, filename)
             reader = WDFReader(file_path)
+
+            # Store the reader for metadata access
+            self.wdf_reader = reader
 
             # Debug information
             if verbose:
@@ -639,6 +643,8 @@ class MappingRamanMeas:
         intensities = []
 
         for raman_meas in self.raman_meas_list:
+            # Note: x_pos and y_pos are already in micrometers from WDF file
+            # These correspond to stage positions (absolute coordinates)
             x_positions.append(raman_meas.x_pos)
             y_positions.append(raman_meas.y_pos)
 

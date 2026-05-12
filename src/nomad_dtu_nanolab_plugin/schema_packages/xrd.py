@@ -28,6 +28,7 @@ from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad_measurements.mapping.schema import (
     MappingResult,
+    RectangularSampleAlignment,
 )
 from nomad_measurements.utils import merge_sections
 from nomad_measurements.xrd.schema import (
@@ -83,6 +84,10 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         description='The XRD results.',
         repeats=True,
     )
+    sample_alignment = SubSection(
+        section_def=RectangularSampleAlignment,
+        description='The alignment of the sample.',
+    )
 
     def plot(self) -> None:
         fig = go.Figure()
@@ -101,7 +106,7 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         # Update layout
         fig.update_layout(
             title='XRD Patterns',
-            xaxis_title='2<i>θ</i> / °',
+            xaxis_title='2<i>theta</i> (deg)',
             yaxis_title='Intensity',
             template='plotly_white',
             hovermode='closest',
@@ -165,7 +170,7 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         # Update layout
         fig2.update_layout(
             title='XRD Patterns stacked',
-            xaxis_title='2<i>θ</i> / °',
+            xaxis_title='2<i>theta</i> (deg)',
             yaxis_title='Log(Intensity)',
             template='plotly_white',
             hovermode='closest',
@@ -242,7 +247,7 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
             # Update layout
             # fig3.update_layout(
             #    title='XRD Patterns stacked',
-            #    xaxis_title='2<i>θ</i> / °',
+            #    xaxis_title='2<i>theta</i> (deg)',
             #    yaxis_title='Intensity',
             #    template='plotly_white',
             #    hovermode='closest',
