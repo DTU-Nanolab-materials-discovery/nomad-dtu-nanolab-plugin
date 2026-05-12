@@ -922,7 +922,8 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 ir_pole_amp=ir_pole_amp,
                 bandgap=bandgap * ureg('eV') if bandgap is not None else None,
                 carrier_concentration=(
-                    float(carrier_concentration) * ureg('1 / cm ** 3')  # force float, not int                    
+                    # force float, not int
+                    float(carrier_concentration) * ureg('1 / cm ** 3')
                     if carrier_concentration is not None
                     else None
                 ),
