@@ -138,13 +138,6 @@ class RTResult(MappingResult):
         """
         super().normalize(archive, logger)
 
-
-class DTUSampleAlignment(RectangularSampleAlignment):
-    m_def = Section(
-        description='The alignment of the sample on the stage.',
-    )
-
-
 class DtuAutosamplerMeasurement(Experiment, Schema):
     """
     Base Experiment class for Agilent Cary autosampler measurements.
@@ -374,7 +367,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         repeats=True,
     )
     sample_alignment = SubSection(
-        section_def=DTUSampleAlignment,
+        section_def=RectangularSampleAlignment,
         description='The alignment of the sample.',
     )
 
