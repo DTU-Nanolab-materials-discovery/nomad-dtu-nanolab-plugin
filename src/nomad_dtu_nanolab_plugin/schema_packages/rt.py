@@ -138,6 +138,7 @@ class RTResult(MappingResult):
         """
         super().normalize(archive, logger)
 
+
 class DtuAutosamplerMeasurement(Experiment, Schema):
     """
     Base Experiment class for Agilent Cary autosampler measurements.
