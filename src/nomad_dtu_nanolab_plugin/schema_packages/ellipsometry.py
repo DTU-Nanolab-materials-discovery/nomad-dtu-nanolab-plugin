@@ -989,6 +989,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 else:
                     value = float(param_value)
 
+                if parameter_name == 'carrier_concentration':
+                    value /= 1e20
+
                 # Prefer relative positions if available, fallback to absolute
                 if isinstance(r.x_relative, ureg.Quantity) and isinstance(
                     r.y_relative, ureg.Quantity
@@ -1026,7 +1029,11 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         values = [d['value'] for d in param_data]
 
         # Format axis labels with or without units
-        if unit and unit.strip():
+        if parameter_name == 'carrier_concentration':
+            y_axis_label = f'{parameter_label} (1e20 cm-3)'
+            colorbar_title = f'{parameter_label} (1e20 cm-3)'
+            hover_unit = ' 1e20 cm-3'
+        elif unit and unit.strip():
             y_axis_label = f'{parameter_label} ({unit})'
             colorbar_title = f'{parameter_label} ({unit})'
             hover_unit = f' {unit}'
