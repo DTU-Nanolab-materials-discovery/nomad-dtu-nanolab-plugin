@@ -253,22 +253,6 @@ class EllipsometryMappingResult(MappingResult):
         super().normalize(archive, logger)
 
 
-class EllipsometryMetadata(Schema):
-    m_def = Section()
-
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        """
-        Normalizer for the `EllipsometryMetadata` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger (BoundLogger): A structlog logger.
-        """
-
-        super().normalize(archive, logger)
-
-
 class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     """Main schema for spectroscopic ellipsometry measurements.
 
@@ -347,11 +331,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
         ),
-    )
-    metadata = SubSection(
-        section_def=EllipsometryMetadata,
-        description='The metadata of the ellipsometry measurement',
-        # need the native file and a way to open it to extract the metadata
     )
     results = SubSection(
         section_def=EllipsometryMappingResult,
@@ -943,7 +922,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 ir_pole_amp=ir_pole_amp,
                 bandgap=bandgap * ureg('eV') if bandgap is not None else None,
                 carrier_concentration=(
-                    carrier_concentration * ureg('1 / cm ** 3')
+                    float(carrier_concentration) * ureg('1 / cm ** 3')  # force float, not int                    
                     if carrier_concentration is not None
                     else None
                 ),
@@ -1005,7 +984,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             if param_value is not None:
                 # Handle both Quantity objects (with units) and plain numbers
                 if isinstance(param_value, ureg.Quantity):
-                    value = param_value.to(unit).magnitude
+                    value = float(param_value.to(unit).magnitude)  # explicit float()
                 else:
                     value = float(param_value)
 
