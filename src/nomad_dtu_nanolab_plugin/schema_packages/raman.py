@@ -113,30 +113,6 @@ class RamanResult(MappingResult):
         super().normalize(archive, logger)
 
 
-class DTUSampleAlignment(RectangularSampleAlignment):
-    """Sample alignment information for rectangular mapping grids.
-
-    Defines the spatial relationship between measurement positions and the physical
-    sample. Used to convert between stage coordinates and sample coordinates.
-
-    Inherited from RectangularSampleAlignment:
-        - width (float with unit): Sample width
-        - height (float with unit): Sample height
-        - x_upper_left (float with unit): X-coordinate of upper-left corner
-        - y_upper_left (float with unit): Y-coordinate of upper-left corner
-        - x_lower_right (float with unit): X-coordinate of lower-right corner
-        - y_lower_right (float with unit): Y-coordinate of lower-right corner
-
-    Notes:
-        - Enables consistent positioning across different measurement techniques
-        - Currently optional; many measurements use absolute stage coordinates only
-    """
-
-    m_def = Section(
-        description='The alignment of the sample on the stage.',
-    )
-
-
 class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     """Main schema for Raman mapping measurements.
 
@@ -172,7 +148,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         a_browser=BrowserAnnotation(adaptor=BrowserAdaptors.RawFileAdaptor),
     )
     sample_alignment = SubSection(
-        section_def=DTUSampleAlignment,
+        section_def=RectangularSampleAlignment,
         description='The alignment of the sample.',
     )
 

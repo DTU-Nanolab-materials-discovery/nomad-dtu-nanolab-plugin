@@ -11,12 +11,14 @@ The data is imported from tab-separated text files exported from CompleteEASE,
 including n&k optical constants and thickness/fit parameter maps.
 """
 
+import ast
+import re
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
-from nomad.datamodel.data import Schema
+from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
@@ -28,6 +30,7 @@ from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_measurements.mapping.schema import (
     MappingResult,
+    RectangularSampleAlignment,
 )
 from nomad_measurements.utils import merge_sections
 from scipy.interpolate import griddata
@@ -43,6 +46,73 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 m_package = Package(name='DTU Ellipsometry measurement schema')
+
+
+COORDINATE_MATCH_TOLERANCE_CM = 0.01
+MIN_POSITION_TUPLE_LENGTH = 2
+EPSILON_INF_COLUMN_CANDIDATES = ('E Inf', 'Einf')
+IR_POLE_AMP_COLUMN_CANDIDATES = ('IR Amp',)
+
+
+class DTUDeltaPsi(ArchiveSection):
+    """Delta and Psi values for a specific angle of incidence.
+
+    This class stores the raw ellipsometric parameters (Psi and Delta) as a function
+    of wavelength for a specific angle of incidence. These are the fundamental
+    measured quantities in spectroscopic ellipsometry before modeling.
+    """
+
+    m_def = Section()
+
+    angle_of_incidence = Quantity(
+        type=np.float64,
+        unit='degree',
+        description='The angle of incidence for this measurement',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+
+    wavelength = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='nm',
+        description='The wavelength values in nm',
+    )
+
+    psi = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='degree',
+        description=(
+            'The Psi angle in degrees. Psi is related to the amplitude ratio '
+            'of p- and s-polarized light upon reflection.'
+        ),
+    )
+
+    psi_error = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='degree',
+        description='The standard error in Psi measurements',
+    )
+
+    delta = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='degree',
+        description=(
+            'The Delta angle in degrees. Delta is the phase difference '
+            'between p- and s-polarized light upon reflection.'
+        ),
+    )
+
+    delta_error = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='degree',
+        description='The standard error in Delta measurements',
+    )
 
 
 class EllipsometryMappingResult(MappingResult):
@@ -99,7 +169,7 @@ class EllipsometryMappingResult(MappingResult):
     epsilon_inf = Quantity(
         type=np.float64,
         description=(
-            'The high-frequency dielectric constant (ε∞), representing the'
+            'The high-frequency dielectric constant (epon)), representing the'
             "material's relative permittivity at optical frequencies"
         ),
         a_eln=ELNAnnotation(
@@ -113,6 +183,33 @@ class EllipsometryMappingResult(MappingResult):
             'The infrared pole amplitude, representing the strength of the'
             'infrared oscillator in the dielectric function model'
         ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+
+    bandgap = Quantity(
+        type=np.float64,
+        unit='eV',
+        description='The optical bandgap energy extracted from the fit.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+
+    carrier_concentration = Quantity(
+        type=np.float64,
+        unit='1 / cm ** 3',
+        description='The fitted carrier concentration.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
+    )
+
+    mobility = Quantity(
+        type=np.float64,
+        unit='cm^2 / volt / second',
+        description='The fitted carrier mobility.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
         ),
@@ -134,26 +231,18 @@ class EllipsometryMappingResult(MappingResult):
         shape=['*'],
         description='The extinction coefficient k',
     )
+    delta_psi = SubSection(
+        section_def=DTUDeltaPsi,
+        repeats=True,
+        description=(
+            'The delta and psi values for each angle of incidence, stored as '
+            'repeated subsections (one per angle).'
+        ),
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `EllipsometryMappingResult` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger (BoundLogger): A structlog logger.
-        """
-
-        super().normalize(archive, logger)
-
-
-class EllipsometryMetadata(Schema):
-    m_def = Section()
-
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        """
-        Normalizer for the `EllipsometryMetadata` class.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
@@ -190,7 +279,23 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     native_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
-        a_eln={'component': 'FileEditQuantity', 'label': 'native SESNAP file'},
+        a_eln={
+            'component': 'FileEditQuantity',
+            'label': 'native .SESNAP snapshot file',
+        },
+    )
+    native_data_file = Quantity(
+        type=str,
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
+        a_eln={'component': 'FileEditQuantity', 'label': 'native .SE file'},
+    )
+    tabulated_data_file = Quantity(
+        type=str,
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
+        a_eln={
+            'component': 'FileEditQuantity',
+            'label': 'tabulated exported .txt file',
+        },
     )
     n_and_k_file = Quantity(
         type=str,
@@ -217,15 +322,24 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             'for details on the data export procedure)'
         ),
     )
-    metadata = SubSection(
-        section_def=EllipsometryMetadata,
-        description='The metadata of the ellipsometry measurement',
-        # need the native file and a way to open it to extract the metadata
+    effective_carrier_mass = Quantity(
+        type=np.float64,
+        description=(
+            'The effective carrier mass in units of the electron rest mass '
+            '(m*/m0), entered manually by the user.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+        ),
     )
     results = SubSection(
         section_def=EllipsometryMappingResult,
         description='The ellipsometry results.',
         repeats=True,
+    )
+    sample_alignment = SubSection(
+        section_def=RectangularSampleAlignment,
+        description='The alignment of the sample.',
     )
 
     def read_thickness_file(
@@ -299,7 +413,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             first_col_name = header_line.split('\t')[0]
             if first_col_name == 'Energy (eV)':
                 # Convert energy (eV) to wavelength (nm) using
-                # λ = 1239.84 / E
+                # lambda = 1239.84 / E
                 df.iloc[:, 0] = 1239.84 / df.iloc[:, 0]
                 # After conversion, wavelength should be in descending order
                 # from the ascending energy. We need to reverse the entire
@@ -312,12 +426,407 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
             return df
 
+    def read_tabulated_data_file(
+        self,
+        archive: 'EntryArchive',
+        logger: 'BoundLogger',
+    ) -> pd.DataFrame:
+        """
+        Read the tabulated raw ellipsometry data file (Psi/Delta vs wavelength).
+
+        This method parses the wide-format tabulated text file exported from
+        CompleteEASE containing raw Psi and Delta values at multiple angles
+        and positions.
+
+        Args:
+            archive (EntryArchive): The archive containing the section.
+            logger (BoundLogger): A structlog logger.
+
+        Returns:
+            pd.DataFrame: DataFrame with columns:
+                - parameter: 'Psi', 'Psi_err', 'Delta', 'Delta_err'
+                - angle: angle of incidence in degrees
+                - x_cm: X position in cm
+                - y_cm: Y position in cm
+                - wavelength_nm: wavelength in nm
+                - value: the measured value in degrees
+        """
+        if not self.tabulated_data_file:
+            logger.warning('No tabulated data file provided.')
+            return pd.DataFrame()
+
+        with archive.m_context.raw_file(self.tabulated_data_file) as file:
+            # Read the header row to get wavelength columns
+            # Note: CompleteEASE exports with UTF-8 BOM
+            with open(file.name, encoding='utf-8-sig') as f:
+                # Skip any empty lines at the beginning
+                header_line = ''
+                line_num = 0
+                while not header_line.strip():
+                    header_line = f.readline()
+                    line_num += 1
+                    if not header_line:  # EOF
+                        logger.error('Could not find header in tabulated file')
+                        return pd.DataFrame()
+
+            # Split header to get wavelength values
+            # Format: [empty]\tAOI\tX\tY\t211.012\t212.592\t...
+            # The first column is often empty (line starts with tab)
+            header_parts = header_line.strip().split('\t')
+            # Find where numeric wavelengths start (after AOI, X, Y)
+            wavelengths = []
+            for part in header_parts:
+                if not part.strip():
+                    continue
+                try:
+                    wl = float(part)
+                    wavelengths.append(wl)
+                except ValueError:
+                    # Not a number, skip (AOI, X, Y, or column names)
+                    continue
+
+            logger.info(f'Found {len(wavelengths)} wavelengths in header')
+
+            # Read all data rows - use utf-8-sig to handle BOM
+            # Skip the header line (which we already parsed)
+            df = pd.read_csv(
+                file.name,
+                sep='\t',
+                skiprows=line_num,
+                header=None,
+                index_col=False,
+                encoding='utf-8-sig',
+            )
+
+            # Remove empty rows and columns
+            df = df.dropna(how='all').dropna(axis=1, how='all')
+
+            # Columns are: [Parameter, AOI, X, Y, wavelength1, wavelength2, ...]
+            # Set column names
+            df.columns = ['parameter', 'angle', 'x_cm', 'y_cm'] + [
+                f'wl_{i}' for i in range(len(wavelengths))
+            ]
+
+            # Reshape from wide to long format
+            # Keep parameter, angle, x_cm, y_cm as identifiers
+            id_cols = ['parameter', 'angle', 'x_cm', 'y_cm']
+            value_cols = [f'wl_{i}' for i in range(len(wavelengths))]
+
+            # Melt the dataframe
+            df_long = df.melt(
+                id_vars=id_cols,
+                value_vars=value_cols,
+                var_name='wl_index',
+                value_name='value',
+            )
+
+            # Map wavelength index back to actual wavelength values
+            wl_mapping = {f'wl_{i}': wavelengths[i] for i in range(len(wavelengths))}
+            df_long['wavelength_nm'] = df_long['wl_index'].map(wl_mapping)
+
+            # Drop the wl_index column
+            df_long = df_long.drop(columns=['wl_index'])
+
+            # Clean up parameter names (remove extra spaces)
+            df_long['parameter'] = df_long['parameter'].str.strip()
+
+            num_positions = len(
+                df_long[df_long['parameter'] == 'Psi'].groupby(
+                    ['angle', 'x_cm', 'y_cm']
+                )
+            )
+            logger.info(
+                f'Read tabulated data: {len(df_long)} records, '
+                f'{df_long["angle"].nunique()} angles, '
+                f'{num_positions} positions'
+            )
+
+            return df_long
+
+    @staticmethod  # means that it is just helper function (does not need self)
+    def _extract_nk_position_columns(nk_df: pd.DataFrame) -> dict[str, dict[str, str]]:
+        """Extract n/k column names grouped by position string."""
+        positions: dict[str, dict[str, str]] = {}
+        for col in nk_df.columns[1:]:  # Skip first column (wavelength/energy)
+            if col.startswith('n: '):
+                pos_str = col.split('n: ')[1]
+                positions.setdefault(pos_str, {})['n_col'] = col
+            elif col.startswith('k: '):
+                pos_str = col.split('k: ')[1]
+                positions.setdefault(pos_str, {})['k_col'] = col
+        return positions
+
+    @staticmethod  # means that it is just helper function (does not need self)
+    def _parse_position_string(
+        pos_str: str, logger: 'BoundLogger'
+    ) -> tuple[float, float] | None:
+        """Parse a position string like '(-1.8,0)' into x/y floats."""
+        try:
+            parsed = ast.literal_eval(pos_str)
+        except (ValueError, SyntaxError) as exc:
+            logger.warning(f'Could not parse position {pos_str}: {exc}')
+            return None
+
+        if (
+            not isinstance(parsed, (tuple, list))
+            or len(parsed) < MIN_POSITION_TUPLE_LENGTH
+        ):
+            logger.warning(f'Invalid position format: {pos_str}')
+            return None
+
+        try:
+            return float(parsed[0]), float(parsed[1])
+        except (TypeError, ValueError) as exc:
+            logger.warning(f'Could not convert position {pos_str} to floats: {exc}')
+            return None
+
+    @staticmethod  # means that it is just helper function (does not need self)
+    def _find_single_indexed_column(
+        columns: pd.Index, prefix: str, logger: 'BoundLogger'
+    ) -> str | None:
+        """Find a column like Eg1/N1/mu1 where numeric suffix can vary."""
+        pattern = re.compile(rf'^{re.escape(prefix)}(\d+)$', re.IGNORECASE)
+        matches = []
+        for col in columns:
+            match = pattern.match(str(col).strip())
+            if match:
+                matches.append((int(match.group(1)), col))
+
+        if not matches:
+            return None
+
+        if len(matches) > 1:
+            sorted_matches = sorted(matches, key=lambda item: item[0])
+            logger.warning(
+                f'Multiple {prefix} columns found. Using {sorted_matches[0][1]}.'
+            )
+            return sorted_matches[0][1]
+
+        return matches[0][1]
+
+    @staticmethod  # means that it is just helper function (does not need self)
+    def _find_single_carrier_pair_columns(
+        columns: pd.Index, logger: 'BoundLogger'
+    ) -> tuple[str | None, str | None]:
+        """Find matching Nx/mux pair (same numeric suffix)."""
+        n_pattern = re.compile(r'^N(\d+)$', re.IGNORECASE)
+        mu_pattern = re.compile(r'^mu(\d+)$', re.IGNORECASE)
+
+        n_matches: dict[int, str] = {}
+        mu_matches: dict[int, str] = {}
+
+        for col in columns:
+            col_str = str(col).strip()
+            n_match = n_pattern.match(col_str)
+            if n_match:
+                n_matches[int(n_match.group(1))] = col
+
+            mu_match = mu_pattern.match(col_str)
+            if mu_match:
+                mu_matches[int(mu_match.group(1))] = col
+
+        common_indices = sorted(set(n_matches) & set(mu_matches))
+        if not common_indices:
+            return None, None
+
+        if len(common_indices) > 1:
+            logger.warning(
+                'Multiple N/mu pairs found. '
+                f'Using N{common_indices[0]}/mu{common_indices[0]}.'
+            )
+
+        idx = common_indices[0]
+        return n_matches[idx], mu_matches[idx]
+
+    @staticmethod  # means that it is just helper function (does not need self)
+    def _build_thickness_map(
+        thickness_df: pd.DataFrame, logger: 'BoundLogger'
+    ) -> dict[tuple[float, float], dict[str, float | None]]:
+        """Build coordinate-indexed thickness metadata map."""
+        if thickness_df.empty:
+            return {}
+
+        required_cols = [
+            'X (cm)',
+            'Y (cm)',
+            'MSE',
+            'Roughness (nm)',
+            'Thickness # 1 (nm)',
+        ]
+        # TODO: implement reading the Errors as well if available
+
+        # TODO: implement other columns to read Tauc-Lorentz and
+        # Drude oscilators if available
+        missing_cols = [col for col in required_cols if col not in thickness_df.columns]
+        if missing_cols:
+            logger.warning(
+                f'Thickness file is missing required columns: {missing_cols}'
+            )
+            return {}
+
+        epsilon_inf_col = next(
+            (
+                col
+                for col in EPSILON_INF_COLUMN_CANDIDATES
+                if col in thickness_df.columns
+            ),
+            None,
+        )
+        ir_pole_amp_col = next(
+            (
+                col
+                for col in IR_POLE_AMP_COLUMN_CANDIDATES
+                if col in thickness_df.columns
+            ),
+            None,
+        )
+        bandgap_col = DTUEllipsometryMeasurement._find_single_indexed_column(
+            thickness_df.columns, 'Eg', logger
+        )
+        (
+            carrier_concentration_col,
+            mobility_col,
+        ) = DTUEllipsometryMeasurement._find_single_carrier_pair_columns(
+            thickness_df.columns, logger
+        )
+
+        if epsilon_inf_col is None:
+            logger.warning('No epsilon_inf column found in thickness file.')
+        if ir_pole_amp_col is None:
+            logger.warning('No ir_pole_amp column found in thickness file.')
+
+        def _optional_float(row: pd.Series, column: str | None) -> float | None:
+            if column is None:
+                return None
+            value = row.get(column)
+            if pd.isna(value):
+                return None
+            return float(value)
+
+        thickness_map: dict[tuple[float, float], dict[str, float | None]] = {}
+        for _, row in thickness_df.iterrows():
+            try:
+                x_pos = float(row['X (cm)'])
+                y_pos = float(row['Y (cm)'])
+                thickness_map[(x_pos, y_pos)] = {
+                    'thickness': float(row['Thickness # 1 (nm)']),
+                    'roughness': float(row['Roughness (nm)']),
+                    'mse': float(row['MSE']),
+                    'epsilon_inf': _optional_float(row, epsilon_inf_col),
+                    'ir_pole_amp': _optional_float(row, ir_pole_amp_col),
+                    'bandgap': _optional_float(row, bandgap_col),
+                    'carrier_concentration': _optional_float(
+                        row, carrier_concentration_col
+                    ),
+                    'mobility': _optional_float(row, mobility_col),
+                }
+            except (TypeError, ValueError) as exc:
+                logger.warning(f'Skipping invalid thickness row: {exc}')
+        return thickness_map
+
+    @staticmethod  # means that it is just helper function (does not need self)
+    def _match_by_coordinate_tolerance(
+        x_pos: float,
+        y_pos: float,
+        coordinate_map: dict[tuple[float, float], dict[str, float | None]],
+        tolerance: float,
+    ) -> dict[str, float | None] | None:
+        """Match exact coordinate first, then by tolerance."""
+        exact = coordinate_map.get((x_pos, y_pos))
+        if exact is not None:
+            return exact
+
+        for (x_candidate, y_candidate), data in coordinate_map.items():
+            if (
+                abs(x_candidate - x_pos) < tolerance
+                and abs(y_candidate - y_pos) < tolerance
+            ):
+                return data
+        return None
+
+    @staticmethod  # means that it is just helper function (does not need self)
+    def _populate_delta_psi_from_tabulated(
+        results: list[EllipsometryMappingResult],
+        tabulated_df: pd.DataFrame,
+        logger: 'BoundLogger',
+    ) -> None:
+        """Populate/refresh raw Psi/Delta data for existing result positions."""
+        if tabulated_df.empty:
+            return
+
+        logger.info('Processing raw Psi/Delta data from tabulated file')
+        position_tolerance_cm = COORDINATE_MATCH_TOLERANCE_CM
+
+        for result in results:
+            # Refresh data each run so reprocessing replaces stale values.
+            result.delta_psi = []
+
+            x_pos = result.x_absolute.to('cm').magnitude
+            y_pos = result.y_absolute.to('cm').magnitude
+
+            pos_data = tabulated_df[
+                (abs(tabulated_df['x_cm'] - x_pos) < position_tolerance_cm)
+                & (abs(tabulated_df['y_cm'] - y_pos) < position_tolerance_cm)
+            ]
+
+            if pos_data.empty:
+                continue
+
+            unique_angles = pos_data['angle'].unique()
+
+            delta_psi_list = []
+            for angle in unique_angles:
+                angle_data = pos_data[pos_data['angle'] == angle]
+
+                psi_data = angle_data[angle_data['parameter'] == 'Psi'].sort_values(
+                    'wavelength_nm'
+                )
+                psi_err_data = angle_data[
+                    angle_data['parameter'] == 'Psi_err'
+                ].sort_values('wavelength_nm')
+
+                delta_data = angle_data[angle_data['parameter'] == 'Delta'].sort_values(
+                    'wavelength_nm'
+                )
+                delta_err_data = angle_data[
+                    angle_data['parameter'] == 'Delta_err'
+                ].sort_values('wavelength_nm')
+
+                if psi_data.empty or delta_data.empty:
+                    continue
+
+                delta_psi = DTUDeltaPsi(
+                    angle_of_incidence=angle * ureg('degree'),
+                    wavelength=psi_data['wavelength_nm'].to_numpy() * ureg('nm'),
+                    psi=psi_data['value'].to_numpy() * ureg('degree'),
+                    delta=delta_data['value'].to_numpy() * ureg('degree'),
+                )
+
+                if not psi_err_data.empty:
+                    delta_psi.psi_error = psi_err_data['value'].to_numpy() * ureg(
+                        'degree'
+                    )
+                if not delta_err_data.empty:
+                    delta_psi.delta_error = delta_err_data['value'].to_numpy() * ureg(
+                        'degree'
+                    )
+
+                delta_psi_list.append(delta_psi)
+
+            if delta_psi_list:
+                result.delta_psi = delta_psi_list
+                logger.debug(
+                    f'Added {len(delta_psi_list)} angle measurements '
+                    f'for position {result.position}'
+                )
+
     def write_ellipsometry_data(
         self,
         thickness_df: pd.DataFrame,
         nk_df: pd.DataFrame,
         archive: 'EntryArchive',
         logger: 'BoundLogger',
+        tabulated_df: pd.DataFrame | None = None,
     ) -> None:
         """
         Write method for populating the `DTUEllipsometryMeasurement` section.
@@ -328,69 +837,29 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             archive (EntryArchive): The archive containing the section.
             logger (BoundLogger): A structlog logger.
         """
+        if nk_df.empty:
+            logger.warning('No n and k data available. Skipping result creation.')
+            return
+
         results = []
 
         # Get wavelength column (first column)
         wavelength = nk_df.iloc[:, 0].to_numpy() * ureg('nm')
 
-        # Parse the n and k columns to extract position information
-        # CompleteEASE names columns as 'n: (x,y)' and 'k: (x,y)' where (x,y)
-        # are the stage coordinates in cm. We extract these to match with
-        # thickness data.
-        # Example columns: 'n: (-1.8,0)', 'k: (-1.8,0)', 'n: (-1.6,0)', ...
-        # Dictionary: position_string -> {'n_col': ..., 'k_col': ...}
-        positions = {}
-        for col in nk_df.columns[1:]:  # Skip first column (wavelength/energy)
-            if col.startswith('n: '):
-                pos_str = col.split('n: ')[1]  # Extract '(x,y)' part
-                if pos_str not in positions:
-                    positions[pos_str] = {}
-                positions[pos_str]['n_col'] = col
-            elif col.startswith('k: '):
-                pos_str = col.split('k: ')[1]  # Extract '(x,y)' part
-                if pos_str not in positions:
-                    positions[pos_str] = {}
-                positions[pos_str]['k_col'] = col
-
-        # Create a mapping from position coordinates to thickness and fit
-        # parameters. This allows us to merge data from the two separate
-        # export files.
-        # Dictionary: (x, y) -> {'thickness': ..., 'roughness': ..., ...}
-        thickness_map = {}
-        if not thickness_df.empty:
-            # Expected columns from CompleteEASE thickness export:
-            # 'X (cm)', 'Y (cm)', 'MSE', 'Absolute MSE', 'Roughness (nm)',
-            # 'Thickness # 1 (nm)', 'E Inf', 'IR Amp', etc.
-
-            # Build a lookup table indexed by (x, y) coordinates
-            # This enables matching thickness data with n&k data by position
-            for _, row in thickness_df.iterrows():
-                x_pos = float(row['X (cm)'])
-                y_pos = float(row['Y (cm)'])
-                mse = float(row['MSE'])
-                roughness_nm = float(row['Roughness (nm)'])
-                thickness_nm = float(row['Thickness # 1 (nm)'])
-                epsilon_inf = float(row['E Inf'])
-                ir_pole_amp = float(row['IR Amp'])
-
-                thickness_map[(x_pos, y_pos)] = {
-                    'thickness': thickness_nm,
-                    'roughness': roughness_nm,
-                    'mse': mse,
-                    'epsilon_inf': epsilon_inf,
-                    'ir_pole_amp': ir_pole_amp,
-                }
+        # Parse the n/k position columns and prepare optional thickness lookup.
+        positions = self._extract_nk_position_columns(nk_df)
+        thickness_map = self._build_thickness_map(thickness_df, logger)
 
         # Create a result for each position
         for pos_str, cols in positions.items():
-            # Parse position (e.g., '(-1.8,0)' -> x=-1.8, y=0)
-            try:
-                pos_tuple = eval(pos_str)  # Safe here as we control the format
-                x_pos = float(pos_tuple[0])
-                y_pos = float(pos_tuple[1])
-            except Exception as e:
-                logger.warning(f'Could not parse position {pos_str}: {e}')
+            if 'n_col' not in cols or 'k_col' not in cols:
+                logger.warning(f'Incomplete n/k columns for position: {pos_str}')
                 continue
+
+            parsed_pos = self._parse_position_string(pos_str, logger)
+            if parsed_pos is None:
+                continue
+            x_pos, y_pos = parsed_pos
 
             # Get n and k values - IMPORTANT: use .to_numpy() to get
             # clean numpy arrays
@@ -400,21 +869,12 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             # Match thickness data to n&k data by position coordinates
             # Use fuzzy matching to handle potential floating-point rounding differences
             # between the two export files
-            thickness_data = None
-            tolerance = 0.01  # Tolerance in cm (0.1 mm) for coordinate matching
-
-            # Try exact coordinate match first
-            if (x_pos, y_pos) in thickness_map:
-                thickness_data = thickness_map[(x_pos, y_pos)]
-            else:
-                # Try fuzzy match (within tolerance)
-                for (x_thick, y_thick), data in thickness_map.items():
-                    if (
-                        abs(x_thick - x_pos) < tolerance
-                        and abs(y_thick - y_pos) < tolerance
-                    ):
-                        thickness_data = data
-                        break
+            thickness_data = self._match_by_coordinate_tolerance(
+                x_pos,
+                y_pos,
+                thickness_map,
+                COORDINATE_MATCH_TOLERANCE_CM,
+            )
 
             if thickness_data is None:
                 logger.warning(
@@ -436,23 +896,52 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             ir_pole_amp = (
                 thickness_data['ir_pole_amp'] if thickness_data is not None else None
             )
+            bandgap = thickness_data['bandgap'] if thickness_data is not None else None
+            carrier_concentration = (
+                thickness_data['carrier_concentration']
+                if thickness_data is not None
+                else None
+            )
+            mobility = (
+                thickness_data['mobility'] if thickness_data is not None else None
+            )
 
             # Create result
             result = EllipsometryMappingResult(
                 position=pos_str,
                 x_absolute=x_pos * ureg('cm'),
                 y_absolute=y_pos * ureg('cm'),
-                thickness=thickness_nm * ureg('nm'),
-                roughness=roughness_nm * ureg('nm'),
+                thickness=(
+                    thickness_nm * ureg('nm') if thickness_nm is not None else None
+                ),
+                roughness=(
+                    roughness_nm * ureg('nm') if roughness_nm is not None else None
+                ),
                 mse=mse,
                 epsilon_inf=epsilon_inf,
                 ir_pole_amp=ir_pole_amp,
+                bandgap=bandgap * ureg('eV') if bandgap is not None else None,
+                carrier_concentration=(
+                    # force float, not int
+                    float(carrier_concentration) * ureg('1 / cm ** 3')
+                    if carrier_concentration is not None
+                    else None
+                ),
+                mobility=(
+                    mobility * ureg('cm^2 / volt / second')
+                    if mobility is not None
+                    else None
+                ),
                 wavelength=wavelength,
                 n=n_values,
                 k=k_values,
             )
             result.normalize(archive, logger)
             results.append(result)
+
+        # Process tabulated raw ellipsometry data (Psi/Delta) if available.
+        if tabulated_df is not None and not tabulated_df.empty:
+            self._populate_delta_psi_from_tabulated(results, tabulated_df, logger)
 
         # Merge results into this measurement
         ellipsometry = DTUEllipsometryMeasurement(
@@ -487,18 +976,46 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         """
         # Collect parameter values and coordinates from all measurement positions
         param_data = []
+        x_title = 'X Position (mm)'
+        y_title = 'Y Position (mm)'
+        coord_type = 'Position'  # Will be set to 'Sample' or 'Stage'
+
         for r in self.results:
             param_value = getattr(r, parameter_name, None)
             if param_value is not None:
                 # Handle both Quantity objects (with units) and plain numbers
                 if isinstance(param_value, ureg.Quantity):
-                    value = param_value.to(unit).magnitude
+                    value = float(param_value.to(unit).magnitude)  # explicit float()
                 else:
                     value = float(param_value)
+
+                if parameter_name == 'carrier_concentration':
+                    value /= 1e20
+
+                # Prefer relative positions if available, fallback to absolute
+                if isinstance(r.x_relative, ureg.Quantity) and isinstance(
+                    r.y_relative, ureg.Quantity
+                ):
+                    x = r.x_relative.to('mm').magnitude
+                    y = r.y_relative.to('mm').magnitude
+                    x_title = 'X Sample Position (mm)'
+                    y_title = 'Y Sample Position (mm)'
+                    coord_type = 'Sample'
+                elif isinstance(r.x_absolute, ureg.Quantity) and isinstance(
+                    r.y_absolute, ureg.Quantity
+                ):
+                    x = r.x_absolute.to('mm').magnitude
+                    y = r.y_absolute.to('mm').magnitude
+                    x_title = 'X Stage Position (mm)'
+                    y_title = 'Y Stage Position (mm)'
+                    coord_type = 'Stage'
+                else:
+                    continue
+
                 param_data.append(
                     {
-                        'x': r.x_absolute.to('mm').magnitude,
-                        'y': r.y_absolute.to('mm').magnitude,
+                        'x': x,
+                        'y': y,
                         'value': value,
                     }
                 )
@@ -511,14 +1028,33 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         y_vals = [d['y'] for d in param_data]
         values = [d['value'] for d in param_data]
 
+        # Format axis labels with or without units
+        if parameter_name == 'carrier_concentration':
+            y_axis_label = f'{parameter_label} (1e20 cm-3)'
+            colorbar_title = f'{parameter_label} (1e20 cm-3)'
+            hover_unit = ' 1e20 cm-3'
+        elif unit and unit.strip():
+            y_axis_label = f'{parameter_label} ({unit})'
+            colorbar_title = f'{parameter_label} ({unit})'
+            hover_unit = f' {unit}'
+        else:
+            y_axis_label = parameter_label
+            colorbar_title = parameter_label
+            hover_unit = ''
+
         # Determine dimensionality by counting unique coordinates
         # This tells us if we have a line scan (1D) or area map (2D)
-        unique_x = len(set(x_vals))  # Number of distinct x positions
-        unique_y = len(set(y_vals))  # Number of distinct y positions
+        # Use a tolerance to handle floating-point noise (e.g. ~1e-15 values
+        # that should be treated as identical)
+        x_range = max(x_vals) - min(x_vals)
+        y_range = max(y_vals) - min(y_vals)
+        tol = 1e-6  # 1 nm tolerance
+        is_1d_x = x_range < tol  # all x approximately the same
+        is_1d_y = y_range < tol  # all y approximately the same
 
-        if unique_x == 1 or unique_y == 1:
+        if is_1d_x or is_1d_y:
             # 1D data - create a line plot with markers
-            if unique_x == 1:
+            if is_1d_x:
                 # Y varies
                 fig = go.Figure()
                 fig.add_trace(
@@ -530,9 +1066,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     )
                 )
                 fig.update_layout(
-                    title=f'{parameter_label} vs Y Position',
+                    title=f'{parameter_label} vs Y {coord_type} Position',
                     xaxis_title='Y Position (mm)',
-                    yaxis_title=f'{parameter_label} ({unit})',
+                    yaxis_title=y_axis_label,
                     template='plotly_white',
                     hovermode='closest',
                     dragmode='zoom',
@@ -551,9 +1087,9 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     )
                 )
                 fig.update_layout(
-                    title=f'{parameter_label} vs X Position',
+                    title=f'{parameter_label} vs X {coord_type} Position',
                     xaxis_title='X Position (mm)',
-                    yaxis_title=f'{parameter_label} ({unit})',
+                    yaxis_title=y_axis_label,
                     template='plotly_white',
                     hovermode='closest',
                     dragmode='zoom',
@@ -577,7 +1113,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 y=yi[:, 0],
                 z=zi,
                 colorscale='Viridis',
-                colorbar=dict(title=f'{parameter_label} ({unit})'),
+                colorbar=dict(title=colorbar_title),
             )
 
             # Create a scatter plot overlay
@@ -596,16 +1132,18 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     ),
                 ),
                 customdata=values,
-                hovertemplate=f'<b>{parameter_label}:</b> %{{customdata:.1f}} {unit}',
+                hovertemplate=(
+                    f'<b>{parameter_label}:</b> %{{customdata:.1f}}{hover_unit}'
+                ),
             )
 
             # Combine heatmap and scatter plot
             fig = go.Figure(data=[heatmap, scatter])
 
             fig.update_layout(
-                title=f'{parameter_label} Colormap',
-                xaxis_title='X Position (mm)',
-                yaxis_title='Y Position (mm)',
+                title=f'{parameter_label} {coord_type} Colormap',
+                xaxis_title=x_title,
+                yaxis_title=y_title,
                 template='plotly_white',
                 hovermode='closest',
                 dragmode='zoom',
@@ -624,18 +1162,19 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         """
         Generate all interactive Plotly visualizations for the ellipsometry data.
 
-        Creates three types of plots:
-        1. Optical constants (n and k) vs wavelength for all positions
-        2. Thickness spatial map (1D or 2D depending on measurement grid)
-        3. Roughness spatial map (1D or 2D depending on measurement grid)
-        4. MSE (fit quality) spatial map (1D or 2D depending on measurement grid)
+        Creates five types of plots:
+        1. Optical constants (n and k) vs photon energy for all positions
+        2. Absorption coefficient (alpha) vs photon energy for all positions
+        3. Thickness spatial map (1D or 2D depending on measurement grid)
+        4. Roughness spatial map (1D or 2D depending on measurement grid)
+        5. MSE (fit quality) spatial map (1D or 2D depending on measurement grid)
 
         All plots are interactive with zoom, pan, and hover capabilities.
         """
         if not self.results:
             return
 
-        # ===== Plot 1: Optical Constants (n and k) vs Wavelength =====
+        # ===== Plot 1: Optical Constants (n and k) vs Photon Energy =====
         # Create a multi-trace plot showing n and k for all measurement positions
         fig = go.Figure()
         for result in self.results:
@@ -645,13 +1184,15 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 and result.k is not None
             ):
                 wavelength = result.wavelength.to('nm').magnitude
+                # Convert wavelength to photon energy: E (eV) = 1240 / lambda(nm)
+                photon_energy = 1240.0 / wavelength
                 n = result.n
                 k = result.k
                 position = result.position
 
                 fig.add_trace(
                     go.Scatter(
-                        x=wavelength,
+                        x=photon_energy,
                         y=n,
                         mode='lines',
                         name=f'n @ {position}',
@@ -659,7 +1200,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 )
                 fig.add_trace(
                     go.Scatter(
-                        x=wavelength,
+                        x=photon_energy,
                         y=k,
                         mode='lines',
                         name=f'k @ {position}',
@@ -669,7 +1210,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         fig.update_layout(
             title='Optical Constants (n and k)',
-            xaxis_title='Wavelength (nm)',
+            xaxis_title='Photon Energy (eV)',
             yaxis_title='n, k',
             template='plotly_white',
             hovermode='closest',
@@ -689,24 +1230,89 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
         )
 
-        # ===== Plot 2: Thickness Spatial Map =====
+        # ===== Plot 2: Absorption Coefficient vs Photon Energy =====
+        # Calculate and plot absorption coefficient alpha = 4*pi*k/lambda
+        fig_alpha = go.Figure()
+        for result in self.results:
+            if result.wavelength is not None and result.k is not None:
+                wavelength = result.wavelength.to('nm').magnitude
+                # Convert wavelength to photon energy: E (eV) = 1240 / lambda(nm)
+                photon_energy = 1240.0 / wavelength
+                k = result.k
+                position = result.position
+
+                # Calculate absorption coefficient: alpha = 4*pi*k/lambda
+                # lambda in cm = wavelength_nm * 10^-7
+                # alpha in cm^-1 = 4*pi * k / (wavelength_nm * 10^-7)
+                alpha = (4 * np.pi * k) / (wavelength * 1e-7)
+
+                fig_alpha.add_trace(
+                    go.Scatter(
+                        x=photon_energy,
+                        y=alpha,
+                        mode='lines',
+                        name=f'alpha @ {position}',
+                    )
+                )
+
+        fig_alpha.update_layout(
+            title='Absorption Coefficient',
+            xaxis_title='Photon Energy (eV)',
+            yaxis_title='alpha (1/cm)',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(fixedrange=False),
+            yaxis=dict(fixedrange=False, exponentformat='power'),
+        )
+
+        # Configure and store the absorption coefficient plot
+        plot_json_alpha = fig_alpha.to_plotly_json()
+        plot_json_alpha['config'] = dict(scrollZoom=False)
+        self.figures.append(
+            PlotlyFigure(
+                label='Absorption Coefficient',
+                figure=plot_json_alpha,
+            )
+        )
+
+        # ===== Plot 3: Thickness Spatial Map =====
         # Use the helper method to create a thickness map (1D or 2D)
         thickness_fig = self._create_parameter_map('thickness', 'Thickness', 'nm')
         if thickness_fig:
             self.figures.append(thickness_fig)
 
-        # ===== Plot 3: Roughness Spatial Map =====
+        # ===== Plot 4: Roughness Spatial Map =====
         # Create a roughness map (1D or 2D)
         roughness_fig = self._create_parameter_map('roughness', 'Roughness', 'nm')
         if roughness_fig:
             self.figures.append(roughness_fig)
 
-        # ===== Plot 4: MSE (Fit Quality) Spatial Map =====
+        # ===== Plot 5: MSE (Fit Quality) Spatial Map =====
         # Create a map showing the quality of the model fit at each position
         # Lower MSE values indicate better fits
         mse_fig = self._create_parameter_map('mse', 'Mean Squared Error', '')
         if mse_fig:
             self.figures.append(mse_fig)
+
+        # ===== Plot 6: Bandgap Spatial Map (optional) =====
+        bandgap_fig = self._create_parameter_map('bandgap', 'Bandgap', 'eV')
+        if bandgap_fig:
+            self.figures.append(bandgap_fig)
+
+        # ===== Plot 7: Carrier Concentration Spatial Map (optional) =====
+        carrier_concentration_fig = self._create_parameter_map(
+            'carrier_concentration', 'Carrier Concentration', '1 / cm ** 3'
+        )
+        if carrier_concentration_fig:
+            self.figures.append(carrier_concentration_fig)
+
+        # ===== Plot 8: Mobility Spatial Map (optional) =====
+        mobility_fig = self._create_parameter_map(
+            'mobility', 'Mobility', 'cm^2 / volt / second'
+        )
+        if mobility_fig:
+            self.figures.append(mobility_fig)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -726,6 +1332,8 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         filename = None
         if self.native_file:
             filename = self.native_file
+        elif self.tabulated_data_file:
+            filename = self.tabulated_data_file
         elif self.n_and_k_file:
             filename = self.n_and_k_file
         elif self.thickness_file:
@@ -733,12 +1341,54 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if filename:
             self.add_sample_reference(filename, 'Ellipsometry', archive, logger)
 
+        # make sure .SE and .SEsnap are uploaded to force user to provide
+        # necessary files for bookkeeping
+        if not self.native_file or not self.native_data_file:
+            raise ValueError(
+                'Both native_file and native_data_file must be provided for '
+                'ellipsometry normalization.'
+            )
+
         # Import and process data files if they haven't been processed yet
-        if (self.n_and_k_file or self.thickness_file) and not self.results:
+        if self.n_and_k_file or self.thickness_file or self.tabulated_data_file:
+            # For initial normalization, we require both n/k and thickness files
+            # to create results.
+            if not self.n_and_k_file or not self.thickness_file:
+                raise ValueError(
+                    'n_and_k_file and thickness_file must both '
+                    'be provided '
+                    'for ellipsometry normalization.'
+                )
+
+            # tabulated_data_file is optional since it contains raw Psi/Delta data
+            # we still want to flag that it is missing with a warning
+            if not self.tabulated_data_file:
+                logger.warning(
+                    'No tabulated data file provided. '
+                    'Raw Psi/Delta data will not be included.'
+                )
+
             thickness_df = self.read_thickness_file(archive, logger)
             nk_df = self.read_n_and_k_file(archive, logger)
-            if not nk_df.empty:
-                self.write_ellipsometry_data(thickness_df, nk_df, archive, logger)
+            if nk_df.empty or thickness_df.empty:
+                raise ValueError(
+                    'n_and_k_file and thickness_file could not be parsed into data.'
+                )
+
+            tabulated_df = self.read_tabulated_data_file(archive, logger)
+            if self.tabulated_data_file and tabulated_df.empty:
+                raise ValueError('tabulated_data_file could not be parsed into data.')
+
+            # Build base results once, then optionally enrich with tabulated data.
+            if not self.results:
+                self.write_ellipsometry_data(thickness_df, nk_df, archive, logger, None)
+
+            # Reprocessing path: update delta_psi on existing results without
+            # rebuilding base n/k-thickness results.
+            if self.results:
+                self._populate_delta_psi_from_tabulated(
+                    self.results, tabulated_df, logger
+                )
 
         super().normalize(archive, logger)
 
