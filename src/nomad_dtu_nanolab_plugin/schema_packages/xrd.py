@@ -216,6 +216,10 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
             scan_type = metadata_dict.get('scan_type', None)
             if scan_type != 'line':
                 logger.error(f'Unsupported scan type: "{scan_type}"')
+            x_coordinates = xrd_dict.get('X')
+            y_coordinates = xrd_dict.get('Y')
+            x_absolute = x_coordinates[0] if x_coordinates is not None and len(x_coordinates) > 0 else 0
+            y_absolute = y_coordinates[0] if y_coordinates is not None and len(y_coordinates) > 0 else 0
             result = XRDMappingResult(
                 intensity=xrd_dict.get('intensity', None),
                 two_theta=xrd_dict.get('2Theta', None),
@@ -224,8 +228,8 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
                 phi=xrd_dict.get('Phi', None),
                 scan_axis=metadata_dict.get('scan_axis', None),
                 integration_time=xrd_dict.get('countTime', None),
-                x_absolute=xrd_dict.get('X', None)[0],
-                y_absolute=xrd_dict.get('Y', None)[0],
+                x_absolute=x_absolute,
+                y_absolute=y_absolute,
             )
 
             # fig3 = go.Figure()
