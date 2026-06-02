@@ -218,8 +218,16 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
                 logger.error(f'Unsupported scan type: "{scan_type}"')
             x_coordinates = xrd_dict.get('X')
             y_coordinates = xrd_dict.get('Y')
-            x_absolute = x_coordinates[0] if x_coordinates is not None and len(x_coordinates) > 0 else 0
-            y_absolute = y_coordinates[0] if y_coordinates is not None and len(y_coordinates) > 0 else 0
+            x_absolute = (
+                x_coordinates[0]
+                if x_coordinates is not None and len(x_coordinates) > 0
+                else 0
+            )
+            y_absolute = (
+                y_coordinates[0]
+                if y_coordinates is not None and len(y_coordinates) > 0
+                else 0
+            )
             result = XRDMappingResult(
                 intensity=xrd_dict.get('intensity', None),
                 two_theta=xrd_dict.get('2Theta', None),
