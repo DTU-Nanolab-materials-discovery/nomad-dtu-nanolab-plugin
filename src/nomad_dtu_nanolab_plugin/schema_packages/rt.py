@@ -1054,10 +1054,9 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
                 for f in files:
                     with archive.m_context.raw_file(f) as rf:
-                        #try to parse with sequence parsing first, 
+                        # try to parse with sequence parsing first,
                         # if it fails, fallback to non-sequence parsing
-  
-  
+
                         collects = autosampler_reader.parse_file(
                             rf.name, parse_sequence=False
                         )

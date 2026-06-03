@@ -971,7 +971,6 @@ def get_uma_sequence_length(sample_names):
 
 def read_data_block(data_path, measurement_labels, column_headers, parse_sequence=True):
 
-
     df = pd.read_csv(data_path, skiprows=1)
     # remove non float rows
     df = df.apply(pd.to_numeric, errors='coerce')
@@ -1091,9 +1090,8 @@ def parse_file(data_path, config_path=None, parse_sequence=True):
             raise ValueError(
                 f'Number of collects ({len(collects)})',
                 f'and metadata blocks ({len(metadata_dict)}) do not match.',
-                f'{metadata_dict.keys()}'
+                f'{metadata_dict.keys()}',
             )
-
 
         # Iterate through the metadata dictionary to write the metadata
         for collect, metadata in zip(collects, metadata_dict.values()):
