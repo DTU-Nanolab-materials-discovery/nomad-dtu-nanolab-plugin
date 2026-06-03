@@ -262,9 +262,7 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
 
             # Use archive context to read config file
             with archive.m_context.raw_file(self.config_file) as config_f:
-                grid_df = pd.read_csv(
-                    config_f.name, skiprows=0, header=0, decimal=','
-                )
+                grid_df = pd.read_csv(config_f.name, skiprows=0, header=0, decimal=',')
 
             # Ensure we have X and Y columns
             if 'X' not in grid_df.columns or 'Y' not in grid_df.columns:
@@ -278,7 +276,10 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
                     return  # Cannot find position columns
 
             # Extract unique samples
-            if 'Sample Name' not in grid_df.columns and 'Sample Number' in grid_df.columns:
+            if (
+                'Sample Name' not in grid_df.columns
+                and 'Sample Number' in grid_df.columns
+            ):
                 grid_df['Sample Name'] = 'Sample_' + grid_df['Sample Number'].astype(
                     str
                 )
@@ -346,13 +347,17 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
                 color = color_palette[idx % len(color_palette)]
 
                 # Prepare custom data for hover (sample coordinates if available)
-                has_sample_coords = 'Xsample' in sample_data.columns and 'Ysample' in sample_data.columns
-                
+                has_sample_coords = (
+                    'Xsample' in sample_data.columns
+                    and 'Ysample' in sample_data.columns
+                )
+
                 if has_sample_coords:
-                    customdata = list(zip(
-                        sample_data['Xsample'].values,
-                        sample_data['Ysample'].values
-                    ))
+                    customdata = list(
+                        zip(
+                            sample_data['Xsample'].values, sample_data['Ysample'].values
+                        )
+                    )
                     hover_template = (
                         f'<b>{sample_name}</b><br>'
                         '<b>Autosampler Coords:</b><br>'
@@ -428,7 +433,6 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
                 'autosampler measurements.'
             )
             return
-
 
         try:
             # Parse files using autosampler_reader
@@ -649,14 +653,16 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         type=str,
         shape=['*'],
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
-        a_eln={'component': 'FileEditQuantity', 'label': 'Raw instrument .bsw or .dsw files'},
+        a_eln={
+            'component': 'FileEditQuantity',
+            'label': 'Raw instrument .bsw or .dsw files',
+        },
         description=(
             'Optional raw .bsw batch file for single-point measurements (provenance). '
             'Only used when uploading single-point measurements directly; '
             'NOT used for autosampler batch experiments.'
         ),
     )
-
 
     def plot(self) -> None:
         """
@@ -1037,7 +1043,11 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         # and create a single result at position (0,0).
         if (not self.results or len(self.results) == 0) and self.data_file:
             try:
-                files = self.data_file if isinstance(self.data_file, (list, tuple)) else [self.data_file]
+                files = (
+                    self.data_file
+                    if isinstance(self.data_file, (list, tuple))
+                    else [self.data_file]
+                )
 
                 spectra_all = []
                 any_angle_meta = False
@@ -1048,10 +1058,12 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             collects = autosampler_reader.parse_file(rf.name)
 
                         for single_meas in collects:
-                            meas_type = single_meas.metadata.get('MeasurementType', 'Unknown')
-                            if meas_type == 'T' or meas_type == 'Transmission':
+                            meas_type = single_meas.metadata.get(
+                                'MeasurementType', 'Unknown'
+                            )
+                            if meas_type in {'T', 'Transmission'}:
                                 spectrum_type = 'Transmission'
-                            elif meas_type == 'R' or meas_type == 'Reflection':
+                            elif meas_type in {'R', 'Reflection'}:
                                 spectrum_type = 'Reflection'
                             # fallback: try to infer from filename
                             elif 'T' in f.upper():
@@ -1064,112 +1076,56 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             if wavelength is None or intensity is None:
                                 continue
 
-                            # convert percent to fraction if needed
-                            try:
-                                intensity_arr = np.asarray(intensity, dtype=float)
-                                if np.nanmax(intensity_arr) > 2.0:
-                                    intensity_arr = intensity_arr / 100.0
-                            except Exception:
-                                intensity_arr = np.asarray(intensity, dtype=float)
+                            # convert to fraction (intensity is in percent)
+                            intensity_arr = intensity / 100.0
 
                             spectrum = RTSpectrum(
                                 spectrum_type=spectrum_type,
-                                wavelength=(wavelength.values * ureg('nm')) if hasattr(wavelength, 'values') else (np.asarray(wavelength) * ureg('nm')),
+                                wavelength=(wavelength.values * ureg('nm'))
+                                if hasattr(wavelength, 'values')
+                                else (np.asarray(wavelength) * ureg('nm')),
                                 intensity=intensity_arr,
                             )
 
                             # attach geometry metadata when present
                             if 'DetectorAngle' in single_meas.metadata:
                                 try:
-                                    spectrum.detector_angle = float(single_meas.metadata['DetectorAngle']) * ureg('degree')
+                                    spectrum.detector_angle = float(
+                                        single_meas.metadata['DetectorAngle']
+                                    ) * ureg('degree')
                                     any_angle_meta = True
                                 except Exception:
                                     pass
                             if 'SampleAngle' in single_meas.metadata:
                                 try:
-                                    spectrum.sample_angle = float(single_meas.metadata['SampleAngle']) * ureg('degree')
+                                    spectrum.sample_angle = float(
+                                        single_meas.metadata['SampleAngle']
+                                    ) * ureg('degree')
                                     any_angle_meta = True
                                 except Exception:
                                     pass
                             if 'Polarization' in single_meas.metadata:
-                                spectrum.polarization = single_meas.metadata['Polarization']
+                                spectrum.polarization = single_meas.metadata[
+                                    'Polarization'
+                                ]
                                 any_angle_meta = True
 
                             spectra_all.append(spectrum)
                     except Exception as e:
-                        logger.warning(f'Failed to parse single-point CSV {f} with autosampler_reader: {e}')
-                        # Fallback: try simple pandas-based parsing for R, T or combined files
-                        try:
-                            import re
-
-                            import pandas as pd
-
-                            with archive.m_context.raw_file(f) as rf:
-                                try:
-                                    df = pd.read_csv(rf.name, header=1)
-                                except Exception:
-                                    try:
-                                        df = pd.read_csv(rf.name, header=0)
-                                    except Exception:
-                                        df = pd.read_csv(rf.name, header=None)
-
-                            # remove non-numeric header/title rows that may appear
-                            df = df.apply(pd.to_numeric, errors='coerce')
-                            df = df.dropna(subset=[df.columns[0]])
-                            cols = list(df.columns)
-                            i = 0
-                            while i < len(cols):
-                                col = str(cols[i])
-                                if 'Wavelength' in col or 'wavelength' in col or 'Wv' in col:
-                                    wcol = cols[i]
-                                    icol = None
-                                    if i + 1 < len(cols):
-                                        icol = cols[i + 1]
-
-                                    if icol is None:
-                                        i += 1
-                                        continue
-
-                                    iname = str(icol)
-                                    spectrum_type = None
-                                    if '%T' in iname or 'Transmission' in iname or re.search(r'\bT\b', iname):
-                                        spectrum_type = 'Transmission'
-                                    elif '%R' in iname or 'Reflection' in iname or re.search(r'\bR\b', iname):
-                                        spectrum_type = 'Reflection'
-                                    elif re.search(r'[_\-]T', f, re.IGNORECASE):
-                                        spectrum_type = 'Transmission'
-                                    elif re.search(r'[_\-]R', f, re.IGNORECASE):
-                                        spectrum_type = 'Reflection'
-                                    else:
-                                        spectrum_type = 'Transmission'
-
-                                    try:
-                                        wavelength = df[wcol].to_numpy(dtype=float)
-                                        intensity = df[icol].to_numpy(dtype=float)
-                                    except Exception:
-                                        i += 2
-                                        continue
-
-                                    if np.nanmax(intensity) > 2.0:
-                                        intensity = intensity / 100.0
-
-                                    spectrum = RTSpectrum(
-                                        spectrum_type=spectrum_type,
-                                        wavelength=wavelength * ureg('nm'),
-                                        intensity=intensity,
-                                    )
-                                    spectra_all.append(spectrum)
-                                    i += 2
-                                else:
-                                    i += 1
-                        except Exception:
-                            logger.debug('Fallback pandas parsing also failed for %s', f)
+                        logger.warning(
+                            f'Failed to parse single-point CSV {f}',
+                            f'with autosampler_reader: {e}',
+                        )
 
                 if spectra_all:
                     # Generate name from CSV filename (strip extension)
                     result_name = 'Single point'
                     if self.data_file:
-                        first_file = self.data_file[0] if isinstance(self.data_file, (list, tuple)) else self.data_file
+                        first_file = (
+                            self.data_file[0]
+                            if isinstance(self.data_file, (list, tuple))
+                            else self.data_file
+                        )
                         result_name = os.path.splitext(os.path.basename(first_file))[0]
                     result = RTResult(name=result_name)
                     result.spectra = spectra_all
@@ -1185,13 +1141,20 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     if getattr(self, 'accessory', None) in (None, 'None'):
                         self.accessory = 'UMA' if any_angle_meta else 'DRA'
             except Exception as e:
-                logger.error(f'Error parsing single-point data files with autosampler_reader: {e}', exc_info=True)
+                logger.error(
+                    f'Error parsing single-point data files: {e}',
+                    exc_info=True,
+                )
 
         if self.location is None:
             self.location = 'DTU Nanolab RT Measurement'
 
         if self.data_file:
-            first_file = self.data_file[0] if isinstance(self.data_file, (list, tuple)) else self.data_file
+            first_file = (
+                self.data_file[0]
+                if isinstance(self.data_file, (list, tuple))
+                else self.data_file
+            )
             self.add_sample_reference(first_file, 'RT', archive, logger)
 
         super().normalize(archive, logger)
