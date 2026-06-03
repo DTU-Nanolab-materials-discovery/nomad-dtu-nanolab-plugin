@@ -1,9 +1,7 @@
 import os
-import re
 from typing import TYPE_CHECKING
 
 import numpy as np
-import pandas as pd
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
@@ -1056,74 +1054,66 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
                 for f in files:
                     with archive.m_context.raw_file(f) as rf:
-                        try:
-                            df = pd.read_csv(rf.name, header=1)
-                        except Exception:
+                        #try to parse with sequence parsing first, 
+                        # if it fails, fallback to non-sequence parsing
+  
+  
+                        collects = autosampler_reader.parse_file(
+                            rf.name, parse_sequence=False
+                        )
+
+                    for single_meas in collects:
+                        meas_type = single_meas.metadata.get(
+                            'MeasurementType', 'Unknown'
+                        )
+                        if meas_type in {'T', 'Transmission'}:
+                            spectrum_type = 'Transmission'
+                        elif meas_type in {'R', 'Reflection'}:
+                            spectrum_type = 'Reflection'
+                        # fallback: try to infer from filename
+                        elif 'T' in f.upper():
+                            spectrum_type = 'Transmission'
+                        else:
+                            spectrum_type = 'Reflection'
+
+                        wavelength = single_meas.data.get('Wavelength')
+                        intensity = single_meas.data.get('Intensity')
+                        if wavelength is None or intensity is None:
+                            continue
+
+                        # convert to fraction (intensity is in percent)
+                        intensity_arr = intensity / 100.0
+
+                        spectrum = RTSpectrum(
+                            spectrum_type=spectrum_type,
+                            wavelength=(wavelength.values * ureg('nm'))
+                            if hasattr(wavelength, 'values')
+                            else (np.asarray(wavelength) * ureg('nm')),
+                            intensity=intensity_arr,
+                        )
+
+                        # attach geometry metadata when present
+                        if 'DetectorAngle' in single_meas.metadata:
                             try:
-                                df = pd.read_csv(rf.name, header=0)
+                                spectrum.detector_angle = float(
+                                    single_meas.metadata['DetectorAngle']
+                                ) * ureg('degree')
+                                any_angle_meta = True
                             except Exception:
-                                df = pd.read_csv(rf.name, header=None)
+                                pass
+                        if 'SampleAngle' in single_meas.metadata:
+                            try:
+                                spectrum.sample_angle = float(
+                                    single_meas.metadata['SampleAngle']
+                                ) * ureg('degree')
+                                any_angle_meta = True
+                            except Exception:
+                                pass
+                        if 'Polarization' in single_meas.metadata:
+                            spectrum.polarization = single_meas.metadata['Polarization']
+                            any_angle_meta = True
 
-                        # remove non-numeric header/title rows that may appear
-                        df = df.apply(pd.to_numeric, errors='coerce')
-                        df = df.dropna(subset=[df.columns[0]])
-                        cols = list(df.columns)
-                        i = 0
-                        while i < len(cols):
-                            col = str(cols[i])
-                            if (
-                                'Wavelength' in col
-                                or 'wavelength' in col
-                                or 'Wv' in col
-                            ):
-                                wcol = cols[i]
-                                icol = None
-                                if i + 1 < len(cols):
-                                    icol = cols[i + 1]
-
-                                if icol is None:
-                                    i += 1
-                                    continue
-
-                                iname = str(icol)
-                                spectrum_type = None
-                                if (
-                                    '%T' in iname
-                                    or 'Transmission' in iname
-                                    or re.search(r'\bT\b', iname)
-                                ):
-                                    spectrum_type = 'Transmission'
-                                elif (
-                                    '%R' in iname
-                                    or 'Reflection' in iname
-                                    or re.search(r'\bR\b', iname)
-                                ):
-                                    spectrum_type = 'Reflection'
-                                elif re.search(r'[_\-]T', f, re.IGNORECASE):
-                                    spectrum_type = 'Transmission'
-                                elif re.search(r'[_\-]R', f, re.IGNORECASE):
-                                    spectrum_type = 'Reflection'
-                                else:
-                                    spectrum_type = 'Transmission'
-
-                                try:
-                                    wavelength = df[wcol].to_numpy(dtype=float)
-                                    intensity = df[icol].to_numpy(dtype=float)
-                                except Exception:
-                                    i += 2
-                                    continue
-
-                                intensity = intensity / 100.0
-
-                                spectrum = RTSpectrum(
-                                    spectrum_type=spectrum_type,
-                                    wavelength=wavelength * ureg('nm'),
-                                    intensity=intensity,
-                                )
-                                spectra_all.append(spectrum)
-                                i += 2
-                            else:
-                                i += 1
+                        spectra_all.append(spectrum)
 
                 if spectra_all:
                     # Generate name from CSV filename (strip extension)
@@ -1139,9 +1129,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     result.spectra = spectra_all
                     # single-point stage position
                     result.x_absolute = 0 * ureg('mm')
-                    result.x_relative = 0 * ureg('mm')
                     result.y_absolute = 0 * ureg('mm')
-                    result.y_relative = 0 * ureg('mm')
 
                     self.results = [result]
 
@@ -1150,7 +1138,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         self.accessory = 'UMA' if any_angle_meta else 'DRA'
             except Exception as e:
                 logger.error(
-                    f'Error parsing single-point data files: {e}',
+                    f'Error parsing csv with autosampler_reader: {e}',
                     exc_info=True,
                 )
 

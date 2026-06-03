@@ -969,8 +969,8 @@ def get_uma_sequence_length(sample_names):
     return intervals[0]
 
 
-def read_data_block(data_path, measurement_labels, column_headers):
-    uma_sequence_length = get_uma_sequence_length(measurement_labels)
+def read_data_block(data_path, measurement_labels, column_headers, parse_sequence=True):
+
 
     df = pd.read_csv(data_path, skiprows=1)
     # remove non float rows
@@ -988,6 +988,11 @@ def read_data_block(data_path, measurement_labels, column_headers):
         column_name = column_headers[2 * i + 1]
         collect.add_data(wavelength, values, column_name)
         collects.append(collect)
+
+    if parse_sequence:
+        uma_sequence_length = get_uma_sequence_length(measurement_labels)
+    else:
+        uma_sequence_length = len(collects)
 
     return collects, uma_sequence_length
 
@@ -1061,7 +1066,7 @@ def read_config_block(config_path, collects, uma_sequence_length):
             uma_counter = 0
 
 
-def parse_file(data_path, config_path=None):
+def parse_file(data_path, config_path=None, parse_sequence=True):
     with open(data_path, encoding='utf-8') as file:
         reader = csv.reader(file)
 
@@ -1073,14 +1078,22 @@ def parse_file(data_path, config_path=None):
 
         # Read data block
         collects, uma_sequence_length = read_data_block(
-            data_path, measurement_labels, column_headers
+            data_path,
+            measurement_labels,
+            column_headers,
+            parse_sequence=parse_sequence,
         )
 
         # Read metadata block
         metadata_dict = read_metadata_block(reader)
 
         if len(collects) != len(metadata_dict):
-            raise ValueError('Number of collects and metadata blocks do not match.')
+            raise ValueError(
+                f'Number of collects ({len(collects)})',
+                f'and metadata blocks ({len(metadata_dict)}) do not match.',
+                f'{metadata_dict.keys()}'
+            )
+
 
         # Iterate through the metadata dictionary to write the metadata
         for collect, metadata in zip(collects, metadata_dict.values()):
