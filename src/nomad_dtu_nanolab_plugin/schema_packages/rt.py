@@ -1,3 +1,4 @@
+import os
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -12,7 +13,7 @@ from nomad.datamodel.metainfo.basesections import (
     Experiment,
     ExperimentStep,
 )
-from nomad.datamodel.metainfo.plot import PlotSection
+from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_measurements.mapping.schema import (
@@ -21,6 +22,7 @@ from nomad_measurements.mapping.schema import (
 )
 from nomad_measurements.utils import create_archive
 
+from nomad_dtu_nanolab_plugin import autosampler_reader
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
     DtuNanolabMeasurement,
@@ -145,7 +147,7 @@ class DTUSampleAlignment(RectangularSampleAlignment):
     )
 
 
-class DtuAutosamplerMeasurement(Experiment, Schema):
+class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
     """
     Base Experiment class for Agilent Cary autosampler measurements.
 
@@ -205,6 +207,209 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
         """,
     )
 
+    vertical_back_slit = Quantity(
+        type=np.float64,
+        unit='degree',
+        default=1.0,
+        description='Vertical back slit setting in degrees.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='deg',
+            label='Vertical back slit',
+        ),
+    )
+
+    vertical_front_slit = Quantity(
+        type=np.float64,
+        unit='degree',
+        default=1.0,
+        description='Vertical front slit setting in degrees.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='deg',
+            label='Vertical front slit',
+        ),
+    )
+
+    horizontal_slit = Quantity(
+        type=np.float64,
+        unit='degree',
+        default=3.0,
+        description='Horizontal slit setting in degrees.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='deg',
+            label='Horizontal slit',
+        ),
+    )
+
+    def plot_grid(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        Create an interactive Plotly visualization of the autosampler measurement grid.
+
+        This plot shows:
+        1. The autosampler boundary as a circle (107 mm radius)
+        2. All measurement positions grouped by sample (colored by sample)
+        3. Sample labels and measurement point locations
+        """
+        import pandas as pd
+        import plotly.graph_objs as go
+
+        # Try to parse the grid from config_file if available
+        try:
+            if not self.config_file:
+                return
+
+            # Use archive context to read config file
+            with archive.m_context.raw_file(self.config_file) as config_f:
+                grid_df = pd.read_csv(
+                    config_f.name, skiprows=0, header=0, decimal=','
+                )
+
+            # Ensure we have X and Y columns
+            if 'X' not in grid_df.columns or 'Y' not in grid_df.columns:
+                # Try alternative column names
+                x_col = next((c for c in grid_df.columns if 'x' in c.lower()), None)
+                y_col = next((c for c in grid_df.columns if 'y' in c.lower()), None)
+                if x_col and y_col:
+                    grid_df.rename(columns={x_col: 'X', y_col: 'Y'}, inplace=True)
+                else:
+                    logger.debug('Could not find X/Y position columns in config file')
+                    return  # Cannot find position columns
+
+            # Extract unique samples
+            if 'Sample Name' not in grid_df.columns and 'Sample Number' in grid_df.columns:
+                grid_df['Sample Name'] = 'Sample_' + grid_df['Sample Number'].astype(
+                    str
+                )
+            elif 'Sample Name' not in grid_df.columns:
+                logger.debug('Config file missing Sample Name or Sample Number column')
+                return
+
+            fig = go.Figure()
+
+            # Add autosampler boundary circle (107 mm radius)
+            AUTOSAMPLER_RADIUS = 107  # mm
+            circle_angles = np.linspace(0, 2 * np.pi, 100)
+            circle_x = AUTOSAMPLER_RADIUS * np.cos(circle_angles)
+            circle_y = AUTOSAMPLER_RADIUS * np.sin(circle_angles)
+
+            fig.add_trace(
+                go.Scatter(
+                    x=circle_x,
+                    y=circle_y,
+                    mode='lines',
+                    name='Autosampler Boundary',
+                    line=dict(color='red', width=2, dash='dash'),
+                    hovertemplate='<b>Boundary</b><br>X: %{x:.2f} mm<br>Y: %{y:.2f} mm',
+                )
+            )
+
+            # Add baseline center if it exists
+            if 'Baseline' in grid_df['Sample Name'].values:
+                baseline_rows = grid_df[grid_df['Sample Name'] == 'Baseline']
+                if len(baseline_rows) > 0:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=baseline_rows['X'].values,
+                            y=baseline_rows['Y'].values,
+                            mode='markers',
+                            name='Baseline Center',
+                            marker=dict(size=10, color='black', symbol='star'),
+                            hovertemplate=(
+                                '<b>Baseline</b><br>X: %{x:.2f} mm<br>Y: %{y:.2f} mm'
+                            ),
+                        )
+                    )
+
+            # Color palette for samples
+            color_palette = [
+                '#1f77b4',
+                '#ff7f0e',
+                '#2ca02c',
+                '#d62728',
+                '#9467bd',
+                '#8c564b',
+                '#e377c2',
+                '#7f7f7f',
+                '#bcbd22',
+                '#17becf',
+            ]
+
+            # Add scatter plots for each sample
+            unique_samples = grid_df['Sample Name'].unique()
+            for idx, sample_name in enumerate(unique_samples):
+                if sample_name == 'Baseline':
+                    continue  # Already plotted above
+
+                sample_data = grid_df[grid_df['Sample Name'] == sample_name]
+                color = color_palette[idx % len(color_palette)]
+
+                # Prepare custom data for hover (sample coordinates if available)
+                has_sample_coords = 'Xsample' in sample_data.columns and 'Ysample' in sample_data.columns
+                
+                if has_sample_coords:
+                    customdata = list(zip(
+                        sample_data['Xsample'].values,
+                        sample_data['Ysample'].values
+                    ))
+                    hover_template = (
+                        f'<b>{sample_name}</b><br>'
+                        '<b>Autosampler Coords:</b><br>'
+                        'X: %{x:.2f} mm<br>'
+                        'Y: %{y:.2f} mm<br>'
+                        '<b>Sample Coords:</b><br>'
+                        'X_sample: %{customdata[0]:.2f} mm<br>'
+                        'Y_sample: %{customdata[1]:.2f} mm<extra></extra>'
+                    )
+                else:
+                    customdata = None
+                    hover_template = (
+                        f'<b>{sample_name}</b><br>'
+                        'X: %{x:.2f} mm<br>'
+                        'Y: %{y:.2f} mm<extra></extra>'
+                    )
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=sample_data['X'].values,
+                        y=sample_data['Y'].values,
+                        mode='markers',
+                        name=sample_name,
+                        marker=dict(size=8, color=color),
+                        text=sample_name,
+                        customdata=customdata,
+                        hovertemplate=hover_template,
+                    )
+                )
+
+            # Update layout
+            fig.update_layout(
+                title='Autosampler Measurement Grid',
+                xaxis_title='X Position (mm)',
+                yaxis_title='Y Position (mm)',
+                template='plotly_white',
+                hovermode='closest',
+                xaxis=dict(scaleanchor='y', scaleratio=1),
+                yaxis=dict(scaleanchor='x', scaleratio=1),
+                width=800,
+                height=800,
+            )
+
+            plot_json = fig.to_plotly_json()
+            plot_json['config'] = dict(scrollZoom=False)
+            self.figures.append(
+                PlotlyFigure(
+                    label='Measurement Grid Layout',
+                    figure=plot_json,
+                )
+            )
+
+        except Exception as e:
+            logger.debug(
+                f'Could not generate autosampler grid plot: {e}', exc_info=True
+            )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DtuAutosamplerMeasurement` class.
@@ -224,8 +429,6 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
             )
             return
 
-        # Import here to avoid circular dependencies
-        from nomad_dtu_nanolab_plugin import autosampler_reader
 
         try:
             # Parse files using autosampler_reader
@@ -267,6 +470,9 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
 
                 measurement = RTMeasurement(
                     name=f'{library_id}_RT_{datetime_label}',
+                    vertical_back_slit=self.vertical_back_slit,
+                    vertical_front_slit=self.vertical_front_slit,
+                    horizontal_slit=self.horizontal_slit,
                 )
 
                 # Create results for each position
@@ -327,6 +533,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                     results.append(result)
 
                 measurement.results = results
+                measurement.accessory = 'UMA'
 
                 # Log positions from results after assignment
                 # Results are stored in the archive via create_archive
@@ -349,6 +556,10 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                 )
 
             self.steps = measurements
+
+            # Generate visualization of the measurement grid
+            self.figures = []
+            self.plot_grid(archive, logger)
 
             logger.info(
                 f'Created {len(measurements)} RT measurement archives '
@@ -377,6 +588,75 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         section_def=DTUSampleAlignment,
         description='The alignment of the sample.',
     )
+
+    accessory = Quantity(
+        type=MEnum('UMA', 'DRA', 'None'),
+        default='None',
+        description='Instrument accessory used for the measurement.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            label='Accessory',
+        ),
+    )
+
+    vertical_back_slit = Quantity(
+        type=np.float64,
+        unit='degree',
+        description='Vertical back slit setting in degrees (V_back slot).',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='deg',
+            label='Vertical back slit',
+        ),
+    )
+
+    vertical_front_slit = Quantity(
+        type=np.float64,
+        unit='degree',
+        description='Vertical front slit setting in degrees (V_front slot).',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='deg',
+            label='Vertical front slit',
+        ),
+    )
+
+    horizontal_slit = Quantity(
+        type=np.float64,
+        unit='degree',
+        description='Horizontal slit setting in degrees (H slot).',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='deg',
+            label='Horizontal slit',
+        ),
+    )
+
+    data_file = Quantity(
+        type=str,
+        shape=['*'],
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
+        a_eln={'component': 'FileEditQuantity', 'label': 'Data file (.csv)'},
+        description=(
+            'CSV file(s) for single-point R/T measurement. '
+            'Can include R, T, or both spectra in one or multiple files. '
+            'Only used when uploading single-point measurements directly; '
+            'NOT used for autosampler batch experiments.'
+        ),
+    )
+
+    raw_file = Quantity(
+        type=str,
+        shape=['*'],
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
+        a_eln={'component': 'FileEditQuantity', 'label': 'Raw instrument .bsw or .dsw files'},
+        description=(
+            'Optional raw .bsw batch file for single-point measurements (provenance). '
+            'Only used when uploading single-point measurements directly; '
+            'NOT used for autosampler batch experiments.'
+        ),
+    )
+
 
     def plot(self) -> None:
         """
@@ -752,11 +1032,167 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         The normalizer for the `RTMeasurement` class.
         """
 
+        # If no spatial results exist but CSV files were uploaded for a
+        # single-point measurement, use the autosampler_reader to parse
+        # and create a single result at position (0,0).
+        if (not self.results or len(self.results) == 0) and self.data_file:
+            try:
+                files = self.data_file if isinstance(self.data_file, (list, tuple)) else [self.data_file]
+
+                spectra_all = []
+                any_angle_meta = False
+
+                for f in files:
+                    try:
+                        with archive.m_context.raw_file(f) as rf:
+                            collects = autosampler_reader.parse_file(rf.name)
+
+                        for single_meas in collects:
+                            meas_type = single_meas.metadata.get('MeasurementType', 'Unknown')
+                            if meas_type == 'T' or meas_type == 'Transmission':
+                                spectrum_type = 'Transmission'
+                            elif meas_type == 'R' or meas_type == 'Reflection':
+                                spectrum_type = 'Reflection'
+                            # fallback: try to infer from filename
+                            elif 'T' in f.upper():
+                                spectrum_type = 'Transmission'
+                            else:
+                                spectrum_type = 'Reflection'
+
+                            wavelength = single_meas.data.get('Wavelength')
+                            intensity = single_meas.data.get('Intensity')
+                            if wavelength is None or intensity is None:
+                                continue
+
+                            # convert percent to fraction if needed
+                            try:
+                                intensity_arr = np.asarray(intensity, dtype=float)
+                                if np.nanmax(intensity_arr) > 2.0:
+                                    intensity_arr = intensity_arr / 100.0
+                            except Exception:
+                                intensity_arr = np.asarray(intensity, dtype=float)
+
+                            spectrum = RTSpectrum(
+                                spectrum_type=spectrum_type,
+                                wavelength=(wavelength.values * ureg('nm')) if hasattr(wavelength, 'values') else (np.asarray(wavelength) * ureg('nm')),
+                                intensity=intensity_arr,
+                            )
+
+                            # attach geometry metadata when present
+                            if 'DetectorAngle' in single_meas.metadata:
+                                try:
+                                    spectrum.detector_angle = float(single_meas.metadata['DetectorAngle']) * ureg('degree')
+                                    any_angle_meta = True
+                                except Exception:
+                                    pass
+                            if 'SampleAngle' in single_meas.metadata:
+                                try:
+                                    spectrum.sample_angle = float(single_meas.metadata['SampleAngle']) * ureg('degree')
+                                    any_angle_meta = True
+                                except Exception:
+                                    pass
+                            if 'Polarization' in single_meas.metadata:
+                                spectrum.polarization = single_meas.metadata['Polarization']
+                                any_angle_meta = True
+
+                            spectra_all.append(spectrum)
+                    except Exception as e:
+                        logger.warning(f'Failed to parse single-point CSV {f} with autosampler_reader: {e}')
+                        # Fallback: try simple pandas-based parsing for R, T or combined files
+                        try:
+                            import re
+
+                            import pandas as pd
+
+                            with archive.m_context.raw_file(f) as rf:
+                                try:
+                                    df = pd.read_csv(rf.name, header=1)
+                                except Exception:
+                                    try:
+                                        df = pd.read_csv(rf.name, header=0)
+                                    except Exception:
+                                        df = pd.read_csv(rf.name, header=None)
+
+                            # remove non-numeric header/title rows that may appear
+                            df = df.apply(pd.to_numeric, errors='coerce')
+                            df = df.dropna(subset=[df.columns[0]])
+                            cols = list(df.columns)
+                            i = 0
+                            while i < len(cols):
+                                col = str(cols[i])
+                                if 'Wavelength' in col or 'wavelength' in col or 'Wv' in col:
+                                    wcol = cols[i]
+                                    icol = None
+                                    if i + 1 < len(cols):
+                                        icol = cols[i + 1]
+
+                                    if icol is None:
+                                        i += 1
+                                        continue
+
+                                    iname = str(icol)
+                                    spectrum_type = None
+                                    if '%T' in iname or 'Transmission' in iname or re.search(r'\bT\b', iname):
+                                        spectrum_type = 'Transmission'
+                                    elif '%R' in iname or 'Reflection' in iname or re.search(r'\bR\b', iname):
+                                        spectrum_type = 'Reflection'
+                                    elif re.search(r'[_\-]T', f, re.IGNORECASE):
+                                        spectrum_type = 'Transmission'
+                                    elif re.search(r'[_\-]R', f, re.IGNORECASE):
+                                        spectrum_type = 'Reflection'
+                                    else:
+                                        spectrum_type = 'Transmission'
+
+                                    try:
+                                        wavelength = df[wcol].to_numpy(dtype=float)
+                                        intensity = df[icol].to_numpy(dtype=float)
+                                    except Exception:
+                                        i += 2
+                                        continue
+
+                                    if np.nanmax(intensity) > 2.0:
+                                        intensity = intensity / 100.0
+
+                                    spectrum = RTSpectrum(
+                                        spectrum_type=spectrum_type,
+                                        wavelength=wavelength * ureg('nm'),
+                                        intensity=intensity,
+                                    )
+                                    spectra_all.append(spectrum)
+                                    i += 2
+                                else:
+                                    i += 1
+                        except Exception:
+                            logger.debug('Fallback pandas parsing also failed for %s', f)
+
+                if spectra_all:
+                    # Generate name from CSV filename (strip extension)
+                    result_name = 'Single point'
+                    if self.data_file:
+                        first_file = self.data_file[0] if isinstance(self.data_file, (list, tuple)) else self.data_file
+                        result_name = os.path.splitext(os.path.basename(first_file))[0]
+                    result = RTResult(name=result_name)
+                    result.spectra = spectra_all
+                    # single-point stage position
+                    result.x_absolute = 0 * ureg('mm')
+                    result.x_relative = 0 * ureg('mm')
+                    result.y_absolute = 0 * ureg('mm')
+                    result.y_relative = 0 * ureg('mm')
+
+                    self.results = [result]
+
+                    # If accessory not set, infer from presence of angles
+                    if getattr(self, 'accessory', None) in (None, 'None'):
+                        self.accessory = 'UMA' if any_angle_meta else 'DRA'
+            except Exception as e:
+                logger.error(f'Error parsing single-point data files with autosampler_reader: {e}', exc_info=True)
+
         if self.location is None:
             self.location = 'DTU Nanolab RT Measurement'
 
-        if self.name:
-            self.add_sample_reference(self.name, 'RT', archive, logger)
+        if self.data_file:
+            first_file = self.data_file[0] if isinstance(self.data_file, (list, tuple)) else self.data_file
+            self.add_sample_reference(first_file, 'RT', archive, logger)
 
         super().normalize(archive, logger)
 
