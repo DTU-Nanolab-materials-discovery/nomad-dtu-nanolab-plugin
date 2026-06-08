@@ -208,7 +208,7 @@ class EllipsometryMappingResult(MappingResult):
 
     mobility = Quantity(
         type=np.float64,
-        unit='cm^2 / volt / second',
+        unit='cm**2 / volt / second',
         description='The fitted carrier mobility.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
