@@ -527,6 +527,8 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
                                 single_meas.metadata['SampleAngle']
                             ) * ureg('degree')
                         if 'Polarization' in single_meas.metadata:
+                            logger.debug(single_meas.metadata['PolarizationAngle'])
+                            logger.debug(single_meas.metadata['Polarization'])
                             spectrum.polarization = single_meas.metadata['Polarization']
 
                         spectra.append(spectrum)
@@ -1109,6 +1111,8 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                             except Exception:
                                 pass
                         if 'Polarization' in single_meas.metadata:
+                            logger.debug(single_meas.metadata['PolarizationAngle'])
+                            logger.debug(single_meas.metadata['Polarization'])
                             spectrum.polarization = single_meas.metadata['Polarization']
                             any_angle_meta = True
 

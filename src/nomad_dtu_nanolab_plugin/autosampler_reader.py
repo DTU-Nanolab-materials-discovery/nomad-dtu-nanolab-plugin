@@ -82,9 +82,9 @@ class SingleMeasurement:
         if len(measurement_label.split('__')) == MEASUREMENT_LABEL_PARTS:
             self.sample_name = self.measurement_label.split('__')[0]
             polarisation_angle = self.measurement_label.split('__')[1]
-            self.metadata['PolarizationAngle'] = polarisation_angle
+            self.metadata['PolarizationAngle'] = polarisation_angle 
             self.metadata['Polarization'] = POLARISATION_DICT.get(
-                polarisation_angle, 'custom'
+                str(int(float(polarisation_angle.strip()))), 'custom'
             )
             self.metadata['SampleAngle'] = self.measurement_label.split('__')[2]
             self.metadata['DetectorAngle'] = self.measurement_label.split('__')[3]
@@ -110,7 +110,7 @@ class SingleMeasurement:
                     polarisation_angle = row[1]
                 self.metadata['PolarizationAngle'] = polarisation_angle
                 self.metadata['Polarization'] = POLARISATION_DICT.get(
-                    polarisation_angle, 'custom'
+                    str(int(float(polarisation_angle.strip()))), 'custom'
                 )
             if 'DetectorAngle' in row[0]:
                 self.metadata['DetectorAngle'] = float(row[1])
