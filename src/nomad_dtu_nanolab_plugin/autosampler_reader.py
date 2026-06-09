@@ -108,7 +108,7 @@ class SingleMeasurement:
                     polarisation_angle = 'None'
                 else:
                     polarisation_angle = row[1]
-                self.metadata['PolarizationAngle'] = polarisation_angle
+                self.metadata['PolarizationAngle'] = float(polarisation_angle.strip())
                 self.metadata['Polarization'] = POLARISATION_DICT.get(
                     str(int(float(polarisation_angle.strip()))), 'custom'
                 )
@@ -1001,11 +1001,13 @@ def read_metadata_block(reader):
     for row in reader:
         if isinstance(row, list):
             if len(row) == 0:
-                # Treat empty list as the start of the metadata
                 metadata_lines = [row] + list(reader)
                 break
             row_start = row[0]
-        if not row_start.isdigit():  # Stop when metadata starts
+        # FIX: use float() instead of isdigit() to handle decimal wavelengths
+        try:
+            float(row_start)
+        except ValueError:
             metadata_lines = [row] + list(reader)
             break
 
