@@ -109,7 +109,8 @@ class SingleMeasurement:
                 else:
                     polarisation_angle = row[1]
                 self.metadata['PolarizationAngle'] = (
-                    None if polarisation_angle == 'None'
+                    None
+                    if polarisation_angle == 'None'
                     else float(polarisation_angle.strip())
                 )
                 self.metadata['Polarization'] = POLARISATION_DICT.get(
