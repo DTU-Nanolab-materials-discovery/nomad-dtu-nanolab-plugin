@@ -28,6 +28,7 @@ from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad_measurements.mapping.schema import (
     MappingResult,
+    RectangularSampleAlignment,
 )
 from nomad_measurements.utils import merge_sections
 from nomad_measurements.xrd.schema import (
@@ -83,6 +84,10 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         description='The XRD results.',
         repeats=True,
     )
+    sample_alignment = SubSection(
+        section_def=RectangularSampleAlignment,
+        description='The alignment of the sample.',
+    )
 
     def plot(self) -> None:
         fig = go.Figure()
@@ -101,7 +106,7 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         # Update layout
         fig.update_layout(
             title='XRD Patterns',
-            xaxis_title='2<i>θ</i> / °',
+            xaxis_title='2<i>theta</i> (deg)',
             yaxis_title='Intensity',
             template='plotly_white',
             hovermode='closest',
@@ -165,7 +170,7 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
         # Update layout
         fig2.update_layout(
             title='XRD Patterns stacked',
-            xaxis_title='2<i>θ</i> / °',
+            xaxis_title='2<i>theta</i> (deg)',
             yaxis_title='Log(Intensity)',
             template='plotly_white',
             hovermode='closest',
@@ -216,6 +221,18 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
             scan_type = metadata_dict.get('scan_type', None)
             if scan_type != 'line':
                 logger.error(f'Unsupported scan type: "{scan_type}"')
+            x_coordinates = xrd_dict.get('X')
+            y_coordinates = xrd_dict.get('Y')
+            x_absolute = (
+                x_coordinates[0]
+                if x_coordinates is not None and len(x_coordinates) > 0
+                else 0
+            )
+            y_absolute = (
+                y_coordinates[0]
+                if y_coordinates is not None and len(y_coordinates) > 0
+                else 0
+            )
             result = XRDMappingResult(
                 intensity=xrd_dict.get('intensity', None),
                 two_theta=xrd_dict.get('2Theta', None),
@@ -224,8 +241,8 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
                 phi=xrd_dict.get('Phi', None),
                 scan_axis=metadata_dict.get('scan_axis', None),
                 integration_time=xrd_dict.get('countTime', None),
-                x_absolute=xrd_dict.get('X', None)[0],
-                y_absolute=xrd_dict.get('Y', None)[0],
+                x_absolute=x_absolute,
+                y_absolute=y_absolute,
             )
 
             # fig3 = go.Figure()
@@ -242,7 +259,7 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
             # Update layout
             # fig3.update_layout(
             #    title='XRD Patterns stacked',
-            #    xaxis_title='2<i>θ</i> / °',
+            #    xaxis_title='2<i>theta</i> (deg)',
             #    yaxis_title='Intensity',
             #    template='plotly_white',
             #    hovermode='closest',
