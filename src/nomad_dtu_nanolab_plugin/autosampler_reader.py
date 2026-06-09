@@ -82,7 +82,7 @@ class SingleMeasurement:
         if len(measurement_label.split('__')) == MEASUREMENT_LABEL_PARTS:
             self.sample_name = self.measurement_label.split('__')[0]
             polarisation_angle = self.measurement_label.split('__')[1]
-            self.metadata['PolarizationAngle'] = polarisation_angle 
+            self.metadata['PolarizationAngle'] = polarisation_angle
             self.metadata['Polarization'] = POLARISATION_DICT.get(
                 str(int(float(polarisation_angle.strip()))), 'custom'
             )
