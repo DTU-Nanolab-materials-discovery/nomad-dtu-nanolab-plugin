@@ -62,6 +62,7 @@ RTP_GAS_FRACTION = {
     'Ar': 1,
     'N2': 1,
     'PH3': 0.1,
+    'NH3': 0.1,
     'H2S': 0.1,
 }
 POST_END_PROCESS_WINDOW_S = 30.0
@@ -225,6 +226,7 @@ class RTPOverview(ArchiveSection):
             properties=SectionProperties(
                 order=[
                     'material_space',
+                    'no_dwell_steps',
                     'annealing_temperature',
                     'total_heating_time',
                     'annealing_time',
@@ -233,10 +235,12 @@ class RTPOverview(ArchiveSection):
                     'annealing_ar_flow',
                     'annealing_n2_flow',
                     'annealing_ph3_in_ar_flow',
+                    'annealing_nh3_in_ar_flow',
                     'annealing_h2s_in_ar_flow',
                     'end_of_process_temperature',
                     'annealing_h2s_partial_pressure',
                     'annealing_ph3_partial_pressure',
+                    'annealing_nh3_partial_pressure',
                     'annealing_n2_partial_pressure',
                     'annealing_ar_partial_pressure',
                 ],
@@ -251,6 +255,14 @@ class RTPOverview(ArchiveSection):
         ),
         description='The elements present in your film before and/or after '
         'the RTP process.',
+    )
+    no_dwell_steps = Quantity(
+        type=int,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            label='Number of dwell steps',
+        ),
+        description='Number of dwell steps (plateaus) in the RTP process.',
     )
     annealing_pressure = Quantity(
         type=np.float64,
@@ -318,6 +330,17 @@ class RTPOverview(ArchiveSection):
         description='Phosphine flow (average) used during the annealing plateau of'
         ' the RTP process. The unit "cm^3/minute" is used equal to sccm.',
     )
+    annealing_nh3_in_ar_flow = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm^3/minute',
+            label='Annealing NH3 in Ar Flow',
+        ),
+        unit='m**3/s',
+        description='Ammonia flow (average) used during the annealing plateau of'
+        ' the RTP process. The unit "cm^3/minute" is used equal to sccm.',
+    )
     annealing_h2s_in_ar_flow = Quantity(
         type=np.float64,
         a_eln=ELNAnnotation(
@@ -375,6 +398,18 @@ class RTPOverview(ArchiveSection):
             'of the RTP process.'
         ),
     )
+    annealing_nh3_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            defaultDisplayUnit='torr',
+            label='Annealing NH3 Partial Pressure',
+        ),
+        unit='Pa',
+        description=(
+            'Partial pressure of NH3 (average) during the annealing plateau '
+            'of the RTP process.'
+        ),
+    )
     annealing_h2s_partial_pressure = Quantity(
         type=np.float64,
         a_eln=ELNAnnotation(
@@ -423,6 +458,11 @@ class RTPOverview(ArchiveSection):
             if self.annealing_n2_flow is not None
             else 0
         )
+        annealing_nh3_in_ar_flow = (
+            self.annealing_nh3_in_ar_flow.magnitude
+            if self.annealing_nh3_in_ar_flow is not None
+            else 0
+        )
         annealing_h2s_in_ar_flow = (
             self.annealing_h2s_in_ar_flow.magnitude
             if self.annealing_h2s_in_ar_flow is not None
@@ -437,6 +477,7 @@ class RTPOverview(ArchiveSection):
             annealing_ar_flow
             + annealing_h2s_in_ar_flow
             + annealing_n2_flow
+            + annealing_nh3_in_ar_flow
             + annealing_ph3_in_ar_flow
         )
 
@@ -473,6 +514,15 @@ class RTPOverview(ArchiveSection):
         )
         self.annealing_ph3_partial_pressure = annealing_ph3_partial_pressure
 
+        annealing_nh3_partial_pressure = ureg.Quantity(
+            annealing_nh3_in_ar_flow
+            * RTP_GAS_FRACTION['NH3']
+            / total_flow
+            * total_pressure,
+            'Pa',
+        )
+        self.annealing_nh3_partial_pressure = annealing_nh3_partial_pressure
+
         annealing_n2_partial_pressure = ureg.Quantity(
             annealing_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure,
             'Pa',
@@ -483,6 +533,7 @@ class RTPOverview(ArchiveSection):
             (
                 annealing_h2s_in_ar_flow * (1 - RTP_GAS_FRACTION['H2S'])
                 + annealing_ph3_in_ar_flow * (1 - RTP_GAS_FRACTION['PH3'])
+                + annealing_nh3_in_ar_flow * (1 - RTP_GAS_FRACTION['NH3'])
                 + annealing_ar_flow * RTP_GAS_FRACTION['Ar']
             )
             / total_flow
@@ -506,6 +557,7 @@ class RTPOverview(ArchiveSection):
             self.annealing_ar_flow,
             self.annealing_n2_flow,
             self.annealing_ph3_in_ar_flow,
+            self.annealing_nh3_in_ar_flow,
             self.annealing_h2s_in_ar_flow,
         ]
         if any(
@@ -539,11 +591,13 @@ class RTPStepOverview(ArchiveSection):
                     'step_ar_flow',
                     'step_n2_flow',
                     'step_ph3_in_ar_flow',
+                    'step_nh3_in_ar_flow',
                     'step_h2s_in_ar_flow',
                     'temperature_ramp',
                     'step_ar_partial_pressure',
                     'step_n2_partial_pressure',
                     'step_ph3_partial_pressure',
+                    'step_nh3_partial_pressure',
                     'step_h2s_partial_pressure',
                 ],
             )
@@ -602,6 +656,17 @@ class RTPStepOverview(ArchiveSection):
         description='Phosphine flow rate (average) used during the step.'
         'The unit "cm^3/minute" is used equal to sccm.',
     )
+    step_nh3_in_ar_flow = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm^3/minute',
+            label='NH3 in Ar Flow',
+        ),
+        unit='m**3/s',
+        description='Ammonia flow rate (average) used during the step.'
+        'The unit "cm^3/minute" is used equal to sccm.',
+    )
     step_h2s_in_ar_flow = Quantity(
         type=np.float64,
         a_eln=ELNAnnotation(
@@ -651,6 +716,18 @@ class RTPStepOverview(ArchiveSection):
         unit='Pa',
         description=(
             'Partial pressure (average) of PH3 during the annealing plateau '
+            'of the RTP process.'
+        ),
+    )
+    step_nh3_partial_pressure = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            defaultDisplayUnit='torr',
+            label='NH3 Partial Pressure',
+        ),
+        unit='Pa',
+        description=(
+            'Partial pressure (average) of NH3 during the annealing plateau '
             'of the RTP process.'
         ),
     )
@@ -724,6 +801,11 @@ class RTPStepOverview(ArchiveSection):
         step_n2_flow = (
             self.step_n2_flow.magnitude if self.step_n2_flow is not None else 0
         )
+        step_nh3_in_ar_flow = (
+            self.step_nh3_in_ar_flow.magnitude
+            if self.step_nh3_in_ar_flow is not None
+            else 0
+        )
         step_h2s_in_ar_flow = (
             self.step_h2s_in_ar_flow.magnitude
             if self.step_h2s_in_ar_flow is not None
@@ -735,7 +817,11 @@ class RTPStepOverview(ArchiveSection):
             else 0
         )
         total_flow = (
-            step_ar_flow + step_h2s_in_ar_flow + step_n2_flow + step_ph3_in_ar_flow
+            step_ar_flow
+            + step_h2s_in_ar_flow
+            + step_n2_flow
+            + step_ph3_in_ar_flow
+            + step_nh3_in_ar_flow
         )
 
         if total_flow == 0:
@@ -765,6 +851,12 @@ class RTPStepOverview(ArchiveSection):
         )
         self.step_ph3_partial_pressure = step_ph3_partial_pressure
 
+        step_nh3_partial_pressure = ureg.Quantity(
+            step_nh3_in_ar_flow * RTP_GAS_FRACTION['NH3'] / total_flow * total_pressure,
+            'Pa',
+        )
+        self.step_nh3_partial_pressure = step_nh3_partial_pressure
+
         step_n2_partial_pressure = ureg.Quantity(
             step_n2_flow * RTP_GAS_FRACTION['N2'] / total_flow * total_pressure,
             'Pa',
@@ -775,6 +867,7 @@ class RTPStepOverview(ArchiveSection):
             (
                 step_h2s_in_ar_flow * (1 - RTP_GAS_FRACTION['H2S'])
                 + step_ph3_in_ar_flow * (1 - RTP_GAS_FRACTION['PH3'])
+                + step_nh3_in_ar_flow * (1 - RTP_GAS_FRACTION['NH3'])
                 + step_ar_flow * RTP_GAS_FRACTION['Ar']
             )
             / total_flow
@@ -797,6 +890,7 @@ class RTPStepOverview(ArchiveSection):
             self.step_ar_flow,
             self.step_n2_flow,
             self.step_ph3_in_ar_flow,
+            self.step_nh3_in_ar_flow,
             self.step_h2s_in_ar_flow,
         ]
         if any(
@@ -2307,6 +2401,16 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
 
         if self.overview is None:
             self.overview = RTPOverview()
+
+        if overwrite or self.overview.no_dwell_steps is None:
+            self.overview.no_dwell_steps = sum(
+                1
+                for step in parsed.steps
+                if re.match(
+                    r'^\s*(?:\d+(?:st|nd|rd|th)\s+)?(?:dwell|anneal(?:ing)?)\b',
+                    str(step.name or '').lower(),
+                )
+            )
 
         if overwrite or self.overview.annealing_pressure is None:
             self.overview.annealing_pressure = parsed.overview.get('annealing_pressure')

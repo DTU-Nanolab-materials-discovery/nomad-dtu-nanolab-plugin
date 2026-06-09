@@ -48,17 +48,30 @@ RATE_OF_RISE_MAX_THROTTLE_POSITION = 100.0
 RATE_OF_RISE_MIN_STATIC_SAMPLES = 10
 RATE_OF_RISE_MIN_VALID_POINTS = 2
 
+# ---------------------------------------------------------------------------
 # Step segmentation thresholds.
+# ---------------------------------------------------------------------------
 # Minimum duration for a segment to be kept (seconds).
-SEGMENT_MIN_DURATION_S = 5.0
+# Raised from 5 s to 60 s: short noise bursts in the cooling tail were being
+# classified as separate Dwell/Cooling segments.
+SEGMENT_MIN_DURATION_S = 60.0
 # Minimum number of data points for a segment to be kept.
 SEGMENT_MIN_POINTS = 3
 # Temperature slope threshold (K/s) below which a segment is classified as a Dwell.
 # Slopes with |dT/dt| < this value are considered flat.
 DWELL_SLOPE_THRESHOLD_K_S = 0.5
 # Gaussian smoothing window half-width used before computing the derivative.
-# A wider window reduces noise sensitivity at the cost of temporal resolution.
-SLOPE_SMOOTH_WINDOW = 5
+# Raised from 5 to 15: wider window suppresses sensor noise in the cooling
+# plateau without losing the genuine Heating/Annealing/Cooling transitions.
+SLOPE_SMOOTH_WINDOW = 15
+# Minimum label-run length used to debounce slope flips before step extraction.
+# Raised from 5 points / 2 s to 10 points / 30 s so brief noisy reversals
+# inside a long cooling ramp do not fragment it into many short segments.
+SLOPE_MIN_RUN_POINTS = 10
+SLOPE_MIN_RUN_DURATION_S = 30.0
+DWELL_LIKE_NAME_RE = re.compile(
+    r'^\s*(?:\d+(?:st|nd|rd|th)\s+)?(?:dwell|anneal(?:ing)?)\b'
+)
 
 
 @dataclass
@@ -71,6 +84,7 @@ class ParsedRTPStep:
     ar_flow_m3_s: float
     n2_flow_m3_s: float
     ph3_in_ar_flow_m3_s: float
+    nh3_in_ar_flow_m3_s: float
     h2s_in_ar_flow_m3_s: float
     mean_temperature_k: float | None = None
     start_time_s: float | None = None
@@ -107,6 +121,7 @@ def _empty_result() -> ParsedRTPData:
             'annealing_ar_flow': None,
             'annealing_n2_flow': None,
             'annealing_ph3_in_ar_flow': None,
+            'annealing_nh3_in_ar_flow': None,
             'annealing_h2s_in_ar_flow': None,
             'total_heating_time': None,
             'total_cooling_time': None,
@@ -485,7 +500,7 @@ def _mark_disregarded_samples(
                 time_interval_str = (
                     f'{start_time:.1f}–{end_time:.1f} s (duration: {duration:.1f} s)'
                 )
-        
+
         logger.warning(
             f'Chamber was left open without stopping recording: detected '
             f'virtual temperature samples at 1450°C in cooling phase at time interval '
@@ -526,6 +541,7 @@ def _build_process_df(eklipse_df, cx_thermo_df):
         'ar_flow_m3_s': [r'mfc1flow$'],
         'n2_flow_m3_s': [r'mfc2flow$'],
         'ph3_in_ar_flow_m3_s': [r'mfc4flow$'],
+        'nh3_in_ar_flow_m3_s': [r'mfc5flow$'],
         'h2s_in_ar_flow_m3_s': [r'mfc6flow$'],
     }
     for out_col, patterns in flow_map.items():
@@ -539,6 +555,7 @@ def _build_process_df(eklipse_df, cx_thermo_df):
         'ar_flow_setpoint_m3_s': [r'mfc1setpoint$'],
         'n2_flow_setpoint_m3_s': [r'mfc2setpoint$'],
         'ph3_in_ar_flow_setpoint_m3_s': [r'mfc4setpoint$'],
+        'nh3_in_ar_flow_setpoint_m3_s': [r'mfc5setpoint$'],
         'h2s_in_ar_flow_setpoint_m3_s': [r'mfc6setpoint$'],
     }
     for out_col, patterns in flow_setpoint_map.items():
@@ -661,6 +678,7 @@ def _build_process_df(eklipse_df, cx_thermo_df):
         process['ar_flow_m3_s'] = 0.0
         process['n2_flow_m3_s'] = 0.0
         process['ph3_in_ar_flow_m3_s'] = 0.0
+        process['nh3_in_ar_flow_m3_s'] = 0.0
         process['h2s_in_ar_flow_m3_s'] = 0.0
     elif not e.empty:
         process = e.copy()
@@ -695,6 +713,7 @@ def _extract_timeseries(process_df) -> dict[str, list[float]]:
         'ar_flow_m3_s': [],
         'n2_flow_m3_s': [],
         'ph3_in_ar_flow_m3_s': [],
+        'nh3_in_ar_flow_m3_s': [],
         'h2s_in_ar_flow_m3_s': [],
     }
 
@@ -735,6 +754,7 @@ def _extract_timeseries(process_df) -> dict[str, list[float]]:
         'ar_flow_m3_s': 'ar_flow_m3_s',
         'n2_flow_m3_s': 'n2_flow_m3_s',
         'ph3_in_ar_flow_m3_s': 'ph3_in_ar_flow_m3_s',
+        'nh3_in_ar_flow_m3_s': 'nh3_in_ar_flow_m3_s',
         'h2s_in_ar_flow_m3_s': 'h2s_in_ar_flow_m3_s',
     }
     for out_col, src_col in flow_cols.items():
@@ -819,6 +839,7 @@ def _find_gas_shutoff_time(step_df) -> float | None:
                 'ar_flow_m3_s',
                 'n2_flow_m3_s',
                 'ph3_in_ar_flow_m3_s',
+                'nh3_in_ar_flow_m3_s',
                 'h2s_in_ar_flow_m3_s',
             ]
         )
@@ -829,6 +850,7 @@ def _find_gas_shutoff_time(step_df) -> float | None:
     ar_arr = step_df['ar_flow_m3_s'].to_numpy()
     n2_arr = step_df['n2_flow_m3_s'].to_numpy()
     ph3_arr = step_df['ph3_in_ar_flow_m3_s'].to_numpy()
+    nh3_arr = step_df['nh3_in_ar_flow_m3_s'].to_numpy()
     h2s_arr = step_df['h2s_in_ar_flow_m3_s'].to_numpy()
 
     if len(time_arr) != len(ar_arr):
@@ -836,10 +858,10 @@ def _find_gas_shutoff_time(step_df) -> float | None:
 
     try:
         had_gas_on = False
-        for t, ar_f, n2_f, ph3_f, h2s_f in zip(
-            time_arr, ar_arr, n2_arr, ph3_arr, h2s_arr
+        for t, ar_f, n2_f, ph3_f, nh3_f, h2s_f in zip(
+            time_arr, ar_arr, n2_arr, ph3_arr, nh3_arr, h2s_arr
         ):
-            flows = [ar_f, n2_f, ph3_f, h2s_f]
+            flows = [ar_f, n2_f, ph3_f, nh3_f, h2s_f]
             # Check if any gas flow is above the threshold
             gas_on = any(
                 np.isfinite(flow) and abs(float(flow)) > MIN_USED_GAS_FLOW_M3_S
@@ -905,6 +927,7 @@ def _find_setpoint_pre_drop_time(step_df, min_flow_threshold=1e-6) -> float | No
         'ar_flow_setpoint_m3_s',
         'n2_flow_setpoint_m3_s',
         'ph3_in_ar_flow_setpoint_m3_s',
+        'nh3_in_ar_flow_setpoint_m3_s',
         'h2s_in_ar_flow_setpoint_m3_s',
     ]
     if step_df.empty or any(col not in step_df.columns for col in required):
@@ -917,6 +940,7 @@ def _find_setpoint_pre_drop_time(step_df, min_flow_threshold=1e-6) -> float | No
             'ar_flow_setpoint_m3_s',
             'n2_flow_setpoint_m3_s',
             'ph3_in_ar_flow_setpoint_m3_s',
+            'nh3_in_ar_flow_setpoint_m3_s',
             'h2s_in_ar_flow_setpoint_m3_s',
         ]
 
@@ -1120,6 +1144,24 @@ def _segment_label_ordinals(base_names: list[str]) -> list[str]:
     return final
 
 
+def _is_dwell_like_name(name: str) -> bool:
+    return bool(DWELL_LIKE_NAME_RE.match(name.lower()))
+
+
+def _main_annealing_step_index(steps: list[ParsedRTPStep]) -> int | None:
+    dwell_steps = [
+        (i, step)
+        for i, step in enumerate(steps)
+        if _is_dwell_like_name(step.name or '')
+    ]
+    if dwell_steps:
+        return max(
+            dwell_steps,
+            key=lambda idx_step: idx_step[1].mean_temperature_k or 0.0,
+        )[0]
+    return None
+
+
 def _find_inflection_points(
     time_s: np.ndarray,
     temp_arr: np.ndarray,
@@ -1164,11 +1206,22 @@ def _find_inflection_points(
 
     # Boundaries = first index of each run of identical labels.
     boundaries = [0]
+    run_labels = [labels_per_sample[0]]
     current = labels_per_sample[0]
     for i in range(1, n):
         if labels_per_sample[i] != current:
             boundaries.append(i)
             current = labels_per_sample[i]
+            run_labels.append(current)
+
+    # Debounce brief label flips so tiny wiggles do not become separate steps.
+    run_labels, boundaries = _merge_short_segments(
+        run_labels,
+        boundaries,
+        time_s,
+        min_duration_s=SLOPE_MIN_RUN_DURATION_S,
+        min_points=SLOPE_MIN_RUN_POINTS,
+    )
 
     return boundaries
 
@@ -1368,6 +1421,12 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
                 else 0.0,
                 'PH3',
             ),
+            nh3_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
+                float(np.nanmean(flow_average_window_df['nh3_in_ar_flow_m3_s']))
+                if 'nh3_in_ar_flow_m3_s' in flow_average_window_df.columns
+                else 0.0,
+                'NH3',
+            ),
             h2s_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
                 float(np.nanmean(flow_average_window_df['h2s_in_ar_flow_m3_s']))
                 if 'h2s_in_ar_flow_m3_s' in flow_average_window_df.columns
@@ -1377,6 +1436,10 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
             mean_temperature_k=float(np.nanmean(sl['temperature_k'])),
         )
         steps.append(step)
+
+    main_annealing_idx = _main_annealing_step_index(steps)
+    if main_annealing_idx is not None:
+        steps[main_annealing_idx].name = 'Annealing'
 
     if steps:
         return steps
@@ -1396,7 +1459,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         pressure_pa = _pressure_to_pa(float(np.nanmean(df_for_average['pressure_raw'])))
     return [
         ParsedRTPStep(
-            name='Dwell',
+            name='Annealing',
             duration_s=float(df['time_s'].iloc[-1] - df['time_s'].iloc[0]),
             start_time_s=float(df['time_s'].iloc[0]),
             end_time_s=float(df['time_s'].iloc[-1]),
@@ -1420,6 +1483,12 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
                 if 'ph3_in_ar_flow_m3_s' in df_for_average.columns
                 else 0.0,
                 'PH3',
+            ),
+            nh3_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
+                float(np.nanmean(df_for_average['nh3_in_ar_flow_m3_s']))
+                if 'nh3_in_ar_flow_m3_s' in df_for_average.columns
+                else 0.0,
+                'NH3',
             ),
             h2s_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
                 float(np.nanmean(df_for_average['h2s_in_ar_flow_m3_s']))
@@ -1446,12 +1515,9 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
         )
         return _empty_result().overview
 
-    def _is_dwell_name(name: str) -> bool:
-        return bool(re.match(r'^\s*(?:\d+(?:st|nd|rd|th)\s+)?dwell\b', name.lower()))
-
     def _step_role(step: ParsedRTPStep) -> str:
         name = (step.name or '').lower()
-        if _is_dwell_name(name):
+        if _is_dwell_like_name(name):
             return 'dwell'
         if 'heat' in name:
             return 'heating'
@@ -1464,7 +1530,9 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
         return 'heating' if delta_t > 0 else 'cooling'
 
     # Pick the main Dwell as the one with the highest mean temperature.
-    dwell_steps = [(i, s) for i, s in enumerate(steps) if _is_dwell_name(s.name or '')]
+    dwell_steps = [
+        (i, s) for i, s in enumerate(steps) if _is_dwell_like_name(s.name or '')
+    ]
 
     if dwell_steps:
         anneal_idx, anneal = max(
@@ -1517,6 +1585,7 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
         'annealing_ar_flow': anneal.ar_flow_m3_s,
         'annealing_n2_flow': anneal.n2_flow_m3_s,
         'annealing_ph3_in_ar_flow': anneal.ph3_in_ar_flow_m3_s,
+        'annealing_nh3_in_ar_flow': anneal.nh3_in_ar_flow_m3_s,
         'annealing_h2s_in_ar_flow': anneal.h2s_in_ar_flow_m3_s,
         'total_heating_time': total_heating,
         'total_cooling_time': total_cooling,
@@ -1780,6 +1849,7 @@ def _derive_general_values(process_df, key_values: dict[str, float], logger=None
                 'ar_flow_m3_s',
                 'n2_flow_m3_s',
                 'ph3_in_ar_flow_m3_s',
+                'nh3_in_ar_flow_m3_s',
                 'h2s_in_ar_flow_m3_s',
             ]
         )
@@ -1802,15 +1872,18 @@ def _derive_general_values(process_df, key_values: dict[str, float], logger=None
             ar_flow = _to_num(working_df['ar_flow_m3_s']).values.astype(float)
             n2_flow = _to_num(working_df['n2_flow_m3_s']).values.astype(float)
             ph3_flow = _to_num(working_df['ph3_in_ar_flow_m3_s']).values.astype(float)
+            nh3_flow = _to_num(working_df['nh3_in_ar_flow_m3_s']).values.astype(float)
             h2s_flow = _to_num(working_df['h2s_in_ar_flow_m3_s']).values.astype(float)
             gas_static = (
                 np.isfinite(ar_flow)
                 & np.isfinite(n2_flow)
                 & np.isfinite(ph3_flow)
+                & np.isfinite(nh3_flow)
                 & np.isfinite(h2s_flow)
                 & (np.abs(ar_flow) < MIN_USED_GAS_FLOW_M3_S)
                 & (np.abs(n2_flow) < MIN_USED_GAS_FLOW_M3_S)
                 & (np.abs(ph3_flow) < MIN_USED_GAS_FLOW_M3_S)
+                & (np.abs(nh3_flow) < MIN_USED_GAS_FLOW_M3_S)
                 & (np.abs(h2s_flow) < MIN_USED_GAS_FLOW_M3_S)
             )
 
@@ -1932,6 +2005,7 @@ def _derive_general_values(process_df, key_values: dict[str, float], logger=None
                         'ar_flow_m3_s',
                         'n2_flow_m3_s',
                         'ph3_in_ar_flow_m3_s',
+                        'nh3_in_ar_flow_m3_s',
                         'h2s_in_ar_flow_m3_s',
                     ]
                 )
@@ -1954,11 +2028,7 @@ def _detect_used_gases(
 ) -> list[str]:
     """Detect which process gases were really used during the main dwell."""
     # Look for the highest-temperature dwell step (the main anneal).
-    dwell_steps = [
-        s
-        for s in steps
-        if re.match(r'^\s*(?:\d+(?:st|nd|rd|th)\s+)?dwell\b', (s.name or '').lower())
-    ]
+    dwell_steps = [s for s in steps if _is_dwell_like_name(s.name or '')]
     main_dwell = (
         max(dwell_steps, key=lambda s: s.mean_temperature_k or 0.0)
         if dwell_steps
@@ -1970,6 +2040,7 @@ def _detect_used_gases(
             'Ar': main_dwell.ar_flow_m3_s,
             'N2': main_dwell.n2_flow_m3_s,
             'PH3': main_dwell.ph3_in_ar_flow_m3_s,
+            'NH3': main_dwell.nh3_in_ar_flow_m3_s,
             'H2S': main_dwell.h2s_in_ar_flow_m3_s,
         }
     else:
@@ -1982,6 +2053,7 @@ def _detect_used_gases(
             'Ar': overview.get('annealing_ar_flow'),
             'N2': overview.get('annealing_n2_flow'),
             'PH3': overview.get('annealing_ph3_in_ar_flow'),
+            'NH3': overview.get('annealing_nh3_in_ar_flow'),
             'H2S': overview.get('annealing_h2s_in_ar_flow'),
         }
 

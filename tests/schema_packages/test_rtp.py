@@ -17,6 +17,20 @@ def test_schema():
     assert data.steps is not None
     assert len(data.steps) > 0
 
+    step_names = [str(step.name).strip().lower() for step in data.steps]
+    assert all(step_names)
+    assert any(name.startswith('heating') for name in step_names)
+    assert any(name.startswith('anneal') for name in step_names)
+    assert any(name.startswith('cool') for name in step_names)
+
+    dwell_like_steps = [
+        name
+        for name in step_names
+        if name.startswith('dwell') or name.startswith('anneal')
+    ]
+    assert data.overview.no_dwell_steps is not None
+    assert data.overview.no_dwell_steps.magnitude == len(dwell_like_steps)
+
     # Core overview values must be populated and physically sensible.
     assert data.overview.annealing_temperature is not None
     assert data.overview.annealing_temperature.magnitude > MIN_POSITIVE_TEMPERATURE_K
