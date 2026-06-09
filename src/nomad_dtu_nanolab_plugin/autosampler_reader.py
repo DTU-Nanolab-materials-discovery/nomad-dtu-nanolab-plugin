@@ -104,13 +104,16 @@ class SingleMeasurement:
             if 'SampleAngle' in row[0]:
                 self.metadata['SampleAngle'] = float(row[1])
             if 'PolarizationAngle' in row[0]:
-                if len(row) == 1:
+                if len(row) == 1 or row[1].strip() == 'None':
                     polarisation_angle = 'None'
                 else:
                     polarisation_angle = row[1]
-                self.metadata['PolarizationAngle'] = float(polarisation_angle.strip())
+                self.metadata['PolarizationAngle'] = (
+                    None if polarisation_angle == 'None'
+                    else float(polarisation_angle.strip())
+                )
                 self.metadata['Polarization'] = POLARISATION_DICT.get(
-                    str(int(float(polarisation_angle.strip()))), 'custom'
+                    polarisation_angle.strip(), 'custom'
                 )
             if 'DetectorAngle' in row[0]:
                 self.metadata['DetectorAngle'] = float(row[1])
