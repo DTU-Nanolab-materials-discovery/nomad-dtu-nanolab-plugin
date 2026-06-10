@@ -2460,6 +2460,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     step_ar_flow=parsed_step.ar_flow_m3_s,
                     step_n2_flow=parsed_step.n2_flow_m3_s,
                     step_ph3_in_ar_flow=parsed_step.ph3_in_ar_flow_m3_s,
+                    step_nh3_in_ar_flow=parsed_step.nh3_in_ar_flow_m3_s,
                     step_h2s_in_ar_flow=parsed_step.h2s_in_ar_flow_m3_s,
                     initial_temperature=parsed_step.initial_temperature_k,
                     final_temperature=parsed_step.final_temperature_k,
