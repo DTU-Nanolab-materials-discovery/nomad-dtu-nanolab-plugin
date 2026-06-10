@@ -1430,7 +1430,7 @@ raman = AppEntryPoint(
                 MenuItemHistogram(
                     title='Laser wavelength',
                     x=Axis(
-                        search_quantity=f'data.results.laser_wavelength#{raman_schema}',
+                        search_quantity=f'data.laser_wavelength#{raman_schema}',
                         scale='linear',
                         unit='nm',
                     ),
