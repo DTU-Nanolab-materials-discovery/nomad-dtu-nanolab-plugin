@@ -1407,7 +1407,7 @@ raman = AppEntryPoint(
                 label='Date and time',
             ),
             Column(
-                search_quantity=f'data.results.laser_wavelength#{raman_schema}',
+                search_quantity=f'data.laser_wavelength#{raman_schema}',
                 selected=True,
                 label='Laser wavelength',
                 unit='nm',
