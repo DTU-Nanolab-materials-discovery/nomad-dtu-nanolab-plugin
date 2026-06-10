@@ -47,6 +47,7 @@ RATE_OF_RISE_MAX_CAPMAN_PRESSURE_PA = (
 RATE_OF_RISE_MAX_THROTTLE_POSITION = 100.0
 RATE_OF_RISE_MIN_STATIC_SAMPLES = 10
 RATE_OF_RISE_MIN_VALID_POINTS = 2
+NUMBER_2 = 2
 
 # ---------------------------------------------------------------------------
 # Step segmentation thresholds.
@@ -69,6 +70,13 @@ SLOPE_SMOOTH_WINDOW = 15
 # inside a long cooling ramp do not fragment it into many short segments.
 SLOPE_MIN_RUN_POINTS = 10
 SLOPE_MIN_RUN_DURATION_S = 30.0
+# Ambient temperature window (K) used to detect the room-temperature plateau
+# at the end of a run.  Any sample whose temperature is within this tolerance
+# of AMBIENT_TEMPERATURE_K is considered "at room temperature".
+# ±0.5 K tolerance matches the stated room-temperature criterion of
+# 23.5 ±0.5 °C, preventing early triggering at warmer intermediates.
+AMBIENT_TEMPERATURE_K = 296.65  # ≈ 23.5 °C
+AMBIENT_TEMPERATURE_TOLERANCE_K = 0.5
 DWELL_LIKE_NAME_RE = re.compile(
     r'^\s*(?:\d+(?:st|nd|rd|th)\s+)?(?:dwell|anneal(?:ing)?)\b'
 )
@@ -91,6 +99,10 @@ class ParsedRTPStep:
     end_time_s: float | None = None
     real_start_time_s: float | None = None
     real_start_temperature_k: float | None = None
+    # Visual end boundary for plots — extends to recording end for the last
+    # Cooling step so the shaded region covers the full cool-down including
+    # the ambient plateau (which is excluded from duration/averages).
+    plot_end_time_s: float | None = None
 
 
 @dataclass
@@ -279,6 +291,19 @@ def _apply_parasitic_flow_cutoff(flow_m3_s: float, gas: str) -> float:
     if abs(float(flow_m3_s)) < MIN_USED_GAS_FLOW_M3_S:
         return 0.0
     return float(flow_m3_s)
+
+
+def _mean_or_zero(df, col: str) -> float:
+    """Return nanmean of a column or 0.0 if no valid data."""
+    if col not in df.columns:
+        return 0.0
+
+    arr = _to_num(df[col]).to_numpy(dtype=float)
+
+    if len(arr) == 0 or not np.any(np.isfinite(arr)):
+        return 0.0
+
+    return float(np.nanmean(arr))
 
 
 def _temperature_to_kelvin(series):
@@ -1116,17 +1141,7 @@ def _compute_segment_slope(
 
 
 def _segment_label_ordinals(base_names: list[str]) -> list[str]:
-    """Add ordinal prefixes (2nd, 3rd, …) only when the same base name repeats.
-
-    The first occurrence keeps the plain name; later ones become "2nd X", "3rd X", …
-    """
-
-    def _ordinal(n: int) -> str:
-        if n == ORDINAL_SECOND:
-            return '2nd'
-        if n == ORDINAL_THIRD:
-            return '3rd'
-        return f'{n}th'
+    """Add numeric suffixes (Cooling 2, Cooling 3, …) for repeated names."""
 
     name_count: dict[str, int] = {}
     for bn in base_names:
@@ -1134,13 +1149,19 @@ def _segment_label_ordinals(base_names: list[str]) -> list[str]:
 
     name_seen: dict[str, int] = {}
     final: list[str] = []
+
     for bn in base_names:
         if name_count[bn] == 1:
             final.append(bn)
         else:
             name_seen[bn] = name_seen.get(bn, 0) + 1
             n = name_seen[bn]
-            final.append(f'{_ordinal(n)} {bn}' if n > 1 else bn)
+
+            if n == 1:
+                final.append(bn)
+            else:
+                final.append(f'{bn} {n}')
+
     return final
 
 
@@ -1321,6 +1342,121 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         final_base_labels.append(_classify_slope(slope))
 
     # ------------------------------------------------------------------ #
+    # 3b. Collapse adjacent segments that share the same label.           #
+    #                                                                      #
+    # After merging short segments, the label-recomputation pass can      #
+    # produce runs like [Dwell, Dwell] or [Cooling, Cooling] when a small #
+    # segment that separated two same-class neighbours was absorbed into   #
+    # one of them.  We merge those pairs so no two consecutive segments   #
+    # ever carry the same base label.                                      #
+    # ------------------------------------------------------------------ #
+    deduped_labels: list[str] = [final_base_labels[0]]
+    deduped_boundaries: list[int] = [merged_boundaries[0]]
+    for lbl, bnd in zip(final_base_labels[1:], merged_boundaries[1:]):
+        if lbl == deduped_labels[-1]:
+            # Same label as previous segment — just extend it (drop this boundary).
+            pass
+        else:
+            deduped_labels.append(lbl)
+            deduped_boundaries.append(bnd)
+    final_base_labels = deduped_labels
+    merged_boundaries = deduped_boundaries
+
+    # ------------------------------------------------------------------ #
+    # 3c. Drop any leading segments that appear before the first Heating. #
+    #                                                                      #
+    # A Dwell (or Cooling) before any Heating step is always instrument   #
+    # initialization at ambient temperature, never a real process step.   #
+    # We discard everything up to and including the last non-Heating      #
+    # segment that precedes the first Heating.                            #
+    # ------------------------------------------------------------------ #
+    first_heating_idx = next(
+        (i for i, lbl in enumerate(final_base_labels) if lbl == 'Heating'), None
+    )
+    if first_heating_idx is not None and first_heating_idx > 0:
+        final_base_labels = final_base_labels[first_heating_idx:]
+        merged_boundaries = merged_boundaries[first_heating_idx:]
+
+    # ------------------------------------------------------------------ #
+    # 3d. Absorb any trailing Dwell (or Cooling) segments that are still  #
+    #     net-cooling into the last Cooling step.                         #
+    #                                                                      #
+    # Walk backward from the end of the label list.  For every segment   #
+    # whose full linear regression slope is net-negative, re-label it    #
+    # Cooling regardless of whether it was called Dwell.  Stop as soon   #
+    # as a segment with a non-negative slope is encountered (that is a   #
+    # genuine Dwell or Heating step and should not be touched).          #
+    # A second same-label collapse pass then merges all adjacent Cooling  #
+    # entries into one.                                                   #
+    # ------------------------------------------------------------------ #
+    last_cooling_seen = any(lbl == 'Cooling' for lbl in final_base_labels)
+    if last_cooling_seen and len(final_base_labels) >= NUMBER_2:
+        # Find the index of the last Cooling segment as an anchor.
+        last_cooling_anchor = max(
+            i for i, lbl in enumerate(final_base_labels) if lbl == 'Cooling'
+        )
+        # Scan everything after the last known Cooling segment.
+        for tail_idx in range(len(final_base_labels) - 1, last_cooling_anchor, -1):
+            seg_start = merged_boundaries[tail_idx]
+            trailing_slice = df.iloc[seg_start:]
+            trailing_slope = _compute_segment_slope(trailing_slice)
+            if trailing_slope < 0.0:
+                # Still falling — absorb into the Cooling family.
+                final_base_labels[tail_idx] = 'Cooling'
+            else:
+                # Genuinely flat or rising — stop here.
+                break
+
+    # Collapse any new adjacent same-label pairs introduced by 3d.
+    deduped_labels2: list[str] = [final_base_labels[0]]
+    deduped_boundaries2: list[int] = [merged_boundaries[0]]
+    for lbl, bnd in zip(final_base_labels[1:], merged_boundaries[1:]):
+        if lbl == deduped_labels2[-1]:
+            pass
+        else:
+            deduped_labels2.append(lbl)
+            deduped_boundaries2.append(bnd)
+    final_base_labels = deduped_labels2
+    merged_boundaries = deduped_boundaries2
+
+    # ------------------------------------------------------------------ #
+    # 3e. Find the ambient-plateau cutoff index.                          #
+    #                                                                      #
+    # The last Cooling step ends at whichever comes first:               #
+    #   (a) the first sample WITHIN THE LAST COOLING SEGMENT where the   #
+    #       temperature reaches AMBIENT_TEMPERATURE_K ±                  #
+    #       AMBIENT_TEMPERATURE_TOLERANCE_K, or                          #
+    #   (b) the last sample in the recording (if room temperature is     #
+    #       never reached within that segment).                          #
+    #                                                                     #
+    # Searching only within the last Cooling segment avoids false matches #
+    # at the start of the recording where the chamber is also at ambient. #
+    # ------------------------------------------------------------------ #
+    ambient_cutoff_idx: int | None = None
+    temp_arr_full = df['temperature_k'].to_numpy(dtype=float)
+
+    # Find the start index of the last Cooling segment.
+    last_cooling_seg_start: int | None = None
+    for i in range(len(final_base_labels) - 1, -1, -1):
+        if final_base_labels[i] == 'Cooling':
+            last_cooling_seg_start = merged_boundaries[i]
+            break
+
+    if last_cooling_seg_start is not None:
+        for ai in range(last_cooling_seg_start, len(temp_arr_full)):
+            t_val = temp_arr_full[ai]
+            if not np.isfinite(t_val):
+                continue
+            if (
+                abs(float(t_val) - AMBIENT_TEMPERATURE_K)
+                <= AMBIENT_TEMPERATURE_TOLERANCE_K
+            ):
+                ambient_cutoff_idx = int(ai)
+                break
+        # If ambient is never reached, ambient_cutoff_idx stays None and the
+        # last sample of the recording is used as the natural end (case b).
+
+    # ------------------------------------------------------------------ #
     # 4. Add ordinal prefixes for repeated labels.                        #
     # ------------------------------------------------------------------ #
     final_names = _segment_label_ordinals(final_base_labels)
@@ -1330,11 +1466,15 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
     # ------------------------------------------------------------------ #
     steps: list[ParsedRTPStep] = []
     for seg_idx, (start, name) in enumerate(zip(merged_boundaries, final_names)):
-        end = (
-            merged_boundaries[seg_idx + 1]
-            if seg_idx + 1 < len(merged_boundaries)
-            else len(df)
-        )
+        if seg_idx + 1 < len(merged_boundaries):
+            end = merged_boundaries[seg_idx + 1]
+        elif ambient_cutoff_idx is not None and ambient_cutoff_idx > start:
+            # Clamp the last segment to the start of the ambient plateau so
+            # the room-temperature tail is excluded from all step data.
+            end = ambient_cutoff_idx
+        else:
+            end = len(df)
+
         sl = df.iloc[start:end]
         if len(sl) < 1:
             continue
@@ -1398,40 +1538,26 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
             duration_s=adjusted_duration,
             start_time_s=start_time,
             end_time_s=float(sl['time_s'].iloc[-1]),
+            plot_end_time_s=None,  # end_time_s already holds the correct boundary
             initial_temperature_k=initial_temperature,
             final_temperature_k=final_temp,
             pressure_pa=pressure_pa,
             real_start_time_s=real_start_time,
             real_start_temperature_k=real_start_temp,
             ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmean(flow_average_window_df['ar_flow_m3_s']))
-                if 'ar_flow_m3_s' in flow_average_window_df.columns
-                else 0.0,
-                'Ar',
+                _mean_or_zero(flow_average_window_df, 'ar_flow_m3_s'), 'Ar'
             ),
             n2_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmean(flow_average_window_df['n2_flow_m3_s']))
-                if 'n2_flow_m3_s' in flow_average_window_df.columns
-                else 0.0,
-                'N2',
+                _mean_or_zero(flow_average_window_df, 'n2_flow_m3_s'), 'N2'
             ),
             ph3_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmean(flow_average_window_df['ph3_in_ar_flow_m3_s']))
-                if 'ph3_in_ar_flow_m3_s' in flow_average_window_df.columns
-                else 0.0,
-                'PH3',
+                _mean_or_zero(flow_average_window_df, 'ph3_in_ar_flow_m3_s'), 'PH3'
             ),
             nh3_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmean(flow_average_window_df['nh3_in_ar_flow_m3_s']))
-                if 'nh3_in_ar_flow_m3_s' in flow_average_window_df.columns
-                else 0.0,
-                'NH3',
+                _mean_or_zero(flow_average_window_df, 'nh3_in_ar_flow_m3_s'), 'NH3'
             ),
             h2s_in_ar_flow_m3_s=_apply_parasitic_flow_cutoff(
-                float(np.nanmean(flow_average_window_df['h2s_in_ar_flow_m3_s']))
-                if 'h2s_in_ar_flow_m3_s' in flow_average_window_df.columns
-                else 0.0,
-                'H2S',
+                _mean_or_zero(flow_average_window_df, 'h2s_in_ar_flow_m3_s'), 'H2S'
             ),
             mean_temperature_k=float(np.nanmean(sl['temperature_k'])),
         )
@@ -1499,6 +1625,17 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
             mean_temperature_k=float(np.nanmean(df['temperature_k'])),
         )
     ]
+
+
+def _flow_or_zero(val: float | None) -> float:
+    if val is None:
+        return 0.0
+    try:
+        if np.isnan(val):
+            return 0.0
+    except Exception:
+        pass
+    return float(val)
 
 
 def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
@@ -1582,11 +1719,11 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
             if anneal.mean_temperature_k is not None
             else (anneal.initial_temperature_k + anneal.final_temperature_k) / 2
         ),
-        'annealing_ar_flow': anneal.ar_flow_m3_s,
-        'annealing_n2_flow': anneal.n2_flow_m3_s,
-        'annealing_ph3_in_ar_flow': anneal.ph3_in_ar_flow_m3_s,
-        'annealing_nh3_in_ar_flow': anneal.nh3_in_ar_flow_m3_s,
-        'annealing_h2s_in_ar_flow': anneal.h2s_in_ar_flow_m3_s,
+        'annealing_ar_flow': _flow_or_zero(anneal.ar_flow_m3_s),
+        'annealing_n2_flow': _flow_or_zero(anneal.n2_flow_m3_s),
+        'annealing_ph3_in_ar_flow': _flow_or_zero(anneal.ph3_in_ar_flow_m3_s),
+        'annealing_nh3_in_ar_flow': _flow_or_zero(anneal.nh3_in_ar_flow_m3_s),
+        'annealing_h2s_in_ar_flow': _flow_or_zero(anneal.h2s_in_ar_flow_m3_s),
         'total_heating_time': total_heating,
         'total_cooling_time': total_cooling,
         'end_of_process_temperature': None,
@@ -1596,111 +1733,72 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
 def _derive_end_of_process_temperature(
     process_df, steps: list[ParsedRTPStep]
 ) -> float | None:
-    """Estimate end-of-process temperature from gas shutoff during cooling.
-
-    We define end-of-process as the first cooling point where all process gases
-    are off (below the parasitic-flow cutoff), after being on earlier.
     """
-    end_temp_k = None
+    End-of-process temperature = temperature at the LAST gas shutoff event
+    (last ON -> OFF transition in the full timeline).
+    """
 
-    def _is_cooling_step(step: ParsedRTPStep) -> bool:
-        name = (step.name or '').lower()
-        if 'cool' in name:
-            return True
-        return (
-            step.final_temperature_k - step.initial_temperature_k
-            < -PLATEAU_TEMPERATURE_DELTA_TOLERANCE_K
-        )
+    end_temp_k: float | None = None
+
+    valid = True
 
     if process_df is None or process_df.empty:
         logger.warning(
-            'Cannot derive end-of-process temperature: '
-            'process dataframe is empty or None'
+            'Cannot derive end-of-process temperature: empty process dataframe'
         )
-        return end_temp_k
-    if 'time_s' not in process_df or 'temperature_k' not in process_df:
-        logger.warning(
-            'Cannot derive end-of-process temperature: '
-            'time or temperature data missing from process logs'
-        )
-        return end_temp_k
+        valid = False
 
-    cooling_step = next(
-        (step for step in steps if 'cool' in (step.name or '').lower()), None
-    )
-    if cooling_step is None:
-        cooling_step = next(
-            (step for step in steps if _is_cooling_step(step)),
-            None,
-        )
-        if cooling_step is None:
-            logger.warning(
-                'No cooling step identified in process. '
-                'Cannot determine end-of-process temperature.'
-            )
-
-    flow_cols = [
+    required_cols = [
+        'time_s',
+        'temperature_k',
         'ar_flow_m3_s',
         'n2_flow_m3_s',
         'ph3_in_ar_flow_m3_s',
+        'nh3_in_ar_flow_m3_s',
         'h2s_in_ar_flow_m3_s',
     ]
 
-    if cooling_step is not None and not any(
-        col not in process_df.columns for col in flow_cols
-    ):
+    if valid and any(col not in process_df.columns for col in required_cols):
+        logger.warning(
+            'Missing required columns; cannot determine end-of-process temperature'
+        )
+        valid = False
+
+    if valid:
         df = process_df.copy()
-        time_arr = _to_num(df['time_s']).to_numpy(dtype=float)
+
         temp_arr = _to_num(df['temperature_k']).to_numpy(dtype=float)
 
-        cooling_mask = np.isfinite(time_arr)
-        if cooling_step.start_time_s is not None:
-            cooling_mask &= time_arr >= float(cooling_step.start_time_s)
-        if cooling_step.end_time_s is not None:
-            cooling_mask &= time_arr <= float(cooling_step.end_time_s)
+        flow_stack = np.column_stack(
+            [
+                np.abs(_to_num(df[col]).fillna(0).to_numpy(dtype=float))
+                for col in required_cols[2:]
+            ]
+        )
 
-        idx = np.where(cooling_mask)[0]
-        if len(idx) > 0:
-            flow_stack = np.column_stack(
-                [
-                    np.abs(_to_num(df[col]).fillna(0).to_numpy(dtype=float))[idx]
-                    for col in flow_cols
-                ]
+        gas_on = np.any(flow_stack > MIN_USED_GAS_FLOW_M3_S, axis=1)
+
+        if not np.any(gas_on):
+            logger.warning(
+                'No gas activity detected; cannot determine end-of-process temperature'
             )
-            gas_on = np.any(flow_stack > MIN_USED_GAS_FLOW_M3_S, axis=1)
+        else:
+            shutoff_idx = None
 
-            shutoff_rel_idx = None
-            if np.any(gas_on):
-                for i in range(len(gas_on)):
-                    if not gas_on[i] and np.any(gas_on[:i]):
-                        shutoff_rel_idx = i
-                        break
+            # Find LAST ON -> OFF transition
+            for i in range(1, len(gas_on)):
+                if gas_on[i - 1] and not gas_on[i]:
+                    shutoff_idx = i
+
+            if shutoff_idx is None:
+                logger.warning('Gases never shut off (remain active until end of run)')
             else:
-                # Cooling already starts with gases off.
-                shutoff_rel_idx = 0
+                temp_k = temp_arr[shutoff_idx]
 
-            if shutoff_rel_idx is not None:
-                temp_k = temp_arr[idx[shutoff_rel_idx]]
                 if np.isfinite(temp_k):
                     end_temp_k = float(temp_k)
                 else:
-                    logger.warning(
-                        'Gas shutoff time identified in cooling step, '
-                        'but temperature at shutoff is NaN or infinite'
-                    )
-            else:
-                logger.warning(
-                    'No gas shutoff detected during cooling. '
-                    'End-of-process temperature remains None.'
-                )
-    elif cooling_step is None:
-        # Already warned above
-        pass
-    else:
-        logger.warning(
-            'One or more gas flow columns missing from process data. '
-            'Cannot determine gas shutoff for end-of-process temperature.'
-        )
+                    logger.warning('Gas shutoff detected, but temperature is invalid')
 
     return end_temp_k
 

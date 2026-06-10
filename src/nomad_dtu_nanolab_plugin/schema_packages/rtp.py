@@ -1515,9 +1515,13 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                         end_time = min(
                             float(series[-1]), reached_time + POST_END_PROCESS_WINDOW_S
                         )
+        # Clamp x-axis end to the last phase segment's end so the plot
+        # range never extends past the last active step boundary.
+        if segments:
+            last_seg_end = _to_seconds(segments[-1][2])
+            end_time = min(end_time, last_seg_end)
 
         end_time = max(end_time, start_time)
-
         return (start_time, end_time)
 
     def _build_phase_segments(self) -> list[tuple[str, float, float]]:
@@ -1584,13 +1588,15 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             if x_trim is not None:
                 trimmed_start = max(start_f, float(x_trim[0]))
                 trimmed_end = min(end_f, float(x_trim[1]))
-                if trimmed_end <= trimmed_start:
-                    continue
             else:
                 trimmed_start = start_f
                 trimmed_end = end_f
 
-            label_x = 0.5 * (trimmed_start + trimmed_end)
+            if trimmed_end <= trimmed_start:
+                label_x = 0.5 * (start_f + end_f)
+            else:
+                label_x = 0.5 * (trimmed_start + trimmed_end)
+
             fig.add_annotation(
                 x=label_x,
                 y=0.96,
@@ -2427,6 +2433,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         if overwrite or self.overview.annealing_ph3_in_ar_flow is None:
             self.overview.annealing_ph3_in_ar_flow = parsed.overview.get(
                 'annealing_ph3_in_ar_flow'
+            )
+        if overwrite or self.overview.annealing_nh3_in_ar_flow is None:
+            self.overview.annealing_nh3_in_ar_flow = parsed.overview.get(
+                'annealing_nh3_in_ar_flow'
             )
         if overwrite or self.overview.annealing_h2s_in_ar_flow is None:
             self.overview.annealing_h2s_in_ar_flow = parsed.overview.get(
