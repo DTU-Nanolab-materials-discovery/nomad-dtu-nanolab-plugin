@@ -611,7 +611,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         default='None',
         description=(
             'Instrument accessory used for the measurement.',
-            'DRA is the integration sphere accessory while',
+            'DRA is the integrating sphere accessory while',
             'UMA is the universal measurement accessory',
             '(variable incidence, detector and polarization).',
         ),
