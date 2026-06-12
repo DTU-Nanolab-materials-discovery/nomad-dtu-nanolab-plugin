@@ -126,6 +126,10 @@ class RTResult(MappingResult):
     Results from a single spatial position containing multiple R/T spectra.
     """
 
+    # repeating subsection for multiple
+    # spectra measured at the same position with different configurations 
+    # (ex: one reflection and one transmission spectrum, or multiple 
+    # spectra with different detector/sample angles or polarization)
     spectra = SubSection(
         section_def=RTSpectrum,
         repeats=True,
@@ -156,6 +160,7 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
         description='Experiment container for autosampler R/T measurements',
     )
 
+    # .csv file exported from the Agilent Cary .bsw or .dsw file
     data_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
@@ -172,6 +177,13 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
         ),
     )
 
+    # config file output by our homemade code (template called 
+    # Autosampler_GridGenerator_Analysis_Template_V2 on our)
+    # generating mapping file that connect 
+    # autosampler state positions to each position on each sample. This 
+    # way, the data file with all the spectra in series can be parsed
+    # each spectrum can be associated with the correct position on the sample, and
+    # the correct sample/library. 
     config_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
@@ -188,6 +200,7 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
         """,
     )
 
+    #raw batch .bsw file from the instrument 
     raw_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
@@ -201,6 +214,10 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
         """,
     )
 
+    #the three following slits are the optical slits that need to be manually 
+    # placed and removed. The default values for high throughput autosampler
+    # measurements are 1 degree for the two vertical slits and 3 degrees 
+    # for the horizontal slit. 
     vertical_back_slit = Quantity(
         type=np.float64,
         unit='degree',
@@ -599,6 +616,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         ),
     )
 
+    #see slit description in the DtuAutosamplerMeasurement class
     vertical_back_slit = Quantity(
         type=np.float64,
         unit='degree',
@@ -632,6 +650,9 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         ),
     )
 
+    # one csv (for example an UMA sequence with R, T, and R at different angles)
+    # or several csv files measured at the name single point (for example two
+    # csv files obtained with the DRA integratingsphere, one with R, one with T)
     data_file = Quantity(
         type=str,
         shape=['*'],
@@ -644,7 +665,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             'NOT used for autosampler batch experiments.'
         ),
     )
-
+    #the corresponding raw files
     raw_file = Quantity(
         type=str,
         shape=['*'],
