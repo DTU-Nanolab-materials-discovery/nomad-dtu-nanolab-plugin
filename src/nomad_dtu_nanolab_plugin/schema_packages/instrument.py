@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
 m_package = Package(name='DTU customised Instrument scheme')
 
+
 class ExternalInstrument(Instrument, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
@@ -59,25 +60,25 @@ class ExternalInstrument(Instrument, Schema):
                     ]
                 ),
             )
-        )
+        ),
     )
     method = Quantity(
         type=string,
         shape=[],
         description='The measurement methode of this Instrument.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.EnumEditQuantity),
-            props=dict(
-                suggestions=[
-                    'EDX',
-                    'XRD',
-                    'XPS',
-                    'R/T',
-                    'Ellipsometry',
-                    'Raman',
-                    'PL',
-                    'Other',
-                    ]
-                ),
+        props=dict(
+            suggestions=[
+                'EDX',
+                'XRD',
+                'XPS',
+                'R/T',
+                'Ellipsometry',
+                'Raman',
+                'PL',
+                'Other',
+            ]
+        ),
     )
     responsible_person_instrument = Quantity(
         type=str,
@@ -86,13 +87,13 @@ class ExternalInstrument(Instrument, Schema):
         The external person responsible for this Instrument.
         Please add Email
         """,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity)
+        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
     )
     responsible_person_group = Quantity(
         type=str,
         shape=[],
         description='The group responsible for this Instrument.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity)
+        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
     )
     web_reference = Quantity(
         type=str,
@@ -100,6 +101,7 @@ class ExternalInstrument(Instrument, Schema):
         description='Web reference for this Instrument. If possible Labadvisor',
         a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
     )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUInstrument` class.
@@ -131,7 +133,7 @@ class GasInlet(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
-            ),
+        ),
         unit='m',
     )
     gas_inlet_direction_vector = Quantity(
@@ -140,7 +142,7 @@ class GasInlet(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
-            ),
+        ),
     )
     gas_inlet_pipe_diameter = Quantity(
         type=np.float64,
@@ -148,9 +150,10 @@ class GasInlet(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm',
-            ),
+        ),
         unit='m',
     )
+
 
 class SputterSource(ArchiveSection):
     m_def = Section(
@@ -176,7 +179,7 @@ class SputterSource(ArchiveSection):
     source_type = Quantity(
         type=string,
         a_eln=ELNAnnotation(component=ELNComponentEnum.EnumEditQuantity),
-        props=dict(suggestions=['Taurus', 'Magkeeper' 'Other']),
+        props=dict(suggestions=['Taurus', 'MagkeeperOther']),
     )
     pointed_towards = Quantity(
         type=np.float64,
@@ -184,15 +187,15 @@ class SputterSource(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
-            ),
+        ),
         unit='m',
     )
     highet_of_source = Quantity(
         type=np.float64,
-        a_eln= ELNAnnotation(
+        a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
-            ),
+        ),
         unit='m',
     )
     distance_to_substrate = Quantity(
@@ -200,7 +203,7 @@ class SputterSource(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
-            ),
+        ),
         unit='m',
     )
     set_angle = Quantity(
@@ -208,7 +211,7 @@ class SputterSource(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='degree',
-            ),
+        ),
         unit='rad',
     )
     rotation = Quantity(
@@ -216,13 +219,14 @@ class SputterSource(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='degree',
-            ),
+        ),
         unit='rad',
     )
     mounted_taret = Quantity(
         type=CompositeSystem,
         a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
     )
+
 
 class SCrackerSource(ArchiveSection):
     m_def = Section(
@@ -250,7 +254,7 @@ class SCrackerSource(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
-            ),
+        ),
         unit='m',
     )
     pointed_towards = Quantity(
@@ -259,7 +263,7 @@ class SCrackerSource(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
-            ),
+        ),
         unit='m',
     )
     distance_to_substrate = Quantity(
@@ -267,7 +271,7 @@ class SCrackerSource(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
-            ),
+        ),
         unit='m',
     )
     S_cracker_extension_into_chamber = Quantity(
@@ -275,7 +279,7 @@ class SCrackerSource(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
-            ),
+        ),
         unit='m',
     )
     S_cracker_mounting_hight = Quantity(
@@ -283,9 +287,10 @@ class SCrackerSource(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
-            ),
+        ),
         unit='m',
     )
+
 
 class ChamberGeometry(ArchiveSection):
     m_def = Section(
@@ -313,7 +318,7 @@ class ChamberGeometry(ArchiveSection):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.ArrayEditQuantity,
             defaultDisplayUnit='cm',
-            ),
+        ),
         unit='m',
     )
     chamber_picture = Quantity(
@@ -355,6 +360,7 @@ class ChamberGeometry(ArchiveSection):
         repeats=False,
     )
 
+
 class StatusChangeSputtersystem(ArchiveSection):
     m_def = Section()
     date_of_change = Quantity(
@@ -372,7 +378,6 @@ class StatusChangeSputtersystem(ArchiveSection):
 
 
 class PurgeAndCleaning(StatusChangeSputtersystem):
-
     m_def = Section(
         a_eln=ELNAnnotation(
             properties=SectionProperties(
@@ -416,7 +421,7 @@ class PurgeAndCleaning(StatusChangeSputtersystem):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mbar',
-            ),
+        ),
         unit='kg/(m*s^2)',
     )
 
@@ -460,7 +465,7 @@ class DtuSputterInstrument(Instrument, Schema):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='minute',
-            ),
+        ),
         unit='s',
     )
     base_pressure = Quantity(
@@ -470,7 +475,7 @@ class DtuSputterInstrument(Instrument, Schema):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mbar',
-            ),
+        ),
         unit='kg/(m*s^2)',
     )
     chamber_history = Quantity(
@@ -481,6 +486,7 @@ class DtuSputterInstrument(Instrument, Schema):
         section_def=StatusChangeSputtersystem,
         repeats=True,
     )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUInstrument` class.
@@ -491,4 +497,6 @@ class DtuSputterInstrument(Instrument, Schema):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
+
+
 m_package.__init_metainfo__()
