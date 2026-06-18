@@ -21,14 +21,15 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.metainfo.basesections import CompositeSystem, Instrument
-from nomad.metainfo import Datetime, Package, Quantity, Section, SubSection
 from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     ELNComponentEnum,
     Filter,
     SectionProperties,
 )
+from nomad.datamodel.metainfo.basesections import CompositeSystem, Instrument
+from nomad.metainfo import Datetime, Package, Quantity, Section, SubSection
+
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 
 if TYPE_CHECKING:
@@ -65,12 +66,26 @@ class ExternalInstrument(Instrument, Schema):
         shape=[],
         description='The measurement methode of this Instrument.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.EnumEditQuantity),
-            props=dict(suggestions=['EDX', 'XRD', 'XPS', 'R/T', 'Ellipsometry', 'Raman', 'PL', 'Other']),
+            props=dict(
+                suggestions=[
+                    'EDX',
+                    'XRD',
+                    'XPS',
+                    'R/T',
+                    'Ellipsometry',
+                    'Raman',
+                    'PL',
+                    'Other',
+                    ]
+                ),
     )
     responsible_person_instrument = Quantity(
         type=str,
         shape=[],
-        description='The external person responsible for this Instrument. Please add Email',
+        description="""
+        The external person responsible for this Instrument.
+        Please add Email
+        """,
         a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity)
     )
     responsible_person_group = Quantity(
@@ -113,18 +128,27 @@ class GasInlet(ArchiveSection):
     gas_inlet_position = Quantity(
         type=np.float64,
         shape=(3,),
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+            ),
         unit='m',
     )
     gas_inlet_direction_vector = Quantity(
         type=np.float64,
         shape=(3,),
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+            ),
     )
     gas_inlet_pipe_diameter = Quantity(
         type=np.float64,
         default=0.025,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='mm'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            ),
         unit='m',
     )
 
@@ -157,27 +181,42 @@ class SputterSource(ArchiveSection):
     pointed_towards = Quantity(
         type=np.float64,
         shape=(2,),
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+            ),
         unit='m',
     )
     highet_of_source = Quantity(
         type=np.float64,
-        a_eln= ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='cm'),
+        a_eln= ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+            ),
         unit='m',
     )
     distance_to_substrate = Quantity(
         type=np.float64,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+            ),
         unit='m',
     )
     set_angle = Quantity(
         type=np.float64,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='degree'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='degree',
+            ),
         unit='rad',
     )
     rotation = Quantity(
         type=np.float64,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='degree'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='degree',
+            ),
         unit='rad',
     )
     mounted_taret = Quantity(
@@ -208,28 +247,43 @@ class SCrackerSource(ArchiveSection):
     nozzle_position = Quantity(
         type=np.float64,
         shape=(3,),
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+            ),
         unit='m',
     )
     pointed_towards = Quantity(
         type=np.float64,
         shape=(2,),
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+            ),
         unit='m',
     )
     distance_to_substrate = Quantity(
         type=np.float64,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+            ),
         unit='m',
     )
     S_cracker_extension_into_chamber = Quantity(
         type=np.float64,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+            ),
         unit='m',
     )
     S_cracker_mounting_hight = Quantity(
         type=np.float64,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+            ),
         unit='m',
     )
 
@@ -256,7 +310,10 @@ class ChamberGeometry(ArchiveSection):
     chamber_size_3D = Quantity(
         type=np.float64,
         shape=(3,),
-        a_eln=ELNAnnotation(component=ELNComponentEnum.ArrayEditQuantity, defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.ArrayEditQuantity,
+            defaultDisplayUnit='cm',
+            ),
         unit='m',
     )
     chamber_picture = Quantity(
@@ -356,7 +413,10 @@ class PurgeAndCleaning(StatusChangeSputtersystem):
     pressure_during_purge = Quantity(
         type=np.float64,
         description='Maximum pressure during purge.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='mbar'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mbar',
+            ),
         unit='kg/(m*s^2)',
     )
 
@@ -394,15 +454,23 @@ class DtuSputterInstrument(Instrument, Schema):
     )
     time_used_chamber = Quantity(
         type=np.float64,
-        description='The total time the chamber has been used for sputtering as of today.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='minute'),
+        description="""
+        The total time the chamber has been used for sputtering as of today.
+          """,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='minute',
+            ),
         unit='s',
     )
     base_pressure = Quantity(
         type=np.float64,
         shape=[],
         description='The base pressure of the sputtering chamber over time.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='mbar'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mbar',
+            ),
         unit='kg/(m*s^2)',
     )
     chamber_history = Quantity(
