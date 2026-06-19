@@ -1665,7 +1665,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         fig.update_layout(
             title='RTP Temperature and Lamp Power',
             xaxis_title='Time / s',
-            yaxis_title='Temperature / Â°C',
+            yaxis_title='Temperature / °C',
             yaxis2=dict(
                 title='Lamp Power / %',
                 overlaying='y',
@@ -2452,6 +2452,15 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
 
         if overwrite or not self.steps:
+            for parsed_step in parsed.steps:
+                initial_c = parsed_step.initial_temperature_k - CELSIUS_TO_KELVIN_OFFSET
+                final_c = parsed_step.final_temperature_k - CELSIUS_TO_KELVIN_OFFSET
+                logger.warning(
+                    f'Parsed RTP step "{parsed_step.name}": '
+                    f'initial_temperature={initial_c:.1f} °C, '
+                    f'final_temperature={final_c:.1f} °C, '
+                    f'duration={parsed_step.duration_s:.1f} s'
+                )
             self.steps = []
             for parsed_step in parsed.steps:
                 step = DTURTPSteps(name=parsed_step.name)

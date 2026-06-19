@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from nomad_dtu_nanolab_plugin.rtp_log_reader import (
     MIN_USED_GAS_FLOW_M3_S,
@@ -10,6 +11,7 @@ from nomad_dtu_nanolab_plugin.rtp_log_reader import (
 
 EKLIPSE_LOG = 'tests/data/indiogo_0019_RTP_Recording Set 2025.11.28-13.32.19.CSV'
 T2B_LOG = 'tests/data/indiogo_0019_RTP_LOGFILE20251128140851 (1).txt'
+NUMBER_2 = 2
 SYNTHETIC_TRACE_DURATION_S = 90.0
 HEATING_END_TIME_S = 30.0
 DWELL_END_TIME_S = 60.0
@@ -119,6 +121,52 @@ def test_parse_rtp_logfiles():
     )
 
 
+def test_extract_steps_preserves_natural_boundary_gap():
+    """Consecutive steps should NOT share an identical boundary timestamp;
+    each step's end_time_s is its own last sample, and the next step's
+    start_time_s is the next step's own first sample. This gap is
+    intentional (see _extract_steps docstring) and should not silently
+    disappear if the boundary logic changes."""
+    assert _ensure_deps()
+
+    time_s = np.arange(0.0, SYNTHETIC_TRACE_DURATION_S, TIME_STEP_S)
+    temperature_k = np.empty_like(time_s)
+
+    heating_mask = time_s < HEATING_END_TIME_S
+    dwell_mask = (time_s >= HEATING_END_TIME_S) & (time_s < DWELL_END_TIME_S)
+    cooling_mask = time_s >= DWELL_END_TIME_S
+
+    heating_t = time_s[heating_mask]
+    cooling_t = time_s[cooling_mask] - DWELL_END_TIME_S
+
+    temperature_k[heating_mask] = 300.0 + 0.8 * heating_t
+    temperature_k[dwell_mask] = 324.0
+    temperature_k[cooling_mask] = 324.0 - 0.8 * cooling_t
+
+    process_df = pd.DataFrame({'time_s': time_s, 'temperature_k': temperature_k})
+    steps = _extract_steps(process_df)
+
+    assert len(steps) >= NUMBER_2
+    for prev, curr in zip(steps, steps[1:]):
+        # The gap should be strictly positive (one sampling interval) and
+        # bounded by the sampling step, not an arbitrarily large drift.
+        gap = curr.start_time_s - prev.end_time_s
+        assert gap > 0
+        assert gap <= TIME_STEP_S + 1e-6
+
+
+def test_step_duration_matches_own_slice_not_cross_step_boundary():
+    """duration_s reflects only the samples inside the step's own slice
+    (last_sample - first_sample), and is intentionally NOT equal to
+    end_time_s minus the NEXT step's start_time_s."""
+    parsed = parse_rtp_logfiles(EKLIPSE_LOG, T2B_LOG)
+    for step in parsed.steps:
+        if step.start_time_s is not None and step.end_time_s is not None:
+            assert step.duration_s == pytest.approx(
+                step.end_time_s - step.start_time_s, abs=1e-6
+            )
+
+
 def test_extract_steps_does_not_split_on_small_slope_wiggles():
     assert _ensure_deps()
 
@@ -137,6 +185,7 @@ def test_extract_steps_does_not_split_on_small_slope_wiggles():
         300.0 + 0.8 * heating_t + 1.2 * np.sin(2.0 * np.pi * heating_t / 3.0)
     )
     temperature_k[dwell_mask] = 324.0 + 0.2 * np.sin(2.0 * np.pi * dwell_t / 4.0)
+
     temperature_k[cooling_mask] = (
         324.0 - 0.8 * cooling_t + 1.2 * np.sin(2.0 * np.pi * cooling_t / 3.0)
     )

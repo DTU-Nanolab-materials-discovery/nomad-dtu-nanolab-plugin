@@ -62,7 +62,7 @@ SEGMENT_MIN_POINTS = 3
 # Slopes with |dT/dt| < this value are considered flat.
 DWELL_SLOPE_THRESHOLD_K_S = 0.5
 # Gaussian smoothing window half-width used before computing the derivative.
-# Raised from 5 to 15: wider window suppresses sensor noise in the cooling
+# wider window suppresses sensor noise in the cooling
 # plateau without losing the genuine Heating/Annealing/Cooling transitions.
 SLOPE_SMOOTH_WINDOW = 15
 # Minimum label-run length used to debounce slope flips before step extraction.
@@ -97,8 +97,6 @@ class ParsedRTPStep:
     mean_temperature_k: float | None = None
     start_time_s: float | None = None
     end_time_s: float | None = None
-    real_start_time_s: float | None = None
-    real_start_temperature_k: float | None = None
     # Visual end boundary for plots — extends to recording end for the last
     # Cooling step so the shaded region covers the full cool-down including
     # the ambient plateau (which is excluded from duration/averages).
@@ -792,60 +790,6 @@ def _extract_timeseries(process_df) -> dict[str, list[float]]:
     return out
 
 
-def _find_heating_real_start(
-    step_df: pd.DataFrame,
-) -> tuple[float | None, float | None]:
-    """Find the real start time of a heating step.
-
-    Real start is defined as the first moment when setpoint temperature
-    meets or exceeds the actual temperature during heating.
-
-    Returns: (real_start_time_s, real_start_temperature_k) or (None, None)
-    """
-    if 'temperature_setpoint_k' not in step_df.columns:
-        logger.warning(
-            'Temperature setpoint data missing; cannot identify real heating start '
-            '(setpoint-vs-actual crossover)'
-        )
-        return None, None
-    if 'temperature_k' not in step_df.columns:
-        logger.warning('Temperature data missing; cannot identify real heating start')
-        return None, None
-    if 'time_s' not in step_df.columns:
-        logger.warning('Time data missing; cannot identify real heating start timing')
-        return None, None
-
-    try:
-        time_arr = _to_num(step_df['time_s']).to_numpy()
-        temp_arr = _to_num(step_df['temperature_k']).to_numpy()
-        setpoint_arr = _to_num(step_df['temperature_setpoint_k']).to_numpy()
-
-        # Find where setpoint >= actual temperature (setpoint is trying to drive system)
-        # Looking for the first valid crossover point
-        for i in range(len(temp_arr)):
-            if not (
-                np.isfinite(time_arr[i])
-                and np.isfinite(temp_arr[i])
-                and np.isfinite(setpoint_arr[i])
-            ):
-                continue
-            # Real heating starts when setpoint first meets/exceeds actual temp
-            if float(setpoint_arr[i]) >= float(temp_arr[i]):
-                return float(time_arr[i]), float(temp_arr[i])
-
-        # If no crossover found, return None
-        logger.warning(
-            'No heating real start detected: setpoint temperature never '
-            'met or exceeded actual temperature during step.'
-        )
-        return None, None
-    except Exception as e:
-        logger.warning(
-            f'Error detecting heating real start time: {e}. Using step boundary values.'
-        )
-        return None, None
-
-
 def _find_gas_shutoff_time(step_df) -> float | None:
     """
     Find the time at which gases shut off during a step.
@@ -1486,7 +1430,6 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         initial_temp = float(sl['temperature_k'].iloc[0])
         final_temp = float(sl['temperature_k'].iloc[-1])
         base_label = final_base_labels[seg_idx]
-        is_heating = base_label == 'Heating'
         is_cooling = base_label == 'Cooling'
 
         # Find gas shutoff time for the averaging window.
@@ -1512,20 +1455,8 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
                 candidate = sl[sl['time_s'] <= pressure_cutoff]
                 pressure_average_window_df = candidate if not candidate.empty else sl
 
-        # Real start detection for heating segments.
-        real_start_time = None
-        real_start_temp = None
-        if is_heating:
-            real_start_time, real_start_temp = _find_heating_real_start(sl)
-
-        start_time = (
-            real_start_time
-            if real_start_time is not None
-            else float(sl['time_s'].iloc[0])
-        )
-        initial_temperature = (
-            real_start_temp if real_start_temp is not None else initial_temp
-        )
+        start_time = float(sl['time_s'].iloc[0])
+        initial_temperature = initial_temp
         adjusted_duration = float(sl['time_s'].iloc[-1] - start_time)
 
         pressure_pa: float | None = None
@@ -1542,8 +1473,6 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
             initial_temperature_k=initial_temperature,
             final_temperature_k=final_temp,
             pressure_pa=pressure_pa,
-            real_start_time_s=real_start_time,
-            real_start_temperature_k=real_start_temp,
             ar_flow_m3_s=_apply_parasitic_flow_cutoff(
                 _mean_or_zero(flow_average_window_df, 'ar_flow_m3_s'), 'Ar'
             ),
