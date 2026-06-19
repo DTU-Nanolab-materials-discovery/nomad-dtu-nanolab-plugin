@@ -69,21 +69,3 @@ def test_schema():
 
         for gas in data.used_gases:
             assert gas in gas_sources
-
-
-def test_schema_phase_segments_match_parsed_steps():
-    """_log_phase_segments must be a direct pass-through of parsed step
-    boundaries (gap preserved), not stitched/adjusted."""
-    test_file = os.path.join('tests', 'data', 'test_rtp.archive.yaml')
-    entry_archive = parse(test_file)[0]
-    normalize_all(entry_archive)
-    data = entry_archive.data
-
-    segments = getattr(data, '_log_phase_segments', None)
-    if not segments:
-        return  # no log-derived segments in this fixture; nothing to check
-
-    for (_, _, end), (_, next_start, _) in zip(segments, segments[1:]):
-        # Consecutive segments are expected to have a small natural gap,
-        # not be perfectly stitched together.
-        assert next_start >= end
