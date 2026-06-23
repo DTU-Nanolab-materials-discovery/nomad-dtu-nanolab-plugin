@@ -63,7 +63,7 @@ class ExternalInstrument(Instrument, Schema):
     )
     method = Quantity(
         type=str,
-        shape=(),
+        shape=['*'],
         description='The measurement methode of this Instrument.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
@@ -83,7 +83,7 @@ class ExternalInstrument(Instrument, Schema):
     )
     responsible_person_instrument = Quantity(
         type=str,
-        shape=(),
+        shape=['*'],
         description="""
         The external person responsible for this Instrument.
         Please add Email
@@ -92,13 +92,13 @@ class ExternalInstrument(Instrument, Schema):
     )
     responsible_person_group = Quantity(
         type=str,
-        shape=(),
+        shape=['*'],
         description='The group responsible for this Instrument.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
     )
     web_reference = Quantity(
         type=str,
-        shape=(),
+        shape=['*'],
         description='Web reference for this Instrument. If possible Labadvisor',
         a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
     )
@@ -144,10 +144,10 @@ class GasInlet(ArchiveSection):
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
         ),
+        unit='m',
     )
     gas_inlet_pipe_diameter = Quantity(
         type=np.float64,
-        default=0.025,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm',
@@ -164,7 +164,7 @@ class SputterSource(ArchiveSection):
                     'source_type',
                     'date_of_installation',
                     'mounted_taret',
-                    'highet_of_source',
+                    'height_of_source',
                     'set_angle',
                     'rotation',
                     'pointed_towards',
@@ -184,6 +184,15 @@ class SputterSource(ArchiveSection):
             props=dict(suggestions=['Taurus', 'Magkeeper', 'Other']),
         ),
     )
+    position_of_source_mounting_port = Quantity(
+        type=np.float64,
+        shape=(3,),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+        ),
+        unit='m',
+    )
     pointed_towards = Quantity(
         type=np.float64,
         shape=(2,),
@@ -193,7 +202,7 @@ class SputterSource(ArchiveSection):
         ),
         unit='m',
     )
-    highet_of_source = Quantity(
+    height_of_source = Quantity(
         type=np.float64,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
@@ -437,10 +446,9 @@ class QuickCleaning(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
-                    'comment_about_change',
                     'vaccumed',
                     'other_cleaning_methods',
-                    'description',
+                    'comment_about_change',
                 ],
             ),
         ),
@@ -473,7 +481,17 @@ class DtuSputterInstrument(Instrument, Schema):
         ),
         unit='s',
     )
-    base_pressure = Quantity(
+    lab_location = Quantity(
+        type=str,
+        description='The location of the lab where this Instrument is located.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
+    )
+    manufacturer = Quantity(
+        type=str,
+        description='The manufacturer of this Instrument.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
+    )
+    latest_base_pressure = Quantity(
         type=np.float64,
         shape=(),
         description='The base pressure of the sputtering chamber over time.',
@@ -482,10 +500,6 @@ class DtuSputterInstrument(Instrument, Schema):
             defaultDisplayUnit='mbar',
         ),
         unit='kg/(m*s^2)',
-    )
-    chamber_history = Quantity(
-        type=str,
-        a_eln={'component': 'RichTextEditQuantity'},
     )
     status_of_system = SubSection(
         section_def=StatusChangeSputtersystem,
