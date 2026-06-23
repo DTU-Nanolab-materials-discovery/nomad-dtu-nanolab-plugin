@@ -465,6 +465,43 @@ class QuickCleaning(StatusChangeSputtersystem):
     )
 
 
+class TargetChange(StatusChangeSputtersystem):
+    m_def = Section(
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                order=[
+                    'date_of_change',
+                    'source_1_changed',
+                    'source_2_changed',
+                    'source_3_changed',
+                    'source_4_changed',
+                    'comment_about_change',
+                ],
+            ),
+        ),
+    )
+    source_1_changed = Quantity(
+        type=bool,
+        description='Whether the target in source 1 was changed.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+    )
+    source_2_changed = Quantity(
+        type=bool,
+        description='Whether the target in source 2 was changed.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+    )
+    source_3_changed = Quantity(
+        type=bool,
+        description='Whether the target in source 3 was changed.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+    )
+    source_4_changed = Quantity(
+        type=bool,
+        description='Whether the target in source 4 was changed.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+    )
+
+
 class DtuSputterInstrument(Instrument, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
