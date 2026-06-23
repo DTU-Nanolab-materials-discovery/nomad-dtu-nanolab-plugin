@@ -64,25 +64,27 @@ class ExternalInstrument(Instrument, Schema):
     )
     method = Quantity(
         type=str,
-        shape=[],
+        shape=(),
         description='The measurement methode of this Instrument.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.EnumEditQuantity),
-        props=dict(
-            suggestions=[
-                'EDX',
-                'XRD',
-                'XPS',
-                'R/T',
-                'Ellipsometry',
-                'Raman',
-                'PL',
-                'Other',
-            ]
-        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            props=dict(
+                suggestions=[
+                    'EDX',
+                    'XRD',
+                    'XPS',
+                    'R/T',
+                    'Ellipsometry',
+                    'Raman',
+                    'PL',
+                    'Other',
+                ]
+            ),
+        )
     )
     responsible_person_instrument = Quantity(
         type=str,
-        shape=[],
+        shape=(),
         description="""
         The external person responsible for this Instrument.
         Please add Email
@@ -91,13 +93,13 @@ class ExternalInstrument(Instrument, Schema):
     )
     responsible_person_group = Quantity(
         type=str,
-        shape=[],
+        shape=(),
         description='The group responsible for this Instrument.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
     )
     web_reference = Quantity(
         type=str,
-        shape=[],
+        shape=(),
         description='Web reference for this Instrument. If possible Labadvisor',
         a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
     )
@@ -178,8 +180,9 @@ class SputterSource(ArchiveSection):
     )
     source_type = Quantity(
         type=str,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.EnumEditQuantity),
-        props=dict(suggestions=['Taurus', 'MagkeeperOther']),
+        a_eln=ELNAnnotation(component=ELNComponentEnum.EnumEditQuantity,
+            props=dict(suggestions=['Taurus', 'Magkeeper', 'Other']),
+        ),
     )
     pointed_towards = Quantity(
         type=np.float64,
@@ -383,12 +386,12 @@ class PurgeAndCleaning(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
-                    'comment_about_change',
                     'sulfur_cracker_refilled',
                     'detector_alarm',
                     'number_of_purge_cycles',
                     'time_per_purge_cycles',
                     'pressure_during_purge',
+                    'comment_about_change',
                     'description',
                 ],
             ),
@@ -407,7 +410,8 @@ class PurgeAndCleaning(StatusChangeSputtersystem):
     time_per_purge_cycles = Quantity(
         type=np.float64,
         description='Time per purge cycle.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
+        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity
+                            defaultDisplayUnit='minute'),
         unit='s',
     )
     detector_alarm = Quantity(
@@ -470,7 +474,7 @@ class DtuSputterInstrument(Instrument, Schema):
     )
     base_pressure = Quantity(
         type=np.float64,
-        shape=[],
+        shape=(),
         description='The base pressure of the sputtering chamber over time.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
