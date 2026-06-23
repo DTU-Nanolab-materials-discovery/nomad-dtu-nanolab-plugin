@@ -63,7 +63,7 @@ class ExternalInstrument(Instrument, Schema):
         ),
     )
     method = Quantity(
-        type=string,
+        type=str,
         shape=[],
         description='The measurement methode of this Instrument.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.EnumEditQuantity),
@@ -177,7 +177,7 @@ class SputterSource(ArchiveSection):
         a_eln=ELNAnnotation(component=ELNComponentEnum.DateTimeEditQuantity),
     )
     source_type = Quantity(
-        type=string,
+        type=str,
         a_eln=ELNAnnotation(component=ELNComponentEnum.EnumEditQuantity),
         props=dict(suggestions=['Taurus', 'MagkeeperOther']),
     )
@@ -316,7 +316,7 @@ class ChamberGeometry(ArchiveSection):
         type=np.float64,
         shape=(3,),
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.ArrayEditQuantity,
+            component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='cm',
         ),
         unit='m',
@@ -329,7 +329,7 @@ class ChamberGeometry(ArchiveSection):
     aluminum_covers = Quantity(
         type=bool,
         description='Whether aluminum covers are used in the chamber.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.BooleanEditQuantity),
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
     source_1 = SubSection(
         section_def=SputterSource,
@@ -397,23 +397,23 @@ class PurgeAndCleaning(StatusChangeSputtersystem):
     sulfur_cracker_refilled = Quantity(
         type=bool,
         description='Whether the sulfur cracker was refilled.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.BooleanEditQuantity),
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
     number_of_purge_cycles = Quantity(
         type=np.float64,
         description='Number of purge cycles automatically performed.',
-        a_eln={ELNComponentEnum.NumberEditQuantity},
+        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
     )
     time_per_purge_cycles = Quantity(
         type=np.float64,
         description='Time per purge cycle.',
-        a_eln={ELNComponentEnum.NumberEditQuantity},
+        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity),
         unit='s',
     )
     detector_alarm = Quantity(
         type=bool,
         description='Whether the detector alarm went off during purge.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.BooleanEditQuantity),
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
     pressure_during_purge = Quantity(
         type=np.float64,
@@ -443,7 +443,7 @@ class QuickCleaning(StatusChangeSputtersystem):
     vaccumed = Quantity(
         type=bool,
         description='Whether the chamber was vacuumed.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.BooleanEditQuantity),
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
     other_cleaning_methods = Quantity(
         type=str,
