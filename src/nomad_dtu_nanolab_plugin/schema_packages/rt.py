@@ -610,10 +610,10 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         type=MEnum('UMA', 'DRA', 'None'),
         default='None',
         description=(
-            'Instrument accessory used for the measurement.',
-            'DRA is the integrating sphere accessory while',
-            'UMA is the universal measurement accessory',
-            '(variable incidence, detector and polarization).',
+            'Instrument accessory used for the measurement.'
+            'DRA is the integrating sphere accessory while'
+            'UMA is the universal measurement accessory'
+            '(variable incidence, detector and polarization).'
         ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
