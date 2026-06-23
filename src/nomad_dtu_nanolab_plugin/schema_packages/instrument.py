@@ -16,7 +16,6 @@
 # limitations under the License.
 #
 
-import string
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -80,7 +79,7 @@ class ExternalInstrument(Instrument, Schema):
                     'Other',
                 ]
             ),
-        )
+        ),
     )
     responsible_person_instrument = Quantity(
         type=str,
@@ -180,7 +179,8 @@ class SputterSource(ArchiveSection):
     )
     source_type = Quantity(
         type=str,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.EnumEditQuantity,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
             props=dict(suggestions=['Taurus', 'Magkeeper', 'Other']),
         ),
     )
@@ -410,8 +410,9 @@ class PurgeAndCleaning(StatusChangeSputtersystem):
     time_per_purge_cycles = Quantity(
         type=np.float64,
         description='Time per purge cycle.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.NumberEditQuantity
-                            defaultDisplayUnit='minute'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity, defaultDisplayUnit='minute'
+        ),
         unit='s',
     )
     detector_alarm = Quantity(
