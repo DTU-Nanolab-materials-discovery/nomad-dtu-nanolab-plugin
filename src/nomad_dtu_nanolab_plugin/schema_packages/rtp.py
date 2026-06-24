@@ -306,7 +306,7 @@ class RTPOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='Argon flow (average) used during the annealing plateau of the'
-        ' RTP process. The unit "cm^3/minute" is used equal to sccm.',
+        ' RTP process. The unit "cm^3/minute" is used and equal to sccm.',
     )
     annealing_n2_flow = Quantity(
         type=np.float64,
@@ -1691,6 +1691,12 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 zeroline=True,
                 range=list(x_range) if x_range is not None else None,
             ),
+            yaxis=dict(
+                fixedrange=False,
+                showline=True,
+                showgrid=True,
+                zeroline=True,
+            ),
         )
         plot_json = fig.to_plotly_json()
         plot_json['config'] = dict(
@@ -2071,6 +2077,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         )
         self._autofill_material_space()
         if self.overview is not None:
+            self.overview.normalize(archive, logger)
             self.add_libraries(archive, logger)
         self.plot_temperature_profile()
         self.plot_gas_flows_profile()
