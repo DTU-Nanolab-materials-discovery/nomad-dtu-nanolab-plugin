@@ -2810,6 +2810,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         )
         self._autofill_material_space()
         if self.overview is not None:
+            self.overview.normalize(archive, logger)
             self.add_libraries(archive, logger)
 
         # 7. Plotting. Depends on phase segments (step 5), the timeseries
