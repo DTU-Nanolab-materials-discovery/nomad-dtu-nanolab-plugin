@@ -55,15 +55,15 @@ NUMBER_2 = 2
 # Minimum duration for a segment to be kept (seconds).
 # Raised from 5 s to 60 s: short noise bursts in the cooling tail were being
 # classified as separate Dwell/Cooling segments.
-SEGMENT_MIN_DURATION_S = 60.0
+SEGMENT_MIN_DURATION_S = 5.0
 # Minimum number of data points for a segment to be kept.
 SEGMENT_MIN_POINTS = 3
 # Temperature slope threshold (K/s) below which a segment is classified as a Dwell.
 # Slopes with |dT/dt| < this value are considered flat.
-DWELL_SLOPE_THRESHOLD_K_S = 0.5
+DWELL_SLOPE_THRESHOLD_K_S = 0.05  # or lower if we want to be more strict
 # Gaussian smoothing window half-width used before computing the derivative.
-# wider window suppresses sensor noise in the cooling
-# plateau without losing the genuine Heating/Annealing/Cooling transitions.
+# Wider window suppresses sensor noise in the cooling plateau without losing
+# the genuine Heating/Annealing/Cooling transitions.
 SLOPE_SMOOTH_WINDOW = 15
 # Minimum label-run length used to debounce slope flips before step extraction.
 # Raised from 5 points / 2 s to 10 points / 30 s so brief noisy reversals
@@ -71,12 +71,14 @@ SLOPE_SMOOTH_WINDOW = 15
 SLOPE_MIN_RUN_POINTS = 10
 SLOPE_MIN_RUN_DURATION_S = 30.0
 # Ambient temperature window (K) used to detect the room-temperature plateau
-# at the end of a run.  Any sample whose temperature is within this tolerance
+# at the end of a run. Any sample whose temperature is within this tolerance
 # of AMBIENT_TEMPERATURE_K is considered "at room temperature".
 # ±0.5 K tolerance matches the stated room-temperature criterion of
 # 23.5 ±0.5 °C, preventing early triggering at warmer intermediates.
 AMBIENT_TEMPERATURE_K = 296.65  # ≈ 23.5 °C
 AMBIENT_TEMPERATURE_TOLERANCE_K = 0.5
+# "Dwell-like" includes both plain dwell labels and any step already renamed
+# to Annealing. This lets downstream code treat them uniformly.
 DWELL_LIKE_NAME_RE = re.compile(
     r'^\s*(?:\d+(?:st|nd|rd|th)\s+)?(?:dwell|anneal(?:ing)?)\b'
 )
@@ -84,17 +86,23 @@ DWELL_LIKE_NAME_RE = re.compile(
 
 @dataclass
 class ParsedRTPStep:
+    # Human-readable label assigned during segmentation.
     name: str
+    # Duration and start/end temperatures of the step.
     duration_s: float
     initial_temperature_k: float
     final_temperature_k: float
+    # Mean pressure over the step's averaging window, if available.
     pressure_pa: float | None
+    # Mean gas flows over the step's averaging window, in SI units.
     ar_flow_m3_s: float
     n2_flow_m3_s: float
     ph3_in_ar_flow_m3_s: float
     nh3_in_ar_flow_m3_s: float
     h2s_in_ar_flow_m3_s: float
+    # Mean temperature is used when identifying the main annealing dwell.
     mean_temperature_k: float | None = None
+    # Absolute step boundaries on the merged process timeline.
     start_time_s: float | None = None
     end_time_s: float | None = None
     # Visual end boundary for plots — extends to recording end for the last
@@ -105,15 +113,22 @@ class ParsedRTPStep:
 
 @dataclass
 class ParsedRTPData:
+    # Gases detected as genuinely used during the main dwell/anneal.
     used_gases: list[str]
+    # General process-level vacuum diagnostics.
     base_pressure_pa: float | None
     base_pressure_ballast_pa: float | None
     rate_of_rise_pa_s: float | None
     # Kept for schema compatibility, intentionally not parsed from logs.
     chiller_flow_m3_s: float | None
+    # Summary information for the overview section of the schema.
     overview: dict[str, float | None]
+    # Segmented process steps in chronological order.
     steps: list[ParsedRTPStep]
+    # Plot-ready SI-unit timeseries exported from the merged process dataframe.
     timeseries: dict[str, list[float]]
+    # Flag indicating whether a main annealing step could be identified.
+    has_detected_annealing: bool = False
 
 
 def _empty_result() -> ParsedRTPData:
@@ -139,6 +154,7 @@ def _empty_result() -> ParsedRTPData:
         },
         steps=[],
         timeseries={},
+        has_detected_annealing=False,
     )
 
 
@@ -162,11 +178,14 @@ def _ensure_deps() -> bool:
         except Exception:
             return False
 
+    # Both heavy dependencies are now available for the rest of the parser.
     return True
 
 
 def _normalize(name: str) -> str:
     """Normalize labels so matching works across different logfile variants."""
+    # Strips punctuation/spacing/case so comparisons stay robust to slightly
+    # different export formats.
     return re.sub(r'[^a-z0-9]+', '', str(name).lower())
 
 
@@ -187,6 +206,8 @@ def _extract_trendlog_column_names(lines: list[str]) -> list[str]:
         if 'processvaluech1' not in line_norm:
             continue
 
+        # Recover the order in which known columns appear in the header-like
+        # line so numeric TrendLog rows can be mapped correctly.
         hits = [
             (line_norm.find(norm_name), original_name)
             for norm_name, original_name in normalized_map.items()
@@ -196,6 +217,7 @@ def _extract_trendlog_column_names(lines: list[str]) -> list[str]:
         if ordered:
             return ordered
 
+    # Fall back to the standard expected order if no recognizable header is found.
     return known_columns
 
 
@@ -215,7 +237,8 @@ def _read_csv_with_fallback(path: str):
                     header_line = line
                     break
 
-            # Generic fallback for tests/simpler CSVs that still have a timestamp header
+            # Generic fallback for tests/simpler CSVs that still have
+            # a timestamp header.
             if not header_line:
                 handle.seek(0)
                 for i, line in enumerate(handle):
@@ -224,6 +247,7 @@ def _read_csv_with_fallback(path: str):
                         header_line = line
                         break
 
+        # Infer delimiter from the header because exports can vary.
         delimiter = ','
         if header_line:
             try:
@@ -233,6 +257,7 @@ def _read_csv_with_fallback(path: str):
                 if header_line.count(';') > header_line.count(','):
                     delimiter = ';'
 
+        # Read starting from the detected header row.
         return pd.read_csv(
             path,
             sep=delimiter,
@@ -243,6 +268,8 @@ def _read_csv_with_fallback(path: str):
             skiprows=header_idx,
         )
     except Exception:
+        # Return an empty dataframe instead of failing hard; caller decides how
+        # to recover.
         return pd.DataFrame()
 
 
@@ -251,14 +278,17 @@ def _to_datetime(series):
     if pd is None:
         return series
 
+    # Preferred explicit timestamp format from standard RTP exports.
     dt = pd.to_datetime(series, errors='coerce', format='%Y/%m/%d_%H:%M:%S')
     if dt.notna().sum() > 0:
         return dt
 
+    # Fall back to pandas' generic parser.
     dt = pd.to_datetime(series, errors='coerce')
     if dt.notna().sum() > 0:
         return dt
 
+    # Also support elapsed-time style fields by anchoring them to epoch.
     td = pd.to_timedelta(series, errors='coerce')
     if td.notna().sum() > 0:
         return pd.Timestamp('1970-01-01') + td
@@ -351,6 +381,7 @@ def _parse_cx_thermo_table(txt: str):
     if pd is None:
         raise RuntimeError('pandas not loaded')
 
+    # Remove blank lines so both metadata and table parsing become simpler.
     lines = [line.rstrip() for line in txt.splitlines() if line.strip()]
     if not lines:
         return pd.DataFrame()
@@ -402,6 +433,8 @@ def _parse_cx_thermo_table(txt: str):
         if not re.match(r'^\d{4}/\d{2}/\d{2}_\d{2}:\d{2}:\d{2}$', parts[0]):
             continue
 
+        # Extract numeric payload after the timestamp and map it to the
+        # recovered TrendLog column order.
         nums: list[float] = []
         for token in parts[1:]:
             if token in {'', '-'}:
@@ -425,7 +458,10 @@ def _parse_cx_thermo_table(txt: str):
 def _find_col(df, patterns: list[str]) -> str | None:
     """Return the first dataframe column matching any normalized regex.
     In case we use this parser for other dataframes types (lab equipment changes
-    or different lab)."""
+    or different lab).
+    """
+    # Normalize each column name first so regex matching is resilient to
+    # punctuation/spacing/casing differences across export variants.
     norm_map = {_normalize(c): c for c in df.columns}
     for pattern in patterns:
         rx = re.compile(pattern)
@@ -449,10 +485,10 @@ def _identify_virtual_temperature_samples(process_df) -> np.ndarray | None:
         return None
 
     temp_arr = process_df['temperature_k'].to_numpy(dtype=float)
-    # Convert 1450°C setpoint to Kelvin for comparison
+    # Convert 1450°C setpoint to Kelvin for comparison.
     virtual_temp_k = VIRTUAL_TEMPERATURE_SETPOINT_C + CELSIUS_TO_KELVIN_OFFSET
-    # Check if samples are at 1450°C (400°C tolerance to catch ramp up and down)
-    # Note: atol=400 in Kelvin is equivalent to 400°C
+    # Check if samples are at 1450°C (400°C tolerance to catch ramp up and down).
+    # Note: atol=400 in Kelvin is equivalent to 400°C.
     virtual_mask = np.isfinite(temp_arr) & np.isclose(
         temp_arr,
         virtual_temp_k,
@@ -480,7 +516,7 @@ def _mark_disregarded_samples(
     if process_df is None or process_df.empty:
         return False
 
-    # Initialize disregarded column if not already present
+    # Initialize disregarded column if not already present.
     if 'is_disregarded' not in process_df.columns:
         process_df['is_disregarded'] = False
 
@@ -488,7 +524,7 @@ def _mark_disregarded_samples(
     if virtual_mask is None or not np.any(virtual_mask):
         return False
 
-    # Constrain to cooling phase if boundaries provided
+    # Constrain to cooling phase if boundaries provided.
     if cooling_start_timestamp is not None or cooling_end_timestamp is not None:
         if 'timestamp' not in process_df.columns:
             return False
@@ -505,11 +541,11 @@ def _mark_disregarded_samples(
     if not np.any(virtual_mask):
         return False
 
-    # Mark all 1450°C samples as disregarded
+    # Mark all 1450°C samples as disregarded.
     process_df.loc[virtual_mask, 'is_disregarded'] = True
 
     if logger is not None:
-        # Find the time interval containing disregarded samples
+        # Find the time interval containing disregarded samples.
         disregarded_indices = np.where(virtual_mask)[0]
         time_interval_str = 'unknown'
         if len(disregarded_indices) > 0 and 'time_s' in process_df.columns:
@@ -540,6 +576,8 @@ def _build_process_df(eklipse_df, cx_thermo_df):
     if pd is None:
         raise RuntimeError('pandas not loaded')
 
+    # `e` holds Eklipse-derived channels (flows, pressure, valves).
+    # `t` holds CX-Thermo-derived channels (temperature, setpoint, lamp power).
     e = pd.DataFrame()
     t = pd.DataFrame()
 
@@ -560,6 +598,7 @@ def _build_process_df(eklipse_df, cx_thermo_df):
     else:
         e['pressure_raw'] = np.nan
 
+    # Map measured mass-flow controller channels into SI units.
     flow_map = {  # add more options if different logfiles in the future
         'ar_flow_m3_s': [r'mfc1flow$'],
         'n2_flow_m3_s': [r'mfc2flow$'],
@@ -574,6 +613,8 @@ def _build_process_df(eklipse_df, cx_thermo_df):
         else:
             e[out_col] = _to_num(eklipse_df[c]).fillna(0) * SCCM_TO_M3_S
 
+    # Setpoint channels are kept separately because they are used later to
+    # determine when gas setpoints are dropped during cooling.
     flow_setpoint_map = {  # add more options if different logfiles in the future
         'ar_flow_setpoint_m3_s': [r'mfc1setpoint$'],
         'n2_flow_setpoint_m3_s': [r'mfc2setpoint$'],
@@ -640,13 +681,14 @@ def _build_process_df(eklipse_df, cx_thermo_df):
             stacklevel=2,
         )
     if t_temp is not None:
+        # Diagnostics temperatures are logged in Celsius and converted to Kelvin.
         t['temperature_k'] = _temperature_to_kelvin(cx_thermo_df[t_temp])
     if t_setpoint is not None:
         t['temperature_setpoint_k'] = _temperature_to_kelvin(cx_thermo_df[t_setpoint])
     if t_lamp_power is not None:
         t['lamp_power'] = _to_num(cx_thermo_df[t_lamp_power])
 
-    # Removing missing values from each dataframe before merging
+    # Remove rows with invalid timestamps before any alignment/merge.
     if 'timestamp' in e:
         e = e.dropna(subset=['timestamp']).sort_values('timestamp')
         if e.empty:
@@ -667,7 +709,7 @@ def _build_process_df(eklipse_df, cx_thermo_df):
     # Build a union timeline so plots can cover the full range of both logs.
     if not t.empty and not e.empty:
         # Step 1: stacking all timestamps from CX-Thermo and Eklipse into one series
-        #  and removing duplicates, NaN and sorting them.
+        # and removing duplicates, NaN and sorting them.
         timeline = pd.DataFrame(
             {
                 'timestamp': pd.concat([t['timestamp'], e['timestamp']])
@@ -687,7 +729,7 @@ def _build_process_df(eklipse_df, cx_thermo_df):
             tolerance=pd.Timedelta(seconds=8),
         )
         # Step 3: Same idea again, now matching each row to the closest Eklipse
-        #  sample within 8 seconds and adding pressure/flow/valve columns.
+        # sample within 8 seconds and adding pressure/flow/valve columns.
         process = pd.merge_asof(
             process,
             e,
@@ -696,6 +738,8 @@ def _build_process_df(eklipse_df, cx_thermo_df):
             tolerance=pd.Timedelta(seconds=8),
         )
     elif not t.empty:
+        # Temperature-only fallback: keep diagnostics timeline and add empty
+        # placeholders for gas/pressure channels.
         process = t.copy()
         process['pressure_raw'] = np.nan
         process['ar_flow_m3_s'] = 0.0
@@ -704,6 +748,8 @@ def _build_process_df(eklipse_df, cx_thermo_df):
         process['nh3_in_ar_flow_m3_s'] = 0.0
         process['h2s_in_ar_flow_m3_s'] = 0.0
     elif not e.empty:
+        # Pressure/flow-only fallback: keep Eklipse timeline and add empty
+        # temperature values.
         process = e.copy()
         process['temperature_k'] = np.nan
     else:
@@ -713,6 +759,7 @@ def _build_process_df(eklipse_df, cx_thermo_df):
     if process.empty:
         return process
 
+    # Express time as elapsed seconds since the start of the merged process.
     process['time_s'] = (
         process['timestamp'] - process['timestamp'].iloc[0]
     ).dt.total_seconds()
@@ -746,6 +793,7 @@ def _extract_timeseries(process_df) -> dict[str, list[float]]:
         )
         return out
 
+    # Always export time, even if some channels are missing.
     out['time_s'] = [float(v) for v in _to_num(df['time_s']).fillna(0).to_list()]
 
     if 'temperature_k' in df:
@@ -773,6 +821,8 @@ def _extract_timeseries(process_df) -> dict[str, list[float]]:
         if any(np.isfinite(v) for v in pressure_pa):
             out['pressure_pa'] = pressure_pa
 
+    # Export each flow channel separately so plotting/schema code can consume
+    # only the channels it needs.
     flow_cols = {
         'ar_flow_m3_s': 'ar_flow_m3_s',
         'n2_flow_m3_s': 'n2_flow_m3_s',
@@ -831,7 +881,7 @@ def _find_gas_shutoff_time(step_df) -> float | None:
             time_arr, ar_arr, n2_arr, ph3_arr, nh3_arr, h2s_arr
         ):
             flows = [ar_f, n2_f, ph3_f, nh3_f, h2s_f]
-            # Check if any gas flow is above the threshold
+            # Check if any gas flow is above the threshold.
             gas_on = any(
                 np.isfinite(flow) and abs(float(flow)) > MIN_USED_GAS_FLOW_M3_S
                 for flow in flows
@@ -839,9 +889,9 @@ def _find_gas_shutoff_time(step_df) -> float | None:
             if gas_on:
                 had_gas_on = True
             elif had_gas_on:
-                # First point where all gases turn off after being on
+                # First point where all gases turn off after being on.
                 return float(t)
-        # Gases never shut off (remain active until step end)
+        # Gases never shut off (remain active until step end).
         return None
     except Exception as e:
         logger.warning(f'Error detecting gas shutoff time: {e}')
@@ -891,6 +941,7 @@ def _find_setpoint_pre_drop_time(step_df, min_flow_threshold=1e-6) -> float | No
       - no gas ever turns ON
       - no ON→OFF transition occurs
     """
+    _ = min_flow_threshold  # Kept for signature compatibility/readability.
     required = [
         'time_s',
         'ar_flow_setpoint_m3_s',
@@ -915,7 +966,7 @@ def _find_setpoint_pre_drop_time(step_df, min_flow_threshold=1e-6) -> float | No
 
         gas_arrays = [_to_num(step_df[col]).to_numpy(dtype=float) for col in gas_cols]
 
-        # Determine ON/OFF state for each gas at each sample
+        # Determine ON/OFF state for each gas at each sample.
         gas_on = np.array(
             [
                 [np.isfinite(v) and v > MIN_USED_GAS_FLOW_M3_S for v in gas_values]
@@ -923,21 +974,21 @@ def _find_setpoint_pre_drop_time(step_df, min_flow_threshold=1e-6) -> float | No
             ]
         )  # shape: (num_samples, num_gases)
 
-        # If no gas is ever ON, nothing to detect
+        # If no gas is ever ON, nothing to detect.
         if not np.any(gas_on):
             return None
 
-        # Track previous state to detect transitions
+        # Track previous state to detect transitions.
         prev_state = gas_on[0]
 
         for i in range(1, len(gas_on)):
             current_state = gas_on[i]
 
-            # A transition occurs if any gas was ON and is now OFF
+            # A transition occurs if any gas was ON and is now OFF.
             turned_off = prev_state & ~current_state
 
             if np.any(turned_off):
-                # Return timestamp of the previous sample
+                # Return timestamp of the previous sample.
                 if np.isfinite(time_arr[i - 1]):
                     return float(time_arr[i - 1])
                 return None
@@ -959,7 +1010,7 @@ def _find_setpoint_pre_drop_time(step_df, min_flow_threshold=1e-6) -> float | No
 def _smooth_temperature(temp_arr: np.ndarray, half_window: int) -> np.ndarray:
     """Apply a simple moving-average to temperature before differentiation.
 
-    A symmetric window of size (2*half_window + 1) is used.  Near the edges
+    A symmetric window of size (2*half_window + 1) is used. Near the edges
     the window is automatically reduced (same as 'same' convolution with
     uniform kernel, normalized).
     """
@@ -994,7 +1045,7 @@ def _merge_short_segments(
 
     Short segments are absorbed by whichever adjacent segment has the larger
     absolute temperature difference (or simply the longer neighbour when
-    temperature data is unavailable).  After merging the neighbour label is
+    temperature data is unavailable). After merging the neighbour label is
     kept – so a tiny heating blip between two Dwell segments will be absorbed
     without creating a spurious extra label.
 
@@ -1044,7 +1095,7 @@ def _merge_short_segments(
                 # Merge: remove segment i and extend its neighbour.
                 # The neighbour's label wins.
                 surviving_label = labels[absorb_into]
-                # Update boundaries: remove boundary at index i
+                # Update boundaries: remove boundary at index i.
                 del labels[i]
                 del boundaries[i]
                 # After deletion, surviving segment index may have shifted.
@@ -1081,12 +1132,15 @@ def _compute_segment_slope(
         slope, _ = np.polyfit(t_v, temp_v, 1)
         return float(slope)
     except Exception:
+        # Fall back to simple end-to-end slope if the fit fails.
         return float((temp_v[-1] - temp_v[0]) / (t_v[-1] - t_v[0]))
 
 
 def _segment_label_ordinals(base_names: list[str]) -> list[str]:
     """Add numeric suffixes (Cooling 2, Cooling 3, …) for repeated names."""
 
+    # Count occurrences of each base label first so only repeated names
+    # receive numeric suffixes.
     name_count: dict[str, int] = {}
     for bn in base_names:
         name_count[bn] = name_count.get(bn, 0) + 1
@@ -1110,10 +1164,14 @@ def _segment_label_ordinals(base_names: list[str]) -> list[str]:
 
 
 def _is_dwell_like_name(name: str) -> bool:
+    # Treat both explicit "Dwell" labels and already-renamed "Annealing"
+    # labels as the same plateau-like class.
     return bool(DWELL_LIKE_NAME_RE.match(name.lower()))
 
 
 def _main_annealing_step_index(steps: list[ParsedRTPStep]) -> int | None:
+    # Among all dwell-like steps, choose the one with the highest mean
+    # temperature as the main annealing step.
     dwell_steps = [
         (i, step)
         for i, step in enumerate(steps)
@@ -1125,6 +1183,11 @@ def _main_annealing_step_index(steps: list[ParsedRTPStep]) -> int | None:
             key=lambda idx_step: idx_step[1].mean_temperature_k or 0.0,
         )[0]
     return None
+
+
+def _has_detected_annealing_step(steps: list[ParsedRTPStep]) -> bool:
+    """Return True only if a main annealing step was detected."""
+    return _main_annealing_step_index(steps) is not None
 
 
 def _find_inflection_points(
@@ -1212,7 +1275,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         logger.warning('Cannot extract steps: process dataframe is empty')
         return []
 
-    # Filter out 1450°C samples (marked as disregarded) for step extraction
+    # Filter out 1450°C samples (marked as disregarded) for step extraction.
     df_for_steps = process_df
     if 'is_disregarded' in process_df.columns:
         df_for_steps = process_df[~process_df['is_disregarded']].reset_index(drop=True)
@@ -1232,6 +1295,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         )
         return []
 
+    # Work only on rows that have both temperature and time available.
     df = df_for_steps.dropna(subset=['temperature_k', 'time_s']).copy()
     if len(df) < MIN_POINTS_FOR_STEPS:
         logger.warning(
@@ -1244,7 +1308,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
     time_s = df['time_s'].to_numpy(dtype=float)
 
     # ------------------------------------------------------------------ #
-    # 1. Find inflection points using smoothed derivative.                #
+    # 1. Find inflection points using smoothed derivative.               #
     # ------------------------------------------------------------------ #
     raw_boundaries = _find_inflection_points(time_s, temp)
 
@@ -1261,7 +1325,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         raw_labels.append(_classify_slope(slope))
 
     # ------------------------------------------------------------------ #
-    # 2. Merge short segments.                                            #
+    # 2. Merge short segments.                                           #
     # ------------------------------------------------------------------ #
     merged_labels, merged_boundaries = _merge_short_segments(
         raw_labels[:],
@@ -1272,7 +1336,7 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
     )
 
     # ------------------------------------------------------------------ #
-    # 3. Recompute labels after merging (full-segment linear slope).      #
+    # 3. Recompute labels after merging (full-segment linear slope).     #
     # ------------------------------------------------------------------ #
     final_base_labels: list[str] = []
     for seg_idx, start in enumerate(merged_boundaries):
@@ -1286,13 +1350,13 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         final_base_labels.append(_classify_slope(slope))
 
     # ------------------------------------------------------------------ #
-    # 3b. Collapse adjacent segments that share the same label.           #
-    #                                                                      #
-    # After merging short segments, the label-recomputation pass can      #
-    # produce runs like [Dwell, Dwell] or [Cooling, Cooling] when a small #
-    # segment that separated two same-class neighbours was absorbed into   #
-    # one of them.  We merge those pairs so no two consecutive segments   #
-    # ever carry the same base label.                                      #
+    # 3b. Collapse adjacent segments that share the same label.          #
+    #                                                                    #
+    # After merging short segments, the label-recomputation pass can     #
+    # produce runs like [Dwell, Dwell] or [Cooling, Cooling] when a      #
+    # small segment that separated two same-class neighbours was         #
+    # absorbed into one of them. We merge those pairs so no two          #
+    # consecutive segments ever carry the same base label.               #
     # ------------------------------------------------------------------ #
     deduped_labels: list[str] = [final_base_labels[0]]
     deduped_boundaries: list[int] = [merged_boundaries[0]]
@@ -1307,12 +1371,10 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
     merged_boundaries = deduped_boundaries
 
     # ------------------------------------------------------------------ #
-    # 3c. Drop any leading segments that appear before the first Heating. #
-    #                                                                      #
-    # A Dwell (or Cooling) before any Heating step is always instrument   #
-    # initialization at ambient temperature, never a real process step.   #
-    # We discard everything up to and including the last non-Heating      #
-    # segment that precedes the first Heating.                            #
+    # 3c. Drop any leading segments that appear before the first Heating.#
+    #                                                                    #
+    # A Dwell (or Cooling) before any Heating step is always instrument  #
+    # initialization at ambient temperature, never a real process step.  #
     # ------------------------------------------------------------------ #
     first_heating_idx = next(
         (i for i, lbl in enumerate(final_base_labels) if lbl == 'Heating'), None
@@ -1322,16 +1384,8 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         merged_boundaries = merged_boundaries[first_heating_idx:]
 
     # ------------------------------------------------------------------ #
-    # 3d. Absorb any trailing Dwell (or Cooling) segments that are still  #
-    #     net-cooling into the last Cooling step.                         #
-    #                                                                      #
-    # Walk backward from the end of the label list.  For every segment   #
-    # whose full linear regression slope is net-negative, re-label it    #
-    # Cooling regardless of whether it was called Dwell.  Stop as soon   #
-    # as a segment with a non-negative slope is encountered (that is a   #
-    # genuine Dwell or Heating step and should not be touched).          #
-    # A second same-label collapse pass then merges all adjacent Cooling  #
-    # entries into one.                                                   #
+    # 3d. Absorb any trailing Dwell (or Cooling) segments that are still #
+    #     net-cooling into the last Cooling step.                        #
     # ------------------------------------------------------------------ #
     last_cooling_seen = any(lbl == 'Cooling' for lbl in final_base_labels)
     if last_cooling_seen and len(final_base_labels) >= NUMBER_2:
@@ -1364,17 +1418,13 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
     merged_boundaries = deduped_boundaries2
 
     # ------------------------------------------------------------------ #
-    # 3e. Find the ambient-plateau cutoff index.                          #
-    #                                                                      #
+    # 3e. Find the ambient-plateau cutoff index.                         #
+    #                                                                    #
     # The last Cooling step ends at whichever comes first:               #
     #   (a) the first sample WITHIN THE LAST COOLING SEGMENT where the   #
-    #       temperature reaches AMBIENT_TEMPERATURE_K ±                  #
-    #       AMBIENT_TEMPERATURE_TOLERANCE_K, or                          #
-    #   (b) the last sample in the recording (if room temperature is     #
-    #       never reached within that segment).                          #
-    #                                                                     #
-    # Searching only within the last Cooling segment avoids false matches #
-    # at the start of the recording where the chamber is also at ambient. #
+    #       temperature reaches ambient, or                              #
+    #   (b) the last sample in the recording if room temperature is      #
+    #       never reached within that segment.                           #
     # ------------------------------------------------------------------ #
     ambient_cutoff_idx: int | None = None
     temp_arr_full = df['temperature_k'].to_numpy(dtype=float)
@@ -1401,12 +1451,12 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         # last sample of the recording is used as the natural end (case b).
 
     # ------------------------------------------------------------------ #
-    # 4. Add ordinal prefixes for repeated labels.                        #
+    # 4. Add ordinal prefixes for repeated labels.                       #
     # ------------------------------------------------------------------ #
     final_names = _segment_label_ordinals(final_base_labels)
 
     # ------------------------------------------------------------------ #
-    # 5. Build ParsedRTPStep objects.                                      #
+    # 5. Build ParsedRTPStep objects.                                    #
     # ------------------------------------------------------------------ #
     steps: list[ParsedRTPStep] = []
     for seg_idx, (start, name) in enumerate(zip(merged_boundaries, final_names)):
@@ -1494,13 +1544,15 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
 
     main_annealing_idx = _main_annealing_step_index(steps)
     if main_annealing_idx is not None:
+        # Rename only the highest-temperature dwell-like step to Annealing;
+        # other dwell-like plateaus keep their generic names.
         steps[main_annealing_idx].name = 'Annealing'
 
     if steps:
         return steps
 
     # ------------------------------------------------------------------ #
-    # Fallback: single Dwell across entire run.                           #
+    # Fallback: single Dwell across entire run.                          #
     # ------------------------------------------------------------------ #
     logger.warning(
         'No distinct Heating/Cooling steps identified. Using single Dwell step.'
@@ -1514,7 +1566,9 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
         pressure_pa = _pressure_to_pa(float(np.nanmean(df_for_average['pressure_raw'])))
     return [
         ParsedRTPStep(
-            name='Annealing',
+            # Use a neutral fallback name rather than Annealing so later logic
+            # does not mistake this for a confidently identified anneal.
+            name='Step',
             duration_s=float(df['time_s'].iloc[-1] - df['time_s'].iloc[0]),
             start_time_s=float(df['time_s'].iloc[0]),
             end_time_s=float(df['time_s'].iloc[-1]),
@@ -1557,6 +1611,8 @@ def _extract_steps(process_df) -> list[ParsedRTPStep]:
 
 
 def _flow_or_zero(val: float | None) -> float:
+    # Normalize missing/NaN flow values to 0.0 so overview values always
+    # remain numeric and serializable.
     if val is None:
         return 0.0
     try:
@@ -1582,6 +1638,8 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
         return _empty_result().overview
 
     def _step_role(step: ParsedRTPStep) -> str:
+        # Determine a coarse heating/dwell/cooling role for a step, preferring
+        # explicit labels and falling back to the sign of ΔT if needed.
         name = (step.name or '').lower()
         if _is_dwell_like_name(name):
             return 'dwell'
@@ -1595,30 +1653,15 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
             return 'dwell'
         return 'heating' if delta_t > 0 else 'cooling'
 
-    # Pick the main Dwell as the one with the highest mean temperature.
-    dwell_steps = [
-        (i, s) for i, s in enumerate(steps) if _is_dwell_like_name(s.name or '')
-    ]
-
-    if dwell_steps:
-        anneal_idx, anneal = max(
-            dwell_steps,
-            key=lambda idx_s: idx_s[1].mean_temperature_k or 0.0,
-        )
-    else:
-        # Fallback heuristic when no step carries a Dwell label.
+    anneal_idx = _main_annealing_step_index(steps)
+    if anneal_idx is None:
         logger.warning(
-            'No step labeled "Dwell" found. '
-            'Using heuristic (highest mean temperature + duration) to '
-            'select the main dwell step for the overview.'
+            'No annealing step could be identified from RTP logs. '
+            'Leaving process overview empty.'
         )
-        score = [
-            0.7 * ((s.initial_temperature_k + s.final_temperature_k) / 2)
-            + 0.3 * s.duration_s
-            for s in steps
-        ]
-        anneal_idx = int(np.argmax(score))
-        anneal = steps[anneal_idx]
+        return _empty_result().overview
+
+    anneal = steps[anneal_idx]
 
     if anneal.pressure_pa is None:
         logger.warning('Main dwell pressure could not be extracted from process data')
@@ -1659,6 +1702,34 @@ def _derive_overview(steps: list[ParsedRTPStep]) -> dict[str, float | None]:
     }
 
 
+def _derive_total_heating_cooling_times(
+    steps: list[ParsedRTPStep],
+) -> tuple[float | None, float | None]:
+    """Return total heating and cooling durations from identified steps.
+
+    This is independent of whether a main annealing step was detected.
+    """
+    if not steps:
+        return None, None
+
+    total_heating = 0.0
+    total_cooling = 0.0
+
+    for step in steps:
+        name = (step.name or '').lower()
+
+        if 'heat' in name:
+            # Accumulate duration of every identified heating step, including
+            # numbered variants like "Heating 2".
+            total_heating += step.duration_s
+        elif 'cool' in name:
+            # Accumulate duration of every identified cooling step, including
+            # numbered variants like "Cooling 2".
+            total_cooling += step.duration_s
+
+    return total_heating, total_cooling
+
+
 def _derive_end_of_process_temperature(
     process_df, steps: list[ParsedRTPStep]
 ) -> float | None:
@@ -1666,6 +1737,7 @@ def _derive_end_of_process_temperature(
     End-of-process temperature = temperature at the LAST gas shutoff event
     (last ON -> OFF transition in the full timeline).
     """
+    _ = steps  # Kept for signature symmetry/extensibility; not used currently.
 
     end_temp_k: float | None = None
 
@@ -1698,6 +1770,8 @@ def _derive_end_of_process_temperature(
 
         temp_arr = _to_num(df['temperature_k']).to_numpy(dtype=float)
 
+        # Stack all gas channels sample-wise so "any gas on?" can be evaluated
+        # across the full process timeline.
         flow_stack = np.column_stack(
             [
                 np.abs(_to_num(df[col]).fillna(0).to_numpy(dtype=float))
@@ -1714,7 +1788,7 @@ def _derive_end_of_process_temperature(
         else:
             shutoff_idx = None
 
-            # Find LAST ON -> OFF transition
+            # Find LAST ON -> OFF transition.
             for i in range(1, len(gas_on)):
                 if gas_on[i - 1] and not gas_on[i]:
                     shutoff_idx = i
@@ -1736,14 +1810,14 @@ def _compute_rate_of_rise(time_s_arr, pressure_pa_arr, start_mask):
     """Compute rate of rise (Pa/s) from first to last valid static-vacuum point.
 
     start_mask marks rows where static conditions are satisfied:
-        -Throttle valve is closed (1, "closed" column)
-        -Vent valve is closed (0, "vent_line" column)
-        -Throttle NOT open (0, if the open column exists)
-        -Throttle position is 0 and before it was not zero
-        -All gas flows are below the parasitic cutoff
-        -Ballast valve is off (0, "ballast" column)
-        -Pressure valve capman pressure is below 11mTorr
-        -These conditions are met for at least 10 samples (to avoid false starts)
+        - Throttle valve is closed (1, "closed" column)
+        - Vent valve is closed (0, "vent_line" column)
+        - Throttle NOT open (0, if the open column exists)
+        - Throttle position is 0 and before it was not zero
+        - All gas flows are below the parasitic cutoff
+        - Ballast valve is off (0, "ballast" column)
+        - Pressure valve capman pressure is below 11mTorr
+        - These conditions are met for at least 10 samples (to avoid false starts)
     We use the first and last rows that satisfy start_mask and return:
     (P(last) - P(first)) / (t(last) - t(first)).
     """
@@ -1776,6 +1850,7 @@ def _compute_rate_of_rise(time_s_arr, pressure_pa_arr, start_mask):
 
 def _derive_general_values(process_df, key_values: dict[str, float], logger=None):
     """Derive base pressure, ballast pressure and rate of rise."""
+    _ = key_values  # Reserved for future metadata-derived values.
 
     def _emit_rate_warning(message: str) -> None:
         if logger is not None:
@@ -1789,7 +1864,7 @@ def _derive_general_values(process_df, key_values: dict[str, float], logger=None
     has_throttle_column = False
     has_ballast_column = False
 
-    # Filter out disregarded samples (1450°C artifacts) for rate-of-rise calculation
+    # Filter out disregarded samples (1450°C artifacts) for rate-of-rise calculation.
     working_df = process_df.copy()
     if 'is_disregarded' in working_df.columns:
         working_df = working_df[~working_df['is_disregarded']].reset_index(drop=True)
@@ -1807,6 +1882,8 @@ def _derive_general_values(process_df, key_values: dict[str, float], logger=None
                 first_on = int(on_positions[0])
                 pre_valid = p_arr[:first_on][np.isfinite(p_arr[:first_on])]
                 if len(pre_valid) > 0:
+                    # Base pressure without ballast = lowest valid pressure
+                    # before the ballast valve is turned on.
                     base_pressure = float(np.nanmin(pre_valid))
                 else:
                     logger.warning(
@@ -1830,6 +1907,8 @@ def _derive_general_values(process_df, key_values: dict[str, float], logger=None
                 post_slice = p_arr[post_start:post_end]
                 post_valid = post_slice[np.isfinite(post_slice)]
                 if len(post_valid) > 0:
+                    # Ballast base pressure is summarized by the mean during
+                    # the ballast-on / pre-vent window.
                     base_pressure_ballast = float(np.nanmean(post_valid))
                 else:
                     logger.warning(
@@ -1937,6 +2016,7 @@ def _derive_general_values(process_df, key_values: dict[str, float], logger=None
             static_idx = np.where(static_vacuum_mask)[0]
             valid_runs: list[np.ndarray] = []
             if len(static_idx) > 0:
+                # Split the static-vacuum mask into contiguous runs.
                 run_edges = np.where(np.diff(static_idx) > 1)[0]
                 run_starts = np.concatenate(([0], run_edges + 1))
                 run_ends = np.concatenate((run_edges, [len(static_idx) - 1]))
@@ -1994,6 +2074,7 @@ def _derive_general_values(process_df, key_values: dict[str, float], logger=None
             start_idx = np.where(start_mask)[0]
             rate_of_rise = _compute_rate_of_rise(time_arr, p_arr, start_mask)
             if rate_of_rise is not None and len(start_idx) > 0:
+                # Log the final matched window explicitly for debugging.
                 match_time_s = float(time_arr[int(start_idx[0])])
                 end_time_s = float(time_arr[int(start_idx[-1])])
                 message = (
@@ -2053,8 +2134,19 @@ def _derive_general_values(process_df, key_values: dict[str, float], logger=None
 def _detect_used_gases(
     steps: list[ParsedRTPStep], overview: dict[str, float | None]
 ) -> list[str]:
-    """Detect which process gases were really used during the main dwell."""
-    # Look for the highest-temperature dwell step (the main anneal).
+    """Detect which process gases were really used.
+
+    Priority:
+    1. Main dwell / annealing step
+    2. First heating ramp (last resort)
+
+    """
+    _ = overview  # Reserved for future metadata-derived values.
+    flow_values: dict[str, float | None]
+
+    # ------------------------------------------------------------------
+    # 1. Prefer the highest-temperature dwell-like step
+    # ------------------------------------------------------------------
     dwell_steps = [s for s in steps if _is_dwell_like_name(s.name or '')]
     main_dwell = (
         max(dwell_steps, key=lambda s: s.mean_temperature_k or 0.0)
@@ -2071,18 +2163,38 @@ def _detect_used_gases(
             'H2S': main_dwell.h2s_in_ar_flow_m3_s,
         }
     else:
-        # Fall back to overview annealing flows if step splitting did not succeed.
-        logger.warning(
-            'No explicit Dwell step found. Using overview annealing flows '
-            'to detect used gases.'
+        # ------------------------------------------------------------------
+        # 2. Last resort: first heating ramp in chronological order
+        # ------------------------------------------------------------------
+        first_heating_step = next(
+            (s for s in steps if 'heat' in (s.name or '').lower()),
+            None,
         )
-        flow_values = {
-            'Ar': overview.get('annealing_ar_flow'),
-            'N2': overview.get('annealing_n2_flow'),
-            'PH3': overview.get('annealing_ph3_in_ar_flow'),
-            'NH3': overview.get('annealing_nh3_in_ar_flow'),
-            'H2S': overview.get('annealing_h2s_in_ar_flow'),
-        }
+
+        if first_heating_step is not None:
+            logger.warning(
+                'No explicit Dwell step found. Using the first Heating ramp '
+                'to detect used gases.'
+            )
+            flow_values = {
+                'Ar': first_heating_step.ar_flow_m3_s,
+                'N2': first_heating_step.n2_flow_m3_s,
+                'PH3': first_heating_step.ph3_in_ar_flow_m3_s,
+                'NH3': first_heating_step.nh3_in_ar_flow_m3_s,
+                'H2S': first_heating_step.h2s_in_ar_flow_m3_s,
+            }
+        else:
+            logger.warning(
+                'No explicit Dwell step and no Heating step found. '
+                'Used gases cannot be determined.'
+            )
+            flow_values = {
+                'Ar': None,
+                'N2': None,
+                'PH3': None,
+                'NH3': None,
+                'H2S': None,
+            }
 
     used_gases = [
         gas
@@ -2092,7 +2204,7 @@ def _detect_used_gases(
 
     if not used_gases:
         logger.warning(
-            'No process gases detected as being used during the main dwell. '
+            'No process gases detected as being used. '
             'All gas flows are either None or below the threshold '
             f'({MIN_USED_GAS_FLOW_M3_S} m³/s).'
         )
@@ -2115,7 +2227,7 @@ def parse_rtp_logfiles(
 
     try:
         eklipse_df = _read_csv_with_fallback(eklipse_csv_path)
-        # Collect and deduplicate temperature logfile paths
+        # Collect and deduplicate temperature logfile paths.
         diagnostics_paths: list[str] = []
         if cx_thermo_diagnostics_txt_paths:
             diagnostics_paths.extend([p for p in cx_thermo_diagnostics_txt_paths if p])
@@ -2145,6 +2257,8 @@ def parse_rtp_logfiles(
         if len(cx_thermo_tables) == 1:
             cx_thermo_df = cx_thermo_tables[0]
         else:
+            # Concatenate all diagnostics tables, sort by parsed timestamp,
+            # and drop exact duplicate timestamps.
             cx_thermo_df = pd.concat(cx_thermo_tables, ignore_index=True, sort=False)
             t_time = _find_col(cx_thermo_df, [r'timestamp', r'^time$'])
             if t_time is not None:
@@ -2163,17 +2277,46 @@ def parse_rtp_logfiles(
 
         process_df = _build_process_df(eklipse_df, cx_thermo_df)
 
-        # Pre-identify 1450°C samples and mark them to exclude from step extraction
+        # Pre-identify 1450°C samples and mark them to exclude from step extraction.
         if 'is_disregarded' not in process_df.columns:
             process_df['is_disregarded'] = False
         _mark_disregarded_samples(process_df, logger=logger)
 
         steps = _extract_steps(process_df)
+        has_detected_annealing = _main_annealing_step_index(steps) is not None
 
-        overview = _derive_overview(steps)
+        # Start from an empty overview.
+        overview = _empty_result().overview
+
+        # These values are independent of annealing detection.
+        total_heating_time, total_cooling_time = _derive_total_heating_cooling_times(
+            steps
+        )
+        overview['total_heating_time'] = total_heating_time
+        overview['total_cooling_time'] = total_cooling_time
         overview['end_of_process_temperature'] = _derive_end_of_process_temperature(
             process_df, steps
         )
+
+        # Populate annealing-specific overview values only if annealing exists.
+        if has_detected_annealing:
+            anneal_overview = _derive_overview(steps)
+            for key, value in anneal_overview.items():
+                if key not in {
+                    'total_heating_time',
+                    'total_cooling_time',
+                    'end_of_process_temperature',
+                }:
+                    overview[key] = value
+
+        elif logger is not None:
+            logger.warning(
+                'No annealing step detected; RTP overview will not be auto-populated '
+                'except for end of process temperature, number of dwells'
+                ' and material space. Feel free to manually populate'
+                ' the overview fields.'
+            )
+
         base_pressure, base_pressure_ballast, rate_of_rise = _derive_general_values(
             process_df, key_values, logger=logger
         )
@@ -2192,6 +2335,7 @@ def parse_rtp_logfiles(
             overview=overview,
             steps=steps,
             timeseries=timeseries,
+            has_detected_annealing=has_detected_annealing,
         )
     except Exception as e:
         # Never let parser edge cases crash NOMAD normalization.
