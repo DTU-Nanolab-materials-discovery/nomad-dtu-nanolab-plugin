@@ -65,10 +65,18 @@ RTP_GAS_FRACTION = {
     'NH3': 0.1,
     'H2S': 0.1,
 }
+# How far past the detected end-of-process point the temperature/gas/pressure
+# plots are extended, so the cooldown tail is visible instead of cutting off
+# exactly at the moment gas flow stops.
 POST_END_PROCESS_WINDOW_S = 30.0
+# Flows below this are treated as "off" when scanning for gas shutoff timing
+# (handles sensor noise/baseline drift rather than requiring an exact zero).
 MIN_USED_GAS_FLOW_SCCM = 1.0
+# Conversion factor: 1 torr = 133.322368421 pascals.
 TORR_TO_PA = 133.322368421
+# Conversion factor: 1 sccm (standard cm^3/min) = 1e-6 m^3 / 60 s.
 SCCM_TO_M3_S = 1e-6 / 60
+# Offset to convert between Celsius and Kelvin (0 °C = 273.15 K).
 CELSIUS_TO_KELVIN_OFFSET = 273.15
 
 
@@ -182,6 +190,12 @@ class DtuRTPInputSampleMounting(ArchiveSection):
         """
         super().normalize(archive, logger)
         if self.position_x is None or self.position_y is None:
+            # Hardcoded susceptor layout (in meters): predefined mounting
+            # slots, named by their position. 'bl'/'br'/'fl'/'fr'/'m' are the
+            # five square slots (back-left, back-right, front-left,
+            # front-right, middle); 'ha'-'hd' are horizontal-rectangle slots
+            # and 'va'-'vd' are vertical-rectangle slots, ordered from one
+            # edge of the susceptor to the other.
             positions = {
                 'bl': (-0.0125, 0.0125),
                 'br': (0.0125, 0.0125),
@@ -209,6 +223,10 @@ class DtuRTPInputSampleMounting(ArchiveSection):
         if self.relative_position is not None:
             self.name = self.relative_position
         elif self.position_x is not None and self.position_y is not None:
+            # Fall back to a coordinate-based name when no relative_position
+            # is set. The decimal point is replaced with 'p' since '.' is not
+            # a safe character in lab IDs/filenames (e.g. "x1.2y-0.5" ->
+            # "x1p2yp0p5").
             self.name = (
                 f'x{self.position_x.to("cm").magnitude:.1f}'
                 f'y{self.position_y.to("cm").magnitude:.1f}'
@@ -306,7 +324,7 @@ class RTPOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='Argon flow (average) used during the annealing plateau of the'
-        ' RTP process. The unit "cm^3/minute" is used equal to sccm.',
+        ' RTP process. The unit "cm^3/minute" is used and equal to sccm.',
     )
     annealing_n2_flow = Quantity(
         type=np.float64,
@@ -317,7 +335,7 @@ class RTPOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='Nitrogen flow (average) used during the annealing plateau of the'
-        ' RTP process. The unit "cm^3/minute" is used equal to sccm.',
+        ' RTP process. The unit "cm^3/minute" is used and equal to sccm.',
     )
     annealing_ph3_in_ar_flow = Quantity(
         type=np.float64,
@@ -328,7 +346,7 @@ class RTPOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='Phosphine flow (average) used during the annealing plateau of'
-        ' the RTP process. The unit "cm^3/minute" is used equal to sccm.',
+        ' the RTP process. The unit "cm^3/minute" is used and equal to sccm.',
     )
     annealing_nh3_in_ar_flow = Quantity(
         type=np.float64,
@@ -339,7 +357,7 @@ class RTPOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='Ammonia flow (average) used during the annealing plateau of'
-        ' the RTP process. The unit "cm^3/minute" is used equal to sccm.',
+        ' the RTP process. The unit "cm^3/minute" is used and equal to sccm.',
     )
     annealing_h2s_in_ar_flow = Quantity(
         type=np.float64,
@@ -350,7 +368,7 @@ class RTPOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='H2S flow (average) used during the annealing plateau of the'
-        ' RTP process. The unit "cm^3/minute" is used equal to sccm.',
+        ' RTP process. The unit "cm^3/minute" is used and equal to sccm.',
     )
     total_heating_time = Quantity(
         type=np.float64,
@@ -448,6 +466,18 @@ class RTPOverview(ArchiveSection):
     )
 
     def calc_partial_pressure(self):
+        """
+        Convert the annealing gas flows into partial pressures using Dalton's
+        law: each gas's partial pressure equals its mole fraction of the
+        total flow, multiplied by the total chamber pressure.
+
+        PH3, NH3, and H2S are delivered pre-diluted in Ar (see
+        RTP_GAS_FRACTION), so only RTP_GAS_FRACTION of their flow is the
+        active gas; the remainder is carrier Ar. The Ar partial pressure
+        therefore accounts for both the dedicated Ar line and the Ar
+        carrier fraction of every diluted gas line (the "(1 - fraction)"
+        terms below).
+        """
         annealing_ar_flow = (
             self.annealing_ar_flow.magnitude
             if self.annealing_ar_flow is not None
@@ -529,6 +559,8 @@ class RTPOverview(ArchiveSection):
         )
         self.annealing_n2_partial_pressure = annealing_n2_partial_pressure
 
+        # Ar partial pressure = dedicated Ar line + the Ar-carrier remainder
+        # of each diluted gas line (1 - that gas's active-gas fraction).
         annealing_ar_partial_pressure = ureg.Quantity(
             (
                 annealing_h2s_in_ar_flow * (1 - RTP_GAS_FRACTION['H2S'])
@@ -632,7 +664,7 @@ class RTPStepOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='Argon flow rate (average) used during the step.'
-        'The unit "cm^3/minute" is used equal to sccm.',
+        'The unit "cm^3/minute" is used and equal to sccm.',
     )
     step_n2_flow = Quantity(
         type=np.float64,
@@ -643,7 +675,7 @@ class RTPStepOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='Nitrogen flow rate (average) used during the step. '
-        'The unit "cm^3/minute" is used equal to sccm.',
+        'The unit "cm^3/minute" is used and equal to sccm.',
     )
     step_ph3_in_ar_flow = Quantity(
         type=np.float64,
@@ -654,7 +686,7 @@ class RTPStepOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='Phosphine flow rate (average) used during the step.'
-        'The unit "cm^3/minute" is used equal to sccm.',
+        'The unit "cm^3/minute" is used and equal to sccm.',
     )
     step_nh3_in_ar_flow = Quantity(
         type=np.float64,
@@ -665,7 +697,7 @@ class RTPStepOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='Ammonia flow rate (average) used during the step.'
-        'The unit "cm^3/minute" is used equal to sccm.',
+        'The unit "cm^3/minute" is used and equal to sccm.',
     )
     step_h2s_in_ar_flow = Quantity(
         type=np.float64,
@@ -676,7 +708,7 @@ class RTPStepOverview(ArchiveSection):
         ),
         unit='m**3/s',
         description='H2S flow rate (average) used during the step.'
-        'The unit "cm^3/minute" is used equal to sccm.',
+        'The unit "cm^3/minute" is used andequal to sccm.',
     )
     initial_temperature = Quantity(
         type=np.float64,
@@ -795,6 +827,11 @@ class RTPStepOverview(ArchiveSection):
         self.temperature_ramp = temperature_ramp
 
     def calc_partial_pressure(self):
+        """
+        Same Dalton's-law mole-fraction model as
+        `RTPOverview.calc_partial_pressure`, applied to a single step's
+        flows/pressure instead of the annealing-plateau averages.
+        """
         step_ar_flow = (
             self.step_ar_flow.magnitude if self.step_ar_flow is not None else 0
         )
@@ -863,6 +900,8 @@ class RTPStepOverview(ArchiveSection):
         )
         self.step_n2_partial_pressure = step_n2_partial_pressure
 
+        # Ar partial pressure = dedicated Ar line + the Ar-carrier remainder
+        # of each diluted gas line (see RTPOverview.calc_partial_pressure).
         step_ar_partial_pressure = ureg.Quantity(
             (
                 step_h2s_in_ar_flow * (1 - RTP_GAS_FRACTION['H2S'])
@@ -909,6 +948,9 @@ class RTPStepOverview(ArchiveSection):
         # Check if parent step is an annealing step
         parent_step = getattr(self, 'm_parent', None)
         parent_step_name = getattr(parent_step, 'name', '') if parent_step else ''
+        # Matches names starting with "anneal" or "annealing" (case
+        # insensitive), e.g. "Annealing", "anneal 1", "Anneal: H2S" - but not
+        # names where "anneal" appears mid-string.
         is_annealing = (
             re.match(r'^\s*anneal(?:ing)?\b', parent_step_name, re.IGNORECASE)
             is not None
@@ -922,6 +964,11 @@ class RTPStepOverview(ArchiveSection):
         ):
             self.calc_ramp()
         elif is_annealing and self.initial_temperature != self.final_temperature:
+            # Annealing steps are expected to be isothermal (held at a
+            # constant plateau temperature). If the logged initial/final
+            # temperatures differ anyway, that's logged as a warning rather
+            # than silently computing a ramp rate that wouldn't be
+            # meaningful for a plateau step.
             _warn_once(
                 self,
                 '_annealing_ramp_warning_emitted',
@@ -988,6 +1035,12 @@ class DTURTPSteps(CVDStep, ArchiveSection):
         """
         The normalizer for the `DTURTPSteps` class.
 
+        Note: per-step source syncing is intentionally NOT duplicated here.
+        The parent `DtuRTP.normalize()` already syncs step sources from
+        `used_gases` in a single explicit pass
+        (`_sync_step_sources_from_used_gases`), so this method only handles
+        derived `step_overview` quantities (ramps and partial pressures).
+
         Args:
             archive (EntryArchive): The archive containing the section that is being
             normalized.
@@ -998,20 +1051,6 @@ class DTURTPSteps(CVDStep, ArchiveSection):
         # pressures) are always computed during step normalization.
         if self.step_overview is not None:
             self.step_overview.normalize(archive, logger)
-
-        # Populate step sources from parent used_gases, but do not overwrite
-        # existing user data unless the parent explicitly requests overwrite.
-        parent = getattr(self, 'm_parent', None)
-        overwrite_sources = bool(getattr(parent, 'overwrite_existing_data', False))
-        if parent is not None and hasattr(parent, 'used_gases'):
-            gases = [gas for gas in (parent.used_gases or []) if gas]
-            if gases and (overwrite_sources or not (self.sources or [])):
-                self.sources = []
-                for gas in gases:
-                    source = DtuRTPSources()
-                    source.sources = [gas]
-                    source.name = gas
-                    self.sources.append(source)
 
 
 ###################### 1ST LEVEL CLASS (RTP) #################################
@@ -1217,12 +1256,31 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
 
     ####### MATERIAL SPACE, SOURCES AND RTP SAMPLE LIBRARY FUNCTIONS #################
     def _sync_step_sources_from_used_gases(self, overwrite: bool = False) -> None:
+        """Populate each RTP step's `sources` from the process-level `used_gases`.
+
+        This helper keeps the per-step `sources` entries aligned with the gases
+        recorded in `self.used_gases`. For every step, it creates one
+        `DtuRTPSources` object per gas and stores it in `step.sources`.
+
+        Behavior:
+        - If no gases are defined in `self.used_gases`, nothing is done.
+        - Existing `step.sources` are preserved unless `overwrite=True`.
+        - Each created source entry uses the gas name both as `source.name`
+          and as the only element in `source.sources`.
+
+        This is intended as a convenience/default synchronization step when
+        step-specific source information is not entered manually.
+        """
+        # Ignore empty gas entries and work only with defined gases.
         gases = [gas for gas in (self.used_gases or []) if gas]
         if not gases:
             return
+
+        # Update each step unless existing sources should be preserved.
         for step in getattr(self, 'steps', []) or []:
             if not overwrite and (step.sources or []):
                 continue
+
             step.sources = []
             for gas in gases:
                 source = DtuRTPSources()
@@ -1268,9 +1326,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
     def _autofill_material_space(self) -> None:
         """Always recompute material_space from input-sample composition + gas elements.
 
-        - No input samples with composition â†’ material_space is cleared to None.
-        - Input samples present â†’ their elements are used, with gas-derived elements
-          (PH3â†’P, H2Sâ†’S) inserted to maintain order: metals first (e.g. Sn),
+        - No input samples with composition -> material_space is cleared to None.
+        - Input samples present -> their elements are used, with gas-derived elements
+          (PH3->P, H2S->S) inserted to maintain order: metals first (e.g. Sn),
           then P, then S.
         """
         if self.overview is None:
@@ -1305,7 +1363,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         if not rtp_materialspace:
             return
         for rtp_sample in self.input_samples:
-            # Get the the input sample and original sample
+            # Get the input sample and its origin (pre-RTP) sample/layer
             origin = rtp_sample.input_combi_lib
             origin_layer = origin.layers[0].reference if origin.layers else None
 
@@ -1313,7 +1371,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             origin_elements = [e.element for e in origin.elemental_composition]
             rtp_elements = [e for e in rtp_materialspace.split('-') if e]
 
-            # Merge for library
+            # Merge for library: the post-RTP library should contain every
+            # element the input sample already had, plus any new elements
+            # introduced by the RTP process (e.g. P/S from PH3/H2S gas).
+            # If the sets already match, reuse origin's composition as-is
+            # rather than rebuilding equivalent objects.
             if set(rtp_elements) == set(origin_elements):
                 elemental_composition = origin.elemental_composition
             else:
@@ -1325,7 +1387,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     for e in merged_elements
                 ]
 
-            # Merge for the layer
+            # Merge for the layer: same logic as above, applied to the
+            # origin layer's composition specifically (the layer and the
+            # library it belongs to are tracked separately).
             if (
                 origin_layer is not None
                 and origin_layer.elemental_composition is not None
@@ -1387,7 +1451,14 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 )
                 samples.append(library)
         if configuration.overwrite_libraries:
-            time.sleep(5)  # to ensure that layers are processed before samples
+            # The layer archives created just above are written
+            # asynchronously by NOMAD's processing pipeline. When
+            # overwrite_libraries is enabled, the library archives created
+            # right below this need those layers to have finished
+            # processing first (so they resolve correctly), but there's no
+            # synchronous "wait until processed" API available here - hence
+            # the fixed delay as a pragmatic (if fragile) workaround.
+            time.sleep(5)
         self.samples = [
             CompositeSystemReference(
                 name=f'Sample {library.name}',
@@ -1425,11 +1496,15 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         if not series:
             return None
 
+        # Default to the full available range; narrowed below if phase
+        # segments are available.
         start_time = _to_seconds(series[0])
         end_time = _to_seconds(series[-1])
 
         segments = getattr(self, '_phase_segments', []) or []
         if segments:
+            # Trim the leading edge: skip any time before heating starts
+            # (e.g. idle/setup time at the very start of the log).
             heating_segment = next(
                 (segment for segment in segments if 'heat' in segment[0].lower()),
                 None,
@@ -1444,6 +1519,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             if cooling_segment is not None:
                 cooling_start = _to_seconds(cooling_segment[1])
                 cooling_end = _to_seconds(cooling_segment[2])
+                # Default trailing edge: the end of the cooling segment.
+                # Narrowed below to end shortly after the process actually
+                # reaches its end-of-process temperature, if that point can
+                # be found within the cooling window.
                 end_time = cooling_end
 
                 time_s = getattr(self, '_log_time_s', []) or getattr(self, '_time', [])
@@ -1458,13 +1537,18 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 if hasattr(end_temp, 'to'):
                     end_temp_c = float(end_temp.to('celsius').magnitude)
                 elif end_temp is not None:
-                    end_temp_c = float(end_temp) - 273.15
+                    # end_temp is a bare Kelvin number here (no unit
+                    # wrapper), so convert manually.
+                    end_temp_c = float(end_temp) - CELSIUS_TO_KELVIN_OFFSET
                 else:
                     end_temp_c = None
 
                 if time_s and temperature_c and len(time_s) == len(temperature_c):
                     reached_time = None
                     if end_temp_c is not None:
+                        # Scan forward within the cooling window for the
+                        # first sample at or below the configured
+                        # end-of-process temperature.
                         for t, temp in zip(time_s, temperature_c):
                             t_f = float(t)
                             if t_f < cooling_start:
@@ -1489,6 +1573,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                             and len(ph3) == len(time_s)
                             and len(h2s) == len(time_s)
                         ):
+                            # Walk the cooling window looking for the
+                            # transition from "some gas flowing" to "all
+                            # gases off" - that transition point is treated
+                            # as the end of the process.
                             had_gas_on = False
                             for t, ar_f, n2_f, ph3_f, h2s_f in zip(
                                 time_s, ar, n2, ph3, h2s
@@ -1512,6 +1600,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                                     break
 
                     if reached_time is not None:
+                        # Extend a fixed window past the detected
+                        # end-of-process point so the plot shows some of the
+                        # cooldown tail, but never past the actual end of
+                        # the logged data.
                         end_time = min(
                             float(series[-1]), reached_time + POST_END_PROCESS_WINDOW_S
                         )
@@ -1521,10 +1613,19 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             last_seg_end = _to_seconds(segments[-1][2])
             end_time = min(end_time, last_seg_end)
 
+        # Guard against a degenerate/inverted range (e.g. if trimming above
+        # pushed end_time before start_time for unusual logs).
         end_time = max(end_time, start_time)
         return (start_time, end_time)
 
     def _build_phase_segments(self) -> list[tuple[str, float, float]]:
+        """Build (name, start_s, end_s) segments from step durations.
+
+        Used as a fallback when log-file-derived segments (with real
+        timestamps) aren't available - e.g. when reconstructing a process
+        timeline purely from step definitions rather than parsed logs.
+        Segments are laid out back-to-back starting at t=0, in step order.
+        """
         # Prefer log-file-derived boundaries (actual timestamps) when available.
         log_segs = getattr(self, '_log_phase_segments', None)
         if log_segs:
@@ -1550,11 +1651,19 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         return segments
 
     def _add_phase_delimiters(self, fig: go.Figure) -> None:
+        """Shade each process phase (heating/annealing/cooling/etc.) as a
+        background rectangle on the plot, with a centered text label."""
         segments = getattr(self, '_phase_segments', []) or []
         if not segments:
             return
+        # Used below to keep phase labels centered within the visible
+        # (trimmed) plot window rather than the full segment - otherwise a
+        # label could be centered outside the actual plotted x-range and
+        # appear to be missing/off to the side.
         x_trim = self._get_full_plot_time_range()
 
+        # Color scheme: orange for heating, blue for cooling, gray for
+        # annealing, and a neutral gray fallback for any other phase name.
         def _phase_fill_color(name: str) -> str:
             n = name.lower()
             if 'heat' in n:
@@ -1565,6 +1674,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 return 'rgba(150, 150, 150, 0.18)'
             return 'rgba(120, 120, 120, 0.10)'
 
+        # Matching (more saturated/opaque) text colors for the phase labels.
         def _phase_font_color(name: str) -> str:
             n = name.lower()
             if 'heat' in n:
@@ -1585,6 +1695,10 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 line_width=0,
             )
 
+            # Clamp the label's centering window to the visible plot range
+            # (x_trim) so labels for segments that extend beyond the
+            # plotted window are still centered within what's actually
+            # shown, rather than off-screen.
             if x_trim is not None:
                 trimmed_start = max(start_f, float(x_trim[0]))
                 trimmed_end = min(end_f, float(x_trim[1]))
@@ -1593,6 +1707,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 trimmed_end = end_f
 
             if trimmed_end <= trimmed_start:
+                # The trimmed window collapsed (segment falls entirely
+                # outside the visible range) - fall back to centering on
+                # the segment's full (untrimmed) extent.
                 label_x = 0.5 * (start_f + end_f)
             else:
                 label_x = 0.5 * (trimmed_start + trimmed_end)
@@ -1662,8 +1779,15 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         self._add_phase_delimiters(fig)
 
         x_range = self._get_full_plot_time_range()
+        fig.update_xaxes(
+            automargin=True
+        )  # fix for bug with the axis not visible when 1st time the plot is created
+        fig.update_yaxes(automargin=True)  # same fix for the y axis
         fig.update_layout(
             title='RTP Temperature and Lamp Power',
+            height=500,
+            autosize=True,
+            margin=dict(l=85, r=85, t=60, b=70),
             xaxis_title='Time / s',
             yaxis_title='Temperature / °C',
             yaxis2=dict(
@@ -1679,7 +1803,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             legend=dict(
                 orientation='h',
                 yanchor='top',
-                y=-0.15,
+                y=-0.25,
                 xanchor='center',
                 x=0.5,
             ),
@@ -1691,10 +1815,17 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 zeroline=True,
                 range=list(x_range) if x_range is not None else None,
             ),
+            yaxis=dict(
+                fixedrange=False,
+                showline=True,
+                showgrid=True,
+                zeroline=True,
+            ),
         )
         plot_json = fig.to_plotly_json()
         plot_json['config'] = dict(
             scrollZoom=False,
+            responsive=True,
         )
         self.figures.append(
             PlotlyFigure(
@@ -1703,6 +1834,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
         )
 
+    # Set up gas flows profile plot
     def plot_gas_flows_profile(self) -> None:
         time_s = getattr(self, '_log_time_s', []) or []
         if not time_s:
@@ -1766,7 +1898,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             ),
         )
         plot_json = fig.to_plotly_json()
-        plot_json['config'] = dict(scrollZoom=False)
+        plot_json['config'] = dict(scrollZoom=False, responsive=True)
         self.figures.append(
             PlotlyFigure(
                 label='Gas Flows Evolution',
@@ -1774,6 +1906,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
         )
 
+    # Set up pressure profile plot
     def plot_pressure_profile(self) -> None:
         time_s = getattr(self, '_log_time_s', []) or []
         pressure_torr = getattr(self, '_log_pressure_torr', []) or []
@@ -1831,7 +1964,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             ),
         )
         plot_json = fig.to_plotly_json()
-        plot_json['config'] = dict(scrollZoom=False)
+        plot_json['config'] = dict(scrollZoom=False, responsive=True)
         self.figures.append(
             PlotlyFigure(
                 label='Pressure Evolution',
@@ -1860,6 +1993,13 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             if hasattr(length, 'magnitude'):
                 length = length.to('mm').magnitude
         else:
+            # No geometry recorded on the sample: fall back to nominal sizes
+            # (in mm) based on the slot's naming convention, matching the
+            # same slot groupings used in
+            # DtuRTPInputSampleMounting.normalize() - square slots are
+            # 20x20, horizontal-rectangle slots are wide (40x9.5), vertical
+            # ones are tall (9.5x40), and anything unrecognized defaults to
+            # a small 10x10 placeholder.
             square_positions = {'bl', 'br', 'fl', 'fr', 'm'}
             rectangle_horizontal = {'ha', 'hb', 'hc', 'hd'}
             rectangle_vertical = {'va', 'vb', 'vc', 'vd'}
@@ -1889,6 +2029,12 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         else:
             angle_rad = float(rotation)
 
+        # Build the sample's rectangle in its own local coordinate frame
+        # (centered on the origin), then rotate and translate it into place
+        # on the susceptor using a standard 2D rotation matrix:
+        #   x' = x*cos(a) - y*sin(a)
+        #   y' = x*sin(a) + y*cos(a)
+        # followed by translation to (x, y).
         half_w, half_l = width / 2, length / 2
         local_corners = [
             (-half_w, -half_l),
@@ -1905,6 +2051,9 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
             for cx, cy in local_corners
         ]
+        # Build an SVG path string tracing the four rotated corners:
+        # "M x0,y0 L x1,y1 L x2,y2 L x3,y3 Z" (M = move to start, L = line
+        # to each subsequent corner, Z = close the path back to the start).
         path = 'M ' + ' L '.join(f'{px},{py}' for px, py in rotated_corners) + ' Z'
         fig.add_shape(
             type='path',
@@ -1939,7 +2088,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             fillcolor='rgba(200,200,200,0.1)',
             layer='below',
         )
-        # Add 'chamber' label to the left side
+        # Add 'chamber' label to the left side. By convention, the RTP
+        # chamber's interior/door side is oriented to the left and the
+        # operator ("User") side is oriented to the bottom of this diagram,
+        # giving a fixed, consistent frame of reference for interpreting
+        # relative_position values (bl/br/fl/fr etc.) across plots.
         fig.add_annotation(
             x=-half_susceptor - 2,  # 2 mm left of the susceptor edge
             y=0,
@@ -1966,6 +2119,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         fig.update_layout(
             title='Samples on Susceptor',
             xaxis=dict(
+                # Extra left/right padding (15mm) leaves room for the
+                # vertical "RTP chamber" label outside the susceptor outline.
                 range=[-half_susceptor - 15, half_susceptor + 15],
                 scaleanchor='y',
                 scaleratio=1,
@@ -1974,6 +2129,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 visible=False,
             ),
             yaxis=dict(
+                # Smaller padding (5mm) here since the "User" label is a
+                # single line and doesn't need as much clearance.
                 range=[-half_susceptor - 5, half_susceptor + 5],
                 showgrid=False,
                 zeroline=False,
@@ -1984,7 +2141,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             plot_bgcolor='white',
         )
         plot_json = fig.to_plotly_json()
-        plot_json['config'] = dict(scrollZoom=False)
+        plot_json['config'] = dict(scrollZoom=False, responsive=True)
         self.figures.append(
             PlotlyFigure(
                 label='Samples-on-Susceptor Map',
@@ -1992,15 +2149,583 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
         )
 
+    def parse_log_files(
+        self,
+        archive: 'EntryArchive',
+        logger: 'BoundLogger',
+        overwrite: bool = False,
+    ) -> None:
+        """Parse RTP gas and diagnostics log files and populate RTP quantities."""
+        # Collect configured CX-Thermo diagnostics log paths and remove any
+        # empty values.
+        diagnostics_inputs = [
+            path for path in (self.log_files_CXThermoDiagnostics or []) if path
+        ]
+
+        # Preserve original order while removing duplicates.
+        deduped_diagnostics_inputs = []
+        for path in diagnostics_inputs:
+            if path not in deduped_diagnostics_inputs:
+                deduped_diagnostics_inputs.append(path)
+
+        # Both the Eklipse gas log and at least one diagnostics log are required.
+        if not self.log_file_eklipse or not deduped_diagnostics_inputs:
+            return
+
+        def _sanitize_path_value(path_value: str) -> str:
+            """Strip quoting/whitespace and normalize path separators to '/'."""
+            raw = str(path_value).strip().strip('"').strip("'")
+            # Some serialized paths can contain escaped control chars where
+            # backslashes were interpreted (e.g. "\raw" -> "\r" + "aw").
+            raw = raw.replace('\r', '/').replace('\n', '/').replace('\t', '/')
+            raw = raw.replace('\\', '/')
+            return raw
+
+        def _candidate_raw_paths(path_value: str) -> list[str]:
+            """Generate plausible variants of a stored path to try against
+            NOMAD's raw-file storage (`archive.m_context.raw_file`).
+
+            The exact path string saved on the quantity can differ from
+            what `raw_file()` expects depending on how/where it was
+            entered (with or without a leading './' or '/', with or
+            without a 'raw/' prefix, or just a bare filename). Rather than
+            guessing which form is correct, every plausible variant is
+            tried in order by `_resolve_input_path` below.
+            """
+            normalized = _sanitize_path_value(path_value)
+            candidates = [normalized]
+
+            # Try common normalized alternatives that may match how the path
+            # was stored in NOMAD or entered by the user.
+            if normalized.startswith('./'):
+                candidates.append(normalized[2:])
+            if normalized.startswith('/'):
+                candidates.append(normalized.lstrip('/'))
+            if '/raw/' in normalized:
+                candidates.append(normalized.split('/raw/', 1)[1])
+            if normalized.startswith('raw/'):
+                candidates.append(normalized[4:])
+
+            # Fall back to filename-only lookup as a last variant.
+            filename = normalized.rsplit('/', 1)[-1]
+            if filename:
+                candidates.append(filename)
+
+            # Deduplicate while preserving candidate order.
+            deduped: list[str] = []
+            for candidate in candidates:
+                if candidate and candidate not in deduped:
+                    deduped.append(candidate)
+            return deduped
+
+        def _resolve_input_path(
+            path_value: str, expected_suffix: str
+        ) -> tuple[str, str]:
+            """Resolve a stored log-file path to an actual readable file.
+
+            Tries progressively broader fallback tiers, since the stored
+            quantity value may be a NOMAD raw-file reference, a path on
+            local disk left over from local/dev processing, or - in the
+            worst case - missing/stale, in which case the file is searched
+            for by name or by extension+naming-convention.
+
+            Returns a (kind, ref) tuple where kind is 'raw' (resolved via
+            NOMAD's raw-file context) or 'fs' (resolved via a direct
+            filesystem path), and ref is the corresponding reference/path.
+            """
+            # Tier 1: try every candidate variant of the path against
+            # NOMAD's own raw-file storage - the expected/normal case.
+            last_exc: Exception | None = None
+            for candidate in _candidate_raw_paths(path_value):
+                try:
+                    with archive.m_context.raw_file(candidate, 'r'):
+                        return ('raw', candidate)
+                except Exception as exc:
+                    last_exc = exc
+
+            # Fallback for local processing where values can point to staging
+            # paths directly (e.g. .volumes/fs/staging/.../raw/file.csv).
+            fs_candidates = _candidate_raw_paths(path_value)
+            fs_candidates.insert(0, _sanitize_path_value(path_value))
+
+            # Plausible repo/processing root directories to resolve relative
+            # paths against, ordered from most to least specific. The
+            # parents[N] indices depend on this file's location within the
+            # plugin's package structure.
+            base_dirs = [
+                Path.cwd(),
+                Path(__file__).resolve().parents[5],
+                Path(__file__).resolve().parents[4],
+                Path(__file__).resolve().parents[3],
+                Path(__file__).resolve().parents[4] / 'nomad-FAIR',
+            ]
+
+            # Tier 2: try each candidate path directly on disk (absolute),
+            # or resolved relative to each base directory.
+            for candidate in fs_candidates:
+                try:
+                    p = Path(candidate)
+                    if p.is_file():
+                        return ('fs', str(p))
+
+                    # If the candidate is relative, try resolving it under
+                    # each plausible project/staging root.
+                    if not p.is_absolute():
+                        for base in base_dirs:
+                            resolved = (base / p).resolve()
+                            if resolved.is_file():
+                                return ('fs', str(resolved))
+                except Exception:
+                    continue
+
+            # Final fallback: find staged file by basename under .volumes staging.
+            filename = _sanitize_path_value(path_value).rsplit('/', 1)[-1]
+            if filename:
+                # Tier 3: search NOMAD's staging area specifically (files
+                # not yet promoted to a final "raw" location), restricted
+                # to paths that contain a 'raw' directory component to avoid
+                # matching unrelated staged files with the same basename.
+                for base in base_dirs:
+                    try:
+                        staging_root = (base / '.volumes' / 'fs' / 'staging').resolve()
+                        if not staging_root.exists():
+                            continue
+                        for hit in staging_root.rglob(filename):
+                            if hit.is_file() and 'raw' in hit.parts:
+                                return ('fs', str(hit))
+                    except Exception:
+                        continue
+
+                # Broader fallback inspired by sputter parser pragmatism:
+                # search all known .volumes/fs trees regardless of subfolder.
+                for base in base_dirs:
+                    try:
+                        fs_root = (base / '.volumes' / 'fs').resolve()
+                        if not fs_root.exists():
+                            continue
+                        for hit in fs_root.rglob(filename):
+                            if hit.is_file():
+                                return ('fs', str(hit))
+                    except Exception:
+                        continue
+
+            # Tier 4 (last resort): the exact filename couldn't be found
+            # anywhere, so search by file extension and typical RTP naming
+            # patterns instead, and use the most recently modified match.
+            # Format-driven fallback for variable file names:
+            # search latest matching file by expected extension and typical RTP naming.
+            suffix = expected_suffix.lower().lstrip('.')
+            for base in base_dirs:
+                try:
+                    fs_root = (base / '.volumes' / 'fs').resolve()
+                    if not fs_root.exists():
+                        continue
+
+                    pattern = f'*.{suffix}'
+                    candidates = [
+                        hit
+                        for hit in fs_root.rglob(pattern)
+                        if hit.is_file() and 'raw' in hit.parts
+                    ]
+
+                    if not candidates:
+                        continue
+
+                    # CSV files are expected to be Eklipse gas/pressure
+                    # logs; anything else (txt) is expected to be a
+                    # CX-Thermo diagnostics log. Prefer files whose name
+                    # matches the typical naming convention for that kind
+                    # of log over an arbitrary match.
+                    if suffix == 'csv':
+                        preferred = [
+                            p
+                            for p in candidates
+                            if 'recording set' in p.name.lower()
+                            or '_rtp_' in p.name.lower()
+                        ]
+                    else:
+                        preferred = [
+                            p
+                            for p in candidates
+                            if 'logfile' in p.name.lower() or '_rtp_' in p.name.lower()
+                        ]
+
+                    # Use the naming-convention-preferred matches if any
+                    # were found, otherwise fall back to any file with the
+                    # right extension. Among the remaining candidates, pick
+                    # the most recently modified one, since that's most
+                    # likely to be the relevant/current log file when the
+                    # exact path couldn't be matched.
+                    pool = preferred if preferred else candidates
+                    newest = max(pool, key=lambda p: p.stat().st_mtime)
+                    return ('fs', str(newest))
+                except Exception:
+                    continue
+
+            # Re-raise the most relevant raw-file error if available,
+            # otherwise report the unresolved path directly.
+            if last_exc is not None:
+                raise last_exc
+            raise FileNotFoundError(path_value)
+
+        try:
+            # Resolve the primary Eklipse log and all diagnostics logs to either
+            # NOMAD raw references or concrete filesystem paths.
+            eklipse_kind, eklipse_ref = _resolve_input_path(
+                self.log_file_eklipse, 'csv'
+            )
+            resolved_diagnostics_refs = [
+                _resolve_input_path(path, 'txt') for path in deduped_diagnostics_inputs
+            ]
+
+            # ExitStack is used so temporary files and raw-file handles are all
+            # cleaned up automatically when parsing is finished.
+            with ExitStack() as stack:
+
+                def _materialize_raw_to_temp(raw_ref: str, suffix: str) -> str:
+                    """Copy a file from NOMAD's raw-file storage into a real
+                    temp file on disk.
+
+                    `parse_rtp_logfiles` expects ordinary filesystem paths,
+                    but files resolved via `archive.m_context.raw_file`
+                    ('raw' kind from `_resolve_input_path`) are only
+                    accessible through that context manager, not as a plain
+                    path. This bridges the two by writing the raw content
+                    out to a temp file, registering its cleanup on the
+                    ExitStack so it's removed once parsing finishes
+                    regardless of success or failure.
+                    """
+                    raw_handle = stack.enter_context(
+                        archive.m_context.raw_file(raw_ref, 'r')
+                    )
+                    temp_file = tempfile.NamedTemporaryFile(
+                        mode='w',
+                        encoding='utf-8',
+                        delete=False,
+                        suffix=suffix,
+                        newline='',
+                    )
+                    try:
+                        temp_file.write(raw_handle.read())
+                    finally:
+                        temp_file.close()
+
+                    # Ensure the temporary file always gets removed.
+                    stack.callback(
+                        lambda p=temp_file.name: Path(p).unlink(missing_ok=True)
+                    )
+                    return temp_file.name
+
+                # Convert raw-file references into real temp files only when needed;
+                # filesystem paths can be used directly.
+                if eklipse_kind == 'raw':
+                    eklipse_suffix = (
+                        '.csv' if eklipse_ref.lower().endswith('.csv') else '.txt'
+                    )
+                    eklipse_path = _materialize_raw_to_temp(eklipse_ref, eklipse_suffix)
+                else:
+                    eklipse_path = eklipse_ref
+
+                diagnostics_paths = []
+                for diagnostics_kind, diagnostics_ref in resolved_diagnostics_refs:
+                    if diagnostics_kind == 'raw':
+                        diagnostics_suffix = (
+                            '.txt'
+                            if diagnostics_ref.lower().endswith('.txt')
+                            else '.csv'
+                        )
+                        diagnostics_paths.append(
+                            _materialize_raw_to_temp(
+                                diagnostics_ref, diagnostics_suffix
+                            )
+                        )
+                    else:
+                        diagnostics_paths.append(diagnostics_ref)
+
+                # Parse all resolved log files into a structured RTP result object.
+                parsed = parse_rtp_logfiles(
+                    eklipse_csv_path=eklipse_path,
+                    cx_thermo_diagnostics_txt_paths=diagnostics_paths,
+                    logger=logger,
+                )
+                has_detected_annealing = getattr(
+                    parsed, 'has_detected_annealing', False
+                )
+
+        except Exception as exc:
+            # Parsing is optional enrichment: failures are logged but do not
+            # abort normal processing of the archive entry.
+            logger.warning(f'Failed to parse RTP log files: {exc}')
+            return
+
+        # Keep explicitly entered values by default; optionally overwrite.
+        if overwrite or self.used_gases in (None, []):
+            self.used_gases = parsed.used_gases
+        if not self.used_gases:
+            logger.warning(
+                'No process gases detected in RTP logs. All used_gases are empty.'
+            )
+
+        # Populate scalar process quantities only if overwrite is enabled
+        # or the target quantity has not yet been set.
+        if (
+            overwrite or self.base_pressure is None
+        ) and parsed.base_pressure_pa is not None:
+            self.base_pressure = parsed.base_pressure_pa
+        if (
+            overwrite or self.base_pressure_ballast is None
+        ) and parsed.base_pressure_ballast_pa is not None:
+            self.base_pressure_ballast = parsed.base_pressure_ballast_pa
+        if (
+            overwrite or self.rate_of_rise is None
+        ) and parsed.rate_of_rise_pa_s is not None:
+            self.rate_of_rise = parsed.rate_of_rise_pa_s
+        # Chiller flow is intentionally not inferred from logs.
+
+        # Store timeseries for plotting.
+        ts = parsed.timeseries or {}
+
+        # Save parsed time axis.
+        if overwrite or not getattr(self, '_log_time_s', []):
+            self._log_time_s = ts.get('time_s', [])
+
+        # Prefer Kelvin series if available and convert to Celsius for storage;
+        # otherwise use the Celsius series directly.
+        if overwrite or not getattr(self, '_log_temperature_c', []):
+            if 'temperature_k' in ts:
+                self._log_temperature_c = [
+                    (float(v) - CELSIUS_TO_KELVIN_OFFSET)
+                    if np.isfinite(v)
+                    else float('nan')
+                    for v in ts.get('temperature_k', [])
+                ]
+            else:
+                self._log_temperature_c = ts.get('temperature_c', [])
+
+        # Same conversion logic for the setpoint temperature profile.
+        if overwrite or not getattr(self, '_temperature_setpoint_profile', []):
+            if 'temperature_setpoint_k' in ts:
+                self._temperature_setpoint_profile = [
+                    (float(v) - CELSIUS_TO_KELVIN_OFFSET)
+                    if np.isfinite(v)
+                    else float('nan')
+                    for v in ts.get('temperature_setpoint_k', [])
+                ]
+            else:
+                self._temperature_setpoint_profile = ts.get(
+                    'temperature_setpoint_c', []
+                )
+
+        # Lamp power is stored as-is from the parsed timeseries.
+        if overwrite or not getattr(self, '_lamp_power_profile', []):
+            self._lamp_power_profile = ts.get('lamp_power', [])
+
+        # Prefer SI pressure (Pa) if available and convert to Torr for storage.
+        if overwrite or not getattr(self, '_log_pressure_torr', []):
+            if 'pressure_pa' in ts:
+                self._log_pressure_torr = [
+                    (float(v) / TORR_TO_PA) if np.isfinite(v) else float('nan')
+                    for v in ts.get('pressure_pa', [])
+                ]
+            else:
+                self._log_pressure_torr = ts.get('pressure_torr', [])
+
+        # Convert flow series from SI units to sccm where needed.
+        if overwrite or not getattr(self, '_log_ar_flow_sccm', []):
+            if 'ar_flow_m3_s' in ts:
+                self._log_ar_flow_sccm = [
+                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
+                    for v in ts.get('ar_flow_m3_s', [])
+                ]
+            else:
+                self._log_ar_flow_sccm = ts.get('ar_flow_sccm', [])
+        if overwrite or not getattr(self, '_log_n2_flow_sccm', []):
+            if 'n2_flow_m3_s' in ts:
+                self._log_n2_flow_sccm = [
+                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
+                    for v in ts.get('n2_flow_m3_s', [])
+                ]
+            else:
+                self._log_n2_flow_sccm = ts.get('n2_flow_sccm', [])
+        if overwrite or not getattr(self, '_log_ph3_flow_sccm', []):
+            if 'ph3_in_ar_flow_m3_s' in ts:
+                self._log_ph3_flow_sccm = [
+                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
+                    for v in ts.get('ph3_in_ar_flow_m3_s', [])
+                ]
+            else:
+                self._log_ph3_flow_sccm = ts.get('ph3_in_ar_flow_sccm', [])
+        if overwrite or not getattr(self, '_log_h2s_flow_sccm', []):
+            if 'h2s_in_ar_flow_m3_s' in ts:
+                self._log_h2s_flow_sccm = [
+                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
+                    for v in ts.get('h2s_in_ar_flow_m3_s', [])
+                ]
+            else:
+                self._log_h2s_flow_sccm = ts.get('h2s_in_ar_flow_sccm', [])
+
+        # Store phase boundaries derived from actual log timestamps.
+        if overwrite or not getattr(self, '_log_phase_segments', []):
+            self._log_phase_segments = [
+                (ps.name, ps.start_time_s, ps.end_time_s)
+                for ps in parsed.steps
+                if ps.start_time_s is not None and ps.end_time_s is not None
+            ]
+
+        # Ensure overview section exists before filling any summary values.
+        if self.overview is None:
+            self.overview = RTPOverview()
+
+        if has_detected_annealing:
+            # Count dwell/anneal-type steps from parsed step names using a regex
+            # that supports optional numbering prefixes (e.g. "1st dwell").
+            if overwrite or self.overview.no_dwell_steps is None:
+                self.overview.no_dwell_steps = sum(
+                    1
+                    for step in parsed.steps
+                    if re.match(
+                        r'^\s*(?:\d+(?:st|nd|rd|th)\s+)?(?:dwell|anneal(?:ing)?)\b',
+                        str(step.name or '').lower(),
+                    )
+                )
+
+            # Copy annealing-related overview values only when a real annealing
+            # step was detected.
+            if overwrite or self.overview.annealing_pressure is None:
+                self.overview.annealing_pressure = parsed.overview.get(
+                    'annealing_pressure'
+                )
+            if overwrite or self.overview.annealing_time is None:
+                self.overview.annealing_time = parsed.overview.get('annealing_time')
+            if overwrite or self.overview.annealing_temperature is None:
+                self.overview.annealing_temperature = parsed.overview.get(
+                    'annealing_temperature'
+                )
+            if overwrite or self.overview.annealing_ar_flow is None:
+                self.overview.annealing_ar_flow = parsed.overview.get(
+                    'annealing_ar_flow'
+                )
+            if overwrite or self.overview.annealing_n2_flow is None:
+                self.overview.annealing_n2_flow = parsed.overview.get(
+                    'annealing_n2_flow'
+                )
+            if overwrite or self.overview.annealing_ph3_in_ar_flow is None:
+                self.overview.annealing_ph3_in_ar_flow = parsed.overview.get(
+                    'annealing_ph3_in_ar_flow'
+                )
+            if overwrite or self.overview.annealing_nh3_in_ar_flow is None:
+                self.overview.annealing_nh3_in_ar_flow = parsed.overview.get(
+                    'annealing_nh3_in_ar_flow'
+                )
+            if overwrite or self.overview.annealing_h2s_in_ar_flow is None:
+                self.overview.annealing_h2s_in_ar_flow = parsed.overview.get(
+                    'annealing_h2s_in_ar_flow'
+                )
+            if overwrite or self.overview.total_heating_time is None:
+                self.overview.total_heating_time = parsed.overview.get(
+                    'total_heating_time'
+                )
+            if overwrite or self.overview.total_cooling_time is None:
+                self.overview.total_cooling_time = parsed.overview.get(
+                    'total_cooling_time'
+                )
+
+        else:
+            # Still report explicitly that no annealing/dwell plateau was found.
+            if overwrite or self.overview.no_dwell_steps is None:
+                self.overview.no_dwell_steps = 0
+
+            # If overwrite is requested, clear previously auto-derived overview
+            # values so the overview remains empty rather than keeping stale data.
+            if overwrite:
+                self.overview.annealing_pressure = None
+                self.overview.annealing_time = None
+                self.overview.annealing_temperature = None
+                self.overview.annealing_ar_flow = None
+                self.overview.annealing_n2_flow = None
+                self.overview.annealing_ph3_in_ar_flow = None
+                self.overview.annealing_nh3_in_ar_flow = None
+                self.overview.annealing_h2s_in_ar_flow = None
+
+        # total_heating_time and total_cooling_time are independent of annealing
+        # detection and should be populated whenever the parser could determine them.
+        if overwrite or self.overview.total_heating_time is None:
+            self.overview.total_heating_time = parsed.overview.get('total_heating_time')
+        if overwrite or self.overview.total_cooling_time is None:
+            self.overview.total_cooling_time = parsed.overview.get('total_cooling_time')
+
+        # end_of_process_temperature is independent of annealing detection and
+        # should still be populated whenever the parser could determine it.
+        if overwrite or self.overview.end_of_process_temperature is None:
+            self.overview.end_of_process_temperature = parsed.overview.get(
+                'end_of_process_temperature'
+            )
+
+        # Rebuild step objects from parsed steps unless existing steps should
+        # be preserved and overwrite is disabled.
+        if overwrite or not self.steps:
+            # Log a short summary for each parsed step to aid debugging and validation.
+            for parsed_step in parsed.steps:
+                initial_c = parsed_step.initial_temperature_k - CELSIUS_TO_KELVIN_OFFSET
+                final_c = parsed_step.final_temperature_k - CELSIUS_TO_KELVIN_OFFSET
+                logger.warning(
+                    f'Parsed RTP step "{parsed_step.name}": '
+                    f'initial_temperature={initial_c:.1f} °C, '
+                    f'final_temperature={final_c:.1f} °C, '
+                    f'duration={parsed_step.duration_s:.1f} s'
+                )
+
+            # Replace any existing steps with a fresh list derived from the logs.
+            self.steps = []
+            for parsed_step in parsed.steps:
+                step = DTURTPSteps(name=parsed_step.name)
+                step.step_overview = RTPStepOverview(
+                    duration=parsed_step.duration_s,
+                    step_ar_flow=parsed_step.ar_flow_m3_s,
+                    step_n2_flow=parsed_step.n2_flow_m3_s,
+                    step_ph3_in_ar_flow=parsed_step.ph3_in_ar_flow_m3_s,
+                    step_nh3_in_ar_flow=parsed_step.nh3_in_ar_flow_m3_s,
+                    step_h2s_in_ar_flow=parsed_step.h2s_in_ar_flow_m3_s,
+                    initial_temperature=parsed_step.initial_temperature_k,
+                    final_temperature=parsed_step.final_temperature_k,
+                )
+
+                # Pressure is optional and only assigned when present
+                # in the parsed step.
+                if parsed_step.pressure_pa is not None:
+                    step.step_overview.pressure = parsed_step.pressure_pa
+
+                self.steps.append(step)
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `RTP` class.
+
+        Order of operations, and why:
+          1. Parse log files first - everything else (steps, overview fields,
+             timeseries arrays) is derived from this.
+          2. Generic schema normalization (base-class bookkeeping).
+          3. Explicitly normalize subsections that NOMAD's base normalize()
+             does not reliably cascade into: steps (ramps + partial
+             pressures) and overview (annealing partial pressures). These
+             are grouped together since they're the same kind of operation.
+          4. lab_id default.
+          5. Phase segments + temperature array fallback - these depend on
+             steps already being parsed/normalized above (step 1 and 3).
+          6. RTP-specific derived state: step source syncing, material space
+             autofill, library creation.
+          7. Plotting - depends on phase segments, temperature/gas/pressure
+             arrays, and overview.end_of_process_temperature all being
+             settled by this point.
+          8. Results population for periodic-table filtering.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+        # 1. Parse log files (populates used_gases, base pressures, overview
+        # fields, raw timeseries arrays, and rebuilds self.steps).
         has_temperature_input = bool(self.log_files_CXThermoDiagnostics)
         if self.log_file_eklipse and has_temperature_input and self.process_log_files:
             self.parse_log_files(
@@ -2008,15 +2733,27 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 logger,
                 overwrite=bool(self.overwrite_existing_data),
             )
+
+        # 2. Generic schema normalization.
         super().normalize(archive, logger)
-        # Ensure nested step normalizers are executed so derived step_overview
-        # quantities (ramps and partial pressures) are populated reliably.
+
+        # 3. Explicit subsection normalization. NOMAD's base normalize() does
+        # not reliably cascade into these, so they're invoked directly here,
+        # right next to each other since they're the same kind of operation
+        # (compute derived quantities for a subsection that was just
+        # populated with raw values in step 1).
         for step in getattr(self, 'steps', []) or []:
             step.normalize(archive, logger)
+        if self.overview is not None:
+            self.overview.normalize(archive, logger)
 
-        # Populate lab_id according to generated name
+        # 4. Populate lab_id according to generated name.
         if self.lab_id is None:
             self.lab_id = self.name.replace(' ', '_')
+
+        # 5. Phase segments + temperature profile fallback.
+        # Depends on parse_log_files() (step rebuild + _log_phase_segments)
+        # and the step.normalize() loop above having already run.
         self._phase_segments = self._build_phase_segments()
         log_time_s = getattr(self, '_log_time_s', []) or []
         log_temp_c = getattr(self, '_log_temperature_c', []) or []
@@ -2065,19 +2802,27 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 )
             self._time = times
             self._temperature_profile = temps
-        self.figures = []
+
+        # 6. RTP-specific derived state: source syncing, material space,
+        # library creation.
         self._sync_step_sources_from_used_gases(
             overwrite=bool(self.overwrite_existing_data)
         )
         self._autofill_material_space()
         if self.overview is not None:
             self.add_libraries(archive, logger)
+
+        # 7. Plotting. Depends on phase segments (step 5), the timeseries
+        # arrays (step 1/5), and overview.end_of_process_temperature (step 1)
+        # all being settled.
+        self.figures = []
         self.plot_temperature_profile()
         self.plot_gas_flows_profile()
         self.plot_pressure_profile()
         self.plot_susceptor()
 
-        # Populate results with material elements for periodic table filtering
+        # 8. Populate results with material elements for periodic table
+        # filtering.
         if self.overview is not None and self.overview.material_space:
             if archive.results is None:
                 archive.results = Results()
@@ -2085,395 +2830,3 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 archive.results.material = Material()
             elements = self.overview.material_space.split('-')
             archive.results.material.elements = elements
-
-    def parse_log_files(
-        self,
-        archive: 'EntryArchive',
-        logger: 'BoundLogger',
-        overwrite: bool = False,
-    ) -> None:
-        """Parse RTP gas and diagnostics log files and populate RTP quantities."""
-        # Collect and deduplicate temperature logfile paths
-        diagnostics_inputs = [
-            path for path in (self.log_files_CXThermoDiagnostics or []) if path
-        ]
-        deduped_diagnostics_inputs = []
-        for path in diagnostics_inputs:
-            if path not in deduped_diagnostics_inputs:
-                deduped_diagnostics_inputs.append(path)
-
-        if not self.log_file_eklipse or not deduped_diagnostics_inputs:
-            return
-
-        def _sanitize_path_value(path_value: str) -> str:
-            raw = str(path_value).strip().strip('"').strip("'")
-            # Some serialized paths can contain escaped control chars where
-            # backslashes were interpreted (e.g. "\raw" -> "\r" + "aw").
-            raw = raw.replace('\r', '/').replace('\n', '/').replace('\t', '/')
-            raw = raw.replace('\\', '/')
-            return raw
-
-        def _candidate_raw_paths(path_value: str) -> list[str]:
-            normalized = _sanitize_path_value(path_value)
-            candidates = [normalized]
-
-            if normalized.startswith('./'):
-                candidates.append(normalized[2:])
-            if normalized.startswith('/'):
-                candidates.append(normalized.lstrip('/'))
-            if '/raw/' in normalized:
-                candidates.append(normalized.split('/raw/', 1)[1])
-            if normalized.startswith('raw/'):
-                candidates.append(normalized[4:])
-
-            filename = normalized.rsplit('/', 1)[-1]
-            if filename:
-                candidates.append(filename)
-
-            deduped: list[str] = []
-            for candidate in candidates:
-                if candidate and candidate not in deduped:
-                    deduped.append(candidate)
-            return deduped
-
-        def _resolve_input_path(
-            path_value: str, expected_suffix: str
-        ) -> tuple[str, str]:
-            last_exc: Exception | None = None
-            for candidate in _candidate_raw_paths(path_value):
-                try:
-                    with archive.m_context.raw_file(candidate, 'r'):
-                        return ('raw', candidate)
-                except Exception as exc:
-                    last_exc = exc
-
-            # Fallback for local processing where values can point to staging
-            # paths directly (e.g. .volumes/fs/staging/.../raw/file.csv).
-            fs_candidates = _candidate_raw_paths(path_value)
-            fs_candidates.insert(0, _sanitize_path_value(path_value))
-
-            base_dirs = [
-                Path.cwd(),
-                Path(__file__).resolve().parents[5],
-                Path(__file__).resolve().parents[4],
-                Path(__file__).resolve().parents[3],
-                Path(__file__).resolve().parents[4] / 'nomad-FAIR',
-            ]
-            for candidate in fs_candidates:
-                try:
-                    p = Path(candidate)
-                    if p.is_file():
-                        return ('fs', str(p))
-
-                    if not p.is_absolute():
-                        for base in base_dirs:
-                            resolved = (base / p).resolve()
-                            if resolved.is_file():
-                                return ('fs', str(resolved))
-                except Exception:
-                    continue
-
-            # Final fallback: find staged file by basename under .volumes staging.
-            filename = _sanitize_path_value(path_value).rsplit('/', 1)[-1]
-            if filename:
-                for base in base_dirs:
-                    try:
-                        staging_root = (base / '.volumes' / 'fs' / 'staging').resolve()
-                        if not staging_root.exists():
-                            continue
-                        for hit in staging_root.rglob(filename):
-                            if hit.is_file() and 'raw' in hit.parts:
-                                return ('fs', str(hit))
-                    except Exception:
-                        continue
-
-                # Broader fallback inspired by sputter parser pragmatism:
-                # search all known .volumes/fs trees regardless of subfolder.
-                for base in base_dirs:
-                    try:
-                        fs_root = (base / '.volumes' / 'fs').resolve()
-                        if not fs_root.exists():
-                            continue
-                        for hit in fs_root.rglob(filename):
-                            if hit.is_file():
-                                return ('fs', str(hit))
-                    except Exception:
-                        continue
-
-            # Format-driven fallback for variable file names:
-            # search latest matching file by expected extension and typical RTP naming.
-            suffix = expected_suffix.lower().lstrip('.')
-            for base in base_dirs:
-                try:
-                    fs_root = (base / '.volumes' / 'fs').resolve()
-                    if not fs_root.exists():
-                        continue
-
-                    pattern = f'*.{suffix}'
-                    candidates = [
-                        hit
-                        for hit in fs_root.rglob(pattern)
-                        if hit.is_file() and 'raw' in hit.parts
-                    ]
-
-                    if not candidates:
-                        continue
-
-                    if suffix == 'csv':
-                        preferred = [
-                            p
-                            for p in candidates
-                            if 'recording set' in p.name.lower()
-                            or '_rtp_' in p.name.lower()
-                        ]
-                    else:
-                        preferred = [
-                            p
-                            for p in candidates
-                            if 'logfile' in p.name.lower() or '_rtp_' in p.name.lower()
-                        ]
-
-                    pool = preferred if preferred else candidates
-                    newest = max(pool, key=lambda p: p.stat().st_mtime)
-                    return ('fs', str(newest))
-                except Exception:
-                    continue
-
-            if last_exc is not None:
-                raise last_exc
-            raise FileNotFoundError(path_value)
-
-        try:
-            eklipse_kind, eklipse_ref = _resolve_input_path(
-                self.log_file_eklipse, 'csv'
-            )
-            resolved_diagnostics_refs = [
-                _resolve_input_path(path, 'txt') for path in deduped_diagnostics_inputs
-            ]
-
-            with ExitStack() as stack:
-
-                def _materialize_raw_to_temp(raw_ref: str, suffix: str) -> str:
-                    raw_handle = stack.enter_context(
-                        archive.m_context.raw_file(raw_ref, 'r')
-                    )
-                    temp_file = tempfile.NamedTemporaryFile(
-                        mode='w',
-                        encoding='utf-8',
-                        delete=False,
-                        suffix=suffix,
-                        newline='',
-                    )
-                    try:
-                        temp_file.write(raw_handle.read())
-                    finally:
-                        temp_file.close()
-                    stack.callback(
-                        lambda p=temp_file.name: Path(p).unlink(missing_ok=True)
-                    )
-                    return temp_file.name
-
-                if eklipse_kind == 'raw':
-                    eklipse_suffix = (
-                        '.csv' if eklipse_ref.lower().endswith('.csv') else '.txt'
-                    )
-                    eklipse_path = _materialize_raw_to_temp(eklipse_ref, eklipse_suffix)
-                else:
-                    eklipse_path = eklipse_ref
-
-                diagnostics_paths = []
-                for diagnostics_kind, diagnostics_ref in resolved_diagnostics_refs:
-                    if diagnostics_kind == 'raw':
-                        diagnostics_suffix = (
-                            '.txt'
-                            if diagnostics_ref.lower().endswith('.txt')
-                            else '.csv'
-                        )
-                        diagnostics_paths.append(
-                            _materialize_raw_to_temp(
-                                diagnostics_ref, diagnostics_suffix
-                            )
-                        )
-                    else:
-                        diagnostics_paths.append(diagnostics_ref)
-
-                parsed = parse_rtp_logfiles(
-                    eklipse_csv_path=eklipse_path,
-                    cx_thermo_diagnostics_txt_paths=diagnostics_paths,
-                    logger=logger,
-                )
-        except Exception as exc:
-            logger.warning(f'Failed to parse RTP log files: {exc}')
-            return
-
-        # Keep explicitly entered values by default; optionally overwrite.
-        if overwrite or self.used_gases in (None, []):
-            self.used_gases = parsed.used_gases
-        if not self.used_gases:
-            logger.warning(
-                'No process gases detected in RTP logs. All used_gases are empty.'
-            )
-
-        if (
-            overwrite or self.base_pressure is None
-        ) and parsed.base_pressure_pa is not None:
-            self.base_pressure = parsed.base_pressure_pa
-        if (
-            overwrite or self.base_pressure_ballast is None
-        ) and parsed.base_pressure_ballast_pa is not None:
-            self.base_pressure_ballast = parsed.base_pressure_ballast_pa
-        if (
-            overwrite or self.rate_of_rise is None
-        ) and parsed.rate_of_rise_pa_s is not None:
-            self.rate_of_rise = parsed.rate_of_rise_pa_s
-        # Chiller flow is intentionally not inferred from logs.
-
-        # Store timeseries for plotting.
-        ts = parsed.timeseries or {}
-        if overwrite or not getattr(self, '_log_time_s', []):
-            self._log_time_s = ts.get('time_s', [])
-        if overwrite or not getattr(self, '_log_temperature_c', []):
-            if 'temperature_k' in ts:
-                self._log_temperature_c = [
-                    (float(v) - CELSIUS_TO_KELVIN_OFFSET)
-                    if np.isfinite(v)
-                    else float('nan')
-                    for v in ts.get('temperature_k', [])
-                ]
-            else:
-                self._log_temperature_c = ts.get('temperature_c', [])
-        if overwrite or not getattr(self, '_temperature_setpoint_profile', []):
-            if 'temperature_setpoint_k' in ts:
-                self._temperature_setpoint_profile = [
-                    (float(v) - CELSIUS_TO_KELVIN_OFFSET)
-                    if np.isfinite(v)
-                    else float('nan')
-                    for v in ts.get('temperature_setpoint_k', [])
-                ]
-            else:
-                self._temperature_setpoint_profile = ts.get(
-                    'temperature_setpoint_c', []
-                )
-        if overwrite or not getattr(self, '_lamp_power_profile', []):
-            self._lamp_power_profile = ts.get('lamp_power', [])
-        if overwrite or not getattr(self, '_log_pressure_torr', []):
-            if 'pressure_pa' in ts:
-                self._log_pressure_torr = [
-                    (float(v) / TORR_TO_PA) if np.isfinite(v) else float('nan')
-                    for v in ts.get('pressure_pa', [])
-                ]
-            else:
-                self._log_pressure_torr = ts.get('pressure_torr', [])
-        if overwrite or not getattr(self, '_log_ar_flow_sccm', []):
-            if 'ar_flow_m3_s' in ts:
-                self._log_ar_flow_sccm = [
-                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
-                    for v in ts.get('ar_flow_m3_s', [])
-                ]
-            else:
-                self._log_ar_flow_sccm = ts.get('ar_flow_sccm', [])
-        if overwrite or not getattr(self, '_log_n2_flow_sccm', []):
-            if 'n2_flow_m3_s' in ts:
-                self._log_n2_flow_sccm = [
-                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
-                    for v in ts.get('n2_flow_m3_s', [])
-                ]
-            else:
-                self._log_n2_flow_sccm = ts.get('n2_flow_sccm', [])
-        if overwrite or not getattr(self, '_log_ph3_flow_sccm', []):
-            if 'ph3_in_ar_flow_m3_s' in ts:
-                self._log_ph3_flow_sccm = [
-                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
-                    for v in ts.get('ph3_in_ar_flow_m3_s', [])
-                ]
-            else:
-                self._log_ph3_flow_sccm = ts.get('ph3_in_ar_flow_sccm', [])
-        if overwrite or not getattr(self, '_log_h2s_flow_sccm', []):
-            if 'h2s_in_ar_flow_m3_s' in ts:
-                self._log_h2s_flow_sccm = [
-                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
-                    for v in ts.get('h2s_in_ar_flow_m3_s', [])
-                ]
-            else:
-                self._log_h2s_flow_sccm = ts.get('h2s_in_ar_flow_sccm', [])
-
-        # Store phase boundaries derived from actual log timestamps.
-        if overwrite or not getattr(self, '_log_phase_segments', []):
-            self._log_phase_segments = [
-                (ps.name, ps.start_time_s, ps.end_time_s)
-                for ps in parsed.steps
-                if ps.start_time_s is not None and ps.end_time_s is not None
-            ]
-
-        if self.overview is None:
-            self.overview = RTPOverview()
-
-        if overwrite or self.overview.no_dwell_steps is None:
-            self.overview.no_dwell_steps = sum(
-                1
-                for step in parsed.steps
-                if re.match(
-                    r'^\s*(?:\d+(?:st|nd|rd|th)\s+)?(?:dwell|anneal(?:ing)?)\b',
-                    str(step.name or '').lower(),
-                )
-            )
-
-        if overwrite or self.overview.annealing_pressure is None:
-            self.overview.annealing_pressure = parsed.overview.get('annealing_pressure')
-        if overwrite or self.overview.annealing_time is None:
-            self.overview.annealing_time = parsed.overview.get('annealing_time')
-        if overwrite or self.overview.annealing_temperature is None:
-            self.overview.annealing_temperature = parsed.overview.get(
-                'annealing_temperature'
-            )
-        if overwrite or self.overview.annealing_ar_flow is None:
-            self.overview.annealing_ar_flow = parsed.overview.get('annealing_ar_flow')
-        if overwrite or self.overview.annealing_n2_flow is None:
-            self.overview.annealing_n2_flow = parsed.overview.get('annealing_n2_flow')
-        if overwrite or self.overview.annealing_ph3_in_ar_flow is None:
-            self.overview.annealing_ph3_in_ar_flow = parsed.overview.get(
-                'annealing_ph3_in_ar_flow'
-            )
-        if overwrite or self.overview.annealing_nh3_in_ar_flow is None:
-            self.overview.annealing_nh3_in_ar_flow = parsed.overview.get(
-                'annealing_nh3_in_ar_flow'
-            )
-        if overwrite or self.overview.annealing_h2s_in_ar_flow is None:
-            self.overview.annealing_h2s_in_ar_flow = parsed.overview.get(
-                'annealing_h2s_in_ar_flow'
-            )
-        if overwrite or self.overview.total_heating_time is None:
-            self.overview.total_heating_time = parsed.overview.get('total_heating_time')
-        if overwrite or self.overview.total_cooling_time is None:
-            self.overview.total_cooling_time = parsed.overview.get('total_cooling_time')
-        if overwrite or self.overview.end_of_process_temperature is None:
-            self.overview.end_of_process_temperature = parsed.overview.get(
-                'end_of_process_temperature'
-            )
-
-        if overwrite or not self.steps:
-            for parsed_step in parsed.steps:
-                initial_c = parsed_step.initial_temperature_k - CELSIUS_TO_KELVIN_OFFSET
-                final_c = parsed_step.final_temperature_k - CELSIUS_TO_KELVIN_OFFSET
-                logger.warning(
-                    f'Parsed RTP step "{parsed_step.name}": '
-                    f'initial_temperature={initial_c:.1f} °C, '
-                    f'final_temperature={final_c:.1f} °C, '
-                    f'duration={parsed_step.duration_s:.1f} s'
-                )
-            self.steps = []
-            for parsed_step in parsed.steps:
-                step = DTURTPSteps(name=parsed_step.name)
-                step.step_overview = RTPStepOverview(
-                    duration=parsed_step.duration_s,
-                    step_ar_flow=parsed_step.ar_flow_m3_s,
-                    step_n2_flow=parsed_step.n2_flow_m3_s,
-                    step_ph3_in_ar_flow=parsed_step.ph3_in_ar_flow_m3_s,
-                    step_nh3_in_ar_flow=parsed_step.nh3_in_ar_flow_m3_s,
-                    step_h2s_in_ar_flow=parsed_step.h2s_in_ar_flow_m3_s,
-                    initial_temperature=parsed_step.initial_temperature_k,
-                    final_temperature=parsed_step.final_temperature_k,
-                )
-                if parsed_step.pressure_pa is not None:
-                    step.step_overview.pressure = parsed_step.pressure_pa
-                self.steps.append(step)
