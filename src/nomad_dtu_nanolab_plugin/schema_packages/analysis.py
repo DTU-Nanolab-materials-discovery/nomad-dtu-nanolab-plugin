@@ -32,6 +32,7 @@ from nomad.datamodel.metainfo.basesections import (
     ActivityStep,
     Analysis,
 )
+from nomad.datamodel.metainfo.basesections.v1 import AnalysisResult
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.metainfo.metainfo import Reference, SectionProxy
@@ -40,6 +41,7 @@ from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
+    CombinatorialSampleInfo,
     DTUCombinatorialLibrary,
 )
 
@@ -152,6 +154,10 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
 
 
 class DtuAnalysisStep(ActivityStep, PlotSection):
+    pass
+
+
+class DtuSampleAnalysisResult(AnalysisResult, CombinatorialSampleInfo):
     pass
 
 
