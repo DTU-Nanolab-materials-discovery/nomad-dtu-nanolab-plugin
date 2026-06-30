@@ -50,6 +50,8 @@ if TYPE_CHECKING:
     )
 
 # Constants
+MIN_CONFIDENCE_LEVEL = 1
+MAX_CONFIDENCE_LEVEL = 5
 MAX_SPACE_GROUP_NUMBER = 230  # 1-230 space groups, so range goes to 231
 SPACE_GROUP_SYMBOL_TO_NUMBER = {
     Spacegroup(no).symbol: no for no in range(1, MAX_SPACE_GROUP_NUMBER + 1)
@@ -61,13 +63,38 @@ m_package = Package()
 class SampleProperty(ArchiveSection):
     source = Quantity(
         type=Activity,
-        description='The source of the sample property.',
+        description='The source measurement of the sample property.',
+    )
+    analysis = Quantity(
+        type=Activity,
+        description='The analysis that produced the sample property.',
     )
     interpolation = Quantity(
         type=MEnum(['None', 'Nearest', 'Linear', 'Cubic']),
         description='The interpolation method used to obtain the sample property.',
         default='None',
     )
+    confidence = Quantity(
+        type=int,
+        description='The confidence level of the sample property from 1 to 5.',
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        if self.confidence > MAX_CONFIDENCE_LEVEL:
+            self.confidence = MAX_CONFIDENCE_LEVEL
+            logger.warning(
+                f'Confidence level {self.confidence} '
+                f'is greater than {MAX_CONFIDENCE_LEVEL}. '
+                f'Setting confidence level to {MAX_CONFIDENCE_LEVEL}.'
+            )
+        elif self.confidence < MIN_CONFIDENCE_LEVEL:
+            self.confidence = MIN_CONFIDENCE_LEVEL
+            logger.warning(
+                f'Confidence level {self.confidence} '
+                f'is less than {MIN_CONFIDENCE_LEVEL}. '
+                f'Setting confidence level to {MIN_CONFIDENCE_LEVEL}.'
+            )
 
 
 class Composition(SampleProperty):
@@ -348,17 +375,7 @@ class UvVisData(SampleProperty):
     )
 
 
-class DTUCombinatorialSample(CombinatorialSample, Schema):
-    m_def = Section(
-        categories=[DTUNanolabCategory],
-        label='Combinatorial Sample',
-        a_eln=ELNAnnotation(
-            properties=SectionProperties(
-                visible=Filter(exclude=['elemental_composition', 'components']),
-                editable=Filter(include=[]),
-            ),
-        ),
-    )
+class CombinatorialSampleInfo(ArchiveSection):
     band_gap = SubSection(section_def=BandGap)
     absorption_coefficient = SubSection(section_def=AbsorptionCoefficient)
     thickness = SubSection(section_def=Thickness)
@@ -371,6 +388,19 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
     xps_data = SubSection(section_def=XpsData)
     ellipsometry_data = SubSection(section_def=EllipsometryData)
     uv_vis_data = SubSection(section_def=UvVisData)
+
+
+class DTUCombinatorialSample(CombinatorialSample, CombinatorialSampleInfo, Schema):
+    m_def = Section(
+        categories=[DTUNanolabCategory],
+        label='Combinatorial Sample',
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                visible=Filter(exclude=['elemental_composition', 'components']),
+                editable=Filter(include=[]),
+            ),
+        ),
+    )
 
     def normalize(self, archive, logger):
         composition = {}
