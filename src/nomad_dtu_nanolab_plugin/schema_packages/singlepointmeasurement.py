@@ -48,3 +48,18 @@ class SinglePointMeasurement(DtuNanolabMeasurement):
         description='The raw data file of the measurement.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.FileEditQuantity),
     )
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `DTUInstrument` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        super().normalize(archive, logger)
+
+
+m_package.__init_metainfo__()
+
+
