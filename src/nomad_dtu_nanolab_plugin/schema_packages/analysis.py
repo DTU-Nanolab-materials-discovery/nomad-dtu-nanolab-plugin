@@ -62,16 +62,27 @@ a_query = ArchiveQuery(
 entry_list = a_query.download()
 analysis = entry_list[0].data"""
 
+FIRST_CODE_CELL_PATTERN = re.compile(
+    r"""^from nomad\.client import ArchiveQuery
+from nomad\.config import client
+
+analysis_id = ".*"
+a_query = ArchiveQuery\(
+    query=\{'entry_id:any': \[analysis_id\]\},
+    required='\*',
+    url=.*,
+\)
+entry_list = a_query\.download\(\)
+analysis = entry_list\[0\]\.data$"""
+)
+
 
 def replace_analysis_id(
     notebook: nbformat.notebooknode.NotebookNode, analysis_id: str
 ) -> nbformat.notebooknode.NotebookNode | None:
-    first_cell_pattern = re.compile(
-        re.escape(FIRST_CODE_CELL.strip()).replace('%s', '(.*)')
-    )
     for cell in notebook.cells:
         if cell.cell_type == 'code':
-            match = first_cell_pattern.match(cell.source)
+            match = FIRST_CODE_CELL_PATTERN.match(cell.source)
             if match:
                 cell.source = FIRST_CODE_CELL % analysis_id
                 return notebook
