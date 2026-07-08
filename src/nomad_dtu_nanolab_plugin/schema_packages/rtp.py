@@ -51,7 +51,7 @@ if TYPE_CHECKING:
 from nomad.config import config
 
 configuration: 'RTPEntryPoint' = config.get_plugin_entry_point(
-    'nomad_dtu_nanolab_plugin.schema_packages:rtp_entry_point'
+    'nomad_dtu_nanolab_plugin.schema_packages:rtp'
 )
 
 m_package = Package(name='DTU RTP schema')

@@ -1,5 +1,3 @@
-import importlib
-
 from nomad.config.models.plugins import SchemaPackageEntryPoint
 from pydantic import Field
 
@@ -242,7 +240,21 @@ analysis_entry_point = AnalysisEntryPoint(
     description='Schema package defined for analysis.',
 )
 
-
-# Register and expose the RT schema package eagerly so archives that reference
-# nomad_dtu_nanolab_plugin.schema_packages.rt.DtuAutosamplerMeasurement can be resolved.
-rt = importlib.import_module('nomad_dtu_nanolab_plugin.schema_packages.rt')
+# Public aliases used by pyproject.toml and existing package consumers.
+basesections = basesections_entry_point
+sputtering = sputtering_entry_point
+rtp = rtp_entry_point
+thermal = thermal_entry_point
+gas = gas_entry_point
+target = target_entry_point
+substrate = substrate_entry_point
+instrument = instrument_entry_point
+edx = edx_entry_point
+xrd = xrd_entry_point
+xps = xps_entry_point
+pl = pl_entry_point
+ellipsometry = ellipsometry_entry_point
+rt = rt_entry_point
+raman = raman_entry_point
+sample = sample_entry_point
+analysis = analysis_entry_point
