@@ -112,7 +112,7 @@ import os
 from nomad.config import config
 
 configuration: 'SputteringEntryPoint' = config.get_plugin_entry_point(
-    'nomad_dtu_nanolab_plugin.schema_packages:sputtering'
+    'nomad_dtu_nanolab_plugin.schema_packages:sputtering_entry_point'
 )
 
 m_package = Package()

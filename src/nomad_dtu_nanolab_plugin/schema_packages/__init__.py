@@ -9,7 +9,7 @@ class BasesectionsEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-basesections = BasesectionsEntryPoint(
+basesections_entry_point = BasesectionsEntryPoint(
     name='Basesections',
     description='Schema package defined for base sections.',
 )
@@ -31,7 +31,7 @@ class SputteringEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-sputtering = SputteringEntryPoint(
+sputtering_entry_point = SputteringEntryPoint(
     name='Sputtering',
     description='Schema package defined for sputtering.',
 )
@@ -53,7 +53,7 @@ class RTPEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-rtp = RTPEntryPoint(
+rtp_entry_point = RTPEntryPoint(
     name='RTP',
     description='Schema package defined for RTP.',
 )
@@ -66,7 +66,7 @@ class ThermalEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-thermal = ThermalEntryPoint(
+thermal_entry_point = ThermalEntryPoint(
     name='Thermal',
     description='Schema package defined for thermal evaporation.',
 )
@@ -79,7 +79,7 @@ class GasEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-gas = GasEntryPoint(
+gas_entry_point = GasEntryPoint(
     name='Gas',
     description='Schema package defined for gas.',
 )
@@ -92,7 +92,7 @@ class TargetEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-target = TargetEntryPoint(
+target_entry_point = TargetEntryPoint(
     name='Targets',
     description='Schema package defined for targets.',
 )
@@ -105,7 +105,7 @@ class SubstrateEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-substrate = SubstrateEntryPoint(
+substrate_entry_point = SubstrateEntryPoint(
     name='Substrate',
     description='Schema package defined for substrate.',
 )
@@ -118,7 +118,7 @@ class InstrumentEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-instrument = InstrumentEntryPoint(
+instrument_entry_point = InstrumentEntryPoint(
     name='Instrument',
     description='Schema package defined for instrument.',
 )
@@ -131,7 +131,7 @@ class EDXEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-edx = EDXEntryPoint(
+edx_entry_point = EDXEntryPoint(
     name='EDX',
     description='Schema package defined for EDX measurements.',
 )
@@ -144,7 +144,7 @@ class XRDEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-xrd = XRDEntryPoint(
+xrd_entry_point = XRDEntryPoint(
     name='XRD',
     description='Schema package defined for XRD measurements.',
 )
@@ -157,7 +157,7 @@ class XPSEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-xps = XPSEntryPoint(
+xps_entry_point = XPSEntryPoint(
     name='XPS',
     description='Schema package defined for XPS measurements.',
 )
@@ -170,7 +170,7 @@ class PLEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-pl = PLEntryPoint(
+pl_entry_point = PLEntryPoint(
     name='PL',
     description='Schema package defined for PL measurements.',
 )
@@ -183,7 +183,7 @@ class EllipsometryEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-ellipsometry = EllipsometryEntryPoint(
+ellipsometry_entry_point = EllipsometryEntryPoint(
     name='Ellipsometry',
     description='Schema package defined for Ellipsometry measurements.',
 )
@@ -196,7 +196,7 @@ class RTEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-rt = RTEntryPoint(
+rt_entry_point = RTEntryPoint(
     name='RT',
     description='Schema package defined for RT measurements.',
 )
@@ -209,7 +209,7 @@ class RamanEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-raman = RamanEntryPoint(
+raman_entry_point = RamanEntryPoint(
     name='Raman',
     description='Schema package defined for Raman measurements.',
 )
@@ -222,7 +222,7 @@ class SampleEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-sample = SampleEntryPoint(
+sample_entry_point = SampleEntryPoint(
     name='Sample',
     description='Schema package defined for samples.',
 )
@@ -235,7 +235,7 @@ class AnalysisEntryPoint(SchemaPackageEntryPoint):
         return m_package
 
 
-analysis = AnalysisEntryPoint(
+analysis_entry_point = AnalysisEntryPoint(
     name='Analysis',
     description='Schema package defined for analysis.',
 )
