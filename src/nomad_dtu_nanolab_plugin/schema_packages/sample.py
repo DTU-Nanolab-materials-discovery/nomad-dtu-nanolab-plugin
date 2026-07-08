@@ -549,19 +549,11 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         logger : Logger
             Logger for recording normalization events or warnings.
         """
-        substrate = getattr(self, 'substrate', None)
-        if substrate is not None and getattr(substrate, 'reference', None) is None:
-            try:
-                substrate.reference = substrate
-            except Exception:
-                pass
-
         super().normalize(archive, logger)
 
         # Ensure that the geometry is set to the default if not provided
-        substrate_reference = getattr(substrate, 'reference', None)
-        if not self.geometry and substrate_reference:
-            substrate_geometry = substrate_reference.geometry
+        if not self.geometry and self.substrate.reference:
+            substrate_geometry = self.substrate.reference.geometry
             if substrate_geometry:
                 self.geometry = substrate_geometry
 
