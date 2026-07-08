@@ -1,10 +1,12 @@
 import os.path
 
+import pytest
 from nomad.client import normalize_all, parse
 
 MIN_POSITIVE_TEMPERATURE_K = 273.15
 
 
+@pytest.mark.usefixtures('caplog')
 def test_schema():
     test_file = os.path.join('tests', 'data', 'test_rtp.archive.yaml')
     entry_archive = parse(test_file)[0]

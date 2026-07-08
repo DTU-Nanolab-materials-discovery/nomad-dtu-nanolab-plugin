@@ -4,6 +4,7 @@ import pytest
 from nomad.client import normalize_all, parse
 
 
+@pytest.mark.usefixtures('caplog')
 def test_schema():
     test_file = os.path.join('tests', 'data', 'test_logfile.archive.yaml')
     entry_archive = parse(test_file)[0]
