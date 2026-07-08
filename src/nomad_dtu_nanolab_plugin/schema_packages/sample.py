@@ -529,6 +529,11 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
             print('Warning: More than one sputtering reference found.')
         return results[0] if results else None
 
+    def plot(self, archive, logger):
+        if getattr(archive.metadata, 'main_author', None) is None:
+            return
+        super().plot(archive, logger)
+
     def normalize(self, archive, logger):
         """
         Normalizes the combinatorial library entry by ensuring required fields are set.
@@ -547,8 +552,9 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         super().normalize(archive, logger)
 
         # Ensure that the geometry is set to the default if not provided
-        if not self.geometry and self.substrate.reference:
-            substrate_geometry = self.substrate.reference.geometry
+        substrate_reference = getattr(self.substrate, 'reference', None)
+        if not self.geometry and substrate_reference:
+            substrate_geometry = substrate_reference.geometry
             if substrate_geometry:
                 self.geometry = substrate_geometry
 

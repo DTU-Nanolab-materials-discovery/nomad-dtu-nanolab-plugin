@@ -1,3 +1,5 @@
+import importlib
+
 from nomad.config.models.plugins import SchemaPackageEntryPoint
 from pydantic import Field
 
@@ -239,3 +241,8 @@ analysis = AnalysisEntryPoint(
     name='Analysis',
     description='Schema package defined for analysis.',
 )
+
+
+# Import RT eagerly so its metainfo definitions are registered before archives
+# that reference nomad_dtu_nanolab_plugin.schema_packages.rt.* are parsed.
+importlib.import_module('nomad_dtu_nanolab_plugin.schema_packages.rt')
