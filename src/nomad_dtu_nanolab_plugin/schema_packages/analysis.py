@@ -43,6 +43,7 @@ from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
     CombinatorialSampleInfo,
     DTUCombinatorialLibrary,
+    SampleProperty,
 )
 
 if TYPE_CHECKING:
@@ -169,7 +170,25 @@ class DtuAnalysisStep(ActivityStep, PlotSection):
 
 
 class DtuSampleAnalysisResult(AnalysisResult, CombinatorialSampleInfo):
-    pass
+    """
+    class inheriting from CombinatorialSampleInfo to allow for the storage of
+    same properties as CombinatorialSample in the analysis result
+    However, DtuSampleAnalysisResult has an additional_properties subsection to
+    allow for the storage of additional properties that are not defined in
+    CombinatorialSampleInfo. This will incencive the user to write new properties
+    that are not defined in CombinatorialSampleInfo to the DtuSampleAnalysisResult
+    instead of just discarding them. This will allow for the future
+    expansion of CombinatorialSampleInfo
+    """
+
+    additional_properties = SubSection(
+        section_def=SampleProperty,
+        repeats=True,
+        description=(
+            'Additional properties of the sample. '
+            'Consider adding a description to the property.'
+        ),
+    )
 
 
 class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
