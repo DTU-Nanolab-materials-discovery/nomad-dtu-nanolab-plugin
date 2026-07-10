@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Ternary Plot Example</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <div id="plotly-div" style="width:100%;height:600px;"></div>
+    <script>
+        // Sample data for demonstration
+        const sampleData = {
+            Cu: [45, 42, 40, 38, 35, 50, 48, 46, 44, 42, 40, 38, 36, 34, 32, 55, 52, 50, 48, 45],
+            P: [15, 18, 20, 22, 25, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 8, 10, 12, 14, 16],
+            S: [40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 37, 38, 38, 38, 39]
+        };
+        const samples = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+
+        const data = [{
+            type: 'scatterternary',
+            mode: 'markers',
+            a: sampleData.Cu,
+            b: sampleData.P,
+            c: sampleData.S,
+            marker: {
+                symbol: 100,
+                size: 12,
+                color: samples,
+                colorscale: 'Turbo',
+                colorbar: {
+                    title: 'Sample Number',
+                    thickness: 20,
+                    len: 0.7
+                },
+                line: {
+                    width: 2,
+                    color: 'white'
+                }
+            },
+            hovertemplate: 
+                'Cu: %{a:.1f}%<br>' +
+                'P: %{b:.1f}%<br>' +
+                'S: %{c:.1f}%<br>' +
+                'Sample: %{marker.color}<br>' +
+                '<extra></extra>',
+            showlegend: false
+        }];
+
+        const layout = {
+            title: {
+                text: 'Composition Analysis - Ternary Plot',
+                font: {
+                    size: 20,
+                    color: '#2a4cdf'
+                }
+            },
+            ternary: {
+                sum: 100,
+                aaxis: {
+                    title: 'Cu %',
+                    min: 0,
+                    linewidth: 2,
+                    ticks: 'outside',
+                    tickfont: {size: 12}
+                },
+                baxis: {
+                    title: 'P %',
+                    min: 0,
+                    linewidth: 2,
+                    ticks: 'outside',
+                    tickfont: {size: 12}
+                },
+                caxis: {
+                    title: 'S %',
+                    min: 0,
+                    linewidth: 2,
+                    ticks: 'outside',
+                    tickfont: {size: 12}
+                }
+            },
+            width: 800,
+            height: 600,
+            paper_bgcolor: '#fafafa',
+            font: {
+                family: 'Arial, sans-serif',
+                color: '#333'
+            }
+        };
+
+        const config = {
+            responsive: true,
+            displayModeBar: true,
+            scrollZoom: false
+        };
+
+        Plotly.newPlot('plotly-div', data, layout, config);
+    </script>
+</body>
+</html>
