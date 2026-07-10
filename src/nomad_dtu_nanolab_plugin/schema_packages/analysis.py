@@ -32,6 +32,7 @@ from nomad.datamodel.metainfo.basesections import (
     ActivityStep,
     Analysis,
 )
+from nomad.datamodel.metainfo.basesections.v1 import AnalysisResult
 from nomad.datamodel.metainfo.plot import PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.metainfo.metainfo import Reference, SectionProxy
@@ -40,7 +41,9 @@ from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
+    CombinatorialSampleInfo,
     DTUCombinatorialLibrary,
+    SampleProperty,
 )
 
 if TYPE_CHECKING:
@@ -60,16 +63,27 @@ a_query = ArchiveQuery(
 entry_list = a_query.download()
 analysis = entry_list[0].data"""
 
+FIRST_CODE_CELL_PATTERN = re.compile(
+    r"""^from nomad\.client import ArchiveQuery
+from nomad\.config import client
+
+analysis_id = ".*"
+a_query = ArchiveQuery\(
+    query=\{'entry_id:any': \[analysis_id\]\},
+    required='\*',
+    url=.*,
+\)
+entry_list = a_query\.download\(\)
+analysis = entry_list\[0\]\.data$"""
+)
+
 
 def replace_analysis_id(
     notebook: nbformat.notebooknode.NotebookNode, analysis_id: str
 ) -> nbformat.notebooknode.NotebookNode | None:
-    first_cell_pattern = re.compile(
-        re.escape(FIRST_CODE_CELL.strip()).replace('%s', '(.*)')
-    )
     for cell in notebook.cells:
         if cell.cell_type == 'code':
-            match = first_cell_pattern.match(cell.source)
+            match = FIRST_CODE_CELL_PATTERN.match(cell.source)
             if match:
                 cell.source = FIRST_CODE_CELL % analysis_id
                 return notebook
@@ -153,6 +167,28 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
 
 class DtuAnalysisStep(ActivityStep, PlotSection):
     pass
+
+
+class DtuSampleAnalysisResult(AnalysisResult, CombinatorialSampleInfo):
+    """
+    class inheriting from CombinatorialSampleInfo to allow for the storage of
+    same properties as CombinatorialSample in the analysis result
+    However, DtuSampleAnalysisResult has an additional_properties subsection to
+    allow for the storage of additional properties that are not defined in
+    CombinatorialSampleInfo. This will incencive the user to write new properties
+    that are not defined in CombinatorialSampleInfo to the DtuSampleAnalysisResult
+    instead of just discarding them. This will allow for the future
+    expansion of CombinatorialSampleInfo
+    """
+
+    additional_properties = SubSection(
+        section_def=SampleProperty,
+        repeats=True,
+        description=(
+            'Additional properties of the sample. '
+            'Consider adding a description to the property.'
+        ),
+    )
 
 
 class DtuJupyterAnalysis(Analysis, PlotSection, Schema):

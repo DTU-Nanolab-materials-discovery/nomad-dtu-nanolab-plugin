@@ -50,6 +50,8 @@ if TYPE_CHECKING:
     )
 
 # Constants
+MIN_CONFIDENCE_LEVEL = 1
+MAX_CONFIDENCE_LEVEL = 5
 MAX_SPACE_GROUP_NUMBER = 230  # 1-230 space groups, so range goes to 231
 SPACE_GROUP_SYMBOL_TO_NUMBER = {
     Spacegroup(no).symbol: no for no in range(1, MAX_SPACE_GROUP_NUMBER + 1)
@@ -59,15 +61,51 @@ m_package = Package()
 
 
 class SampleProperty(ArchiveSection):
+    # measurement source
     source = Quantity(
         type=Activity,
-        description='The source of the sample property.',
+        description='The source entry (e.g.g measurement) of the sample property.',
+    )
+    # analysis notebook source
+    analysis = Quantity(
+        type=Activity,
+        description='The analysis that produced the sample property.',
+    )
+    # analysis result source
+    analysis_result = Quantity(
+        type=Activity,
+        description='The analysis result from where the sample property was obtained.',
     )
     interpolation = Quantity(
         type=MEnum(['None', 'Nearest', 'Linear', 'Cubic']),
         description='The interpolation method used to obtain the sample property.',
         default='None',
     )
+    confidence = Quantity(
+        type=int,
+        description='The confidence level of the sample property from 1 to 5.',
+    )
+    description = Quantity(
+        type=str,
+        description='A description of the sample property.',
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        if self.confidence > MAX_CONFIDENCE_LEVEL:
+            self.confidence = MAX_CONFIDENCE_LEVEL
+            logger.warning(
+                f'Confidence level {self.confidence} '
+                f'is greater than {MAX_CONFIDENCE_LEVEL}. '
+                f'Setting confidence level to {MAX_CONFIDENCE_LEVEL}.'
+            )
+        elif self.confidence < MIN_CONFIDENCE_LEVEL:
+            self.confidence = MIN_CONFIDENCE_LEVEL
+            logger.warning(
+                f'Confidence level {self.confidence} '
+                f'is less than {MIN_CONFIDENCE_LEVEL}. '
+                f'Setting confidence level to {MIN_CONFIDENCE_LEVEL}.'
+            )
 
 
 class Composition(SampleProperty):
@@ -325,6 +363,15 @@ class EllipsometryData(SampleProperty):
         description='The wavelength of the light used for ellipsometry.',
         unit='nm',
     )
+    sub_bandgap_refractive_index = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description=(
+            'The refractive index of the sample below the bandgap, '
+            'at the lowest photon energy recorded or extrapolated.'
+        ),
+        unit='dimensionless',
+    )
 
 
 class UvVisData(SampleProperty):
@@ -348,7 +395,27 @@ class UvVisData(SampleProperty):
     )
 
 
-class DTUCombinatorialSample(CombinatorialSample, Schema):
+class CombinatorialSampleInfo(ArchiveSection):
+    """
+    Section defining the quantities and properties of a combinatorial sample and
+    of a combinatorial analysis result (see analysis.py).
+    """
+
+    band_gap = SubSection(section_def=BandGap, repeats=True)
+    absorption_coefficient = SubSection(section_def=AbsorptionCoefficient, repeats=True)
+    thickness = SubSection(section_def=Thickness, repeats=True)
+    composition = SubSection(section_def=Composition, repeats=True)
+    surface_composition = SubSection(section_def=Composition, repeats=True)
+    deposition = SubSection(section_def=Deposition, repeats=True)
+    main_phase = SubSection(section_def=CrystalStructure, repeats=True)
+    secondary_phases = SubSection(section_def=CrystalStructure, repeats=True)
+    xrd_data = SubSection(section_def=XrdData, repeats=True)
+    xps_data = SubSection(section_def=XpsData, repeats=True)
+    ellipsometry_data = SubSection(section_def=EllipsometryData, repeats=True)
+    uv_vis_data = SubSection(section_def=UvVisData, repeats=True)
+
+
+class DTUCombinatorialSample(CombinatorialSample, CombinatorialSampleInfo, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Combinatorial Sample',
@@ -359,18 +426,6 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
             ),
         ),
     )
-    band_gap = SubSection(section_def=BandGap)
-    absorption_coefficient = SubSection(section_def=AbsorptionCoefficient)
-    thickness = SubSection(section_def=Thickness)
-    composition = SubSection(section_def=Composition)
-    surface_composition = SubSection(section_def=Composition)
-    deposition = SubSection(section_def=Deposition)
-    main_phase = SubSection(section_def=CrystalStructure)
-    secondary_phases = SubSection(section_def=CrystalStructure, repeats=True)
-    xrd_data = SubSection(section_def=XrdData)
-    xps_data = SubSection(section_def=XpsData)
-    ellipsometry_data = SubSection(section_def=EllipsometryData)
-    uv_vis_data = SubSection(section_def=UvVisData)
 
     def normalize(self, archive, logger):
         composition = {}
