@@ -7,7 +7,7 @@ from nomad.datamodel.metainfo.annotations import (
     Filter,
     SectionProperties,
 )
-from nomad.metainfo import Quantity, Section
+from nomad.metainfo import Package, Quantity, Section
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
@@ -15,7 +15,10 @@ from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
 )
 
 if TYPE_CHECKING:
-    pass
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+m_package = Package(name='DTU generalised single point measurement schema package')
 
 
 class SinglePointMeasurement(DtuNanolabMeasurement):
@@ -25,6 +28,7 @@ class SinglePointMeasurement(DtuNanolabMeasurement):
         properties=SectionProperties(
             order=[
                 'technique',
+                'extracted_value',
                 'raw_file',
             ],
             visible=Filter(
@@ -48,6 +52,7 @@ class SinglePointMeasurement(DtuNanolabMeasurement):
         description='The raw data file of the measurement.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.FileEditQuantity),
     )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUInstrument` class.
@@ -61,5 +66,3 @@ class SinglePointMeasurement(DtuNanolabMeasurement):
 
 
 m_package.__init_metainfo__()
-
-
