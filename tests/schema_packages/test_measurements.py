@@ -11,6 +11,7 @@ Names can be generated from the test file by running the following command:
 """
 
 
+@pytest.mark.usefixtures('caplog')
 @pytest.mark.parametrize(
     'test_file, expected_result_count, expected_names',
     [

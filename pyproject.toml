@@ -32,7 +32,7 @@ dependencies = [
     "nomad-analysis>=0.0.7",
     "openpyxl>3",
     "renishawwire @ git+https://github.com/alchem0x2A/py-wdf-reader.git",
-
+    "scikit-learn",
 ]
 
 [project.urls]
