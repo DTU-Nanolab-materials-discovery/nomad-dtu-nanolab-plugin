@@ -61,6 +61,17 @@ Measurement techniques for materials characterization:
 - **[Raman Spectroscopy](raman.md)** - Vibrational modes and material fingerprinting
 - **[RT Measurements](rt.md)** - Reflection/transmission autosampler optical measurements
 
+### Characterization file formats
+| Method | Machine Supplier | Proprietary File | Manual export | Plugin Class | Comment |
+|--------|------------------|------------------|-----------------|--------------|---------|
+| **X-Ray Diffraction (XRD)** | Rigaku | [.rasx](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/ZnO_XRD_map/ZnO%20ALD%20training_001_1_0-000_0-000.rasx) | - | [`DTUXRDMeasurement`](xrd.md) | Each file is a single measurement |
+| **X-ray Photoelectron Spectroscopy (XPS)** | Thermofisher Scientific | [.vgx] (.zip w/ data) | [.txt`]() (spectra) [.txt`](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/mittma_0020_Cu_FL_core_fit.txt) (analysis) | [`DTUXpsMeasurement`](xps.md) | Upload native file for provenance and exported text files for parsing |
+| **Energy Dispersive X-Ray Spectroscopy (EDX)** | Thermo Scientific | [.oipx](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/eugbe_0032_Zr_EDX.zip) (.zip w/ data) | [.xlsx](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/mittma_00012_FR.xlsx)| [`DTUEDXMeasurement`](edx.md) | The .xlsx contains the elemental composition data and corner positions |
+| **Raman Spectroscopy** | Renishaw | [.wdf](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/indiogo_0019_RTP_hc_1x10s_P1_x20_map_0.wdf) | - | [`DTURamanMeasurement`](raman.md) | - |
+| **Spectroscopic Ellipsometry** | J.A. Woollam | [.se](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/eugbe_0009_RTP_hc_SiO2_map.SE)/[.sesnap](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/eugbe_0009_RTP_hc_SiO2_map.SEsnap) | [.txt](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/eugbe_0009_RTP_hc_SiO2_map_nk_vs_energy.txt) (n&k) [.txt](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/eugbe_0009_RTP_hc_SiO2_map_th.txt) (param.) [.txt](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/eugbe_0009_RTP_hc_SiO2_map_th.txt) (raw)| [`DTUEllipsometryMeasurement`](ellipsometry.md) | - |
+| **Reflection/Transmission (RT)** | Agilent | [.bsw](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/anat_eugbe_251105_data.bsw) | [.csv](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/anat_eugbe_251105_data.csv) (data) [.csv](https://github.com/DTU-Nanolab-materials-discovery/nomad-dtu-nanolab-plugin/blob/main/tests/data/anat_eugbe_251105_data.csv) (grid) | [`DtuAutosamplerMeasurement`](rt.md) | Up to 12 combinatorial libraries in a file. Needs to be combined with custom grid.csv file |
+
+
 ## Data Analysis
 
 Computational analysis and data processing:
