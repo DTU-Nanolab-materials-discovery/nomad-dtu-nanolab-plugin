@@ -32,7 +32,7 @@ dependencies = [
     "nomad-analysis>=0.0.7",
     "openpyxl>3",
     "renishawwire @ git+https://github.com/alchem0x2A/py-wdf-reader.git",
-
+    "scikit-learn",
 ]
 
 [project.urls]
@@ -98,9 +98,9 @@ select = [
 ]
 
 ignore = [
-    "F403", # 'from module import *' used; unable to detect undefined names
     "PLC0415", # `import` should be at the top-level of a file
     "PLR0915", # Too many statements
+    "PLR0917", # new version of Too many positional arguments
     "PLR0912", # Too many branches
 ]
 
@@ -164,3 +164,4 @@ raman = "nomad_dtu_nanolab_plugin.schema_packages:raman"
 sample = "nomad_dtu_nanolab_plugin.schema_packages:sample"
 basesections = "nomad_dtu_nanolab_plugin.schema_packages:basesections"
 analysis = "nomad_dtu_nanolab_plugin.schema_packages:analysis"
+measurement = "nomad_dtu_nanolab_plugin.schema_packages:point_measurement"

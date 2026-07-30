@@ -8,7 +8,8 @@ Ellipsometry provides optical properties including film thickness, refractive in
 
 - Exporting data from CompleteEASE software
 - Creating an ellipsometry measurement entry
-- Uploading n&k and thickness data files
+- Uploading n&k, thickness, and tabulated data files
+- Uploading native CompleteEASE files (.se and .snapshot)
 - Reviewing auto-generated plots
 
 ## Prerequisites
@@ -21,10 +22,12 @@ Before starting, you need:
 - **Access to CompleteEASE software** - For data export
 
 !!! info "File Format"
-    You'll need to export three files from CompleteEASE:
+    You'll need to export five files from CompleteEASE:
 
     - **n&k file** (`.txt`) - Refractive index and extinction coefficient vs. position
     - **Thickness file** (`.txt`) - Thickness, roughness, MSE, and other fit parameters
+    - **Tabulated data file** (`.txt`) - Raw Psi/Delta table exported from CompleteEASE
+    - **Native data file** (`.se`) - Native CompleteEASE data file
     - **Snapshot file** (`.snapshot`) - Original measurement file (for archival)
 
 ## Step 1: Export Data from CompleteEASE
@@ -99,11 +102,42 @@ This is your **thickness file** for uploading to NOMAD. It contains:
 - MSE (fit quality metric)
 - Other fitted parameters
 
-### 1.7 Prepare Snapshot File
+### 1.7 Export Tabulated Data File (.txt)
 
-Keep the original `.snapshot` file - you'll upload this to NOMAD as well for archival purposes.
+To export the tabulated raw ellipsometry data from CompleteEASE:
 
-**Example filename**: `eugbe_0020_Zr_BR.snapshot`
+1. In CompleteEASE, go to **Analysis** → **Data** tab
+2. **Right-click** on **Save**
+3. Select **"Export To Text File"**
+
+![Export To Text File](../assets/ellipsometry/Export_tabulated.png)
+
+4. Choose the .SE files you want to export as txt
+5. Choose your destination folder (generally O:/CleanroomDrive/phosphosulphides/...)
+6. Choose file type **dat** (does not matter)
+7. In **Edit Fit Parameter**, select export format **Table format**
+
+![Export To Text File - Format](../assets/ellipsometry/Export_tabulated_2.png)
+
+8. The exported file name should reflect the original name, make sure the original file name is right
+
+**Example filename**: `eugbe_0020_Zr_BR_tabulated.txt`
+
+This is your **tabulated data file** for the NOMAD **tabulated file** upload field.
+
+### 1.8 Prepare Native Files (.se and .snapshot)
+
+Keep both native CompleteEASE files for upload:
+
+- `.se` file
+- `.snapshot` file
+
+You'll upload both to NOMAD in addition to the exported text files.
+
+**Example filenames**:
+
+- `eugbe_0020_Zr_BR.se`
+- `eugbe_0020_Zr_BR.snapshot`
 
 !!! note "Snapshot Parsing"
     The snapshot file is currently uploaded for archival but not automatically parsed. Future versions may extract data directly from snapshot files.
@@ -150,6 +184,8 @@ Scroll down in the ellipsometry entry to find the upload fields:
 
 - **n&k file** - For optical constants data
 - **Thickness file** - For thickness and fit parameters
+- **tabulated file** - For raw Psi/Delta table data
+- **native .SE file** - For the native measurement data
 - **Snapshot file** - For the original CompleteEASE file
 
 ### 4.2 Upload n&k File
@@ -167,7 +203,19 @@ Scroll down in the ellipsometry entry to find the upload fields:
 2. Upload your `*_th.txt` file
 3. **Click "Save"** immediately
 
-### 4.4 Upload Snapshot File
+### 4.4 Upload Tabulated File
+
+1. Locate the **"tabulated file"** upload field
+2. Upload your `*_tabulated.txt` file
+3. **Click "Save"** immediately
+
+### 4.5 Upload Native .SE File
+
+1. Locate the **"native .SE file"** upload field
+2. Upload your `.se` file from CompleteEASE
+3. **Click "Save"** immediately
+
+### 4.6 Upload Snapshot File
 
 1. Locate the **"Snapshot file"** upload field
 2. Upload your `.snapshot` file from CompleteEASE
@@ -241,11 +289,11 @@ Review the plots and identify suspicious data:
 
 If you measured multiple quarters of your combinatorial library, repeat this entire process for each quarter:
 
-1. Export n&k, thickness, and snapshot files with the appropriate quarter identifier:
-   - `username_####_Material_BR_nk.txt`, `*_th.txt`, `*.snapshot`
-   - `username_####_Material_BL_nk.txt`, `*_th.txt`, `*.snapshot`
-   - `username_####_Material_FL_nk.txt`, `*_th.txt`, `*.snapshot`
-   - `username_####_Material_FR_nk.txt`, `*_th.txt`, `*.snapshot`
+1. Export n&k, thickness, tabulated, and native files with the appropriate quarter identifier:
+    - `username_####_Material_BR_nk.txt`, `*_th.txt`, `*_tabulated.txt`, `*.se`, `*.snapshot`
+    - `username_####_Material_BL_nk.txt`, `*_th.txt`, `*_tabulated.txt`, `*.se`, `*.snapshot`
+    - `username_####_Material_FL_nk.txt`, `*_th.txt`, `*_tabulated.txt`, `*.se`, `*.snapshot`
+    - `username_####_Material_FR_nk.txt`, `*_th.txt`, `*_tabulated.txt`, `*.se`, `*.snapshot`
 
 2. Create new Ellipsometry Measurement entries for each quarter
 
@@ -268,6 +316,8 @@ After uploading ellipsometry data, verify:
 - [ ] Entry named correctly with quarter identifier
 - [ ] n&k file uploaded successfully
 - [ ] Thickness file uploaded successfully
+- [ ] Tabulated file uploaded successfully
+- [ ] Native .SE file uploaded successfully
 - [ ] Snapshot file uploaded successfully
 - [ ] Results subsection shows plots
 - [ ] Thickness values are reasonable (typically nm to hundreds of nm)
@@ -288,7 +338,7 @@ After uploading ellipsometry data, verify:
 - Verify files exported correctly from CompleteEASE
 - Check that you clicked "Save"
 - Refresh the page and wait for processing
-- Ensure n&k and thickness files have correct column structure
+- Ensure n&k, thickness, and tabulated files have correct column structure
 
 ### Wrong data appears in plots
 
@@ -320,7 +370,7 @@ After uploading ellipsometry data, verify:
 
 **Solutions**:
 
-- Verify files are in plain text (`.txt`) format
+- Verify exported text files are in the expected plain-text formats (`.txt` and `.txt`)
 - Check file size (should be ≤ 5 MB typically)
 - Ensure files aren't corrupted
 - Try opening files in a text editor to verify content

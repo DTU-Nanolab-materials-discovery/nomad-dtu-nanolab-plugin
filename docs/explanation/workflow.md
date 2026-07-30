@@ -183,7 +183,7 @@ You perform **[measurement activities](data-model.md#measurements)** on several 
 - **Structural**: [XRD](../reference/xrd.md) for crystal structure and phases
 - **Compositional**: [XPS](../reference/xps.md) and [EDX](../reference/edx.md) for elemental analysis
 - **Optical**: [PL](../reference/pl.md), [Ellipsometry](../reference/ellipsometry.md), [Raman](../reference/raman.md)
-- **Electrical**: [RT measurements](../reference/rt.md)
+- **Optical (autosampler)**: [RT measurements](../reference/rt.md)
 
 Each measurement:
 

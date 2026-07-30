@@ -90,6 +90,24 @@ Scroll down to find the **"EDX file"** field.
     - Elemental compositions (atomic %)
     - Relationships to the combinatorial library geometry
 
+### 3.3 Upload Native EDX Archive (`native_archive`)
+
+To preserve native EDX provenance, also upload the raw archive in the **Native data archive** field (`native_archive`).
+
+1. Create a folder containing:
+    - The `.oipx` file
+    - Its associated data folder
+2. Name this folder using either:
+    - combinatorial library style e.g. `eugbe_0032_Zr_FL_EDX` (if the file contains data from a single library)
+    - The process-run style, e.g. `eugbe_0032_Zr_EDX` (if the file contains data from different libraries)
+3. Compress that folder to a single `.zip` file.
+4. In the EDX entry, upload this `.zip` in **Native data archive**.
+5. Click **Save**.
+6. Trigger normalization (if not automatic in your deployment) by using the normalize/reprocess action.
+
+!!! tip "Why upload native archive?"
+     The native archive keeps the original instrument bundle (`.oipx` + companion files) for traceability and future re-processing.
+
 ## Step 4: Review Results
 
 ### 4.1 Navigate to Results Subsection
@@ -174,6 +192,8 @@ After uploading EDX data, verify:
 
 - [ ] Entry named correctly with quarter identifier
 - [ ] Excel file uploaded successfully
+- [ ] Native archive `.zip` uploaded in `native_archive`
+- [ ] Normalization completed
 - [ ] Results subsection shows plots
 - [ ] Data points appear in expected positions
 - [ ] Invalid points removed

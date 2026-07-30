@@ -1,6 +1,6 @@
 # <img src="assets/dtu_nomad.svg" alt="DTU Nanolab NOMAD Plugin logo" width="300" />
 
-This plugin powers the data management infrastructure for the **Materials Discovery group** at the [DTU Nanolab](https://www.dtu.dk/english/about/organization/institutter/energy/research/labs/nanolab), led by [Andrea Crovetto](https://orbit.dtu.dk/en/persons/andrea-crovetto). The group specializes in high-throughput combinatorial synthesis and characterization of thin-film materials for sustainable energy applications.
+This plugin powers the data management infrastructure for the **Thin-film Materials Discovery group** at the [DTU Nanolab](https://www.dtu.dk/english/about/organization/institutter/energy/research/labs/nanolab), led by [Andrea Crovetto](https://orbit.dtu.dk/en/persons/andrea-crovetto). The group specializes in high-throughput combinatorial synthesis and characterization of thin-film materials for sustainable energy applications.
 
 <div markdown="block" class="action-buttons">
   <a href="https://chemrxiv.org/doi/full/10.26434/chemrxiv.15000115/v1" class="md-button md-button--primary action-button" target="_blank" rel="noopener">📄 Paper</a>

@@ -165,6 +165,7 @@ Add lab-specific parameters to standard techniques or adapt them. We adopted the
 ```python
 from nomad_dtu_nanolab_plugin.schema_packages.xrd import DTUXRDMeasurement
 
+
 class YourLabXRD(DTUXRDMeasurement):
     """XRD with your lab's specific configuration"""
 
