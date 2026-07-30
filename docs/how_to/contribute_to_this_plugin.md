@@ -206,8 +206,10 @@ When adding new schemas:
 from nomad.datamodel.metainfo.basesections import Measurement
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import DtuNanolabMeasurement
 
+
 class MyNewMeasurement(DtuNanolabMeasurement):
     """Document what this measurement does."""
+
     pass
 ```
 
