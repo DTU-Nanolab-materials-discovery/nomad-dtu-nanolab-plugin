@@ -215,18 +215,18 @@ raman = RamanEntryPoint(
 )
 
 
-class SinglePointMeasurementEntryPoint(SchemaPackageEntryPoint):
+class PointMeasurementEntryPoint(SchemaPackageEntryPoint):
     def load(self):
-        from nomad_dtu_nanolab_plugin.schema_packages.singlepointmeasurement import (
+        from nomad_dtu_nanolab_plugin.schema_packages.pointmeasurement import (
             m_package,
         )
 
         return m_package
 
 
-single_point_measurement = SinglePointMeasurementEntryPoint(
-    name='SinglePointMeasurement',
-    description='Schema package defined for single-point measurements.',
+point_measurement = PointMeasurementEntryPoint(
+    name='PointMeasurement',
+    description='Schema package defined for point measurements.',
 )
 
 
