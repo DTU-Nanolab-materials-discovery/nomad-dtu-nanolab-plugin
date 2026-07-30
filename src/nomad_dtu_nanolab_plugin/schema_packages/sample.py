@@ -45,7 +45,15 @@ if TYPE_CHECKING:
     from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
         DtuNanolabMeasurement,
     )
-    from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
+    from nomad_dtu_nanolab_plugin.schema_packages.sputtering import (
+        DTUSputtering,
+    )
+
+# Constants
+MAX_SPACE_GROUP_NUMBER = 230  # 1-230 space groups, so range goes to 231
+SPACE_GROUP_SYMBOL_TO_NUMBER = {
+    Spacegroup(no).symbol: no for no in range(1, MAX_SPACE_GROUP_NUMBER + 1)
+}  # Map of space group symbols to numbers
 
 m_package = Package()
 
@@ -93,6 +101,10 @@ class Deposition(SampleProperty):
     operator = Quantity(
         type=str,
         description='The name of the operator who created the sample.',
+    )
+    method = Quantity(
+        type=MEnum('Sputtering', 'Rapid Thermal Processing', 'Other'),
+        description='The deposition method used to create the sample.',
     )
 
 
@@ -172,8 +184,15 @@ class Thickness(SampleProperty):
 
 
 class CrystalStructure(SampleProperty):
+    space_group_nbr = Quantity(
+        type=int,
+        description='The space group number (1-230)',
+    )
     space_group = Quantity(
-        type=MEnum([Spacegroup(no).symbol for no in range(1, 231)]),
+        type=MEnum(
+            [Spacegroup(no).symbol for no in range(1, MAX_SPACE_GROUP_NUMBER + 1)]
+        ),
+        description='The space group symbol',
     )
     a = Quantity(
         type=np.float64,
@@ -205,6 +224,41 @@ class CrystalStructure(SampleProperty):
         description='The angle gamma of the crystal structure.',
         unit='degree',
     )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        Normalizes the crystal structure by ensuring that both
+        space group number and symbol are set.
+
+        If only one of the space group number or symbol is provided, the other
+        is derived using the ASE Spacegroup class.
+
+        Parameters
+        ----------
+        archive : Archive
+            The archive object being normalized.
+        logger : Logger
+            Logger for recording normalization events or warnings.
+        """
+        super().normalize(archive, logger)
+
+        if self.space_group_nbr and not self.space_group:
+            if 1 <= self.space_group_nbr <= MAX_SPACE_GROUP_NUMBER:
+                self.space_group = Spacegroup(self.space_group_nbr).symbol
+            else:
+                logger.warning(
+                    f'Invalid space group number {self.space_group_nbr}. '
+                    'It should be between 1 and 230.'
+                )
+        elif self.space_group and not self.space_group_nbr:
+            space_group_nbr_temp = SPACE_GROUP_SYMBOL_TO_NUMBER.get(self.space_group)
+            if space_group_nbr_temp:
+                self.space_group_nbr = space_group_nbr_temp
+            else:
+                logger.warning(
+                    f'Invalid space group symbol {self.space_group}. '
+                    'It does not correspond to any known space group.'
+                )
 
 
 class XrdData(SampleProperty):
@@ -328,7 +382,7 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
         self.elemental_composition = [
             ElementalComposition(element=e, atomic_fraction=v)
             for e, v in composition.items()
-            if v
+            if e in chemical_symbols and v
         ]
 
         super().normalize(archive, logger)
@@ -416,6 +470,10 @@ class ProcessParameterOverview(ArchiveSection):
         unit='m',
     )
 
+    # deposition_parameters = SubSection(  # FAULTY LINE TODO
+    # section_def=DepositionParameters,
+    # )
+
 
 class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
     m_def = Section(
@@ -425,7 +483,6 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
 
     process_parameter_overview = SubSection(
         section_def=ProcessParameterOverview,
-        description='An overview of the process parameters used to create the library.',
     )
 
     geometry = SubSection(
@@ -472,6 +529,11 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
             print('Warning: More than one sputtering reference found.')
         return results[0] if results else None
 
+    def plot(self, archive, logger):
+        if getattr(archive.metadata, 'main_author', None) is None:
+            return
+        super().plot(archive, logger)
+
     def normalize(self, archive, logger):
         """
         Normalizes the combinatorial library entry by ensuring required fields are set.
@@ -487,11 +549,19 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         logger : Logger
             Logger for recording normalization events or warnings.
         """
+        substrate = getattr(self, 'substrate', None)
+        if substrate is not None and getattr(substrate, 'reference', None) is None:
+            try:
+                substrate.reference = substrate
+            except Exception:
+                pass
+
         super().normalize(archive, logger)
 
         # Ensure that the geometry is set to the default if not provided
-        if not self.geometry and self.substrate.reference:
-            substrate_geometry = self.substrate.reference.geometry
+        substrate_reference = getattr(substrate, 'reference', None)
+        if not self.geometry and substrate_reference:
+            substrate_geometry = substrate_reference.geometry
             if substrate_geometry:
                 self.geometry = substrate_geometry
 

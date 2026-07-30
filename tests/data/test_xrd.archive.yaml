@@ -1,7 +1,7 @@
 data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.xrd.DTUXRDMeasurement
   sample_alignment:
-    m_def: nomad_dtu_nanolab_plugin.schema_packages.basesections.RectangularSampleAlignment
+    m_def: nomad_measurements.mapping.schema.RectangularSampleAlignment
     width: 0.05
     height: 0.05
     x_upper_left: -0.0225

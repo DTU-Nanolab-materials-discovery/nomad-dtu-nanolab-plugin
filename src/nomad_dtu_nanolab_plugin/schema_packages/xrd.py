@@ -18,6 +18,7 @@
 
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import plotly.graph_objects as go
 from fairmat_readers_xrd import read_rigaku_rasx
 from nomad.datamodel.data import Schema
@@ -25,6 +26,10 @@ from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
+from nomad_measurements.mapping.schema import (
+    MappingResult,
+    RectangularSampleAlignment,
+)
 from nomad_measurements.utils import merge_sections
 from nomad_measurements.xrd.schema import (
     XRayDiffraction,
@@ -36,8 +41,7 @@ from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    MappingMeasurement,
-    MappingResult,
+    DtuNanolabMeasurement,
 )
 
 if TYPE_CHECKING:
@@ -62,7 +66,7 @@ class XRDMappingResult(MappingResult, XRDResult1D):  # , PlotSection
         super().normalize(archive, logger)
 
 
-class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema):
+class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='XRD Measurement',
@@ -79,6 +83,10 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
         section_def=XRDMappingResult,
         description='The XRD results.',
         repeats=True,
+    )
+    sample_alignment = SubSection(
+        section_def=RectangularSampleAlignment,
+        description='The alignment of the sample.',
     )
 
     def plot(self) -> None:
@@ -98,7 +106,7 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
         # Update layout
         fig.update_layout(
             title='XRD Patterns',
-            xaxis_title='2<i>θ</i> / °',
+            xaxis_title='2<i>theta</i> (deg)',
             yaxis_title='Intensity',
             template='plotly_white',
             hovermode='closest',
@@ -125,16 +133,34 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
 
         fig2 = go.Figure()
 
-        result: XRDMappingResult
+        # Pre-calculate log intensities and cumulative offsets
+        log_intensities = []
+        offsets = [0]
+        cumulative_offset = 0
+
+        OFFSET_FACTOR = 0.3  # Factor to control spacing between patterns
+        TT_RANGE = (10, 60)
+
+        for result in self.results:
+            log_intensity = np.log10(np.maximum(result.intensity.magnitude, 1e-10))
+            log_intensities.append(log_intensity)
+
+            # Filter for 2theta range 10-60 degrees for offset calculation
+            two_theta_deg = result.two_theta.to('deg').magnitude
+            mask = (two_theta_deg >= TT_RANGE[0]) & (two_theta_deg <= TT_RANGE[1])
+            log_intensity_filtered = log_intensity[mask]
+
+            cumulative_offset += (
+                log_intensity_filtered.max() - log_intensity_filtered.min()
+            ) * OFFSET_FACTOR
+            offsets.append(cumulative_offset)
+
+        # Add traces with dynamically calculated offsets
         for i, result in enumerate(self.results):
-            offset = result.intensity.magnitude.min()
             fig2.add_trace(
                 go.Scatter(
                     x=result.two_theta.to('deg').magnitude,
-                    y=(
-                        (result.intensity.magnitude + offset * i)
-                        * (i * offset + offset)
-                    ),
+                    y=log_intensities[i] + offsets[i],
                     mode='lines',
                     name=result.name,
                     hoverlabel=dict(namelength=-1),
@@ -144,8 +170,8 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
         # Update layout
         fig2.update_layout(
             title='XRD Patterns stacked',
-            xaxis_title='2<i>θ</i> / °',
-            yaxis_title='Intensity',
+            xaxis_title='2<i>theta</i> (deg)',
+            yaxis_title='Log(Intensity)',
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
@@ -154,7 +180,7 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             ),
             yaxis=dict(
                 fixedrange=False,
-                type='log',
+                type='linear',
             ),
         )
 
@@ -195,6 +221,18 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             scan_type = metadata_dict.get('scan_type', None)
             if scan_type != 'line':
                 logger.error(f'Unsupported scan type: "{scan_type}"')
+            x_coordinates = xrd_dict.get('X')
+            y_coordinates = xrd_dict.get('Y')
+            x_absolute = (
+                x_coordinates[0]
+                if x_coordinates is not None and len(x_coordinates) > 0
+                else 0
+            )
+            y_absolute = (
+                y_coordinates[0]
+                if y_coordinates is not None and len(y_coordinates) > 0
+                else 0
+            )
             result = XRDMappingResult(
                 intensity=xrd_dict.get('intensity', None),
                 two_theta=xrd_dict.get('2Theta', None),
@@ -203,8 +241,8 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
                 phi=xrd_dict.get('Phi', None),
                 scan_axis=metadata_dict.get('scan_axis', None),
                 integration_time=xrd_dict.get('countTime', None),
-                x_absolute=xrd_dict.get('X', None)[0],
-                y_absolute=xrd_dict.get('Y', None)[0],
+                x_absolute=x_absolute,
+                y_absolute=y_absolute,
             )
 
             # fig3 = go.Figure()
@@ -221,7 +259,7 @@ class DTUXRDMeasurement(XRayDiffraction, MappingMeasurement, PlotSection, Schema
             # Update layout
             # fig3.update_layout(
             #    title='XRD Patterns stacked',
-            #    xaxis_title='2<i>θ</i> / °',
+            #    xaxis_title='2<i>theta</i> (deg)',
             #    yaxis_title='Intensity',
             #    template='plotly_white',
             #    hovermode='closest',
