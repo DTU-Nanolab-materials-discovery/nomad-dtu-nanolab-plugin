@@ -31,7 +31,7 @@ Create analysis entries through an ELN form:
 from nomad.client import ArchiveQuery
 from nomad.config import client
 
-analysis_id = "THE_ANALYSIS_ID"
+analysis_id = 'THE_ANALYSIS_ID'
 a_query = ArchiveQuery(
     query={'entry_id:any': [analysis_id]},
     required='*',
