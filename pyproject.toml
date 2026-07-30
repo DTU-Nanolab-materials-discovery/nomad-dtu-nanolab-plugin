@@ -17,10 +17,10 @@ dynamic = ["version"]
 readme = "README.rst"
 requires-python = ">=3.11"
 authors = [
-    { name = "Lena Mittman" },
+    { name = "Lena Mittmann" },
 ]
 maintainers = [
-    { name = "Lena Mittman" },
+    { name = "Lena Mittmann" },
 ]
 license = { file = "LICENSE" }
 dependencies = [
