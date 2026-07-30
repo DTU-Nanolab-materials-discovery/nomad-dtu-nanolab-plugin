@@ -898,6 +898,9 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
         # TODO : add the custom pieces to the plot considering their shapes
 
+        self.add_original_library_to_plot(fig)
+        self.add_pieces_to_plot(fig)
+
         fig.update_layout(
             title='Positions of the new pieces in the library',
             xaxis_title='X (mm)',
@@ -970,6 +973,54 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 showarrow=False,
             )
 
+    def add_pieces_to_plot(self, fig: go.Figure) -> None:
+
+        for piece in self.new_pieces:
+            if piece.part_size is None:
+                continue
+
+            fig.add_shape(
+                type='rect',
+                x0=(
+                    piece.upper_left_x.to('mm').magnitude
+                    + (0.01 * piece.part_size[0].to('mm').magnitude)
+                ),
+                y0=(
+                    piece.upper_left_y.to('mm').magnitude
+                    - (0.01 * piece.part_size[1].to('mm').magnitude)
+                ),
+                x1=(
+                    piece.lower_right_x.to('mm').magnitude
+                    - (0.01 * piece.part_size[0].to('mm').magnitude)
+                ),
+                y1=(
+                    piece.lower_right_y.to('mm').magnitude
+                    + (0.01 * piece.part_size[1].to('mm').magnitude)
+                ),
+                name=piece.library_name,
+                line=dict(color='green'),
+                fillcolor='lightgreen',
+                opacity=0.4,
+            )
+            fig.add_annotation(
+                x=(
+                    (
+                        piece.upper_left_x.to('mm').magnitude
+                        + piece.lower_right_x.to('mm').magnitude
+                    )
+                    / 2
+                ),
+                y=(
+                    (
+                        piece.upper_left_y.to('mm').magnitude
+                        + piece.lower_right_y.to('mm').magnitude
+                    )
+                    / 2
+                ),
+                text=piece.library_name,
+                showarrow=False,
+            )
+
     def plot(self) -> None:
         """
         Plots the positions of the new pieces in the library.
@@ -981,87 +1032,11 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         fig = go.Figure()
         fig.update_layout(shapes=[])
 
-        x0 = -self.library_x_length.to('mm').magnitude / 2
-        y0 = self.library_y_length.to('mm').magnitude / 2
-        x1 = self.library_x_length.to('mm').magnitude / 2
-        y1 = -self.library_y_length.to('mm').magnitude / 2
-
         if self.combinatorial_library is not None:
-            if isinstance(self.combinatorial_library.geometry, Cylinder):
-                fig.add_shape(
-                    type='circle',
-                    x0=x0,
-                    y0=y0,
-                    x1=x1,
-                    y1=y1,
-                    line=dict(color='red', width=3),
-                    fillcolor='white',
-                    opacity=0.5,
-                )
-            elif isinstance(self.combinatorial_library.geometry, RectangleCuboid):
-                fig.add_shape(
-                    type='rect',
-                    x0=x0,
-                    y0=y0,
-                    x1=x1,
-                    y1=y1,
-                    line=dict(color='red', width=3),
-                    fillcolor='white',
-                    opacity=0.5,
-                )
-            fig.add_annotation(
-                x=(x0 + x1) / 2,
-                y=(y0 + y1) / 2,
-                text=self.combinatorial_library.name,
-                showarrow=False,
-            )
+            self.add_original_library_to_plot(fig)
 
-        if self.pattern != 'custom':
-            for piece in self.new_pieces:
-                if piece.part_size is None:
-                    continue
+        self.add_pieces_to_plot(fig)
 
-                fig.add_shape(
-                    type='rect',
-                    x0=(
-                        piece.upper_left_x.to('mm').magnitude
-                        + (0.01 * piece.part_size[0].to('mm').magnitude)
-                    ),
-                    y0=(
-                        piece.upper_left_y.to('mm').magnitude
-                        - (0.01 * piece.part_size[1].to('mm').magnitude)
-                    ),
-                    x1=(
-                        piece.lower_right_x.to('mm').magnitude
-                        - (0.01 * piece.part_size[0].to('mm').magnitude)
-                    ),
-                    y1=(
-                        piece.lower_right_y.to('mm').magnitude
-                        + (0.01 * piece.part_size[1].to('mm').magnitude)
-                    ),
-                    name=piece.library_name,
-                    line=dict(color='green'),
-                    fillcolor='lightgreen',
-                    opacity=0.4,
-                )
-                fig.add_annotation(
-                    x=(
-                        (
-                            piece.upper_left_x.to('mm').magnitude
-                            + piece.lower_right_x.to('mm').magnitude
-                        )
-                        / 2
-                    ),
-                    y=(
-                        (
-                            piece.upper_left_y.to('mm').magnitude
-                            + piece.lower_right_y.to('mm').magnitude
-                        )
-                        / 2
-                    ),
-                    text=piece.library_name,
-                    showarrow=False,
-                )
         fig.update_layout(
             title='Positions of the new pieces in the library',
             xaxis_title='X (mm)',
@@ -1124,8 +1099,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         )
         children = []
 
-        if self.pattern == 'custom':
-            return
         piece: DTULibraryParts
         for piece in self.new_pieces:
             if piece.part_size is None:
