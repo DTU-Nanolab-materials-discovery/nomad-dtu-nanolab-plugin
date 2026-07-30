@@ -78,6 +78,7 @@ class DTUTarget(CompositeSystem, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Target',
+        links=['http://purl.obolibrary.org/obo/OBI_0001879'],
         a_eln=ELNAnnotation(
             properties=SectionProperties(
                 visible=Filter(

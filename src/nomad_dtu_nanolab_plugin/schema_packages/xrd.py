@@ -69,6 +69,7 @@ class XRDMappingResult(MappingResult, XRDResult1D):  # , PlotSection
 class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
+        links=['http://purl.obolibrary.org/obo/CHMO_0001294'],
         label='XRD Measurement',
     )
     data_files = Quantity(
