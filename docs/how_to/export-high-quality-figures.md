@@ -30,7 +30,7 @@ Here's the complete code to enable high-quality exports:
 PLOTLY_CONFIG = {
     'toImageButtonOptions': {
         'format': 'png',  # Export format: 'png' or 'svg'
-        'scale': 10,      # Scale factor (multiplies default resolution)
+        'scale': 10,  # Scale factor (multiplies default resolution)
     }
 }
 
@@ -57,15 +57,10 @@ Create your plot as usual:
 
 ```python
 # Example figure
-fig = go.Figure(data=go.Scatter(
-    x=[1, 2, 3, 4],
-    y=[10, 11, 12, 13]
-))
+fig = go.Figure(data=go.Scatter(x=[1, 2, 3, 4], y=[10, 11, 12, 13]))
 
 fig.update_layout(
-    title="My High-Quality Plot",
-    xaxis_title="X Axis",
-    yaxis_title="Y Axis"
+    title='My High-Quality Plot', xaxis_title='X Axis', yaxis_title='Y Axis'
 )
 ```
 
@@ -76,8 +71,8 @@ fig.update_layout(
 ```python
 PLOTLY_CONFIG = {
     'toImageButtonOptions': {
-        'format': 'png',    # PNG format
-        'scale': 10,        # 10x resolution (very high quality)
+        'format': 'png',  # PNG format
+        'scale': 10,  # 10x resolution (very high quality)
     }
 }
 ```
@@ -87,8 +82,8 @@ PLOTLY_CONFIG = {
 ```python
 PLOTLY_CONFIG = {
     'toImageButtonOptions': {
-        'format': 'svg',    # SVG format (scalable vector)
-        'scale': 1,         # Scale factor (less important for vectors)
+        'format': 'svg',  # SVG format (scalable vector)
+        'scale': 1,  # Scale factor (less important for vectors)
     }
 }
 ```
@@ -157,12 +152,12 @@ PLOTLY_CONFIG = {
     'toImageButtonOptions': {
         'format': 'png',
         'scale': 10,
-        'width': 1920,    # Set explicit width (pixels)
-        'height': 1080,   # Set explicit height (pixels)
+        'width': 1920,  # Set explicit width (pixels)
+        'height': 1080,  # Set explicit height (pixels)
         'filename': 'my_figure',  # Default filename
     },
-    'displayModeBar': True,      # Always show toolbar
-    'displaylogo': False,        # Hide Plotly logo
+    'displayModeBar': True,  # Always show toolbar
+    'displaylogo': False,  # Hide Plotly logo
 }
 ```
 
@@ -324,13 +319,13 @@ pip install kaleido
 
 ```python
 # PNG export
-fig.write_image("figure.png", scale=10)
+fig.write_image('figure.png', scale=10)
 
 # SVG export
-fig.write_image("figure.svg")
+fig.write_image('figure.svg')
 
 # With size specification
-fig.write_image("figure.png", width=1920, height=1080, scale=10)
+fig.write_image('figure.png', width=1920, height=1080, scale=10)
 ```
 
 This bypasses the GUI and generates files directly.
