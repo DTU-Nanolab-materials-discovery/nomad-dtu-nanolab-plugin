@@ -215,6 +215,21 @@ raman = RamanEntryPoint(
 )
 
 
+class PointMeasurementEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.pointmeasurement import (
+            m_package,
+        )
+
+        return m_package
+
+
+point_measurement = PointMeasurementEntryPoint(
+    name='PointMeasurement',
+    description='Schema package defined for point measurements.',
+)
+
+
 class SampleEntryPoint(SchemaPackageEntryPoint):
     def load(self):
         from nomad_dtu_nanolab_plugin.schema_packages.sample import m_package
@@ -238,4 +253,17 @@ class AnalysisEntryPoint(SchemaPackageEntryPoint):
 analysis = AnalysisEntryPoint(
     name='Analysis',
     description='Schema package defined for analysis.',
+)
+
+
+class EvaporationMaterialEntryPoint(SchemaPackageEntryPoint):
+    def load(self):
+        from nomad_dtu_nanolab_plugin.schema_packages.evaporation import m_package
+
+        return m_package
+
+
+evaporation = EvaporationMaterialEntryPoint(
+    name='Evaporation Material',
+    description='Schema package defined for evaporation materials.',
 )
