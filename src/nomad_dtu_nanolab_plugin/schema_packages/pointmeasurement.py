@@ -30,6 +30,7 @@ class PointMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Point measurements',
+        links=['http://purl.obolibrary.org/obo/OBI_0000443'],
         a_eln=ELNAnnotation(
             properties=SectionProperties(
                 order=[

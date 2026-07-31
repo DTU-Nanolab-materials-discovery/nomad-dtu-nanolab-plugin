@@ -113,6 +113,7 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
     m_def = Section(
         categories=[DTUNanolabCategory],
+        links=['http://purl.obolibrary.org/obo/CHMO_0000823'],
         label='Raman Measurement',
     )
     raman_data_file = Quantity(

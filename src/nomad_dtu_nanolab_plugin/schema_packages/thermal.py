@@ -10,6 +10,7 @@ m_package = Package()
 class DtuThermalEvaporation(ThermalEvaporation, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
+        links=['http://purl.obolibrary.org/obo/CHMO_0002330'],
         label='Bell Jar Evaporator',
     )
 
