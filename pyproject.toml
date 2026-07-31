@@ -17,10 +17,10 @@ dynamic = ["version"]
 readme = "README.rst"
 requires-python = ">=3.11"
 authors = [
-    { name = "Lena Mittman" },
+    { name = "Lena Mittmann" },
 ]
 maintainers = [
-    { name = "Lena Mittman" },
+    { name = "Lena Mittmann" },
 ]
 license = { file = "LICENSE" }
 dependencies = [
@@ -165,3 +165,4 @@ sample = "nomad_dtu_nanolab_plugin.schema_packages:sample"
 basesections = "nomad_dtu_nanolab_plugin.schema_packages:basesections"
 analysis = "nomad_dtu_nanolab_plugin.schema_packages:analysis"
 evaporationMaterial = "nomad_dtu_nanolab_plugin.schema_packages:evaporation"
+measurement = "nomad_dtu_nanolab_plugin.schema_packages:point_measurement"

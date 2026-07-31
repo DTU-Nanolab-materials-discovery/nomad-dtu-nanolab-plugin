@@ -590,6 +590,10 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
 class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
+        links=[
+            'http://purl.obolibrary.org/obo/CHMO_0002622',
+            'http://purl.obolibrary.org/obo/CHMO_0000939',
+        ],
         label='RT Measurement',
     )
 

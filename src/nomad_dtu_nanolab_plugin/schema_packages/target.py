@@ -78,6 +78,7 @@ class DTUTarget(CompositeSystem, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Target',
+        links=['http://purl.obolibrary.org/obo/OBI_0001879'],
         a_eln=ELNAnnotation(
             properties=SectionProperties(
                 visible=Filter(
@@ -202,20 +203,15 @@ class DTUTarget(CompositeSystem, Schema):
         repeats=True,
     )
 
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+    def set_default(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `DTUTargets` class.
+        Sets default values for the `DTUTarget` class.
 
         Args:
             archive (EntryArchive): The archive containing the section that is being
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-
-        if self.impurity_file is None:
-            logger.warning('Missing impurity file')
-            return super().normalize(archive, logger)
-
         # Set default values for thickness and total_thickness based on bonded
         default_total_thickness = 0.00635
         default_thickness_bonded = 0.00335
@@ -236,6 +232,22 @@ class DTUTarget(CompositeSystem, Schema):
                 self.total_thickness = default_total_thickness
             # Ensure thickness equals total_thickness
             self.thickness = self.total_thickness
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `DTUTargets` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+
+        if self.impurity_file is None:
+            logger.warning('Missing impurity file')
+            return super().normalize(archive, logger)
+
+        self.set_default(archive, logger)
 
         file_name: str = os.path.basename(self.impurity_file)
         file_info_list = os.path.splitext(file_name)[0].split('_')
