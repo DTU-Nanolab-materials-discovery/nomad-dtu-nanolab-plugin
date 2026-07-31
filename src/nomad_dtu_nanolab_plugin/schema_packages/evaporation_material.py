@@ -93,8 +93,9 @@ class DTUEvaporationMaterial(CompositeSystem, Schema):
                     'purity',
                     'impurity_file',
                     'datetime',
-                    'refill_or_mounting_date',
-                    'time_used',
+                    'used_amount',
+                    'initial_amount',
+                    'stored_in_glovebox',
                     'description',
                     'main_phases',
                     'impurities',
@@ -134,22 +135,38 @@ class DTUEvaporationMaterial(CompositeSystem, Schema):
         """,
         a_eln=ELNAnnotation(component=ELNComponentEnum.FileEditQuantity),
     )
-    refill_or_mounting_date = Quantity(
-        type=Datetime,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.DateEditQuantity),
-    )
-    time_used = Quantity(
+    used_amount = Quantity(
         type=np.float64,
-        description='The time the evaporation material has been used in the system',
+        description='The amount of evaporation material that has been used',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='minute',
+            defaultDisplayUnit='g',
+            label='Used amount',
         ),
-        unit='s',
+        unit='g',
+    )
+    initial_amount = Quantity(
+        type=np.float64,
+        description='The initial amount of evaporation material supplied',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='g',
+            label='Initial amount (g)',
+        ),
+        unit='g',
+    )
+    stored_in_glovebox = Quantity(
+        type=bool,
+        default=False,
+        description='Whether the material is stored in the glovebox',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+            label='Stored in glovebox',
+        ),
     )
     datetime = Quantity(
         type=Datetime,
-        description='The delivery date of the material.',
+        description='The delivery date of the material',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.DateEditQuantity,
             label='Delivery date',
