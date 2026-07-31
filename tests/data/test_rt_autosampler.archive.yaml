@@ -1,0 +1,4 @@
+data:
+  m_def: nomad_dtu_nanolab_plugin.schema_packages.rt.DtuAutosamplerMeasurement
+  data_file: anat_eugbe_251105_data.csv
+  config_file: anat_eugbe_251105_grid.csv

@@ -6,6 +6,7 @@ from nomad.client import normalize_all, parse
 from nomad_dtu_nanolab_plugin.schema_packages.target import DTUTarget
 
 
+@pytest.mark.usefixtures('caplog')
 def test_target():
     test_file = os.path.join('tests', 'data', 'test_target.archive.yaml')
     entry_archive = parse(test_file)[0]
