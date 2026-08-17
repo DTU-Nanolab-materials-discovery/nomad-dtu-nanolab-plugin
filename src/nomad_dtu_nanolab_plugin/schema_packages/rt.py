@@ -1,4 +1,5 @@
 import os
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -459,6 +460,35 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
 
             measurements: list[ExperimentStep] = []
 
+            def _resolve_library_folder(library_lab_id: str) -> str:
+                default_folder = str(PurePosixPath(archive.metadata.mainfile).parent)
+                sample_ref = CompositeSystemReference(lab_id=library_lab_id)
+                library = getattr(sample_ref, 'reference', None)
+                if library is None:
+                    logger.warning(
+                        f'Could not resolve library reference for {library_lab_id}; '
+                        'writing RTMeasurement in current entry folder.'
+                    )
+                    return default_folder
+
+                library_ctx = getattr(library, 'm_context', None)
+                if library_ctx is None or not hasattr(library_ctx, 'raw_path'):
+                    logger.warning(
+                        f'Could not access context for library {library_lab_id}; '
+                        'writing RTMeasurement in current entry folder.'
+                    )
+                    return default_folder
+
+                try:
+                    library_mainfile = library_ctx.raw_path()
+                    return str(PurePosixPath(library_mainfile).parent)
+                except Exception:
+                    logger.warning(
+                        f'Failed to resolve folder from library {library_lab_id}; '
+                        'writing RTMeasurement in current entry folder.'
+                    )
+                    return default_folder
+
             # Create a measurement archive for each library
             for library_id, position_data in library_data.items():
                 # Skip baseline samples (we might not to skip it in the future)
@@ -558,11 +588,19 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
                 # Link to sample using lab_id (optional - can be set manually later)
                 measurement.samples = [CompositeSystemReference(lab_id=library_id)]
 
+                target_folder = _resolve_library_folder(library_id)
+                measurement_filename = (
+                    f'{library_id}_rt_measurement_{datetime_label}.archive.json'
+                )
+                measurement_mainfile = str(
+                    PurePosixPath(target_folder) / measurement_filename
+                )
+
                 # Create archive file for this measurement with datetime identifier
                 measurement_ref = create_archive(
                     measurement,
                     archive,
-                    f'{library_id}_rt_measurement_{datetime_label}.archive.json',
+                    measurement_mainfile,
                 )
 
                 measurements.append(
