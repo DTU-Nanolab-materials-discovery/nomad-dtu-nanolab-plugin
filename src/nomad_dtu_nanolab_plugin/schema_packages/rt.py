@@ -255,6 +255,16 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
         ),
     )
 
+    detector_slit = Quantity(
+        type=MEnum('None (open)', '1°', '2°'),
+        default='None (open)',
+        description='Detector slit used during the measurement.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            label='Detector slit',
+        ),
+    )
+
     def plot_grid(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         Create an interactive Plotly visualization of the autosampler measurement grid.
@@ -518,6 +528,7 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
                     vertical_back_slit=self.vertical_back_slit,
                     vertical_front_slit=self.vertical_front_slit,
                     horizontal_slit=self.horizontal_slit,
+                    detector_slit=self.detector_slit,
                 )
 
                 # Create results for each position
@@ -694,6 +705,16 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='deg',
             label='Horizontal slit',
+        ),
+    )
+
+    detector_slit = Quantity(
+        type=MEnum('None (open)', '1°', '2°'),
+        default='None (open)',
+        description='Detector slit used during the measurement.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            label='Detector slit',
         ),
     )
 
