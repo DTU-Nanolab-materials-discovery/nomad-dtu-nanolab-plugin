@@ -105,7 +105,10 @@ def test_mapping_schema(test_file, expected_result_count, expected_names):
 
 
 def test_resolve_library_folder_uses_lab_id_search(monkeypatch):
-    """The autosampler should resolve library folders using the same direct lab-id search as the notebook."""
+    """
+    The autosampler should resolve library folders
+    using the same direct lab-id search as the notebook.
+    """
     archive = SimpleNamespace(
         metadata=SimpleNamespace(
             mainfile='uploads/123/archive/current.archive.json',
@@ -132,7 +135,9 @@ def test_resolve_library_folder_uses_lab_id_search(monkeypatch):
         lambda page_size=1: SimpleNamespace(page_size=page_size),
     )
 
-    folder = rt_module.resolve_library_folder(archive, __import__('logging').getLogger('test'), 'indiogo_0020_Sn_G')
+    folder = rt_module.resolve_library_folder(
+        archive, __import__('logging').getLogger('test'), 'indiogo_0020_Sn_G'
+    )
 
     assert folder == '../uploads/upload-456/archive'
 

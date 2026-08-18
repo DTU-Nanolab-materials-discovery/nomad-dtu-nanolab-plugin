@@ -57,10 +57,6 @@ def _resolve_library_target(
         if main_author is not None:
             user_id = getattr(main_author, 'user_id', None)
 
-        logger.debug(
-            'Querying NOMAD for library lab_id=%s using explicit search lookup.',
-            library_lab_id,
-        )
         search_result = search(
             owner='all',
             query={'results.eln.lab_ids': library_lab_id},
@@ -94,9 +90,7 @@ def _resolve_library_target(
             target_folder = str(PurePosixPath(library_mainfile).parent)
         else:
             try:
-                installation_url = getattr(
-                    archive.m_context, 'installation_url', None
-                )
+                installation_url = getattr(archive.m_context, 'installation_url', None)
                 target_archive = archive.m_context.load_archive(
                     entry_id, upload_id, installation_url
                 )
@@ -104,7 +98,8 @@ def _resolve_library_target(
                 if target_mainfile:
                     target_folder = str(PurePosixPath(target_mainfile).parent)
             except Exception:
-                # Fall back to root-level write in target upload if mainfile lookup fails.
+                # Fall back to root-level write in
+                # target upload if mainfile lookup fails.
                 target_folder = ''
 
         archive_reference_folder = str(
@@ -741,12 +736,6 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
                         measurement_mainfile,
                         target_upload_id,
                     )
-                logger.debug(
-                    'Created RTMeasurement archive for %s at mainfile=%s (archive folder ref=%s)',
-                    library_id,
-                    measurement_mainfile,
-                    archive_folder,
-                )
 
                 measurements.append(
                     ExperimentStep(
