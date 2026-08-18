@@ -36,6 +36,87 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU RT measurement schema')
 
 
+def resolve_library_folder(
+    archive: 'EntryArchive', logger: 'BoundLogger', library_lab_id: str
+) -> str:
+    """Resolve the folder for a library using the same explicit lab-id query as the
+    notebook analysis.
+
+    This avoids relying on a lazily populated ``CompositeSystemReference.reference``
+    that may not yet be normalized in the active processing context.
+    """
+    default_folder = str(PurePosixPath(archive.metadata.mainfile).parent)
+
+    try:
+        from nomad.search import MetadataPagination, search
+
+        user_id = None
+        main_author = getattr(archive.metadata, 'main_author', None)
+        if main_author is not None:
+            user_id = getattr(main_author, 'user_id', None)
+
+        logger.debug(
+            'Querying NOMAD for library lab_id=%s using explicit search lookup.',
+            library_lab_id,
+        )
+        search_result = search(
+            owner='all',
+            query={'results.eln.lab_ids': library_lab_id},
+            pagination=MetadataPagination(page_size=1),
+            user_id=user_id,
+        )
+        if search_result.pagination.total > 0:
+            entry = search_result.data[0]
+            upload_id = entry.get('upload_id')
+            entry_id = entry.get('entry_id')
+            current_upload_id = getattr(archive.metadata, 'upload_id', None)
+            if upload_id and entry_id:
+                if current_upload_id and upload_id == current_upload_id:
+                    library_folder = str(
+                        PurePosixPath('..') / 'uploads' / upload_id / 'archive'
+                    )
+                    logger.debug(
+                        'Resolved library %s to folder=%s via query result entry_id=%s',
+                        library_lab_id,
+                        library_folder,
+                        entry_id,
+                    )
+                    return library_folder
+
+                logger.warning(
+                    'Library %s was found in upload %s, but this current archive is in '
+                    'upload %s; NOMAD cannot create an RTMeasurement archive outside '
+                    'the current upload. Writing RTMeasurement in the current entry '
+                    'folder instead.',
+                    library_lab_id,
+                    upload_id,
+                    current_upload_id,
+                )
+                return default_folder
+            logger.warning(
+                'Library %s matched search result but missing upload_id or entry_id; '
+                'writing RTMeasurement in the current entry folder.',
+                library_lab_id,
+            )
+            return default_folder
+
+        logger.warning(
+            'Could not resolve library reference for %s via direct lab_id search; '
+            'writing RTMeasurement in current entry folder.',
+            library_lab_id,
+        )
+        return default_folder
+    except Exception as exc:  # pragma: no cover - defensive logging only
+        logger.warning(
+            'Failed to resolve library %s via explicit lab_id search; writing '
+            'RTMeasurement in current entry folder. Details: %s',
+            library_lab_id,
+            exc,
+            exc_info=True,
+        )
+        return default_folder
+
+
 class RTSpectrum(ArchiveSection):
     """
     A single reflection or transmission spectrum measured at a specific configuration.
@@ -471,33 +552,7 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
             measurements: list[ExperimentStep] = []
 
             def _resolve_library_folder(library_lab_id: str) -> str:
-                default_folder = str(PurePosixPath(archive.metadata.mainfile).parent)
-                sample_ref = CompositeSystemReference(lab_id=library_lab_id)
-                library = getattr(sample_ref, 'reference', None)
-                if library is None:
-                    logger.warning(
-                        f'Could not resolve library reference for {library_lab_id}; '
-                        'writing RTMeasurement in current entry folder.'
-                    )
-                    return default_folder
-
-                library_ctx = getattr(library, 'm_context', None)
-                if library_ctx is None or not hasattr(library_ctx, 'raw_path'):
-                    logger.warning(
-                        f'Could not access context for library {library_lab_id}; '
-                        'writing RTMeasurement in current entry folder.'
-                    )
-                    return default_folder
-
-                try:
-                    library_mainfile = library_ctx.raw_path()
-                    return str(PurePosixPath(library_mainfile).parent)
-                except Exception:
-                    logger.warning(
-                        f'Failed to resolve folder from library {library_lab_id}; '
-                        'writing RTMeasurement in current entry folder.'
-                    )
-                    return default_folder
+                return resolve_library_folder(archive, logger, library_lab_id)
 
             # Create a measurement archive for each library
             for library_id, position_data in library_data.items():
