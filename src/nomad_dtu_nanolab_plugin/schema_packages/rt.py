@@ -1081,7 +1081,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             try:
                 files = (
                     self.data_file
-                    if isinstance(self.data_file, (list, tuple))
+                    if isinstance(self.data_file, list | tuple)
                     else [self.data_file]
                 )
 
@@ -1100,7 +1100,9 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
                     for single_meas in collects:
                         if collection_time is None:
-                            collection_time = single_meas.metadata.get('Collection Time')
+                            collection_time = single_meas.metadata.get(
+                                'Collection Time'
+                            )
                         meas_type = single_meas.metadata.get(
                             'MeasurementType', 'Unknown'
                         )
@@ -1161,7 +1163,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     if self.data_file:
                         first_file = (
                             self.data_file[0]
-                            if isinstance(self.data_file, (list, tuple))
+                            if isinstance(self.data_file, list | tuple)
                             else self.data_file
                         )
                         result_name = os.path.splitext(os.path.basename(first_file))[0]
@@ -1190,7 +1192,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if self.data_file:
             first_file = (
                 self.data_file[0]
-                if isinstance(self.data_file, (list, tuple))
+                if isinstance(self.data_file, list | tuple)
                 else self.data_file
             )
             self.add_sample_reference(first_file, 'RT', archive, logger)

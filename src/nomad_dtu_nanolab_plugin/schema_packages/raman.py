@@ -30,7 +30,7 @@ License: See LICENSE file
 """
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -59,6 +59,8 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 m_package = Package(name='DTU Raman measurement schema')
+MIN_ORIGIN_FIELDS = 5
+MIN_VALID_FILETIME = 1e14
 
 
 def _extract_raman_datetime(
@@ -69,7 +71,7 @@ def _extract_raman_datetime(
         origin_list_header = getattr(reader, 'origin_list_header', None)
         if origin_list_header:
             for origin in origin_list_header:
-                if len(origin) < 5:
+                if len(origin) < MIN_ORIGIN_FIELDS:
                     continue
                 label = str(origin[3]).lower()
                 unit = str(origin[2]).lower()
@@ -82,15 +84,15 @@ def _extract_raman_datetime(
                     # Only trust clearly valid absolute Windows FILETIME values.
                     # Relative/zero-based sequences are ignored so the default
                     # behavior remains the uploaded file timestamp.
-                    if filetime >= 1e14:
-                        windows_epoch = datetime(1601, 1, 1, tzinfo=timezone.utc)
+                    if filetime >= MIN_VALID_FILETIME:
+                        windows_epoch = datetime(1601, 1, 1, tzinfo=UTC)
                         return windows_epoch + timedelta(microseconds=filetime / 10)
 
     try:
         stat = os.stat(file_path)
     except OSError:
         return None
-    return datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+    return datetime.fromtimestamp(stat.st_mtime, tz=UTC)
 
 
 class RamanResult(MappingResult):

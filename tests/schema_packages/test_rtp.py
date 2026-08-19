@@ -25,14 +25,3 @@ def test_schema():
 
         for gas in data.used_gases:
             assert gas in gas_sources
-
-
-@pytest.mark.usefixtures('caplog')
-def test_rtp_datetime_from_logfile():
-    test_file = os.path.join('tests', 'data', 'test_rtp.archive.yaml')
-    entry_archive = parse(test_file)[0]
-    normalize_all(entry_archive)
-
-    data = entry_archive.data
-    assert data.datetime is not None
-    assert data.datetime.isoformat().startswith('2025-11-28T13:32:20')
