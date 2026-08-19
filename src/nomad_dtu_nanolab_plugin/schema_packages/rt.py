@@ -2,6 +2,7 @@ import os
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 from nomad.datamodel.data import ArchiveSection, Schema
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
@@ -33,6 +34,14 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 m_package = Package(name='DTU RT measurement schema')
+
+
+def _coerce_datetime(value):
+    if value is None:
+        return None
+    if isinstance(value, pd.Timestamp):
+        return value.to_pydatetime()
+    return value
 
 
 class RTSpectrum(ArchiveSection):
@@ -488,6 +497,7 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
                     vertical_back_slit=self.vertical_back_slit,
                     vertical_front_slit=self.vertical_front_slit,
                     horizontal_slit=self.horizontal_slit,
+                    datetime=_coerce_datetime(collection_time),
                 )
 
                 # Create results for each position
@@ -1071,12 +1081,13 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             try:
                 files = (
                     self.data_file
-                    if isinstance(self.data_file, (list, tuple))
+                    if isinstance(self.data_file, list | tuple)
                     else [self.data_file]
                 )
 
                 spectra_all = []
                 any_angle_meta = False
+                collection_time = None
 
                 for f in files:
                     with archive.m_context.raw_file(f) as rf:
@@ -1088,6 +1099,10 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                         )
 
                     for single_meas in collects:
+                        if collection_time is None:
+                            collection_time = single_meas.metadata.get(
+                                'Collection Time'
+                            )
                         meas_type = single_meas.metadata.get(
                             'MeasurementType', 'Unknown'
                         )
@@ -1148,7 +1163,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     if self.data_file:
                         first_file = (
                             self.data_file[0]
-                            if isinstance(self.data_file, (list, tuple))
+                            if isinstance(self.data_file, list | tuple)
                             else self.data_file
                         )
                         result_name = os.path.splitext(os.path.basename(first_file))[0]
@@ -1159,6 +1174,8 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     result.y_absolute = 0 * ureg('mm')
 
                     self.results = [result]
+                    if collection_time is not None:
+                        self.datetime = _coerce_datetime(collection_time)
 
                     # If accessory not set, infer from presence of angles
                     if getattr(self, 'accessory', None) in (None, 'None'):
@@ -1175,7 +1192,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if self.data_file:
             first_file = (
                 self.data_file[0]
-                if isinstance(self.data_file, (list, tuple))
+                if isinstance(self.data_file, list | tuple)
                 else self.data_file
             )
             self.add_sample_reference(first_file, 'RT', archive, logger)

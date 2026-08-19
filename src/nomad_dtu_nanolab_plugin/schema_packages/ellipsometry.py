@@ -569,7 +569,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             return None
 
         if (
-            not isinstance(parsed, (tuple, list))
+            not isinstance(parsed, tuple | list)
             or len(parsed) < MIN_POSITION_TUPLE_LENGTH
         ):
             logger.warning(f'Invalid position format: {pos_str}')

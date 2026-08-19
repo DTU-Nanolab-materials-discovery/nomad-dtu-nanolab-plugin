@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -49,6 +50,21 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 m_package = Package(name='DTU XRD measurement schema')
+
+
+def _extract_xrd_datetime(metadata_dict: dict[str, Any]) -> datetime | None:
+    for key in ('start_time', 'StartTime', 'startTime'):
+        value = metadata_dict.get(key)
+        if value:
+            if isinstance(value, datetime):
+                return value
+            if isinstance(value, str):
+                normalized = value.replace('Z', '+00:00')
+                try:
+                    return datetime.fromisoformat(normalized)
+                except ValueError:
+                    continue
+    return None
 
 
 class XRDMappingResult(MappingResult, XRDResult1D):  # , PlotSection
@@ -289,6 +305,10 @@ class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Sch
             # )
             result.normalize(archive, logger)
             results.append(result)
+
+            measurement_datetime = _extract_xrd_datetime(metadata_dict)
+            if measurement_datetime is not None:
+                self.datetime = measurement_datetime
 
         source = XRayTubeSource(
             xray_tube_material=source_dict.get('anode_material', None),

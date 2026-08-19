@@ -127,6 +127,8 @@ class ParsedRTPData:
     steps: list[ParsedRTPStep]
     # Plot-ready SI-unit timeseries exported from the merged process dataframe.
     timeseries: dict[str, list[float]]
+    # Absolute process start time taken from the native log timestamps.
+    start_datetime: object | None = None
     # Flag indicating whether a main annealing step could be identified.
     has_detected_annealing: bool = False
 
@@ -154,6 +156,7 @@ def _empty_result() -> ParsedRTPData:
         },
         steps=[],
         timeseries={},
+        start_datetime=None,
         has_detected_annealing=False,
     )
 
@@ -2335,6 +2338,9 @@ def parse_rtp_logfiles(
             overview=overview,
             steps=steps,
             timeseries=timeseries,
+            start_datetime=process_df['timestamp'].iloc[0]
+            if 'timestamp' in process_df and not process_df.empty
+            else None,
             has_detected_annealing=has_detected_annealing,
         )
     except Exception as e:
