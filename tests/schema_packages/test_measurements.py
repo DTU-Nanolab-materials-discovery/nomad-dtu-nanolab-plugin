@@ -142,3 +142,33 @@ def test_rt_autosampler_schema():
         assert expected_name in step_library_names, (
             f'Expected library {expected_name} not found in steps'
         )
+
+
+def test_xrd_datetime_from_native_file():
+    entry_archive = parse(os.path.join('tests', 'data', 'test_xrd.archive.yaml'))[0]
+    normalize_all(entry_archive)
+
+    assert entry_archive.data.datetime is not None
+    assert entry_archive.data.datetime.isoformat().startswith('2024-02-19T09:05:47')
+
+
+def test_rt_autosampler_datetime_from_native_file():
+    entry_archive = parse(
+        os.path.join('tests', 'data', 'test_rt_autosampler.archive.yaml')
+    )[0]
+    normalize_all(entry_archive)
+
+    datetimes = []
+    for step in entry_archive.data.steps:
+        measurement = step.activity.reference
+        datetimes.append(measurement.datetime)
+
+    assert all(dt is not None for dt in datetimes)
+    assert any(dt.isoformat().startswith('2025-11-05T19:04:08') for dt in datetimes)
+
+
+def test_raman_datetime_from_native_file():
+    entry_archive = parse(os.path.join('tests', 'data', 'test_raman.archive.yaml'))[0]
+    normalize_all(entry_archive)
+
+    assert entry_archive.data.datetime is not None

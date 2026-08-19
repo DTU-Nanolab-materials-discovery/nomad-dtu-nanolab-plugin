@@ -2485,6 +2485,12 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         # Store timeseries for plotting.
         ts = parsed.timeseries or {}
 
+        if parsed.start_datetime is not None:
+            start_datetime = parsed.start_datetime
+            if hasattr(start_datetime, 'to_pydatetime'):
+                start_datetime = start_datetime.to_pydatetime()
+            self.datetime = start_datetime
+
         # Save parsed time axis.
         if overwrite or not getattr(self, '_log_time_s', []):
             self._log_time_s = ts.get('time_s', [])
