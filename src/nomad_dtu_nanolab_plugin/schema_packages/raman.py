@@ -79,7 +79,10 @@ def _extract_raman_datetime(
                         filetime = float(values[0])
                     except (TypeError, ValueError):
                         continue
-                    if filetime > 0:
+                    # Only trust clearly valid absolute Windows FILETIME values.
+                    # Relative/zero-based sequences are ignored so the default
+                    # behavior remains the uploaded file timestamp.
+                    if filetime >= 1e14:
                         windows_epoch = datetime(1601, 1, 1, tzinfo=timezone.utc)
                         return windows_epoch + timedelta(microseconds=filetime / 10)
 
