@@ -83,7 +83,19 @@ class SampleProperty(ArchiveSection):
     )
     confidence = Quantity(
         type=int,
-        description='The confidence level of the sample property from 1 to 5.',
+        description=(
+            'A relative confidence level for the sample property: '
+            '1 = very low confidence, based mainly on assumptions or weak evidence; '
+            '2 = low confidence, based on limited or indirect evidence; '
+            '3 = moderate confidence, supported by reasonable evidence or agreement '
+            'between methods; '
+            '4 = high confidence, supported by reproducible or well-established '
+            'measurements; '
+            '5 = highest confidence, based on a direct measurement or a highly '
+            'trusted measurement. '
+            'The scale is relative and should be interpreted in the context of the '
+            'material property and available evidence.'
+        ),
     )
     description = Quantity(
         type=str,
