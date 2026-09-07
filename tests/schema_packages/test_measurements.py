@@ -1,7 +1,11 @@
 import os.path
+from types import SimpleNamespace
 
 import pytest
+from nomad import search as nomad_search
 from nomad.client import normalize_all, parse
+
+import nomad_dtu_nanolab_plugin.schema_packages.rt as rt_module
 
 """
 Names can be generated from the test file by running the following command:
@@ -98,6 +102,44 @@ def test_mapping_schema(test_file, expected_result_count, expected_names):
 
     for result in entry_archive.data.results:
         assert result.name in expected_names
+
+
+def test_resolve_library_folder_uses_lab_id_search(monkeypatch):
+    """
+    The autosampler should resolve library folders
+    using the same direct lab-id search as the notebook.
+    """
+    archive = SimpleNamespace(
+        metadata=SimpleNamespace(
+            mainfile='uploads/123/archive/current.archive.json',
+            upload_id='upload-456',
+            main_author=SimpleNamespace(user_id='user-1'),
+        )
+    )
+
+    class FakeSearchResult:
+        class Pagination:
+            total = 1
+
+        pagination = Pagination()
+        data = [{'upload_id': 'upload-456', 'entry_id': 'entry-789'}]
+
+    monkeypatch.setattr(
+        nomad_search,
+        'search',
+        lambda **kwargs: FakeSearchResult(),
+    )
+    monkeypatch.setattr(
+        nomad_search,
+        'MetadataPagination',
+        lambda page_size=1: SimpleNamespace(page_size=page_size),
+    )
+
+    folder = rt_module.resolve_library_folder(
+        archive, __import__('logging').getLogger('test'), 'indiogo_0020_Sn_G'
+    )
+
+    assert folder == '../uploads/upload-456/archive'
 
 
 def test_rt_autosampler_schema():
