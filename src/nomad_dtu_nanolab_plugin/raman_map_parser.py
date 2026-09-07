@@ -365,17 +365,34 @@ class MappingRamanMeas:
 
         return images
 
-    def save_optical_images(self, folder, filename_prefix, verbose=False):
-        """Save all optical microscopy images to disk as PNG files.
+    def save_optical_images(
+        self, folder=None, filename_prefix='', verbose=False, write_func=None
+    ):
+        """Save all optical microscopy images as PNG files.
 
         Exports optical images from all measurement points to individual PNG files
         with filenames encoding the position information.
 
+        Two modes of operation are supported:
+            - Disk mode (default): images are written directly to `folder` using
+              `PIL.Image.save()`. Useful for standalone/local usage.
+            - Callback mode: if `write_func` is provided, each image is encoded to
+              PNG bytes in memory and handed to `write_func(filename, data)`
+              instead of being written to disk directly. This allows the caller
+              (e.g. the NOMAD schema parser) to persist the bytes through the
+              proper upload/raw-file API rather than through raw OS paths, which
+              is required for images to end up in the upload's raw file storage.
+
         Args:
-            folder (str): Directory path where images will be saved.
+            folder (str, optional): Directory path where images will be saved.
+                Required when `write_func` is not given. Defaults to None.
             filename_prefix (str): Prefix for image filenames (typically sample ID).
             verbose (bool, optional): If True, prints save statistics.
                 Defaults to False.
+            write_func (callable, optional): Callback of the form
+                `write_func(filename: str, data: bytes) -> None` used to persist
+                the PNG-encoded image bytes instead of writing to `folder`
+                directly. Defaults to None.
 
         Returns:
             tuple[int, list[str or None]]:
@@ -397,6 +414,7 @@ class MappingRamanMeas:
             >>> print(filenames[0])
             'sample_001_point0_x2000_y5000.png'
         """
+        import io
 
         saved_count = 0
         saved_filenames = []
@@ -406,15 +424,21 @@ class MappingRamanMeas:
                     f'{filename_prefix}_point{i}_'
                     f'x{raman_meas.x_pos:.0f}_y{raman_meas.y_pos:.0f}.png'
                 )
-                img_path = os.path.join(folder, filename)
-                raman_meas.image.save(img_path)
+                if write_func is not None:
+                    buffer = io.BytesIO()
+                    raman_meas.image.save(buffer, format='PNG')
+                    write_func(filename, buffer.getvalue())
+                else:
+                    img_path = os.path.join(folder, filename)
+                    raman_meas.image.save(img_path)
                 saved_count += 1
                 saved_filenames.append(filename)
             else:
                 saved_filenames.append(None)
 
         if verbose:
-            print(f'Saved {saved_count} optical images to {folder}')
+            destination = 'via write_func' if write_func is not None else folder
+            print(f'Saved {saved_count} optical images to {destination}')
         return saved_count, saved_filenames
 
     def normalize_intensity(self, x_range: tuple = None, verbose=False):
@@ -779,7 +803,14 @@ class MappingRamanMeas:
 
         return fig
 
-    def create_image_grid(self, save_path=None, spacing=(-0.4, 0.1), verbose=False):
+    def create_image_grid(
+        self,
+        save_path=None,
+        spacing=(-0.4, 0.1),
+        verbose=False,
+        write_func=None,
+        filename=None,
+    ):
         """Create matplotlib grid displaying all optical microscopy images.
 
         Arranges optical images from all measurement points into a grid layout,
@@ -787,13 +818,21 @@ class MappingRamanMeas:
         Useful for visual inspection and correlation with Raman data.
 
         Args:
-            save_path (str, optional): File path to save the grid image (PNG format).
-                If None, grid is not saved to disk. Defaults to None.
+            save_path (str, optional): File path to save the grid image (PNG format)
+                directly to disk. Ignored if `write_func` is provided.
+                If neither is given, grid is not saved. Defaults to None.
             spacing (tuple[float, float], optional): Vertical and horizontal spacing
                 between subplots as (hspace, wspace). Negative values create overlap.
                 Defaults to (-0.4, 0.1).
             verbose (bool, optional): If True, prints status messages.
                 Defaults to False.
+            write_func (callable, optional): Callback of the form
+                `write_func(filename: str, data: bytes) -> None` used to persist
+                the PNG-encoded grid image bytes instead of writing to `save_path`
+                directly. Required together with `filename` when the caller needs
+                to save through NOMAD's upload/raw-file API. Defaults to None.
+            filename (str, optional): Filename to pass to `write_func`. Required
+                if `write_func` is provided. Defaults to None.
 
         Returns:
             matplotlib.figure.Figure or None:
@@ -825,6 +864,8 @@ class MappingRamanMeas:
             >>> if fig is None:
             ...     print("No optical images in this dataset")
         """
+        import io
+
         import matplotlib.pyplot as plt
         from matplotlib.gridspec import GridSpec
 
@@ -863,7 +904,13 @@ class MappingRamanMeas:
         # plt.suptitle('Optical Images at Each Raman Measurement Point',
         #            fontsize=14, fontweight='bold')
 
-        if save_path:
+        if write_func is not None:
+            if not filename:
+                raise ValueError('filename is required when write_func is provided')
+            buffer = io.BytesIO()
+            fig.savefig(buffer, format='png', dpi=150, bbox_inches='tight')
+            write_func(filename, buffer.getvalue())
+        elif save_path:
             plt.savefig(save_path, dpi=150, bbox_inches='tight')
 
         return fig
