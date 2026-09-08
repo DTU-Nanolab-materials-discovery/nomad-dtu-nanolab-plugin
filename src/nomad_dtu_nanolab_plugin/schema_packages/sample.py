@@ -233,6 +233,34 @@ class Thickness(SampleProperty):
     )
 
 
+class RefractiveIndex(SampleProperty):
+    """
+    A single scalar refractive index value, technique-agnostic.
+
+    Use this for a single value that does not amount to a full dispersion
+    spectrum, e.g. the extrapolated high-frequency/IR-limit (sub-bandgap,
+    lambda -> infinity) refractive index obtained from a Cauchy or Sellmeier
+    dispersion fit, or a single-wavelength value reported by any optical
+    technique. For a full n(lambda)/k(lambda) spectrum from a genuine
+    ellipsometry measurement, use EllipsometryData instead.
+    """
+
+    value = Quantity(
+        type=np.float64,
+        description='The refractive index value.',
+        unit='dimensionless',
+    )
+    wavelength = Quantity(
+        type=np.float64,
+        description=(
+            'The wavelength at which this refractive index value applies. '
+            'Leave unset for an extrapolated high-frequency/IR-limit '
+            '(lambda -> infinity) value that is not tied to one wavelength.'
+        ),
+        unit='nm',
+    )
+
+
 class CrystalStructure(SampleProperty):
     space_group_nbr = Quantity(
         type=int,
@@ -416,6 +444,7 @@ class CombinatorialSampleInfo(ArchiveSection):
     band_gap = SubSection(section_def=BandGap, repeats=True)
     absorption_coefficient = SubSection(section_def=AbsorptionCoefficient, repeats=True)
     thickness = SubSection(section_def=Thickness, repeats=True)
+    refractive_index = SubSection(section_def=RefractiveIndex, repeats=True)
     composition = SubSection(section_def=Composition, repeats=True)
     surface_composition = SubSection(section_def=Composition, repeats=True)
     deposition = SubSection(section_def=Deposition, repeats=True)
