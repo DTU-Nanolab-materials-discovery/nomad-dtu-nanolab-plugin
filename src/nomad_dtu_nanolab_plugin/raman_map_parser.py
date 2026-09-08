@@ -31,6 +31,94 @@ from renishawWiRE import WDFReader
 
 NBR_SPECTRA = 2  # Number of spectra to print detailed info for
 
+# Field of view calibration for the 20x objective optical images embedded in the
+# Renishaw WDF files, as measured against the microscope's own scale bar overlay.
+FOV_WIDTH_UM_20X = 450.0
+FOV_HEIGHT_UM_20X = 300.0
+DEFAULT_SCALEBAR_UM = 100.0
+
+
+def annotate_optical_image(
+    image,
+    width_um: float = FOV_WIDTH_UM_20X,
+    height_um: float = FOV_HEIGHT_UM_20X,
+    scalebar_um: float = DEFAULT_SCALEBAR_UM,
+):
+    """Draw a center crosshair and a scale bar on a copy of an optical image.
+
+    The optical microscopy images embedded in Renishaw WDF files carry no scale
+    or position markers of their own. This overlays:
+        - A crosshair at the image center, marking the Raman measurement point.
+        - A horizontal scale bar of length `scalebar_um` (converted to pixels
+          using the known field of view width), with end ticks and a text label.
+
+    Args:
+        image (PIL.Image.Image): Source optical image. Not modified in place.
+        width_um (float, optional): Physical width of the field of view in
+            micrometers. Defaults to `FOV_WIDTH_UM_20X` (450 μm, 20x objective).
+        height_um (float, optional): Physical height of the field of view in
+            micrometers. Defaults to `FOV_HEIGHT_UM_20X` (300 μm, 20x objective).
+        scalebar_um (float, optional): Length of the scale bar in micrometers.
+            Defaults to `DEFAULT_SCALEBAR_UM` (100 μm).
+
+    Returns:
+        PIL.Image.Image: A new RGB image with the crosshair and scale bar drawn.
+    """
+    from PIL import ImageDraw
+
+    annotated = image.convert('RGB').copy()
+    draw = ImageDraw.Draw(annotated)
+    width_px, height_px = annotated.size
+
+    # Crosshair at the center of the image (the Raman measurement point).
+    center_x, center_y = width_px / 2, height_px / 2
+    crosshair_len = min(width_px, height_px) * 0.06
+    crosshair_color = (255, 0, 0)
+    draw.line(
+        [(center_x - crosshair_len, center_y), (center_x + crosshair_len, center_y)],
+        fill=crosshair_color,
+        width=2,
+    )
+    draw.line(
+        [(center_x, center_y - crosshair_len), (center_x, center_y + crosshair_len)],
+        fill=crosshair_color,
+        width=2,
+    )
+
+    # Scale bar in the bottom-right corner, sized from the known field of view.
+    px_per_um = width_px / width_um
+    bar_len_px = scalebar_um * px_per_um
+    margin = max(width_px, height_px) * 0.02
+    tick_len = max(height_px * 0.015, 4)
+    bar_y = height_px - margin - tick_len
+    bar_x1 = width_px - margin
+    bar_x0 = bar_x1 - bar_len_px
+    scalebar_color = (255, 255, 255)
+
+    draw.line([(bar_x0, bar_y), (bar_x1, bar_y)], fill=scalebar_color, width=3)
+    draw.line(
+        [(bar_x0, bar_y - tick_len), (bar_x0, bar_y + tick_len)],
+        fill=scalebar_color,
+        width=3,
+    )
+    draw.line(
+        [(bar_x1, bar_y - tick_len), (bar_x1, bar_y + tick_len)],
+        fill=scalebar_color,
+        width=3,
+    )
+
+    label = f'{scalebar_um:g} \u03bcm'
+    try:
+        text_bbox = draw.textbbox((0, 0), label)
+        text_w = text_bbox[2] - text_bbox[0]
+    except AttributeError:  # pragma: no cover - fallback for older Pillow
+        text_w = draw.textlength(label)
+    text_x = bar_x0 + (bar_len_px - text_w) / 2
+    text_y = bar_y - tick_len - 14
+    draw.text((text_x, text_y), label, fill=scalebar_color)
+
+    return annotated
+
 
 class RamanMeas:
     """Container for a single Raman measurement point.
@@ -365,8 +453,16 @@ class MappingRamanMeas:
 
         return images
 
-    def save_optical_images(
-        self, folder=None, filename_prefix='', verbose=False, write_func=None
+    def save_optical_images(  # noqa: PLR0913
+        self,
+        folder=None,
+        filename_prefix='',
+        verbose=False,
+        write_func=None,
+        annotate=True,
+        width_um: float = FOV_WIDTH_UM_20X,
+        height_um: float = FOV_HEIGHT_UM_20X,
+        scalebar_um: float = DEFAULT_SCALEBAR_UM,
     ):
         """Save all optical microscopy images as PNG files.
 
@@ -393,6 +489,16 @@ class MappingRamanMeas:
                 `write_func(filename: str, data: bytes) -> None` used to persist
                 the PNG-encoded image bytes instead of writing to `folder`
                 directly. Defaults to None.
+            annotate (bool, optional): If True, overlays a center crosshair and a
+                scale bar on each image before saving. See `annotate_optical_image`.
+                Defaults to True.
+            width_um (float, optional): Physical field-of-view width in
+                micrometers, used to scale the scale bar. Defaults to the 20x
+                objective calibration (450 μm).
+            height_um (float, optional): Physical field-of-view height in
+                micrometers. Defaults to the 20x objective calibration (300 μm).
+            scalebar_um (float, optional): Length of the scale bar in
+                micrometers. Defaults to 100 μm.
 
         Returns:
             tuple[int, list[str or None]]:
@@ -424,13 +530,23 @@ class MappingRamanMeas:
                     f'{filename_prefix}_point{i}_'
                     f'x{raman_meas.x_pos:.0f}_y{raman_meas.y_pos:.0f}.png'
                 )
+                image = (
+                    annotate_optical_image(
+                        raman_meas.image,
+                        width_um=width_um,
+                        height_um=height_um,
+                        scalebar_um=scalebar_um,
+                    )
+                    if annotate
+                    else raman_meas.image
+                )
                 if write_func is not None:
                     buffer = io.BytesIO()
-                    raman_meas.image.save(buffer, format='PNG')
+                    image.save(buffer, format='PNG')
                     write_func(filename, buffer.getvalue())
                 else:
                     img_path = os.path.join(folder, filename)
-                    raman_meas.image.save(img_path)
+                    image.save(img_path)
                 saved_count += 1
                 saved_filenames.append(filename)
             else:
@@ -803,13 +919,17 @@ class MappingRamanMeas:
 
         return fig
 
-    def create_image_grid(
+    def create_image_grid(  # noqa: PLR0913
         self,
         save_path=None,
         spacing=(-0.4, 0.1),
         verbose=False,
         write_func=None,
         filename=None,
+        annotate=True,
+        width_um: float = FOV_WIDTH_UM_20X,
+        height_um: float = FOV_HEIGHT_UM_20X,
+        scalebar_um: float = DEFAULT_SCALEBAR_UM,
     ):
         """Create matplotlib grid displaying all optical microscopy images.
 
@@ -833,6 +953,16 @@ class MappingRamanMeas:
                 to save through NOMAD's upload/raw-file API. Defaults to None.
             filename (str, optional): Filename to pass to `write_func`. Required
                 if `write_func` is provided. Defaults to None.
+            annotate (bool, optional): If True, overlays a center crosshair and a
+                scale bar on each subplot image. See `annotate_optical_image`.
+                Defaults to True.
+            width_um (float, optional): Physical field-of-view width in
+                micrometers, used to scale the scale bar. Defaults to the 20x
+                objective calibration (450 μm).
+            height_um (float, optional): Physical field-of-view height in
+                micrometers. Defaults to the 20x objective calibration (300 μm).
+            scalebar_um (float, optional): Length of the scale bar in
+                micrometers. Defaults to 100 μm.
 
         Returns:
             matplotlib.figure.Figure or None:
@@ -891,7 +1021,17 @@ class MappingRamanMeas:
             col = i % n_cols
             ax = fig.add_subplot(gs[row, col])
 
-            ax.imshow(raman_meas.image)
+            display_image = (
+                annotate_optical_image(
+                    raman_meas.image,
+                    width_um=width_um,
+                    height_um=height_um,
+                    scalebar_um=scalebar_um,
+                )
+                if annotate
+                else raman_meas.image
+            )
+            ax.imshow(display_image)
             # Find original index
             orig_idx = self.raman_meas_list.index(raman_meas)
             ax.set_title(
