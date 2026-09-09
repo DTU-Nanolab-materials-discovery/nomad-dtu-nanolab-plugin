@@ -31,6 +31,94 @@ from renishawWiRE import WDFReader
 
 NBR_SPECTRA = 2  # Number of spectra to print detailed info for
 
+# Field of view calibration for the 20x objective optical images embedded in the
+# Renishaw WDF files, as measured against the microscope's own scale bar overlay.
+FOV_WIDTH_UM_20X = 450.0
+FOV_HEIGHT_UM_20X = 300.0
+DEFAULT_SCALEBAR_UM = 100.0
+
+
+def annotate_optical_image(
+    image,
+    width_um: float = FOV_WIDTH_UM_20X,
+    height_um: float = FOV_HEIGHT_UM_20X,
+    scalebar_um: float = DEFAULT_SCALEBAR_UM,
+):
+    """Draw a center crosshair and a scale bar on a copy of an optical image.
+
+    The optical microscopy images embedded in Renishaw WDF files carry no scale
+    or position markers of their own. This overlays:
+        - A crosshair at the image center, marking the Raman measurement point.
+        - A horizontal scale bar of length `scalebar_um` (converted to pixels
+          using the known field of view width), with end ticks and a text label.
+
+    Args:
+        image (PIL.Image.Image): Source optical image. Not modified in place.
+        width_um (float, optional): Physical width of the field of view in
+            micrometers. Defaults to `FOV_WIDTH_UM_20X` (450 μm, 20x objective).
+        height_um (float, optional): Physical height of the field of view in
+            micrometers. Defaults to `FOV_HEIGHT_UM_20X` (300 μm, 20x objective).
+        scalebar_um (float, optional): Length of the scale bar in micrometers.
+            Defaults to `DEFAULT_SCALEBAR_UM` (100 μm).
+
+    Returns:
+        PIL.Image.Image: A new RGB image with the crosshair and scale bar drawn.
+    """
+    from PIL import ImageDraw
+
+    annotated = image.convert('RGB').copy()
+    draw = ImageDraw.Draw(annotated)
+    width_px, height_px = annotated.size
+
+    # Crosshair at the center of the image (the Raman measurement point).
+    center_x, center_y = width_px / 2, height_px / 2
+    crosshair_len = min(width_px, height_px) * 0.06
+    crosshair_color = (255, 0, 0)
+    draw.line(
+        [(center_x - crosshair_len, center_y), (center_x + crosshair_len, center_y)],
+        fill=crosshair_color,
+        width=2,
+    )
+    draw.line(
+        [(center_x, center_y - crosshair_len), (center_x, center_y + crosshair_len)],
+        fill=crosshair_color,
+        width=2,
+    )
+
+    # Scale bar in the bottom-right corner, sized from the known field of view.
+    px_per_um = width_px / width_um
+    bar_len_px = scalebar_um * px_per_um
+    margin = max(width_px, height_px) * 0.02
+    tick_len = max(height_px * 0.015, 4)
+    bar_y = height_px - margin - tick_len
+    bar_x1 = width_px - margin
+    bar_x0 = bar_x1 - bar_len_px
+    scalebar_color = (255, 255, 255)
+
+    draw.line([(bar_x0, bar_y), (bar_x1, bar_y)], fill=scalebar_color, width=3)
+    draw.line(
+        [(bar_x0, bar_y - tick_len), (bar_x0, bar_y + tick_len)],
+        fill=scalebar_color,
+        width=3,
+    )
+    draw.line(
+        [(bar_x1, bar_y - tick_len), (bar_x1, bar_y + tick_len)],
+        fill=scalebar_color,
+        width=3,
+    )
+
+    label = f'{scalebar_um:g} \u03bcm'
+    try:
+        text_bbox = draw.textbbox((0, 0), label)
+        text_w = text_bbox[2] - text_bbox[0]
+    except AttributeError:  # pragma: no cover - fallback for older Pillow
+        text_w = draw.textlength(label)
+    text_x = bar_x0 + (bar_len_px - text_w) / 2
+    text_y = bar_y - tick_len - 14
+    draw.text((text_x, text_y), label, fill=scalebar_color)
+
+    return annotated
+
 
 class RamanMeas:
     """Container for a single Raman measurement point.
@@ -365,17 +453,52 @@ class MappingRamanMeas:
 
         return images
 
-    def save_optical_images(self, folder, filename_prefix, verbose=False):
-        """Save all optical microscopy images to disk as PNG files.
+    def save_optical_images(  # noqa: PLR0913
+        self,
+        folder=None,
+        filename_prefix='',
+        verbose=False,
+        write_func=None,
+        annotate=True,
+        width_um: float = FOV_WIDTH_UM_20X,
+        height_um: float = FOV_HEIGHT_UM_20X,
+        scalebar_um: float = DEFAULT_SCALEBAR_UM,
+    ):
+        """Save all optical microscopy images as PNG files.
 
         Exports optical images from all measurement points to individual PNG files
         with filenames encoding the position information.
 
+        Two modes of operation are supported:
+            - Disk mode (default): images are written directly to `folder` using
+              `PIL.Image.save()`. Useful for standalone/local usage.
+            - Callback mode: if `write_func` is provided, each image is encoded to
+              PNG bytes in memory and handed to `write_func(filename, data)`
+              instead of being written to disk directly. This allows the caller
+              (e.g. the NOMAD schema parser) to persist the bytes through the
+              proper upload/raw-file API rather than through raw OS paths, which
+              is required for images to end up in the upload's raw file storage.
+
         Args:
-            folder (str): Directory path where images will be saved.
+            folder (str, optional): Directory path where images will be saved.
+                Required when `write_func` is not given. Defaults to None.
             filename_prefix (str): Prefix for image filenames (typically sample ID).
             verbose (bool, optional): If True, prints save statistics.
                 Defaults to False.
+            write_func (callable, optional): Callback of the form
+                `write_func(filename: str, data: bytes) -> None` used to persist
+                the PNG-encoded image bytes instead of writing to `folder`
+                directly. Defaults to None.
+            annotate (bool, optional): If True, overlays a center crosshair and a
+                scale bar on each image before saving. See `annotate_optical_image`.
+                Defaults to True.
+            width_um (float, optional): Physical field-of-view width in
+                micrometers, used to scale the scale bar. Defaults to the 20x
+                objective calibration (450 μm).
+            height_um (float, optional): Physical field-of-view height in
+                micrometers. Defaults to the 20x objective calibration (300 μm).
+            scalebar_um (float, optional): Length of the scale bar in
+                micrometers. Defaults to 100 μm.
 
         Returns:
             tuple[int, list[str or None]]:
@@ -397,6 +520,10 @@ class MappingRamanMeas:
             >>> print(filenames[0])
             'sample_001_point0_x2000_y5000.png'
         """
+        import io
+
+        if write_func is None and folder is None:
+            raise ValueError('folder is required when write_func is not provided')
 
         saved_count = 0
         saved_filenames = []
@@ -406,15 +533,31 @@ class MappingRamanMeas:
                     f'{filename_prefix}_point{i}_'
                     f'x{raman_meas.x_pos:.0f}_y{raman_meas.y_pos:.0f}.png'
                 )
-                img_path = os.path.join(folder, filename)
-                raman_meas.image.save(img_path)
+                image = (
+                    annotate_optical_image(
+                        raman_meas.image,
+                        width_um=width_um,
+                        height_um=height_um,
+                        scalebar_um=scalebar_um,
+                    )
+                    if annotate
+                    else raman_meas.image
+                )
+                if write_func is not None:
+                    buffer = io.BytesIO()
+                    image.save(buffer, format='PNG')
+                    write_func(filename, buffer.getvalue())
+                else:
+                    img_path = os.path.join(folder, filename)
+                    image.save(img_path)
                 saved_count += 1
                 saved_filenames.append(filename)
             else:
                 saved_filenames.append(None)
 
         if verbose:
-            print(f'Saved {saved_count} optical images to {folder}')
+            destination = 'via write_func' if write_func is not None else folder
+            print(f'Saved {saved_count} optical images to {destination}')
         return saved_count, saved_filenames
 
     def normalize_intensity(self, x_range: tuple = None, verbose=False):
@@ -779,7 +922,18 @@ class MappingRamanMeas:
 
         return fig
 
-    def create_image_grid(self, save_path=None, spacing=(-0.4, 0.1), verbose=False):
+    def create_image_grid(  # noqa: PLR0913
+        self,
+        save_path=None,
+        spacing=(-0.4, 0.1),
+        verbose=False,
+        write_func=None,
+        filename=None,
+        annotate=True,
+        width_um: float = FOV_WIDTH_UM_20X,
+        height_um: float = FOV_HEIGHT_UM_20X,
+        scalebar_um: float = DEFAULT_SCALEBAR_UM,
+    ):
         """Create matplotlib grid displaying all optical microscopy images.
 
         Arranges optical images from all measurement points into a grid layout,
@@ -787,13 +941,31 @@ class MappingRamanMeas:
         Useful for visual inspection and correlation with Raman data.
 
         Args:
-            save_path (str, optional): File path to save the grid image (PNG format).
-                If None, grid is not saved to disk. Defaults to None.
+            save_path (str, optional): File path to save the grid image (PNG format)
+                directly to disk. Ignored if `write_func` is provided.
+                If neither is given, grid is not saved. Defaults to None.
             spacing (tuple[float, float], optional): Vertical and horizontal spacing
                 between subplots as (hspace, wspace). Negative values create overlap.
                 Defaults to (-0.4, 0.1).
             verbose (bool, optional): If True, prints status messages.
                 Defaults to False.
+            write_func (callable, optional): Callback of the form
+                `write_func(filename: str, data: bytes) -> None` used to persist
+                the PNG-encoded grid image bytes instead of writing to `save_path`
+                directly. Required together with `filename` when the caller needs
+                to save through NOMAD's upload/raw-file API. Defaults to None.
+            filename (str, optional): Filename to pass to `write_func`. Required
+                if `write_func` is provided. Defaults to None.
+            annotate (bool, optional): If True, overlays a center crosshair and a
+                scale bar on each subplot image. See `annotate_optical_image`.
+                Defaults to True.
+            width_um (float, optional): Physical field-of-view width in
+                micrometers, used to scale the scale bar. Defaults to the 20x
+                objective calibration (450 μm).
+            height_um (float, optional): Physical field-of-view height in
+                micrometers. Defaults to the 20x objective calibration (300 μm).
+            scalebar_um (float, optional): Length of the scale bar in
+                micrometers. Defaults to 100 μm.
 
         Returns:
             matplotlib.figure.Figure or None:
@@ -825,6 +997,8 @@ class MappingRamanMeas:
             >>> if fig is None:
             ...     print("No optical images in this dataset")
         """
+        import io
+
         import matplotlib.pyplot as plt
         from matplotlib.gridspec import GridSpec
 
@@ -850,7 +1024,17 @@ class MappingRamanMeas:
             col = i % n_cols
             ax = fig.add_subplot(gs[row, col])
 
-            ax.imshow(raman_meas.image)
+            display_image = (
+                annotate_optical_image(
+                    raman_meas.image,
+                    width_um=width_um,
+                    height_um=height_um,
+                    scalebar_um=scalebar_um,
+                )
+                if annotate
+                else raman_meas.image
+            )
+            ax.imshow(display_image)
             # Find original index
             orig_idx = self.raman_meas_list.index(raman_meas)
             ax.set_title(
@@ -863,7 +1047,13 @@ class MappingRamanMeas:
         # plt.suptitle('Optical Images at Each Raman Measurement Point',
         #            fontsize=14, fontweight='bold')
 
-        if save_path:
-            plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        if write_func is not None:
+            if not filename:
+                raise ValueError('filename is required when write_func is provided')
+            buffer = io.BytesIO()
+            fig.savefig(buffer, format='png', dpi=150, bbox_inches='tight')
+            write_func(filename, buffer.getvalue())
+        elif save_path:
+            fig.savefig(save_path, dpi=150, bbox_inches='tight')
 
         return fig
