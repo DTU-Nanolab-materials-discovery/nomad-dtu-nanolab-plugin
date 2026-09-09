@@ -210,8 +210,8 @@ class AbsorptionCoefficient(SampleProperty):
     energy = Quantity(
         type=np.float64,
         shape=['*'],
-        description='The corresponding energies for the absorption coefficient values.',
-        unit='nm',
+        description='The corresponding photon energies for the absorption coefficient values.',
+        unit='eV',
     )
     absorption_edge = Quantity(
         type=np.float64,
@@ -238,10 +238,10 @@ class RefractiveIndex(SampleProperty):
     A single scalar refractive index value, technique-agnostic.
 
     Use this for a single value that does not amount to a full dispersion
-    spectrum, e.g. the extrapolated high-frequency/IR-limit (sub-bandgap,
-    lambda -> infinity) refractive index obtained from a Cauchy or Sellmeier
-    dispersion fit, or a single-wavelength value reported by any optical
-    technique. For a full n(lambda)/k(lambda) spectrum from a genuine
+    spectrum, e.g. the extrapolated low-photon-energy/IR-limit (sub-bandgap,
+    wavelength -> infinity) refractive index obtained from a Cauchy or Sellmeier
+    dispersion fit, or a value reported at one photon energy by any optical
+    technique. For a full n(wavelength)/k(wavelength) spectrum from a genuine
     ellipsometry measurement, use EllipsometryData instead.
     """
 
@@ -250,14 +250,14 @@ class RefractiveIndex(SampleProperty):
         description='The refractive index value.',
         unit='dimensionless',
     )
-    wavelength = Quantity(
+    energy = Quantity(
         type=np.float64,
         description=(
-            'The wavelength at which this refractive index value applies. '
-            'Leave unset for an extrapolated high-frequency/IR-limit '
-            '(lambda -> infinity) value that is not tied to one wavelength.'
+            'The photon energy at which this refractive index value applies. '
+            'Leave unset for an extrapolated low-photon-energy/IR-limit '
+            '(wavelength -> infinity) value that is not tied to one photon energy.'
         ),
-        unit='nm',
+        unit='eV',
     )
 
 
