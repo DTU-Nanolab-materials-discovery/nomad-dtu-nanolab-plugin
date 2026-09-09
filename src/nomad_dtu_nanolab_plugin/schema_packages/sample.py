@@ -210,7 +210,9 @@ class AbsorptionCoefficient(SampleProperty):
     energy = Quantity(
         type=np.float64,
         shape=['*'],
-        description='The corresponding photon energies for the absorption coefficient values.',
+        description=(
+            'The corresponding photon energies for the absorption coefficient values.'
+        ),
         unit='eV',
     )
     absorption_edge = Quantity(
