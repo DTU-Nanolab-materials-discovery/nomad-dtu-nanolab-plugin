@@ -522,6 +522,9 @@ class MappingRamanMeas:
         """
         import io
 
+        if write_func is None and folder is None:
+            raise ValueError('folder is required when write_func is not provided')
+
         saved_count = 0
         saved_filenames = []
         for i, raman_meas in enumerate(self.raman_meas_list):
@@ -1051,6 +1054,6 @@ class MappingRamanMeas:
             fig.savefig(buffer, format='png', dpi=150, bbox_inches='tight')
             write_func(filename, buffer.getvalue())
         elif save_path:
-            plt.savefig(save_path, dpi=150, bbox_inches='tight')
+            fig.savefig(save_path, dpi=150, bbox_inches='tight')
 
         return fig
