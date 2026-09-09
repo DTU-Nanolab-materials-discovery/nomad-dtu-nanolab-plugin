@@ -34,7 +34,7 @@ from nomad.datamodel.metainfo.basesections import (
 )
 from nomad.datamodel.metainfo.basesections.v1 import AnalysisResult
 from nomad.datamodel.metainfo.plot import PlotSection
-from nomad.metainfo import Package, Quantity, Section, SubSection
+from nomad.metainfo import Datetime, Package, Quantity, Section, SubSection
 from nomad.metainfo.metainfo import Reference, SectionProxy
 from nomad_analysis.utils import create_entry_with_api
 from structlog.stdlib import BoundLogger
@@ -181,6 +181,21 @@ class DtuSampleAnalysisResult(AnalysisResult, CombinatorialSampleInfo):
     expansion of CombinatorialSampleInfo
     """
 
+    # AnalysisResult (via ActivityResult) only defines `name`; it has no
+    # timestamp of its own (unlike Activity, which has `datetime` for when
+    # the activity itself started). This records when this particular
+    # result object was created/written, e.g. by the export notebook cell.
+    datetime = Quantity(
+        type=Datetime,
+        description=(
+            'The date and time when this analysis result was created, '
+            'e.g. written out by an export/analysis notebook cell.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.DateTimeEditQuantity,
+            label='creation time',
+        ),
+    )
     additional_properties = SubSection(
         section_def=SampleProperty,
         repeats=True,
