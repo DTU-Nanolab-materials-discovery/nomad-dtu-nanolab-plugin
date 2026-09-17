@@ -180,9 +180,113 @@ class ThermalEvaporationOverview(ArchiveSection):
             component=ELNComponentEnum.StringEditQuantity,
             label='Material space',
         ),
-        description='The material space explored by the Thermal Evaporation process.',
+        description="""
+        The material space explored by the Thermal Evaporation process.
+        Format: element-element.
+        """,
     )
-
+    evaporation_pressure = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mbar',
+            label='Evaporation Pressure',
+        ),
+        unit='Pa',
+        description="""
+        Pressure in the bell jar when deposition starts
+        (when substrate shutter is opened).
+        """,
+    )
+    total_ramp_time = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='minute',
+            label='Ramp Time',
+        ),
+        unit='s',
+        description="""
+        Time spent on ramping up the power of the sources
+        (until substrate shutter is opened).
+        """,
+    )
+    evaporation_power_left = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='W',
+            label='Left Source Power',
+        ),
+        unit='W',
+        description="""
+        Power supplied to the left source when deposition starts
+        (when substrate shutter is opened).
+        """,
+    )
+    evaporation_power_right = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='W',
+            label='Right Source Power',
+        ),
+        unit='W',
+        description="""
+        Power supplied to the right source when deposition starts
+        (when substrate shutter is opened).
+        """,
+    )
+    evaporation_temp_left = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='celcius',
+            label='Left Source Temperature',
+        ),
+        unit='K',
+        description="""
+        Temperature under the left source when deposition starts
+        (when substrate shutter is opened).
+        """,
+    )
+    evaporation_temp_right = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='celcius',
+            label='Right Source Temperature',
+        ),
+        unit='K',
+        description="""
+        Temperature under the right source when deposition starts
+        (when substrate shutter is opened).
+        """,
+    )
+    avg_rate = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='Å/s',
+            label='Deposition Rate',
+        ),
+        unit='Å/s',
+        description="""
+        Average deposition rate.
+        """,
+    )
+    total_evaporation_time = Quantity(
+        type=np.float64,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='minute',
+            label='Evaporation Time',
+        ),
+        unit='s',
+        description="""
+        Time spent on depositing.
+        """,
+    )
     # TODO add more quantities here for the overview. Is there any calculation
     #  necessary?
 
