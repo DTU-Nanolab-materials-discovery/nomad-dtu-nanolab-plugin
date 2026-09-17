@@ -27,9 +27,10 @@ from nomad.datamodel.metainfo.annotations import (
     SectionProperties,
 )
 from nomad.datamodel.metainfo.basesections import CompositeSystem, Instrument
-from nomad.metainfo import Datetime, Package, Quantity, Section, SubSection
+from nomad.metainfo import Datetime, MEnum, Package, Quantity, Section, SubSection
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.target import DTUTarget
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -240,6 +241,55 @@ class SputterSource(ArchiveSection):
     )
 
 
+class OptixMeasurement(ArchiveSection):
+    m_def = Section(
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                order=[
+                    'optix_position',
+                    'description',
+                ],
+            ),
+        ),
+    )
+    optix_position = Quantity(
+        type=np.float64,
+        shape=(3,),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+        ),
+        unit='m',
+    )
+
+
+class OesMeasurement(ArchiveSection):
+    m_def = Section(
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                order=[
+                    'oes_identifier',
+                    'oes_position',
+                    'description',
+                ],
+            ),
+        ),
+    )
+    oes_identifier = Quantity(
+        type=str,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
+    )
+    oes_position = Quantity(
+        type=np.float64,
+        shape=(3,),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+        ),
+        unit='m',
+    )
+
+
 class SCrackerSource(ArchiveSection):
     m_def = Section(
         a_eln=ELNAnnotation(
@@ -363,6 +413,14 @@ class ChamberGeometry(ArchiveSection):
         section_def=SCrackerSource,
         repeats=False,
     )
+    optix = SubSection(
+        section_def=OptixMeasurement,
+        repeats=False,
+    )
+    OES = SubSection(
+        section_def=OesMeasurement,
+        repeats=True,
+    )
     Inert_gas_inlet = SubSection(
         section_def=GasInlet,
         repeats=False,
@@ -395,11 +453,11 @@ class PurgeAndCleaning(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
-                    'sulfur_cracker_refilled',
-                    'detector_alarm',
                     'number_of_purge_cycles',
                     'time_per_purge_cycles',
                     'pressure_during_purge',
+                    'detector_alarm',
+                    'sulfur_cracker_refilled',
                     'comment_about_change',
                     'description',
                 ],
@@ -472,9 +530,11 @@ class TargetChange(StatusChangeSputtersystem):
                 order=[
                     'date_of_change',
                     'source_1_changed',
-                    'source_2_changed',
+                    'source_1_target',
                     'source_3_changed',
+                    'source_3_target',
                     'source_4_changed',
+                    'source_4_target',
                     'comment_about_change',
                 ],
             ),
@@ -483,11 +543,6 @@ class TargetChange(StatusChangeSputtersystem):
     source_1_changed = Quantity(
         type=bool,
         description='Whether the target in source 1 was changed.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
-    )
-    source_2_changed = Quantity(
-        type=bool,
-        description='Whether the target in source 2 was changed.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
     source_3_changed = Quantity(
@@ -500,12 +555,155 @@ class TargetChange(StatusChangeSputtersystem):
         description='Whether the target in source 4 was changed.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
+    source_1_target = Quantity(
+        type=DTUTarget,
+        description='A reference to a NOMAD Target entry.',
+        a_eln=ELNAnnotation(
+            component='ReferenceEditQuantity',
+            label='composite system reference',
+        ),
+    )
+    source_4_target = Quantity(
+        type=DTUTarget,
+        description='A reference to a NOMAD Target entry.',
+        a_eln=ELNAnnotation(
+            component='ReferenceEditQuantity',
+            label='composite system reference',
+        ),
+    )
+    source_3_target = Quantity(
+        type=DTUTarget,
+        description='A reference to a NOMAD Target entry.',
+        a_eln=ELNAnnotation(
+            component='ReferenceEditQuantity',
+            label='composite system reference',
+        ),
+    )
+
+
+class PlattenCleaning(StatusChangeSputtersystem):
+    m_def = Section(
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                order=[
+                    'date_of_change',
+                    'platen_cleaned',
+                    'comment_about_change',
+                ],
+            ),
+        ),
+    )
+    platen_cleaned = Quantity(
+        type=str,
+        description='The relative position of the substrate on the platen.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            props=dict(suggestions=['A', 'B', 'C']),
+        ),
+    )
+    method_of_cleaning = Quantity(
+        type=MEnum(
+            'sanding',
+            'other',
+        ),
+        description='The cleaning method for the platten.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.RadioEnumEditQuantity),
+        default='sanding',
+    )
+
+
+class ThermalCleaning(StatusChangeSputtersystem):
+    m_def = Section(
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                order=[
+                    'date_of_change',
+                    'temperature',
+                    'duration',
+                    'comment_about_change',
+                ],
+            ),
+        ),
+    )
+    temperature = Quantity(
+        type=np.float64,
+        description='The temperature used for thermal cleaning.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='degree_Celsius',
+        ),
+        unit='K',
+    )
+    duration = Quantity(
+        type=np.float64,
+        description='The duration of the thermal cleaning.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='minute',
+        ),
+        unit='s',
+    )
+
+
+class QcmMaintenance(StatusChangeSputtersystem):
+    m_def = Section(
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                order=[
+                    'date_of_change',
+                    'qcm_1_replaced',
+                    'qcm_2_replaced',
+                    'comment_about_change',
+                ],
+            ),
+        ),
+    )
+    qcm_1_replaced = Quantity(
+        type=bool,
+        description='Whether the QCM was cleaned.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+    )
+    qcm_2_replaced = Quantity(
+        type=bool,
+        description='Whether the QCM was replaced.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+    )
 
 
 class DtuSputterInstrument(Instrument, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Sputter System',
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                order=[
+                    'name',
+                    'update',
+                    'time_used_chamber',
+                    'latest_base_pressure',
+                    'lab_id',
+                    'datetime',
+                    'lab_location',
+                    'manufacturer',
+                    'description',
+                    'status_of_system',
+                ],
+            )
+        ),
+    )
+    datetime = Quantity(
+        type=Datetime,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.DateTimeEditQuantity,
+            label='Date of purchase',
+        ),
+    )
+    update = Quantity(
+        type=Datetime,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.DateTimeEditQuantity,
+            label='Date of last update',
+        ),
     )
     time_used_chamber = Quantity(
         type=np.float64,
