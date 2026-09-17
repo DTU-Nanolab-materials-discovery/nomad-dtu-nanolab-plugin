@@ -131,6 +131,7 @@ class DTUSampleAlignment(RectangularSampleAlignment):
 class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
+        links=['http://purl.obolibrary.org/obo/CHMO_0000309'],
         label='EDX Measurement',
     )
 

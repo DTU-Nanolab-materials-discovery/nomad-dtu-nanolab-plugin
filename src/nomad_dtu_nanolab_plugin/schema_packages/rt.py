@@ -1,3 +1,5 @@
+import os
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -12,7 +14,7 @@ from nomad.datamodel.metainfo.basesections import (
     Experiment,
     ExperimentStep,
 )
-from nomad.datamodel.metainfo.plot import PlotSection
+from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_measurements.mapping.schema import (
@@ -21,6 +23,7 @@ from nomad_measurements.mapping.schema import (
 )
 from nomad_measurements.utils import create_archive
 
+from nomad_dtu_nanolab_plugin import autosampler_reader
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
     DtuNanolabMeasurement,
@@ -31,6 +34,139 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 m_package = Package(name='DTU RT measurement schema')
+
+
+def _resolve_library_target(
+    archive: 'EntryArchive', logger: 'BoundLogger', library_lab_id: str
+) -> tuple[str | None, str, str]:
+    """Resolve upload and writable raw folder for the library lab_id.
+
+    Returns a tuple of:
+    1) target upload id (or None if unresolved),
+    2) writable raw folder path relative to the target upload,
+    3) archive-style folder reference for logging/debugging.
+    """
+    default_folder = str(PurePosixPath(archive.metadata.mainfile).parent)
+    current_upload_id = getattr(archive.metadata, 'upload_id', None)
+
+    try:
+        from nomad.search import MetadataPagination, search
+
+        user_id = None
+        main_author = getattr(archive.metadata, 'main_author', None)
+        if main_author is not None:
+            user_id = getattr(main_author, 'user_id', None)
+
+        search_result = search(
+            owner='all',
+            query={'results.eln.lab_ids': library_lab_id},
+            pagination=MetadataPagination(page_size=1),
+            user_id=user_id,
+        )
+        if search_result.pagination.total <= 0:
+            logger.warning(
+                'Could not resolve library reference for %s via direct lab_id search; '
+                'writing RTMeasurement in current entry folder.',
+                library_lab_id,
+            )
+            return None, default_folder, default_folder
+
+        entry = search_result.data[0]
+        upload_id = entry.get('upload_id')
+        entry_id = entry.get('entry_id')
+        if not upload_id or not entry_id:
+            logger.warning(
+                'Library %s matched search result but missing upload_id or entry_id; '
+                'writing RTMeasurement in the current entry folder.',
+                library_lab_id,
+            )
+            return None, default_folder, default_folder
+
+        # Try to locate the folder where the referenced library archive mainfile lives.
+        # This folder is writable within the *target* upload context.
+        target_folder = ''
+        library_mainfile = entry.get('mainfile')
+        if library_mainfile:
+            target_folder = str(PurePosixPath(library_mainfile).parent)
+        else:
+            try:
+                installation_url = getattr(archive.m_context, 'installation_url', None)
+                target_archive = archive.m_context.load_archive(
+                    entry_id, upload_id, installation_url
+                )
+                target_mainfile = getattr(target_archive.metadata, 'mainfile', None)
+                if target_mainfile:
+                    target_folder = str(PurePosixPath(target_mainfile).parent)
+            except Exception:
+                # Fall back to root-level write in
+                # target upload if mainfile lookup fails.
+                target_folder = ''
+
+        archive_reference_folder = str(
+            PurePosixPath('..') / 'uploads' / upload_id / 'archive'
+        )
+        if current_upload_id and upload_id != current_upload_id:
+            logger.info(
+                'Library %s resolved in another upload. Writing RTMeasurement using '
+                'ServerContext(upload=%s) into folder=%s.',
+                library_lab_id,
+                upload_id,
+                target_folder or '.',
+            )
+        return upload_id, target_folder, archive_reference_folder
+    except Exception as exc:  # pragma: no cover - defensive logging only
+        logger.warning(
+            'Failed to resolve library %s via explicit lab_id search; writing '
+            'RTMeasurement in current entry folder. Details: %s',
+            library_lab_id,
+            exc,
+            exc_info=True,
+        )
+        return None, default_folder, default_folder
+
+
+def resolve_library_folder(
+    archive: 'EntryArchive', logger: 'BoundLogger', library_lab_id: str
+) -> str:
+    """Resolve the folder for a library using the same explicit lab-id query as the
+    notebook analysis.
+
+    This avoids relying on a lazily populated ``CompositeSystemReference.reference``
+    that may not yet be normalized in the active processing context.
+    """
+    _, _, archive_reference_folder = _resolve_library_target(
+        archive, logger, library_lab_id
+    )
+    return archive_reference_folder
+
+
+def _create_archive_in_upload(
+    measurement: 'RTMeasurement',
+    archive: 'EntryArchive',
+    measurement_mainfile: str,
+    target_upload_id: str,
+) -> str:
+    """Create an archive file in the given upload context."""
+    current_upload_id = getattr(archive.metadata, 'upload_id', None)
+    if target_upload_id == current_upload_id:
+        return create_archive(measurement, archive, measurement_mainfile)
+
+    from nomad.datamodel.context import ServerContext
+    from nomad.processing import Upload
+    from nomad.utils import hash
+
+    target_upload = Upload.get(target_upload_id)
+    if target_upload is None:
+        raise ValueError(f'Could not get target upload: {target_upload_id}')
+
+    target_context = ServerContext(upload=target_upload)
+    with target_context.update_entry(
+        measurement_mainfile, write=True, process=True
+    ) as entry:
+        entry['data'] = measurement.m_to_dict(with_root_def=True)
+
+    target_entry_id = hash(target_upload_id, measurement_mainfile)
+    return f'../uploads/{target_upload_id}/archive/{target_entry_id}#data'
 
 
 class RTSpectrum(ArchiveSection):
@@ -124,6 +260,10 @@ class RTResult(MappingResult):
     Results from a single spatial position containing multiple R/T spectra.
     """
 
+    # repeating subsection for multiple
+    # spectra measured at the same position with different configurations
+    # (ex: one reflection and one transmission spectrum, or multiple
+    # spectra with different detector/sample angles or polarization)
     spectra = SubSection(
         section_def=RTSpectrum,
         repeats=True,
@@ -139,7 +279,7 @@ class RTResult(MappingResult):
         super().normalize(archive, logger)
 
 
-class DtuAutosamplerMeasurement(Experiment, Schema):
+class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
     """
     Base Experiment class for Agilent Cary autosampler measurements.
 
@@ -154,6 +294,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
         description='Experiment container for autosampler R/T measurements',
     )
 
+    # .csv file exported from the Agilent Cary .bsw or .dsw file
     data_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
@@ -170,6 +311,13 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
         ),
     )
 
+    # config file output by our homemade code (template called
+    # Autosampler_GridGenerator_Analysis_Template_V2 on our)
+    # generating mapping file that connect
+    # autosampler state positions to each position on each sample. This
+    # way, the data file with all the spectra in series can be parsed
+    # each spectrum can be associated with the correct position on the sample, and
+    # the correct sample/library.
     config_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
@@ -186,6 +334,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
         """,
     )
 
+    # raw batch .bsw file from the instrument
     raw_file = Quantity(
         type=str,
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
@@ -198,6 +347,228 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
             (for bookkeeping and data provenance). File extension is typically .bsw.
         """,
     )
+
+    # the three following slits are the optical slits that need to be manually
+    # placed and removed. The default values for high throughput autosampler
+    # measurements are 1 degree for the two vertical slits and 3 degrees
+    # for the horizontal slit.
+    vertical_back_slit = Quantity(
+        type=np.float64,
+        unit='degree',
+        default=1.0,
+        description='Vertical back slit setting in degrees.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='deg',
+            label='Vertical back slit',
+        ),
+    )
+
+    vertical_front_slit = Quantity(
+        type=np.float64,
+        unit='degree',
+        default=1.0,
+        description='Vertical front slit setting in degrees.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='deg',
+            label='Vertical front slit',
+        ),
+    )
+
+    horizontal_slit = Quantity(
+        type=np.float64,
+        unit='degree',
+        default=3.0,
+        description='Horizontal slit setting in degrees.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='deg',
+            label='Horizontal slit',
+        ),
+    )
+
+    detector_slit = Quantity(
+        type=MEnum('None (open)', '1°', '2°'),
+        default='None (open)',
+        description='Detector slit used during the measurement.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            label='Detector slit',
+        ),
+    )
+
+    def plot_grid(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        Create an interactive Plotly visualization of the autosampler measurement grid.
+
+        This plot shows:
+        1. The autosampler boundary as a circle (107 mm radius)
+        2. All measurement positions grouped by sample (colored by sample)
+        3. Sample labels and measurement point locations
+        """
+        import pandas as pd
+        import plotly.graph_objs as go
+
+        # Try to parse the grid from config_file if available
+        try:
+            if not self.config_file:
+                return
+
+            # Use archive context to read config file
+            with archive.m_context.raw_file(self.config_file) as config_f:
+                grid_df = pd.read_csv(config_f.name, skiprows=0, header=0, decimal=',')
+
+            # Ensure we have X and Y columns
+            if 'X' not in grid_df.columns or 'Y' not in grid_df.columns:
+                # Try alternative column names
+                x_col = next((c for c in grid_df.columns if 'x' in c.lower()), None)
+                y_col = next((c for c in grid_df.columns if 'y' in c.lower()), None)
+                if x_col and y_col:
+                    grid_df.rename(columns={x_col: 'X', y_col: 'Y'}, inplace=True)
+                else:
+                    logger.debug('Could not find X/Y position columns in config file')
+                    return  # Cannot find position columns
+
+            # Extract unique samples
+            if (
+                'Sample Name' not in grid_df.columns
+                and 'Sample Number' in grid_df.columns
+            ):
+                grid_df['Sample Name'] = 'Sample_' + grid_df['Sample Number'].astype(
+                    str
+                )
+            elif 'Sample Name' not in grid_df.columns:
+                logger.debug('Config file missing Sample Name or Sample Number column')
+                return
+
+            fig = go.Figure()
+
+            # Add autosampler boundary circle (107 mm radius)
+            AUTOSAMPLER_RADIUS = 107  # mm
+            circle_angles = np.linspace(0, 2 * np.pi, 100)
+            circle_x = AUTOSAMPLER_RADIUS * np.cos(circle_angles)
+            circle_y = AUTOSAMPLER_RADIUS * np.sin(circle_angles)
+
+            fig.add_trace(
+                go.Scatter(
+                    x=circle_x,
+                    y=circle_y,
+                    mode='lines',
+                    name='Autosampler Boundary',
+                    line=dict(color='red', width=2, dash='dash'),
+                    hovertemplate='<b>Boundary</b><br>X: %{x:.2f} mm<br>Y: %{y:.2f} mm',
+                )
+            )
+
+            # Add baseline center if it exists
+            if 'Baseline' in grid_df['Sample Name'].values:
+                baseline_rows = grid_df[grid_df['Sample Name'] == 'Baseline']
+                if len(baseline_rows) > 0:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=baseline_rows['X'].values,
+                            y=baseline_rows['Y'].values,
+                            mode='markers',
+                            name='Baseline Center',
+                            marker=dict(size=10, color='black', symbol='star'),
+                            hovertemplate=(
+                                '<b>Baseline</b><br>X: %{x:.2f} mm<br>Y: %{y:.2f} mm'
+                            ),
+                        )
+                    )
+
+            # Color palette for samples
+            color_palette = [
+                '#1f77b4',
+                '#ff7f0e',
+                '#2ca02c',
+                '#d62728',
+                '#9467bd',
+                '#8c564b',
+                '#e377c2',
+                '#7f7f7f',
+                '#bcbd22',
+                '#17becf',
+            ]
+
+            # Add scatter plots for each sample
+            unique_samples = grid_df['Sample Name'].unique()
+            for idx, sample_name in enumerate(unique_samples):
+                if sample_name == 'Baseline':
+                    continue  # Already plotted above
+
+                sample_data = grid_df[grid_df['Sample Name'] == sample_name]
+                color = color_palette[idx % len(color_palette)]
+
+                # Prepare custom data for hover (sample coordinates if available)
+                has_sample_coords = (
+                    'Xsample' in sample_data.columns
+                    and 'Ysample' in sample_data.columns
+                )
+
+                if has_sample_coords:
+                    customdata = list(
+                        zip(
+                            sample_data['Xsample'].values, sample_data['Ysample'].values
+                        )
+                    )
+                    hover_template = (
+                        f'<b>{sample_name}</b><br>'
+                        '<b>Autosampler Coords:</b><br>'
+                        'X: %{x:.2f} mm<br>'
+                        'Y: %{y:.2f} mm<br>'
+                        '<b>Sample Coords:</b><br>'
+                        'X_sample: %{customdata[0]:.2f} mm<br>'
+                        'Y_sample: %{customdata[1]:.2f} mm<extra></extra>'
+                    )
+                else:
+                    customdata = None
+                    hover_template = (
+                        f'<b>{sample_name}</b><br>'
+                        'X: %{x:.2f} mm<br>'
+                        'Y: %{y:.2f} mm<extra></extra>'
+                    )
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=sample_data['X'].values,
+                        y=sample_data['Y'].values,
+                        mode='markers',
+                        name=sample_name,
+                        marker=dict(size=8, color=color),
+                        text=sample_name,
+                        customdata=customdata,
+                        hovertemplate=hover_template,
+                    )
+                )
+
+            # Update layout
+            fig.update_layout(
+                title='Autosampler Measurement Grid',
+                xaxis_title='X Position (mm)',
+                yaxis_title='Y Position (mm)',
+                template='plotly_white',
+                hovermode='closest',
+                xaxis=dict(scaleanchor='y', scaleratio=1),
+                yaxis=dict(scaleanchor='x', scaleratio=1),
+                width=800,
+                height=800,
+            )
+
+            plot_json = fig.to_plotly_json()
+            plot_json['config'] = dict(scrollZoom=False)
+            self.figures.append(
+                PlotlyFigure(
+                    label='Measurement Grid Layout',
+                    figure=plot_json,
+                )
+            )
+
+        except Exception as e:
+            logger.debug(
+                f'Could not generate autosampler grid plot: {e}', exc_info=True
+            )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -218,9 +589,6 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
             )
             return
 
-        # Import here to avoid circular dependencies
-        from nomad_dtu_nanolab_plugin import autosampler_reader
-
         try:
             # Parse files using autosampler_reader
             with archive.m_context.raw_file(self.data_file) as data_f:
@@ -234,6 +602,11 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
             library_data = autosampler_reader.group_measurements_position(samples)
 
             measurements: list[ExperimentStep] = []
+
+            def _resolve_library_target_for_measurement(
+                library_lab_id: str,
+            ) -> tuple[str | None, str, str]:
+                return _resolve_library_target(archive, logger, library_lab_id)
 
             # Create a measurement archive for each library
             for library_id, position_data in library_data.items():
@@ -261,6 +634,10 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
 
                 measurement = RTMeasurement(
                     name=f'{library_id}_RT_{datetime_label}',
+                    vertical_back_slit=self.vertical_back_slit,
+                    vertical_front_slit=self.vertical_front_slit,
+                    horizontal_slit=self.horizontal_slit,
+                    detector_slit=self.detector_slit,
                 )
 
                 # Create results for each position
@@ -311,6 +688,8 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                                 single_meas.metadata['SampleAngle']
                             ) * ureg('degree')
                         if 'Polarization' in single_meas.metadata:
+                            logger.debug(single_meas.metadata['PolarizationAngle'])
+                            logger.debug(single_meas.metadata['Polarization'])
                             spectrum.polarization = single_meas.metadata['Polarization']
 
                         spectra.append(spectrum)
@@ -321,6 +700,7 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                     results.append(result)
 
                 measurement.results = results
+                measurement.accessory = 'UMA'
 
                 # Log positions from results after assignment
                 # Results are stored in the archive via create_archive
@@ -328,12 +708,34 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                 # Link to sample using lab_id (optional - can be set manually later)
                 measurement.samples = [CompositeSystemReference(lab_id=library_id)]
 
-                # Create archive file for this measurement with datetime identifier
-                measurement_ref = create_archive(
-                    measurement,
-                    archive,
-                    f'{library_id}_rt_measurement_{datetime_label}.archive.json',
+                (
+                    target_upload_id,
+                    target_folder,
+                    archive_folder,
+                ) = _resolve_library_target_for_measurement(library_id)
+                measurement_filename = (
+                    f'{library_id}_rt_measurement_{datetime_label}.archive.json'
                 )
+                measurement_mainfile = (
+                    str(PurePosixPath(target_folder) / measurement_filename)
+                    if target_folder
+                    else measurement_filename
+                )
+
+                # Create archive file for this measurement with datetime identifier
+                if target_upload_id is None:
+                    measurement_ref = create_archive(
+                        measurement,
+                        archive,
+                        measurement_mainfile,
+                    )
+                else:
+                    measurement_ref = _create_archive_in_upload(
+                        measurement,
+                        archive,
+                        measurement_mainfile,
+                        target_upload_id,
+                    )
 
                 measurements.append(
                     ExperimentStep(
@@ -343,6 +745,10 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
                 )
 
             self.steps = measurements
+
+            # Generate visualization of the measurement grid
+            self.figures = []
+            self.plot_grid(archive, logger)
 
             logger.info(
                 f'Created {len(measurements)} RT measurement archives '
@@ -356,6 +762,10 @@ class DtuAutosamplerMeasurement(Experiment, Schema):
 class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
+        links=[
+            'http://purl.obolibrary.org/obo/CHMO_0002622',
+            'http://purl.obolibrary.org/obo/CHMO_0000939',
+        ],
         label='RT Measurement',
     )
 
@@ -370,6 +780,96 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     sample_alignment = SubSection(
         section_def=RectangularSampleAlignment,
         description='The alignment of the sample.',
+    )
+
+    accessory = Quantity(
+        type=MEnum('UMA', 'DRA', 'None'),
+        default='None',
+        description=(
+            'Instrument accessory used for the measurement.'
+            'DRA is the integrating sphere accessory while'
+            'UMA is the universal measurement accessory'
+            '(variable incidence, detector and polarization).'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            label='Accessory',
+        ),
+    )
+
+    # see slit description in the DtuAutosamplerMeasurement class
+    vertical_back_slit = Quantity(
+        type=np.float64,
+        unit='degree',
+        description='Vertical back slit setting in degrees (V_back slot).',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='deg',
+            label='Vertical back slit',
+        ),
+    )
+
+    vertical_front_slit = Quantity(
+        type=np.float64,
+        unit='degree',
+        description='Vertical front slit setting in degrees (V_front slot).',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='deg',
+            label='Vertical front slit',
+        ),
+    )
+
+    horizontal_slit = Quantity(
+        type=np.float64,
+        unit='degree',
+        description='Horizontal slit setting in degrees (H slot).',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='deg',
+            label='Horizontal slit',
+        ),
+    )
+
+    detector_slit = Quantity(
+        type=MEnum('None (open)', '1°', '2°'),
+        default='None (open)',
+        description='Detector slit used during the measurement.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            label='Detector slit',
+        ),
+    )
+
+    # one csv (for example an UMA sequence with R, T, and R at different angles)
+    # or several csv files measured at the name single point (for example two
+    # csv files obtained with the DRA integratingsphere, one with R, one with T)
+    data_file = Quantity(
+        type=str,
+        shape=['*'],
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
+        a_eln={'component': 'FileEditQuantity', 'label': 'Data file (.csv)'},
+        description=(
+            'CSV file(s) for single-point R/T measurement. '
+            'Can include R, T, or both spectra in one or multiple files. '
+            'Only used when uploading single-point measurements directly; '
+            'NOT used for autosampler batch experiments.'
+        ),
+    )
+    # the corresponding raw files
+    raw_file = Quantity(
+        type=str,
+        shape=['*'],
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
+        a_eln={
+            'component': 'FileEditQuantity',
+            'label': 'Raw instrument .bsw or .dsw files',
+        },
+        description=(
+            'Optional raw .bsw batch file for single-point measurements (provenance). '
+            'Only used when uploading single-point measurements directly; '
+            'NOT used for autosampler batch experiments.'
+        ),
     )
 
     def plot(self) -> None:
@@ -746,11 +1246,121 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         The normalizer for the `RTMeasurement` class.
         """
 
+        # If no spatial results exist but CSV files were uploaded for a
+        # single-point measurement, use the autosampler_reader to parse
+        # and create a single result at position (0,0).
+        if (not self.results or len(self.results) == 0) and self.data_file:
+            try:
+                files = (
+                    self.data_file
+                    if isinstance(self.data_file, (list, tuple))
+                    else [self.data_file]
+                )
+
+                spectra_all = []
+                any_angle_meta = False
+
+                for f in files:
+                    with archive.m_context.raw_file(f) as rf:
+                        # try to parse with sequence parsing first,
+                        # if it fails, fallback to non-sequence parsing
+
+                        collects = autosampler_reader.parse_file(
+                            rf.name, parse_sequence=False
+                        )
+
+                    for single_meas in collects:
+                        meas_type = single_meas.metadata.get(
+                            'MeasurementType', 'Unknown'
+                        )
+                        if meas_type in {'T', 'Transmission'}:
+                            spectrum_type = 'Transmission'
+                        elif meas_type in {'R', 'Reflection'}:
+                            spectrum_type = 'Reflection'
+                        # fallback: try to infer from filename
+                        elif 'T' in f.upper():
+                            spectrum_type = 'Transmission'
+                        else:
+                            spectrum_type = 'Reflection'
+
+                        wavelength = single_meas.data.get('Wavelength')
+                        intensity = single_meas.data.get('Intensity')
+                        if wavelength is None or intensity is None:
+                            continue
+
+                        # convert to fraction (intensity is in percent)
+                        intensity_arr = intensity / 100.0
+
+                        spectrum = RTSpectrum(
+                            spectrum_type=spectrum_type,
+                            wavelength=(wavelength.values * ureg('nm'))
+                            if hasattr(wavelength, 'values')
+                            else (np.asarray(wavelength) * ureg('nm')),
+                            intensity=intensity_arr,
+                        )
+
+                        # attach geometry metadata when present
+                        if 'DetectorAngle' in single_meas.metadata:
+                            try:
+                                spectrum.detector_angle = float(
+                                    single_meas.metadata['DetectorAngle']
+                                ) * ureg('degree')
+                                any_angle_meta = True
+                            except Exception:
+                                pass
+                        if 'SampleAngle' in single_meas.metadata:
+                            try:
+                                spectrum.sample_angle = float(
+                                    single_meas.metadata['SampleAngle']
+                                ) * ureg('degree')
+                                any_angle_meta = True
+                            except Exception:
+                                pass
+                        if 'Polarization' in single_meas.metadata:
+                            logger.debug(single_meas.metadata['PolarizationAngle'])
+                            logger.debug(single_meas.metadata['Polarization'])
+                            spectrum.polarization = single_meas.metadata['Polarization']
+                            any_angle_meta = True
+
+                        spectra_all.append(spectrum)
+
+                if spectra_all:
+                    # Generate name from CSV filename (strip extension)
+                    result_name = 'Single point'
+                    if self.data_file:
+                        first_file = (
+                            self.data_file[0]
+                            if isinstance(self.data_file, (list, tuple))
+                            else self.data_file
+                        )
+                        result_name = os.path.splitext(os.path.basename(first_file))[0]
+                    result = RTResult(name=result_name)
+                    result.spectra = spectra_all
+                    # single-point stage position
+                    result.x_absolute = 0 * ureg('mm')
+                    result.y_absolute = 0 * ureg('mm')
+
+                    self.results = [result]
+
+                    # If accessory not set, infer from presence of angles
+                    if getattr(self, 'accessory', None) in (None, 'None'):
+                        self.accessory = 'UMA' if any_angle_meta else 'DRA'
+            except Exception as e:
+                logger.error(
+                    f'Error parsing csv with autosampler_reader: {e}',
+                    exc_info=True,
+                )
+
         if self.location is None:
             self.location = 'DTU Nanolab RT Measurement'
 
-        if self.name:
-            self.add_sample_reference(self.name, 'RT', archive, logger)
+        if self.data_file:
+            first_file = (
+                self.data_file[0]
+                if isinstance(self.data_file, (list, tuple))
+                else self.data_file
+            )
+            self.add_sample_reference(first_file, 'RT', archive, logger)
 
         super().normalize(archive, logger)
 

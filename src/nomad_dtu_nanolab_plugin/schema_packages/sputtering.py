@@ -1943,6 +1943,7 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
     m_def = Section(
         categories=[DTUNanolabCategory],
+        links=['http://purl.obolibrary.org/obo/CHMO_0001373'],
         label='Sputtering',
     )
     lab_id = Quantity(

@@ -274,6 +274,7 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
     m_def = Section(
         categories=[DTUNanolabCategory],
+        links=['http://purl.obolibrary.org/obo/CHMO_0000223'],
         label='Ellipsometry Measurement',
     )
     native_file = Quantity(

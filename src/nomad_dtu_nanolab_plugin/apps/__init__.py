@@ -710,6 +710,13 @@ rtp = AppEntryPoint(
                 format=Format(decimals=1),
             ),
             Column(
+                search_quantity=f'data.overview.annealing_nh3_in_ar_flow#{rtp_schema}',
+                selected=True,
+                label='NH3 in Ar flow',
+                unit='cm^3/minute',
+                format=Format(decimals=1),
+            ),
+            Column(
                 search_quantity=f'data.overview.total_heating_time#{rtp_schema}',
                 selected=False,
                 label='Total heating time',

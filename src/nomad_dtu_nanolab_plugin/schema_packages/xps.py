@@ -185,6 +185,7 @@ class XpsMetadata(ArchiveSection):
 class DTUXpsMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
+        links=['http://purl.obolibrary.org/obo/CHMO_0000404'],
         label='XPS Measurement',
     )
     native_file = Quantity(

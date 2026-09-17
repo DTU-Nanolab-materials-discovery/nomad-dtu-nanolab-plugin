@@ -10,7 +10,7 @@ from nomad_dtu_nanolab_plugin.schema_packages.sample import (
 )
 
 
-@pytest.mark.usefixtures('tmp_path')
+@pytest.mark.usefixtures('tmp_path', 'caplog')
 def test_cleaving(tmp_path):
     test_library = os.path.join('tests', 'data', 'test_combilib.archive.yaml')
     tmp_file = tmp_path / 'combilib.archive.yaml'

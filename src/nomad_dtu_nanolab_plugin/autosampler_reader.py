@@ -84,7 +84,7 @@ class SingleMeasurement:
             polarisation_angle = self.measurement_label.split('__')[1]
             self.metadata['PolarizationAngle'] = polarisation_angle
             self.metadata['Polarization'] = POLARISATION_DICT.get(
-                polarisation_angle, 'custom'
+                str(int(float(polarisation_angle.strip()))), 'custom'
             )
             self.metadata['SampleAngle'] = self.measurement_label.split('__')[2]
             self.metadata['DetectorAngle'] = self.measurement_label.split('__')[3]
@@ -104,13 +104,17 @@ class SingleMeasurement:
             if 'SampleAngle' in row[0]:
                 self.metadata['SampleAngle'] = float(row[1])
             if 'PolarizationAngle' in row[0]:
-                if len(row) == 1:
+                if len(row) == 1 or row[1].strip() == 'None':
                     polarisation_angle = 'None'
                 else:
                     polarisation_angle = row[1]
-                self.metadata['PolarizationAngle'] = polarisation_angle
+                self.metadata['PolarizationAngle'] = (
+                    None
+                    if polarisation_angle == 'None'
+                    else float(polarisation_angle.strip())
+                )
                 self.metadata['Polarization'] = POLARISATION_DICT.get(
-                    polarisation_angle, 'custom'
+                    polarisation_angle.strip(), 'custom'
                 )
             if 'DetectorAngle' in row[0]:
                 self.metadata['DetectorAngle'] = float(row[1])
@@ -969,8 +973,7 @@ def get_uma_sequence_length(sample_names):
     return intervals[0]
 
 
-def read_data_block(data_path, measurement_labels, column_headers):
-    uma_sequence_length = get_uma_sequence_length(measurement_labels)
+def read_data_block(data_path, measurement_labels, column_headers, parse_sequence=True):
 
     df = pd.read_csv(data_path, skiprows=1)
     # remove non float rows
@@ -989,6 +992,11 @@ def read_data_block(data_path, measurement_labels, column_headers):
         collect.add_data(wavelength, values, column_name)
         collects.append(collect)
 
+    if parse_sequence:
+        uma_sequence_length = get_uma_sequence_length(measurement_labels)
+    else:
+        uma_sequence_length = len(collects)
+
     return collects, uma_sequence_length
 
 
@@ -997,11 +1005,13 @@ def read_metadata_block(reader):
     for row in reader:
         if isinstance(row, list):
             if len(row) == 0:
-                # Treat empty list as the start of the metadata
                 metadata_lines = [row] + list(reader)
                 break
             row_start = row[0]
-        if not row_start.isdigit():  # Stop when metadata starts
+        # FIX: use float() instead of isdigit() to handle decimal wavelengths
+        try:
+            float(row_start)
+        except ValueError:
             metadata_lines = [row] + list(reader)
             break
 
@@ -1061,7 +1071,7 @@ def read_config_block(config_path, collects, uma_sequence_length):
             uma_counter = 0
 
 
-def parse_file(data_path, config_path=None):
+def parse_file(data_path, config_path=None, parse_sequence=True):
     with open(data_path, encoding='utf-8') as file:
         reader = csv.reader(file)
 
@@ -1073,14 +1083,21 @@ def parse_file(data_path, config_path=None):
 
         # Read data block
         collects, uma_sequence_length = read_data_block(
-            data_path, measurement_labels, column_headers
+            data_path,
+            measurement_labels,
+            column_headers,
+            parse_sequence=parse_sequence,
         )
 
         # Read metadata block
         metadata_dict = read_metadata_block(reader)
 
         if len(collects) != len(metadata_dict):
-            raise ValueError('Number of collects and metadata blocks do not match.')
+            raise ValueError(
+                f'Number of collects ({len(collects)})',
+                f'and metadata blocks ({len(metadata_dict)}) do not match.',
+                f'{metadata_dict.keys()}',
+            )
 
         # Iterate through the metadata dictionary to write the metadata
         for collect, metadata in zip(collects, metadata_dict.values()):

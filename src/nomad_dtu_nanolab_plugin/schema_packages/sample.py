@@ -529,6 +529,11 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
             print('Warning: More than one sputtering reference found.')
         return results[0] if results else None
 
+    def plot(self, archive, logger):
+        if getattr(archive.metadata, 'main_author', None) is None:
+            return
+        super().plot(archive, logger)
+
     def normalize(self, archive, logger):
         """
         Normalizes the combinatorial library entry by ensuring required fields are set.
@@ -544,11 +549,19 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         logger : Logger
             Logger for recording normalization events or warnings.
         """
+        substrate = getattr(self, 'substrate', None)
+        if substrate is not None and getattr(substrate, 'reference', None) is None:
+            try:
+                substrate.reference = substrate
+            except Exception:
+                pass
+
         super().normalize(archive, logger)
 
         # Ensure that the geometry is set to the default if not provided
-        if not self.geometry and self.substrate.reference:
-            substrate_geometry = self.substrate.reference.geometry
+        substrate_reference = getattr(substrate, 'reference', None)
+        if not self.geometry and substrate_reference:
+            substrate_geometry = substrate_reference.geometry
             if substrate_geometry:
                 self.geometry = substrate_geometry
 
@@ -743,99 +756,103 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         description='The child libraries created from the combinatorial library.',
     )
 
-    def recognize_pattern(self, logger: 'BoundLogger') -> None:
-        """
-        Recognizes the pattern of the library and creates the new pieces accordingly.
-        """
-        height = None
-        if self.combinatorial_library.geometry:
-            height = self.combinatorial_library.geometry.height
-        start_x = (self.library_x_length / 2) * (-1)
-        start_y = self.library_y_length / 2
+    def handle_square(
+        self,
+        start_x: float,
+        start_y: float,
+        height: float | None,
+    ) -> None:
 
-        if self.pattern == 'squares':
-            total_nr = self.number_of_pieces**2
-            size = self.library_x_length / self.number_of_pieces
-            for j in range(self.number_of_pieces):
-                for i in range(self.number_of_pieces):
-                    piece = DTULibraryParts()
-                    number = 1 + j * self.number_of_pieces + i
-                    piece.library_name = (
-                        f'{self.combinatorial_library.name} S{number}-{total_nr}'
-                    )
-                    piece.name = f'Square {number} of {total_nr}'
-                    piece.lab_id = piece.library_name.replace(' ', '_')
-                    piece.upper_left_x = start_x + i * size
-                    piece.upper_left_y = start_y - (j) * size
-                    piece.lower_right_x = start_x + (i + 1) * size
-                    piece.lower_right_y = start_y - (j + 1) * size
-                    piece.part_size = (size, size)
-                    piece.geometry = RectangleCuboid(
-                        length=size,
-                        width=size,
-                        height=height,
-                        surface_area=(size * size),
-                    )
-                    if height is not None:
-                        piece.geometry.volume = size * size * height
-
-                    self.new_pieces.append(piece)
-        elif self.pattern == 'horizontal stripes':
-            size = self.library_y_length / self.number_of_pieces
-
+        total_nr = self.number_of_pieces**2
+        size_x = self.library_x_length / self.number_of_pieces
+        size_y = self.library_y_length / self.number_of_pieces
+        for j in range(self.number_of_pieces):
             for i in range(self.number_of_pieces):
                 piece = DTULibraryParts()
-                number = i + 1
+                number = 1 + j * self.number_of_pieces + i
                 piece.library_name = (
-                    f'{self.combinatorial_library.name} H{number}-'
-                    f'{self.number_of_pieces}'
+                    f'{self.combinatorial_library.name} S{number}-{total_nr}'
                 )
-                piece.name = f'Horizontal stripe {number} of {self.number_of_pieces}'
+                piece.name = f'Square {number} of {total_nr}'
                 piece.lab_id = piece.library_name.replace(' ', '_')
-                piece.upper_left_x = start_x
-                piece.upper_left_y = start_y - i * size
-                piece.lower_right_x = start_x + self.library_x_length
-                piece.lower_right_y = start_y - (i + 1) * size
-                piece.part_size = (self.library_x_length, size)
+                piece.upper_left_x = start_x + i * size_x
+                piece.upper_left_y = start_y - (j) * size_y
+                piece.lower_right_x = start_x + (i + 1) * size_x
+                piece.lower_right_y = start_y - (j + 1) * size_y
+                piece.part_size = (size_x, size_y)
                 piece.geometry = RectangleCuboid(
-                    length=size,
-                    width=self.library_x_length,
+                    length=size_x,
+                    width=size_y,
                     height=height,
-                    surface_area=(self.library_x_length * size),
+                    surface_area=(size_x * size_y),
                 )
                 if height is not None:
-                    piece.geometry.volume = self.library_x_length * size * height
-
+                    piece.geometry.volume = size_x * size_y * height
                 self.new_pieces.append(piece)
-        elif self.pattern == 'vertical stripes':
-            size = self.library_x_length / self.number_of_pieces
 
-            for i in range(self.number_of_pieces):
-                piece = DTULibraryParts()
-                number = i + 1
-                piece.library_name = (
-                    f'{self.combinatorial_library.name} V{number}-'
-                    f'{self.number_of_pieces}'
-                )
-                piece.name = f'Vertical stripe {number} of {self.number_of_pieces}'
-                piece.lab_id = piece.library_name.replace(' ', '_')
-                piece.upper_left_x = start_x + i * size
-                piece.upper_left_y = start_y
-                piece.lower_right_x = start_x + (i + 1) * size
-                piece.lower_right_y = start_y - self.library_y_length
-                piece.part_size = (size, self.library_y_length)
-                piece.geometry = RectangleCuboid(
-                    length=self.library_y_length,
-                    width=size,
-                    height=height,
-                    surface_area=(size * self.library_y_length),
-                )
-                if height is not None:
-                    piece.geometry.volume = size * self.library_y_length * height
+    def handle_horizontal_stripes(
+        self,
+        start_x: float,
+        start_y: float,
+        height: float | None,
+    ) -> None:
 
-                self.new_pieces.append(piece)
-        elif self.pattern == 'custom':
-            self.handle_custom_pattern()
+        size = self.library_y_length / self.number_of_pieces
+        for i in range(self.number_of_pieces):
+            piece = DTULibraryParts()
+            number = i + 1
+            piece.library_name = (
+                f'{self.combinatorial_library.name} H{number}-{self.number_of_pieces}'
+            )
+            piece.name = f'Horizontal stripe {number} of {self.number_of_pieces}'
+            piece.lab_id = piece.library_name.replace(' ', '_')
+            piece.upper_left_x = start_x
+            piece.upper_left_y = start_y - i * size
+            piece.lower_right_x = start_x + self.library_x_length
+            piece.lower_right_y = start_y - (i + 1) * size
+            piece.part_size = (self.library_x_length, size)
+            piece.geometry = RectangleCuboid(
+                length=size,
+                width=self.library_x_length,
+                height=height,
+                surface_area=(self.library_x_length * size),
+            )
+            if height is not None:
+                piece.geometry.volume = self.library_x_length * size * height
+
+            self.new_pieces.append(piece)
+
+    def handle_vertical_stripes(
+        self,
+        start_x: float,
+        start_y: float,
+        height: float | None,
+    ) -> None:
+
+        size = self.library_x_length / self.number_of_pieces
+        for i in range(self.number_of_pieces):
+            piece = DTULibraryParts()
+            number = i + 1
+            piece.library_name = (
+                f'{self.combinatorial_library.name} V{number}-{self.number_of_pieces}'
+            )
+            piece.name = f'Vertical stripe {number} of {self.number_of_pieces}'
+            piece.lab_id = piece.library_name.replace(' ', '_')
+            piece.upper_left_x = start_x + i * size
+            piece.upper_left_y = start_y
+            piece.lower_right_x = start_x + (i + 1) * size
+            piece.lower_right_y = start_y - self.library_y_length
+            piece.part_size = (size, self.library_y_length)
+            piece.geometry = RectangleCuboid(
+                length=self.library_y_length,
+                width=size,
+                height=height,
+                surface_area=(size * self.library_y_length),
+            )
+            if height is not None:
+                piece.geometry.volume = size * self.library_y_length * height
+
+            self.new_pieces.append(piece)
 
     def handle_custom_pattern(self) -> None:
         """
@@ -850,6 +867,25 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
             piece.lab_id = piece.library_name.replace(' ', '_')
             self.new_pieces.append(piece)
 
+    def recognize_pattern(self, logger: 'BoundLogger') -> None:
+        """
+        Recognizes the pattern of the library and creates the new pieces accordingly.
+        """
+        height = None
+        if self.combinatorial_library.geometry:
+            height = self.combinatorial_library.geometry.height
+        start_x = (self.library_x_length / 2) * (-1)
+        start_y = self.library_y_length / 2
+
+        if self.pattern == 'squares':
+            self.handle_square(start_x, start_y, height)
+        elif self.pattern == 'horizontal stripes':
+            self.handle_horizontal_stripes(start_x, start_y, height)
+        elif self.pattern == 'vertical stripes':
+            self.handle_vertical_stripes(start_x, start_y, height)
+        elif self.pattern == 'custom':
+            self.handle_custom_pattern()
+
     def handle_custom_plot(self) -> None:
         """
         Handles the plotting of the custom pattern for the library pieces.
@@ -861,6 +897,9 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         # self.add_original_library_to_plot(fig)
 
         # TODO : add the custom pieces to the plot considering their shapes
+
+        self.add_original_library_to_plot(fig)
+        self.add_pieces_to_plot(fig)
 
         fig.update_layout(
             title='Positions of the new pieces in the library',
@@ -934,6 +973,54 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 showarrow=False,
             )
 
+    def add_pieces_to_plot(self, fig: go.Figure) -> None:
+
+        for piece in self.new_pieces:
+            if piece.part_size is None:
+                continue
+
+            fig.add_shape(
+                type='rect',
+                x0=(
+                    piece.upper_left_x.to('mm').magnitude
+                    + (0.01 * piece.part_size[0].to('mm').magnitude)
+                ),
+                y0=(
+                    piece.upper_left_y.to('mm').magnitude
+                    - (0.01 * piece.part_size[1].to('mm').magnitude)
+                ),
+                x1=(
+                    piece.lower_right_x.to('mm').magnitude
+                    - (0.01 * piece.part_size[0].to('mm').magnitude)
+                ),
+                y1=(
+                    piece.lower_right_y.to('mm').magnitude
+                    + (0.01 * piece.part_size[1].to('mm').magnitude)
+                ),
+                name=piece.library_name,
+                line=dict(color='green'),
+                fillcolor='lightgreen',
+                opacity=0.4,
+            )
+            fig.add_annotation(
+                x=(
+                    (
+                        piece.upper_left_x.to('mm').magnitude
+                        + piece.lower_right_x.to('mm').magnitude
+                    )
+                    / 2
+                ),
+                y=(
+                    (
+                        piece.upper_left_y.to('mm').magnitude
+                        + piece.lower_right_y.to('mm').magnitude
+                    )
+                    / 2
+                ),
+                text=piece.library_name,
+                showarrow=False,
+            )
+
     def plot(self) -> None:
         """
         Plots the positions of the new pieces in the library.
@@ -943,88 +1030,13 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         if self.new_pieces is None or len(self.new_pieces) == 0:
             return
         fig = go.Figure()
-
-        x0 = -self.library_x_length.to('mm').magnitude / 2
-        y0 = self.library_y_length.to('mm').magnitude / 2
-        x1 = self.library_x_length.to('mm').magnitude / 2
-        y1 = -self.library_y_length.to('mm').magnitude / 2
+        fig.update_layout(shapes=[])
 
         if self.combinatorial_library is not None:
-            if isinstance(self.combinatorial_library.geometry, Cylinder):
-                fig.add_shape(
-                    type='circle',
-                    x0=x0,
-                    y0=y0,
-                    x1=x1,
-                    y1=y1,
-                    line=dict(color='red', width=3),
-                    fillcolor='white',
-                    opacity=0.5,
-                )
-            elif isinstance(self.combinatorial_library.geometry, RectangleCuboid):
-                fig.add_shape(
-                    type='rect',
-                    x0=x0,
-                    y0=y0,
-                    x1=x1,
-                    y1=y1,
-                    line=dict(color='red', width=3),
-                    fillcolor='white',
-                    opacity=0.5,
-                )
-            fig.add_annotation(
-                x=(x0 + x1) / 2,
-                y=(y0 + y1) / 2,
-                text=self.combinatorial_library.name,
-                showarrow=False,
-            )
+            self.add_original_library_to_plot(fig)
 
-        if self.pattern != 'custom':
-            for piece in self.new_pieces:
-                if piece.part_size is None:
-                    continue
+        self.add_pieces_to_plot(fig)
 
-                fig.add_shape(
-                    type='rect',
-                    x0=(
-                        piece.upper_left_x.to('mm').magnitude
-                        + (0.01 * piece.part_size[0].to('mm').magnitude)
-                    ),
-                    y0=(
-                        piece.upper_left_y.to('mm').magnitude
-                        - (0.01 * piece.part_size[1].to('mm').magnitude)
-                    ),
-                    x1=(
-                        piece.lower_right_x.to('mm').magnitude
-                        - (0.01 * piece.part_size[0].to('mm').magnitude)
-                    ),
-                    y1=(
-                        piece.lower_right_y.to('mm').magnitude
-                        + (0.01 * piece.part_size[1].to('mm').magnitude)
-                    ),
-                    name=piece.library_name,
-                    line=dict(color='green'),
-                    fillcolor='lightgreen',
-                    opacity=0.4,
-                )
-                fig.add_annotation(
-                    x=(
-                        (
-                            piece.upper_left_x.to('mm').magnitude
-                            + piece.lower_right_x.to('mm').magnitude
-                        )
-                        / 2
-                    ),
-                    y=(
-                        (
-                            piece.upper_left_y.to('mm').magnitude
-                            + piece.lower_right_y.to('mm').magnitude
-                        )
-                        / 2
-                    ),
-                    text=piece.library_name,
-                    showarrow=False,
-                )
         fig.update_layout(
             title='Positions of the new pieces in the library',
             xaxis_title='X (mm)',
@@ -1087,8 +1099,6 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
         )
         children = []
 
-        if self.pattern == 'custom':
-            return
         piece: DTULibraryParts
         for piece in self.new_pieces:
             if piece.part_size is None:
@@ -1158,6 +1168,24 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
                 ]
             )
 
+    def fill_pattern(self, logger: 'BoundLogger') -> None:
+
+        self.generate_pattern = False
+        if self.number_of_pieces is None or self.number_of_pieces <= 1:
+            logger.error('The number of pieces must be at least 2 to create a pattern.')
+            return
+        elif self.pattern not in [
+            'squares',
+            'horizontal stripes',
+            'vertical stripes',
+            'custom',
+        ]:
+            logger.error(f'Unknown pattern {self.pattern}.')
+            return
+        else:
+            self.new_pieces = []
+            self.recognize_pattern(logger)
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUSubstrateCleaning` class.
@@ -1182,23 +1210,7 @@ class DTULibraryCleaving(Process, Schema, PlotSection):
 
         # Check the pattern input and create the new pieces according to selection
         if self.generate_pattern:
-            self.generate_pattern = False
-            if self.number_of_pieces is None or self.number_of_pieces <= 1:
-                logger.error(
-                    'The number of pieces must be at least 2 to create a pattern.'
-                )
-                return
-            elif self.pattern not in [
-                'squares',
-                'horizontal stripes',
-                'vertical stripes',
-                'custom',
-            ]:
-                logger.error(f'Unknown pattern {self.pattern}.')
-                return
-            else:
-                self.new_pieces = []
-                self.recognize_pattern(logger)
+            self.fill_pattern(logger)
 
         if self.new_pieces:
             # update the plot with the new pieces
