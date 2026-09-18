@@ -27,6 +27,7 @@ from nomad.datamodel.metainfo.annotations import (
     SectionProperties,
 )
 from nomad.datamodel.metainfo.basesections import CompositeSystem, Instrument
+from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Datetime, MEnum, Package, Quantity, Section, SubSection
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -436,7 +437,7 @@ class StatusChangeSputtersystem(ArchiveSection):
     copy_old_chamber_geometry = Quantity(
         type=bool,
         description='Whether the chamber geometry was copied from the previous entry.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity, default=True),
     )
     comment_about_change = Quantity(
         type=str,
@@ -737,7 +738,7 @@ class QcmMaintenance(StatusChangeSputtersystem):
     )
 
 
-class DtuSputterInstrument(Instrument, Schema):
+class DtuSputterInstrument(Instrument, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Sputter System',
@@ -808,6 +809,100 @@ class DtuSputterInstrument(Instrument, Schema):
         repeats=True,
     )
 
+    def plot_status_timeline(self) -> None:
+        """Create a timeline of the instrument and its status changes."""
+        from html import escape
+
+        import plotly.graph_objects as go
+
+        status_entries = []
+        for status_change in self.status_of_system or []:
+            if status_change.date_of_change is None:
+                continue
+            status_entries.append(status_change)
+
+        if not status_entries:
+            return
+
+        figure = go.Figure()
+        event_positions = [
+            0.92 - index * 0.84 / max(len(status_entries) - 1, 1)
+            for index in range(len(status_entries))
+        ]
+        figure.add_shape(
+            type='line',
+            xref='paper',
+            yref='paper',
+            x0=0.5,
+            x1=0.5,
+            y0=0.08,
+            y1=0.92,
+            line={'color': '#506784', 'width': 4},
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=[0.5] * len(status_entries),
+                y=event_positions,
+                mode='markers',
+                marker={
+                    'size': 12,
+                    'color': '#d95f59',
+                    'line': {'color': 'white', 'width': 2},
+                },
+                hovertemplate=(
+                    '<b>%{customdata[0]}</b><br>%{customdata[1]}<extra></extra>'
+                ),
+                customdata=[
+                    [
+                        status_change.m_def.name,
+                        status_change.comment_about_change or 'No comment',
+                    ]
+                    for status_change in status_entries
+                ],
+            )
+        )
+        for position, status_change in zip(event_positions, status_entries):
+            date_text = status_change.date_of_change.strftime('%Y-%m-%d')
+            status_type = escape(status_change.m_def.name)
+            comment = escape(status_change.comment_about_change or 'No comment')
+            figure.add_annotation(
+                x=0.44,
+                y=position,
+                xref='paper',
+                yref='paper',
+                text=date_text,
+                showarrow=False,
+                xanchor='right',
+                align='right',
+                font={'size': 12, 'color': '#334155'},
+            )
+            figure.add_annotation(
+                x=0.56,
+                y=position,
+                xref='paper',
+                yref='paper',
+                text=f'<b>{status_type}</b><br>{comment}',
+                showarrow=False,
+                xanchor='left',
+                align='left',
+                bgcolor='#f8fafc',
+                bordercolor='#cbd5e1',
+                borderwidth=1,
+                borderpad=8,
+                font={'size': 12, 'color': '#1e293b'},
+            )
+        figure.update_layout(
+            title='Sputter system status timeline',
+            xaxis={'visible': False, 'range': [0, 1]},
+            yaxis={'visible': False, 'range': [0, 1]},
+            height=max(400, 150 * len(status_entries)),
+            margin={'l': 110, 'r': 300, 't': 70, 'b': 30},
+            plot_bgcolor='white',
+        )
+        self.figures.append(
+            PlotlyFigure(label='Status timeline', figure=figure.to_plotly_json())
+        )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUInstrument` class.
@@ -818,6 +913,8 @@ class DtuSputterInstrument(Instrument, Schema):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
+        self.figures = []
+        self.plot_status_timeline()
 
 
 m_package.__init_metainfo__()
