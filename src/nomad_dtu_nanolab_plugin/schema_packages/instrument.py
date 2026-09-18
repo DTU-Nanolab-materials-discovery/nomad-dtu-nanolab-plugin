@@ -170,9 +170,19 @@ class SputterSource(ArchiveSection):
                     'rotation',
                     'pointed_towards',
                     'distance_to_substrate',
+                    'base_position',
                 ],
             ),
         ),
+    )
+    base_position = Quantity(
+        type=np.float64,
+        shape=(3,),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+        ),
+        unit='m',
     )
     date_of_installation = Quantity(
         type=Datetime,
@@ -184,15 +194,6 @@ class SputterSource(ArchiveSection):
             component=ELNComponentEnum.EnumEditQuantity,
             props=dict(suggestions=['Taurus', 'Magkeeper', 'Other']),
         ),
-    )
-    position_of_source_mounting_port = Quantity(
-        type=np.float64,
-        shape=(3,),
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='cm',
-        ),
-        unit='m',
     )
     pointed_towards = Quantity(
         type=np.float64,
@@ -301,10 +302,20 @@ class SCrackerSource(ArchiveSection):
                     'nozzle_position',
                     'pointed_towards',
                     'distance_to_substrate',
+                    'base_position',
                     'description',
                 ],
             ),
         ),
+    )
+    base_position = Quantity(
+        type=np.float64,
+        shape=(3,),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='cm',
+        ),
+        unit='m',
     )
     date_of_changes = Quantity(
         type=Datetime,
@@ -363,10 +374,7 @@ class ChamberGeometry(ArchiveSection):
                     'chamber_picture',
                     'aluminum_covers',
                     'description',
-                    'source_1',
-                    'source_2',
-                    'source_3',
-                    'source_4',
+                    'source',
                     'sulfur_cracker',
                     'Inert_gas_inlet',
                     'Reactive_gas_inlet',
@@ -393,21 +401,9 @@ class ChamberGeometry(ArchiveSection):
         description='Whether aluminum covers are used in the chamber.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
     )
-    source_1 = SubSection(
+    source = SubSection(
         section_def=SputterSource,
-        repeats=False,
-    )
-    source_2 = SubSection(
-        section_def=SputterSource,
-        repeats=False,
-    )
-    source_3 = SubSection(
-        section_def=SputterSource,
-        repeats=False,
-    )
-    source_4 = SubSection(
-        section_def=SputterSource,
-        repeats=False,
+        repeats=True,
     )
     sulfur_cracker = SubSection(
         section_def=SCrackerSource,
@@ -437,6 +433,11 @@ class StatusChangeSputtersystem(ArchiveSection):
         type=Datetime,
         a_eln=ELNAnnotation(component=ELNComponentEnum.DateTimeEditQuantity),
     )
+    copy_old_chamber_geometry = Quantity(
+        type=bool,
+        description='Whether the chamber geometry was copied from the previous entry.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
+    )
     comment_about_change = Quantity(
         type=str,
         a_eln=ELNAnnotation(component=ELNComponentEnum.RichTextEditQuantity),
@@ -446,6 +447,27 @@ class StatusChangeSputtersystem(ArchiveSection):
         repeats=False,
     )
 
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `StatusChangeSputtersystem` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        super().normalize(archive, logger)
+        if self.copy_old_chamber_geometry and not self.chamber_geometry:
+            # Copy the chamber geometry from the previous entry if it exists
+            # <(AI suggestion. TEST!!!!)
+            previous_entry = archive.m_context.get('previous_entry')
+            if previous_entry and hasattr(previous_entry, 'status_of_system'):
+                previous_status_changes = previous_entry.status_of_system
+                if previous_status_changes:
+                    last_change = previous_status_changes[-1]
+                    if last_change.chamber_geometry:
+                        self.chamber_geometry = last_change.chamber_geometry
+
 
 class PurgeAndCleaning(StatusChangeSputtersystem):
     m_def = Section(
@@ -453,6 +475,7 @@ class PurgeAndCleaning(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
+                    'copy_old_chamber_geometry',
                     'number_of_purge_cycles',
                     'time_per_purge_cycles',
                     'pressure_during_purge',
@@ -504,6 +527,7 @@ class QuickCleaning(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
+                    'copy_old_chamber_geometry',
                     'vaccumed',
                     'other_cleaning_methods',
                     'comment_about_change',
@@ -529,6 +553,7 @@ class TargetChange(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
+                    'copy_old_chamber_geometry',
                     'source_1_changed',
                     'source_1_target',
                     'source_3_changed',
@@ -587,6 +612,7 @@ class PlattenCleaning(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
+                    'copy_old_chamber_geometry',
                     'platen_cleaned',
                     'comment_about_change',
                 ],
@@ -618,6 +644,7 @@ class ThermalCleaning(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
+                    'copy_old_chamber_geometry',
                     'temperature',
                     'duration',
                     'comment_about_change',
@@ -651,6 +678,7 @@ class QcmMaintenance(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
+                    'copy_old_chamber_geometry',
                     'qcm_1_replaced',
                     'qcm_2_replaced',
                     'comment_about_change',
