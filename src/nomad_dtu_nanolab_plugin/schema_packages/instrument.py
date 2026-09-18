@@ -447,6 +447,53 @@ class StatusChangeSputtersystem(ArchiveSection):
         repeats=False,
     )
 
+    def copy_previous_chamber_geometry(self, logger: 'BoundLogger') -> None:
+        """Copy the latest chamber geometry from an earlier status entry."""
+        if not self.copy_old_chamber_geometry or self.chamber_geometry is not None:
+            return
+
+        status_changes = getattr(self.m_parent, 'status_of_system', None)
+        if not status_changes:
+            return
+
+        try:
+            status_index = status_changes.index(self)
+        except ValueError:
+            return
+
+        if status_index == 0:
+            logger.warning(
+                'Cannot copy chamber geometry: this is the first status entry.'
+            )
+            return
+
+        previous_status_changes = status_changes[:status_index]
+        dated_status_changes = [
+            status_change
+            for status_change in previous_status_changes
+            if status_change.date_of_change is not None
+            and status_change.chamber_geometry is not None
+        ]
+        if dated_status_changes:
+            previous_status = max(
+                dated_status_changes,
+                key=lambda status_change: status_change.date_of_change,
+            )
+        else:
+            previous_status = previous_status_changes[-1]
+
+        previous_chamber_geometry = previous_status.chamber_geometry
+
+        if previous_chamber_geometry is None:
+            logger.warning(
+                'Cannot copy chamber geometry: no previous status entry has geometry.'
+            )
+            return
+
+        self.chamber_geometry = ChamberGeometry.m_from_dict(
+            previous_chamber_geometry.m_to_dict()
+        )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `StatusChangeSputtersystem` class.
@@ -457,16 +504,8 @@ class StatusChangeSputtersystem(ArchiveSection):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-        if self.copy_old_chamber_geometry and not self.chamber_geometry:
-            # Copy the chamber geometry from the previous entry if it exists
-            # <(AI suggestion. TEST!!!!)
-            previous_entry = archive.m_context.get('previous_entry')
-            if previous_entry and hasattr(previous_entry, 'status_of_system'):
-                previous_status_changes = previous_entry.status_of_system
-                if previous_status_changes:
-                    last_change = previous_status_changes[-1]
-                    if last_change.chamber_geometry:
-                        self.chamber_geometry = last_change.chamber_geometry
+        if self.copy_old_chamber_geometry and self.chamber_geometry is None:
+            self.copy_previous_chamber_geometry(logger)
 
 
 class PurgeAndCleaning(StatusChangeSputtersystem):
