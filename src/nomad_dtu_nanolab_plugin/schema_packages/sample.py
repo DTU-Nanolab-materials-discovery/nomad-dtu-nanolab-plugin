@@ -83,6 +83,11 @@ class SampleProperty(ArchiveSection):
     )
     confidence = Quantity(
         type=int,
+        a_eln=ELNAnnotation(
+            component= ELNComponentEnum.SliderEditQuantity,
+            minValue=MIN_CONFIDENCE_LEVEL,
+            maxValue=MAX_CONFIDENCE_LEVEL
+        ),
         description=(
             'A relative confidence level for the sample property: '
             '1 = very low confidence, based mainly on assumptions or weak evidence; '
