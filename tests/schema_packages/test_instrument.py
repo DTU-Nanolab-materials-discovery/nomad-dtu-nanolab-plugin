@@ -29,19 +29,19 @@ def test_big_maintenance_copies_latest_geometry_as_of_its_date():
             chamber_size_3D=[7.0, 8.0, 9.0],
         ),
     ]
-    maintenance = BigMaintainance(
-        date_of_change=datetime(2025, 6, 1, tzinfo=UTC)
-    )
+    maintenance = BigMaintainance(date_of_change=datetime(2025, 6, 1, tzinfo=UTC))
     instrument.status_of_system = [maintenance]
 
     maintenance.normalize(EntryArchive(), Mock())
 
     assert not hasattr(StatusChangeSputtersystem(), 'geometry')
     assert maintenance.geometry.date == datetime(2025, 1, 1, tzinfo=UTC)
-    assert (
-        maintenance.geometry.chamber_size_3D.to('m').magnitude.tolist()
-        == [7.0, 8.0, 9.0]
-    )
+    assert maintenance.geometry.chamber_size_3D.to('m').magnitude.tolist() == [
+        7.0,
+        8.0,
+        9.0,
+    ]
+
 
 def test_big_maintenance_transfers_edited_geometry_to_instrument_history():
     instrument = DtuSputterInstrument()
@@ -63,10 +63,11 @@ def test_big_maintenance_transfers_edited_geometry_to_instrument_history():
     assert instrument.geometry[0] is previous_geometry
     assert len(instrument.geometry) == previous_geometry_count + 1
     assert instrument.geometry[-1].date == datetime(2025, 6, 1, tzinfo=UTC)
-    assert (
-        instrument.geometry[-1].chamber_size_3D.to('m').magnitude.tolist()
-        == [4.0, 5.0, 6.0]
-    )
+    assert instrument.geometry[-1].chamber_size_3D.to('m').magnitude.tolist() == [
+        4.0,
+        5.0,
+        6.0,
+    ]
     assert maintenance.geometry.date is None
     assert maintenance.transfer_geometry_now is False
 
@@ -91,10 +92,11 @@ def test_big_maintenance_overwrites_latest_geometry_from_same_day():
     assert len(instrument.geometry) == 1
     assert instrument.geometry[0] is not existing_geometry
     assert instrument.geometry[0].date == datetime(2025, 6, 1, 16, tzinfo=UTC)
-    assert (
-        instrument.geometry[0].chamber_size_3D.to('m').magnitude.tolist()
-        == [4.0, 5.0, 6.0]
-    )
+    assert instrument.geometry[0].chamber_size_3D.to('m').magnitude.tolist() == [
+        4.0,
+        5.0,
+        6.0,
+    ]
     logger.warning.assert_called_once()
 
 

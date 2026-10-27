@@ -218,6 +218,8 @@ class SputterSource(ArchiveSection):
         ),
         unit='rad',
     )
+
+
 class OptixMeasurement(ArchiveSection):
     m_def = Section(
         a_eln=ELNAnnotation(
@@ -418,6 +420,7 @@ class StatusChangeSputtersystem(ArchiveSection):
         type=str,
         a_eln=ELNAnnotation(component=ELNComponentEnum.RichTextEditQuantity),
     )
+
 
 class PurgeAndCleaning(StatusChangeSputtersystem):
     m_def = Section(
@@ -809,10 +812,7 @@ class BigMaintainance(StatusChangeSputtersystem):
             geometry
             for geometry in geometry_history
             if geometry.date is not None
-            and (
-                self.date_of_change is None
-                or geometry.date <= self.date_of_change
-            )
+            and (self.date_of_change is None or geometry.date <= self.date_of_change)
         ]
         if dated_geometries:
             previous_geometry = max(
