@@ -7,14 +7,24 @@ import os
 DEFAULT_API_URL = 'https://nomad.nanolab.dtu.dk/nomad-oasis/api/v1'
 
 
+def _force_https(url: str) -> str:
+    """NORTH exposes an http:// URL; the Oasis redirects it to https and the
+    redirect turns POST requests into GET (404). Use https for public hosts."""
+    if url.startswith('http://'):
+        host = url[len('http://') :].split('/', 1)[0].split(':', 1)[0]
+        if '.' in host and host not in ('127.0.0.1', '0.0.0.0'):
+            return 'https://' + url[len('http://') :]
+    return url
+
+
 def api_base_url() -> str:
     """API URL: NOMAD_BASE_URL, else NORTH's NOMAD_CLIENT_URL, else the default."""
     explicit = os.environ.get('NOMAD_BASE_URL')
     if explicit:
-        return explicit.rstrip('/')
+        return _force_https(explicit.rstrip('/'))
     client_url = os.environ.get('NOMAD_CLIENT_URL')
     if client_url:
-        client_url = client_url.rstrip('/')
+        client_url = _force_https(client_url.rstrip('/'))
         if client_url.endswith('/v1'):
             return client_url
         if client_url.endswith('/api'):
