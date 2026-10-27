@@ -1,21 +1,3 @@
-#
-# Copyright The NOMAD Authors.
-#
-# This file is part of NOMAD. See https://nomad-lab.eu for further info.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -26,7 +8,7 @@ from nomad.datamodel.metainfo.annotations import (
     Filter,
     SectionProperties,
 )
-from nomad.datamodel.metainfo.basesections import CompositeSystem, Instrument
+from nomad.datamodel.metainfo.basesections import Instrument
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Datetime, MEnum, Package, Quantity, Section, SubSection
 
@@ -66,7 +48,7 @@ class ExternalInstrument(Instrument, Schema):
     method = Quantity(
         type=str,
         shape=['*'],
-        description='The measurement methode of this Instrument.',
+        description='The measurement method of this instrument.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
             props=dict(
@@ -165,7 +147,6 @@ class SputterSource(ArchiveSection):
                 order=[
                     'source_type',
                     'date_of_installation',
-                    'mounted_taret',
                     'height_of_source',
                     'set_angle',
                     'rotation',
@@ -237,12 +218,6 @@ class SputterSource(ArchiveSection):
         ),
         unit='rad',
     )
-    mounted_taret = Quantity(
-        type=CompositeSystem,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.ReferenceEditQuantity),
-    )
-
-
 class OptixMeasurement(ArchiveSection):
     m_def = Section(
         a_eln=ELNAnnotation(
@@ -299,7 +274,7 @@ class SCrackerSource(ArchiveSection):
                 order=[
                     'date_of_installation',
                     'S_cracker_extension_into_chamber',
-                    'S_cracker_mounting_hight',
+                    'S_cracker_mounting_height',
                     'nozzle_position',
                     'pointed_towards',
                     'distance_to_substrate',
@@ -318,7 +293,7 @@ class SCrackerSource(ArchiveSection):
         ),
         unit='m',
     )
-    date_of_changes = Quantity(
+    date_of_installation = Quantity(
         type=Datetime,
         a_eln=ELNAnnotation(component=ELNComponentEnum.DateTimeEditQuantity),
     )
@@ -356,7 +331,7 @@ class SCrackerSource(ArchiveSection):
         ),
         unit='m',
     )
-    S_cracker_mounting_hight = Quantity(
+    S_cracker_mounting_height = Quantity(
         type=np.float64,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
@@ -371,6 +346,7 @@ class ChamberGeometry(ArchiveSection):
         a_eln=ELNAnnotation(
             properties=SectionProperties(
                 order=[
+                    'date',
                     'chamber_size_3D',
                     'chamber_picture',
                     'aluminum_covers',
@@ -382,6 +358,10 @@ class ChamberGeometry(ArchiveSection):
                 ],
             ),
         ),
+    )
+    date = Quantity(
+        type=Datetime,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.DateTimeEditQuantity),
     )
     chamber_size_3D = Quantity(
         type=np.float64,
@@ -434,80 +414,10 @@ class StatusChangeSputtersystem(ArchiveSection):
         type=Datetime,
         a_eln=ELNAnnotation(component=ELNComponentEnum.DateTimeEditQuantity),
     )
-    copy_old_chamber_geometry = Quantity(
-        type=bool,
-        description='Whether the chamber geometry was copied from the previous entry.',
-        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity, default=True),
-    )
     comment_about_change = Quantity(
         type=str,
         a_eln=ELNAnnotation(component=ELNComponentEnum.RichTextEditQuantity),
     )
-    chamber_geometry = SubSection(
-        section_def=ChamberGeometry,
-        repeats=False,
-    )
-
-    def copy_previous_chamber_geometry(self, logger: 'BoundLogger') -> None:
-        """Copy the latest chamber geometry from an earlier status entry."""
-        if not self.copy_old_chamber_geometry or self.chamber_geometry is not None:
-            return
-
-        status_changes = getattr(self.m_parent, 'status_of_system', None)
-        if not status_changes:
-            return
-
-        try:
-            status_index = status_changes.index(self)
-        except ValueError:
-            return
-
-        if status_index == 0:
-            logger.warning(
-                'Cannot copy chamber geometry: this is the first status entry.'
-            )
-            return
-
-        previous_status_changes = status_changes[:status_index]
-        dated_status_changes = [
-            status_change
-            for status_change in previous_status_changes
-            if status_change.date_of_change is not None
-            and status_change.chamber_geometry is not None
-        ]
-        if dated_status_changes:
-            previous_status = max(
-                dated_status_changes,
-                key=lambda status_change: status_change.date_of_change,
-            )
-        else:
-            previous_status = previous_status_changes[-1]
-
-        previous_chamber_geometry = previous_status.chamber_geometry
-
-        if previous_chamber_geometry is None:
-            logger.warning(
-                'Cannot copy chamber geometry: no previous status entry has geometry.'
-            )
-            return
-
-        self.chamber_geometry = ChamberGeometry.m_from_dict(
-            previous_chamber_geometry.m_to_dict()
-        )
-
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        """
-        The normalizer for the `StatusChangeSputtersystem` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger (BoundLogger): A structlog logger.
-        """
-        super().normalize(archive, logger)
-        if self.copy_old_chamber_geometry and self.chamber_geometry is None:
-            self.copy_previous_chamber_geometry(logger)
-
 
 class PurgeAndCleaning(StatusChangeSputtersystem):
     m_def = Section(
@@ -515,7 +425,6 @@ class PurgeAndCleaning(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
-                    'copy_old_chamber_geometry',
                     'number_of_purge_cycles',
                     'time_per_purge_cycles',
                     'pressure_during_purge',
@@ -567,15 +476,14 @@ class QuickCleaning(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
-                    'copy_old_chamber_geometry',
-                    'vaccumed',
+                    'vacuumed',
                     'other_cleaning_methods',
                     'comment_about_change',
                 ],
             ),
         ),
     )
-    vaccumed = Quantity(
+    vacuumed = Quantity(
         type=bool,
         description='Whether the chamber was vacuumed.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity),
@@ -593,7 +501,6 @@ class TargetChange(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
-                    'copy_old_chamber_geometry',
                     'source_1_changed',
                     'source_1_target',
                     'source_3_changed',
@@ -645,6 +552,123 @@ class TargetChange(StatusChangeSputtersystem):
         ),
     )
 
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
+        instrument = self.m_parent
+        if not isinstance(instrument, DtuSputterInstrument):
+            logger.warning(
+                'Cannot update mounted target history: target change is not '
+                'attached to a sputter instrument.'
+            )
+            return
+
+        mounted_targets = instrument.mountedTargets
+        if mounted_targets is None:
+            mounted_targets = []
+            instrument.mountedTargets = mounted_targets
+
+        previous_entries = [
+            entry
+            for entry in mounted_targets
+            if self.date_of_change is None
+            or entry.date is None
+            or entry.date <= self.date_of_change
+        ]
+        if previous_entries:
+            dated_entries = [
+                entry for entry in previous_entries if entry.date is not None
+            ]
+            previous_entry = (
+                max(dated_entries, key=lambda entry: entry.date)
+                if dated_entries
+                else previous_entries[-1]
+            )
+        else:
+            previous_entry = None
+
+        updated_targets = {}
+        for source_number in (1, 3, 4):
+            changed = getattr(self, f'source_{source_number}_changed')
+            new_target = getattr(self, f'source_{source_number}_target')
+            previous_target = (
+                getattr(previous_entry, f'source_{source_number}_target')
+                if previous_entry is not None
+                else None
+            )
+
+            if changed is True and new_target is None:
+                logger.warning(
+                    'Cannot update mounted target history: Source %s is marked '
+                    'changed but has no target reference.',
+                    source_number,
+                )
+                return
+
+            updated_targets[f'source_{source_number}_target'] = (
+                new_target if changed is True else previous_target
+            )
+
+        if any(
+            entry.date == self.date_of_change
+            and all(
+                getattr(entry, field) == target
+                for field, target in updated_targets.items()
+            )
+            for entry in mounted_targets
+        ):
+            return
+
+        mounted_targets.append(
+            MountedTarget(
+                date=self.date_of_change,
+                **updated_targets,
+            )
+        )
+
+
+class MountedTarget(ArchiveSection):
+    m_def = Section(
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                order=[
+                    'date',
+                    'source_1_target',
+                    'source_3_target',
+                    'source_4_target',
+                ],
+            ),
+        ),
+    )
+    date = Quantity(
+        type=Datetime,
+        a_eln=ELNAnnotation(component=ELNComponentEnum.DateTimeEditQuantity),
+    )
+    source_1_target = Quantity(
+        type=DTUTarget,
+        description='The target mounted on source 1.',
+        a_eln=ELNAnnotation(
+            component='ReferenceEditQuantity',
+            label='Source 1 target',
+        ),
+    )
+    source_3_target = Quantity(
+        type=DTUTarget,
+        description='The target mounted on source 3.',
+        a_eln=ELNAnnotation(
+            component='ReferenceEditQuantity',
+            label='Source 3 target',
+        ),
+    )
+    source_4_target = Quantity(
+        type=DTUTarget,
+        description='The target mounted on source 4.',
+        a_eln=ELNAnnotation(
+            component='ReferenceEditQuantity',
+            label='Source 4 target',
+        ),
+    )
+
 
 class PlattenCleaning(StatusChangeSputtersystem):
     m_def = Section(
@@ -652,7 +676,6 @@ class PlattenCleaning(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
-                    'copy_old_chamber_geometry',
                     'platen_cleaned',
                     'comment_about_change',
                 ],
@@ -672,7 +695,7 @@ class PlattenCleaning(StatusChangeSputtersystem):
             'sanding',
             'other',
         ),
-        description='The cleaning method for the platten.',
+        description='The cleaning method for the platen.',
         a_eln=ELNAnnotation(component=ELNComponentEnum.RadioEnumEditQuantity),
         default='sanding',
     )
@@ -684,7 +707,6 @@ class ThermalCleaning(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
-                    'copy_old_chamber_geometry',
                     'temperature',
                     'duration',
                     'comment_about_change',
@@ -718,7 +740,6 @@ class QcmMaintenance(StatusChangeSputtersystem):
             properties=SectionProperties(
                 order=[
                     'date_of_change',
-                    'copy_old_chamber_geometry',
                     'qcm_1_replaced',
                     'qcm_2_replaced',
                     'comment_about_change',
@@ -738,6 +759,138 @@ class QcmMaintenance(StatusChangeSputtersystem):
     )
 
 
+class BigMaintainance(StatusChangeSputtersystem):
+    m_def = Section(
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                order=[
+                    'date_of_change',
+                    'copy_old_chamber_geometry',
+                    'geometry',
+                    'transfer_geometry_now',
+                    'comment_about_change',
+                ],
+            ),
+        ),
+    )
+    copy_old_chamber_geometry = Quantity(
+        type=bool,
+        description=(
+            'Whether the chamber geometry was copied from the geometry history.'
+        ),
+        a_eln=ELNAnnotation(component=ELNComponentEnum.BoolEditQuantity, default=True),
+    )
+    geometry = SubSection(
+        section_def=ChamberGeometry,
+        repeats=False,
+    )
+    transfer_geometry_now = Quantity(
+        type=bool,
+        description=(
+            'Append the geometry above to the sputter instrument geometry history.'
+        ),
+        a_eln=ELNAnnotation(
+            component='ActionEditQuantity',
+            label='Transfer geometry NOW',
+        ),
+    )
+
+    def copy_previous_chamber_geometry(self, logger: 'BoundLogger') -> None:
+        """Copy the latest geometry from the instrument's geometry history."""
+        if self.copy_old_chamber_geometry is False or self.geometry is not None:
+            return
+
+        geometry_history = getattr(self.m_parent, 'geometry', None)
+        if not geometry_history:
+            logger.warning('Cannot copy chamber geometry: geometry history is empty.')
+            return
+
+        dated_geometries = [
+            geometry
+            for geometry in geometry_history
+            if geometry.date is not None
+            and (
+                self.date_of_change is None
+                or geometry.date <= self.date_of_change
+            )
+        ]
+        if dated_geometries:
+            previous_geometry = max(
+                dated_geometries, key=lambda geometry: geometry.date
+            )
+        else:
+            undated_geometries = [
+                geometry for geometry in geometry_history if geometry.date is None
+            ]
+            if undated_geometries:
+                previous_geometry = undated_geometries[-1]
+            elif self.date_of_change is None:
+                previous_geometry = geometry_history[-1]
+            else:
+                logger.warning(
+                    'Cannot copy chamber geometry: no geometry predates this entry.'
+                )
+                return
+
+        self.geometry = ChamberGeometry.m_from_dict(previous_geometry.m_to_dict())
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        if self.copy_old_chamber_geometry is not False and self.geometry is None:
+            self.copy_previous_chamber_geometry(logger)
+        if self.transfer_geometry_now:
+            try:
+                self.transfer_geometry_to_instrument(logger)
+            finally:
+                self.transfer_geometry_now = False
+
+    def transfer_geometry_to_instrument(self, logger: 'BoundLogger') -> None:
+        """Update the latest geometry or append a new dated history entry."""
+        instrument = self.m_parent
+        if not isinstance(instrument, DtuSputterInstrument):
+            logger.warning(
+                'Cannot transfer chamber geometry: maintenance is not attached '
+                'to a sputter instrument.'
+            )
+            return
+        if self.geometry is None:
+            logger.warning('Cannot transfer chamber geometry: no geometry is set.')
+            return
+        if self.date_of_change is None:
+            logger.warning(
+                'Cannot transfer chamber geometry: no maintenance date is set.'
+            )
+            return
+
+        geometry_entry = ChamberGeometry.m_from_dict(self.geometry.m_to_dict())
+        geometry_entry.date = self.date_of_change
+
+        geometry_history = instrument.geometry
+        if geometry_history is None:
+            geometry_history = []
+            instrument.geometry = geometry_history
+
+        dated_geometries = [
+            (index, entry)
+            for index, entry in enumerate(geometry_history)
+            if entry.date is not None
+        ]
+        if dated_geometries:
+            latest_index, latest_geometry = max(
+                dated_geometries, key=lambda item: item[1].date
+            )
+            if latest_geometry.date.date() == geometry_entry.date.date():
+                logger.warning(
+                    'Overwriting the latest chamber geometry: a geometry change '
+                    'already exists on %s.',
+                    geometry_entry.date.date(),
+                )
+                geometry_history[latest_index] = geometry_entry
+                return
+
+        geometry_history.append(geometry_entry)
+
+
 class DtuSputterInstrument(Instrument, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
@@ -755,6 +908,8 @@ class DtuSputterInstrument(Instrument, PlotSection, Schema):
                     'manufacturer',
                     'description',
                     'status_of_system',
+                    'geometry',
+                    'mountedTargets',
                 ],
             )
         ),
@@ -806,6 +961,14 @@ class DtuSputterInstrument(Instrument, PlotSection, Schema):
     )
     status_of_system = SubSection(
         section_def=StatusChangeSputtersystem,
+        repeats=True,
+    )
+    geometry = SubSection(
+        section_def=ChamberGeometry,
+        repeats=True,
+    )
+    mountedTargets = SubSection(
+        section_def=MountedTarget,
         repeats=True,
     )
 
