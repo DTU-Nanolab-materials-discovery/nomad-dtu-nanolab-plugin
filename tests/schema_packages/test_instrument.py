@@ -7,6 +7,7 @@ from nomad_dtu_nanolab_plugin.schema_packages.instrument import (
     BigMaintainance,
     ChamberGeometry,
     DtuSputterInstrument,
+    MountedTarget,
     StatusChangeSputtersystem,
     TargetChange,
 )
@@ -150,3 +151,31 @@ def test_target_change_adds_complete_mounted_target_snapshot():
             ),
         )
     )
+
+
+def test_target_change_button_overwrites_mounted_targets_from_same_day():
+    instrument = DtuSputterInstrument()
+    existing_target = DTUTarget(lab_id='Ag_T_001')
+    updated_target = DTUTarget(lab_id='Al_T_004')
+    instrument.mountedTargets = [
+        MountedTarget(
+            date=datetime(2025, 6, 1, 8, tzinfo=UTC),
+            source_1_target=existing_target,
+        )
+    ]
+    target_change = TargetChange(
+        date_of_change=datetime(2025, 6, 1, 16, tzinfo=UTC),
+        source_1_changed=True,
+        source_1_target=updated_target,
+        source_3_changed=False,
+        source_4_changed=False,
+        transfer_targets_now=True,
+    )
+    instrument.status_of_system = [target_change]
+
+    target_change.normalize(EntryArchive(), Mock())
+
+    assert len(instrument.mountedTargets) == 1
+    assert instrument.mountedTargets[0].date == datetime(2025, 6, 1, 16, tzinfo=UTC)
+    assert instrument.mountedTargets[0].source_1_target == updated_target
+    assert target_change.transfer_targets_now is False

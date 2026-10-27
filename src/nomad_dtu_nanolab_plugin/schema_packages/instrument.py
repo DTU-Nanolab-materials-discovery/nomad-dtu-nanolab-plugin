@@ -511,6 +511,7 @@ class TargetChange(StatusChangeSputtersystem):
                     'source_4_changed',
                     'source_4_target',
                     'comment_about_change',
+                    'transfer_targets_now',
                 ],
             ),
         ),
@@ -554,10 +555,25 @@ class TargetChange(StatusChangeSputtersystem):
             label='composite system reference',
         ),
     )
+    transfer_targets_now = Quantity(
+        type=bool,
+        description=(
+            'Transfer this target change to the sputter instrument target history.'
+        ),
+        a_eln=ELNAnnotation(
+            component='ActionEditQuantity',
+            label='Transfer targets NOW',
+        ),
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
+        try:
+            self.transfer_targets_to_instrument(logger)
+        finally:
+            self.transfer_targets_now = False
 
+    def transfer_targets_to_instrument(self, logger: 'BoundLogger') -> None:
         instrument = self.m_parent
         if not isinstance(instrument, DtuSputterInstrument):
             logger.warning(
@@ -620,6 +636,23 @@ class TargetChange(StatusChangeSputtersystem):
             )
             for entry in mounted_targets
         ):
+            return
+
+        matching_day_entries = [
+            (index, entry)
+            for index, entry in enumerate(mounted_targets)
+            if self.date_of_change is not None
+            and entry.date is not None
+            and entry.date.date() == self.date_of_change.date()
+        ]
+        if matching_day_entries:
+            latest_index, latest_entry = max(
+                matching_day_entries, key=lambda item: item[1].date
+            )
+            mounted_targets[latest_index] = MountedTarget(
+                date=self.date_of_change,
+                **updated_targets,
+            )
             return
 
         mounted_targets.append(
