@@ -6,23 +6,18 @@ import os
 from typing import Any
 import requests
 
-from token_store import load_token
+from oasis_auth import api_base_url, get_token
 
-BASE_URL = os.getenv(
-    'NOMAD_BASE_URL',
-    'https://nomad.nanolab.dtu.dk/nomad-oasis/api/v1',
-).rstrip('/')
+BASE_URL = api_base_url()
 PAGE_SIZE = 100
 
 
 def _session() -> requests.Session:
-    token = os.getenv('NOMAD_CLIENT_ACCESS_TOKEN')
-    if not token and os.name == 'nt':
-        token = load_token()
+    token = get_token()
     if not token:
         raise RuntimeError(
-            'No NOMAD token found. Run setup_nomad_token.py on Windows, or set '
-            'NOMAD_CLIENT_ACCESS_TOKEN in the notebook runtime environment.'
+            'No NOMAD token found. In NORTH, set NOMAD_CLIENT_ACCESS_TOKEN (see '
+            'README); on Windows, run setup_nomad_token.py.'
         )
     session = requests.Session()
     session.headers.update(

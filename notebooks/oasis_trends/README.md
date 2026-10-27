@@ -41,6 +41,29 @@ On non-Windows notebook runtimes, supply `NOMAD_CLIENT_ACCESS_TOKEN` through
 that runtime's secret/environment-variable mechanism; the Windows DPAPI helper
 does not apply.
 
+### Running inside NORTH (Oasis JupyterHub)
+
+The notebooks run unchanged in NORTH; nothing Windows-specific is imported
+there. Open a NORTH Jupyter tool, then in a terminal clone this repository (or
+upload the `notebooks/oasis_trends` folder) and open a notebook from that folder.
+
+- **URL:** taken from `NOMAD_BASE_URL`, else NORTH's `NOMAD_CLIENT_URL`
+  (normalised to end in `/api/v1`), else the Nanolab Oasis default.
+- **Token:** the notebooks read `NOMAD_CLIENT_ACCESS_TOKEN`. If your NORTH image
+  does not set it, run once in a notebook cell, entering the token at the hidden
+  prompt (it lives only in that kernel's memory, never in the notebook file):
+
+  ```python
+  import os, getpass
+  os.environ['NOMAD_CLIENT_ACCESS_TOKEN'] = getpass.getpass('NOMAD API token: ')
+  ```
+
+  Restart the kernel to clear it. Do not save the token in a notebook or commit it.
+- **Packages:** if `plotly` is missing, run `pip install --user plotly` in a
+  NORTH terminal (`requests`, `pandas`, `numpy` are normally present).
+- Permissions are unchanged: `owner: visible` still shows only what the token's
+  account may see.
+
 ## Staged plan
 
 1. **Confirm access and data coverage.** Run a small paginated metadata search
