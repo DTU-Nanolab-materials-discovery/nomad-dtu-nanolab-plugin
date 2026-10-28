@@ -135,37 +135,21 @@ class PLMetadata(ArchiveSection):
         type=np.float64,
         unit='m',
         description='Excitation wavelength parsed from the source identifier.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='nm',
-        ),
     )
     laser_power = Quantity(
         type=np.float64,
         unit='W',
         description='Excitation power recorded by YWafer.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mW',
-        ),
     )
     laser_power_percentage = Quantity(
         type=np.float64,
         unit='%',
         description='Laser output as a percentage of maximum power.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='%',
-        ),
     )
     integration_time = Quantity(
         type=np.float64,
         unit='s',
         description='Integration time per accumulation.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='s',
-        ),
     )
     accumulations = Quantity(
         type=int,
@@ -176,10 +160,6 @@ class PLMetadata(ArchiveSection):
         shape=[2],
         unit='m',
         description='Configured detector wavelength range.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='nm',
-        ),
     )
     detector = Quantity(
         type=str,
