@@ -98,6 +98,12 @@ def test_native_pl_measurement_normalization(monkeypatch):
     assert len(first_result.intensity) == SPECTRUM_POINT_COUNT
     assert np.isfinite(first_result.peak_lambda.magnitude)
     assert first_result.peak_intensity == pytest.approx(max(first_result.intensity))
+    assert len(first_result.figures) == 1
+    spectrum_figure = first_result.figures[0].figure
+    assert len(spectrum_figure['data']) == 1
+    assert len(spectrum_figure['data'][0]['x']) == SPECTRUM_POINT_COUNT
+    assert len(spectrum_figure['data'][0]['y']) == SPECTRUM_POINT_COUNT
+    assert all(len(result.figures) == 1 for result in measurement.results)
 
     assert measurement.around_barycenter is True
     assert measurement.sample_alignment.width.to('mm').magnitude == pytest.approx(

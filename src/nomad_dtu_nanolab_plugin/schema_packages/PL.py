@@ -81,12 +81,43 @@ class PLMappingResult(MappingResult, PlotSection):
         ),
     )
 
+    def plot_spectrum(self) -> None:
+        if self.wavelength is None or self.intensity is None:
+            return
+
+        figure = go.Figure(
+            go.Scatter(
+                x=self.wavelength.to('nm').magnitude,
+                y=self.intensity,
+                mode='lines',
+                name=self.trace_id or self.name,
+            )
+        )
+        figure.update_layout(
+            title=self.trace_id or self.name or 'PL spectrum',
+            xaxis_title='Wavelength (nm)',
+            yaxis_title='Intensity',
+            template='plotly_white',
+            hovermode='closest',
+        )
+        plot_json = figure.to_plotly_json()
+        plot_json['config'] = {'scrollZoom': False}
+        self.figures = [
+            PlotlyFigure(label=self.trace_id or 'PL spectrum', figure=plot_json)
+        ]
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
+        self.plot_spectrum()
 
 
 class PLMetadata(ArchiveSection):
-    m_def = Section()
+    m_def = Section(
+        label='PL acquisition metadata',
+        description=(
+            'Measurement and instrument settings extracted from the YWafer file.'
+        ),
+    )
 
     software_version = Quantity(
         type=str,
