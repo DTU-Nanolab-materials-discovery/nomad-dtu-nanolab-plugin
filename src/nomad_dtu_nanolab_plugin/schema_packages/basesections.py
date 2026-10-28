@@ -58,37 +58,41 @@ class DtuNanolabMeasurement(MappingMeasurement):
             )
             return None
 
-        # Try library.geometry first, then substrate.reference.geometry
-        geometry = getattr(library, 'geometry', None)
-        if geometry is None:
-            substrate_ref = getattr(library, 'substrate', None)
-            if substrate_ref is not None:
-                substrate = getattr(substrate_ref, 'reference', None)
-                if substrate is not None:
-                    geometry = getattr(substrate, 'geometry', None)
+        geometries = [getattr(library, 'geometry', None)]
+        substrate_ref = getattr(library, 'substrate', None)
+        if substrate_ref is not None:
+            substrate = getattr(substrate_ref, 'reference', None)
+            if substrate is not None:
+                geometries.append(getattr(substrate, 'geometry', None))
 
-        if geometry is None:
+        for geometry in geometries:
+            if geometry is None:
+                continue
+            width = getattr(geometry, 'width', None)
+            length = getattr(geometry, 'length', None)
+            if width is None or length is None:
+                radius = getattr(geometry, 'radius', None)
+                if radius is not None:
+                    width = length = radius * 2
+            if width is None or length is None:
+                continue
+
+            width_m = width.to('m').magnitude if hasattr(width, 'to') else float(width)
+            height_m = (
+                length.to('m').magnitude if hasattr(length, 'to') else float(length)
+            )
+            return width_m, height_m
+
+        if not any(geometry is not None for geometry in geometries):
             logger.warning(
                 'Cannot determine sample dimensions: '
                 'no geometry found on library or substrate.'
             )
-            return None
-
-        width = getattr(geometry, 'width', None)
-        length = getattr(geometry, 'length', None)
-        if width is None or length is None:
-            radius = getattr(geometry, 'radius', None)
-            if radius is not None:
-                width = length = radius * 2
-        if width is None or length is None:
+        else:
             logger.warning(
                 'Cannot determine sample dimensions: geometry has no width or length.'
             )
-            return None
-
-        width_m = width.to('m').magnitude if hasattr(width, 'to') else float(width)
-        height_m = length.to('m').magnitude if hasattr(length, 'to') else float(length)
-        return width_m, height_m
+        return None
 
     def _apply_library_geometry_to_alignment(self, logger: 'BoundLogger') -> None:
         """Set the sample alignment size from the linked library geometry."""

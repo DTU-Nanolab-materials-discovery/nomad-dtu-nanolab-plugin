@@ -8,6 +8,7 @@ from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad_material_processing.general import RectangleCuboid
 
 import nomad_dtu_nanolab_plugin.schema_packages.rt as rt_module
+from nomad_dtu_nanolab_plugin.schema_packages.basesections import DtuNanolabMeasurement
 from nomad_dtu_nanolab_plugin.schema_packages.edx import (
     DTUSampleAlignment,
     EDXMeasurement,
@@ -173,6 +174,27 @@ def test_measurement_alignment_uses_linked_library_geometry():
     assert measurement.sample_alignment.y_upper_left == library.geometry.length / 2
     assert measurement.sample_alignment.x_lower_right == library.geometry.width / 2
     assert measurement.sample_alignment.y_lower_right == -library.geometry.length / 2
+
+
+def test_measurement_dimensions_fall_back_to_substrate_geometry():
+    logger = __import__('logging').getLogger('test')
+    substrate_geometry = RectangleCuboid(width=0.05, length=0.025)
+    measurement = SimpleNamespace(
+        samples=[
+            SimpleNamespace(
+                reference=SimpleNamespace(
+                    geometry=SimpleNamespace(),
+                    substrate=SimpleNamespace(
+                        reference=SimpleNamespace(geometry=substrate_geometry)
+                    ),
+                )
+            )
+        ]
+    )
+
+    assert DtuNanolabMeasurement._get_sample_dimensions(
+        measurement, logger
+    ) == pytest.approx((0.05, 0.025))
 
 
 def test_rt_autosampler_schema():
