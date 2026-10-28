@@ -221,9 +221,7 @@ def read_ywf(data: bytes) -> dict[str, Any]:
 
     missing = [record for record in records if record['wavelength_nm'] is None]
     remaining = [
-        (index, block)
-        for index, block in enumerate(sample_blocks)
-        if index not in used
+        (index, block) for index, block in enumerate(sample_blocks) if index not in used
     ]
     if len(missing) == len(remaining):
         for record, (_, block) in zip(missing, remaining):

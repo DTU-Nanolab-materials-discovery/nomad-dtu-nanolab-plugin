@@ -256,8 +256,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 (
                     lab_id
                     for lab_id in lab_ids
-                    if lab_id == sample_prefix
-                    or lab_id.startswith(f'{sample_prefix}_')
+                    if lab_id == sample_prefix or lab_id.startswith(f'{sample_prefix}_')
                 ),
                 None,
             )
@@ -340,15 +339,11 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 result.intensity = intensity
 
                 peak_index = int(np.argmax(intensity))
-                result.peak_lambda = ureg.Quantity(
-                    wavelength_nm[peak_index], 'nm'
-                )
+                result.peak_lambda = ureg.Quantity(wavelength_nm[peak_index], 'nm')
                 result.peak_intensity = float(intensity[peak_index])
                 result.signal_intensity = float(
                     np.sum(
-                        (intensity[:-1] + intensity[1:])
-                        * np.diff(wavelength_nm)
-                        / 2
+                        (intensity[:-1] + intensity[1:]) * np.diff(wavelength_nm) / 2
                     )
                 )
                 half_maximum = intensity[peak_index] / 2
@@ -389,9 +384,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
             plot_json = figure.to_plotly_json()
             plot_json['config'] = {'scrollZoom': False}
-            self.figures.append(
-                PlotlyFigure(label='PL spectra', figure=plot_json)
-            )
+            self.figures.append(PlotlyFigure(label='PL spectra', figure=plot_json))
 
         positioned = [
             result
@@ -453,9 +446,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             )
             plot_json = figure.to_plotly_json()
             plot_json['config'] = {'scrollZoom': False}
-            self.figures.append(
-                PlotlyFigure(label='PL peak map', figure=plot_json)
-            )
+            self.figures.append(PlotlyFigure(label='PL peak map', figure=plot_json))
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         if self.location is None:

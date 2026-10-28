@@ -46,15 +46,12 @@ def test_read_native_ywf_traces():
     ]
     assert parsed_data['metadata']['software_version'] == 'YWafer v7.06'
     assert (
-        parsed_data['metadata']['excitation_wavelength_nm']
-        == EXCITATION_WAVELENGTH_NM
+        parsed_data['metadata']['excitation_wavelength_nm'] == EXCITATION_WAVELENGTH_NM
     )
     assert parsed_data['metadata']['integration_time_ms'] == INTEGRATION_TIME_MS
     assert parsed_data['metadata']['accumulations'] == 1
     assert parsed_data['metadata']['wavelength_range_nm'] == [480, 900]
-    assert (
-        parsed_data['metadata']['laser_power_percentage'] == LASER_POWER_PERCENTAGE
-    )
+    assert parsed_data['metadata']['laser_power_percentage'] == LASER_POWER_PERCENTAGE
 
 
 def test_native_pl_measurement_normalization(monkeypatch):
@@ -85,9 +82,7 @@ def test_native_pl_measurement_normalization(monkeypatch):
         measurement.metadata.laser_power_percentage.to('%').magnitude
         == LASER_POWER_PERCENTAGE
     )
-    assert (
-        measurement.metadata.integration_time.to('s').magnitude == INTEGRATION_TIME_S
-    )
+    assert measurement.metadata.integration_time.to('s').magnitude == INTEGRATION_TIME_S
     assert measurement.metadata.wavelength_range.to('nm').magnitude.tolist() == [
         480,
         900,
@@ -113,12 +108,8 @@ def test_native_pl_measurement_normalization(monkeypatch):
     )
     x_upper_left_mm = measurement.sample_alignment.x_upper_left.to('mm').magnitude
     y_upper_left_mm = measurement.sample_alignment.y_upper_left.to('mm').magnitude
-    assert x_upper_left_mm == pytest.approx(
-        MAP_CENTER_X_MM - SAMPLE_WIDTH_MM / 2
-    )
-    assert y_upper_left_mm == pytest.approx(
-        MAP_CENTER_Y_MM + SAMPLE_HEIGHT_MM / 2
-    )
+    assert x_upper_left_mm == pytest.approx(MAP_CENTER_X_MM - SAMPLE_WIDTH_MM / 2)
+    assert y_upper_left_mm == pytest.approx(MAP_CENTER_Y_MM + SAMPLE_HEIGHT_MM / 2)
     assert len(measurement.figures) == FIGURE_COUNT
     map_data = measurement.figures[1].figure['data'][0]
     assert map_data['x'][0] == pytest.approx(-16)
@@ -166,9 +157,7 @@ def test_pl_links_all_matching_samples_across_search_pages(monkeypatch):
         'nested/path/mittma_0028_RTP--1.ywf',
         SimpleNamespace(
             m_context=FakeServerContext(),
-            metadata=SimpleNamespace(
-                main_author=SimpleNamespace(user_id='test-user')
-            ),
+            metadata=SimpleNamespace(main_author=SimpleNamespace(user_id='test-user')),
         ),
         __import__('logging').getLogger('test'),
     )
