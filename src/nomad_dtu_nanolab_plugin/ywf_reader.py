@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import math
 import re
 import struct
@@ -16,6 +18,53 @@ MINIMUM_SPECTRUM_POINTS = 50
 MAXIMUM_SPECTRUM_POINTS = 10000
 MINIMUM_WAVELENGTH_NM = 100
 MAXIMUM_WAVELENGTH_NM = 3000
+
+
+def read_ywa_metadata(data: bytes) -> dict[str, Any]:
+    """Read wafer and scan metadata from a YSystems YWafer overview file."""
+    text = data.decode('utf-8-sig')
+    rows = list(csv.reader(io.StringIO(text)))
+    if not rows or not rows[0][0].startswith('YSystems -- YWafer'):
+        raise ValueError('The overview file is not a YSystems YWafer .ywa file.')
+
+    metadata: dict[str, Any] = {}
+    version_match = re.search(r'YWafer\s+(v[\w.]+)', rows[0][0])
+    if version_match:
+        metadata['software_version'] = f'YWafer {version_match.group(1)}'
+
+    fields = {
+        'lot': 'lot_id',
+        'wafer': 'wafer_number',
+        'chamber': 'chamber',
+        'datatype': 'data_type',
+        'setup': 'measurement_setup',
+    }
+    numeric_fields = {
+        'pitch': ('scan_pitch_mm', 2),
+        'center': ('scan_center_mm', 2),
+        'radius': ('wafer_radius_mm', 1),
+        'exclusion': ('edge_exclusion_mm', 1),
+        'flat': ('wafer_flat_angle_deg', 1),
+    }
+    for row in rows[1:]:
+        if not row or not row[0]:
+            continue
+        key = row[0].strip().lower()
+        values = [value.strip() for value in row[1:]]
+        if key in fields and values and values[0]:
+            metadata[fields[key]] = values[0]
+        elif key in numeric_fields and values:
+            target, count = numeric_fields[key]
+            if len(values) < count or any(not value for value in values[:count]):
+                continue
+            try:
+                numbers = [float(value) for value in values[:count]]
+            except ValueError as exc:
+                raise ValueError(f'Invalid numeric value for YWafer {key}.') from exc
+            metadata[target] = numbers if count > 1 else numbers[0]
+        if key == 'xadr':
+            break
+    return metadata
 
 
 def _float32(data: bytes, offset: int) -> float:

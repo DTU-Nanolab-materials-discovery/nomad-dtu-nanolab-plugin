@@ -22,7 +22,7 @@ from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
     DtuNanolabMeasurement,
 )
-from nomad_dtu_nanolab_plugin.ywf_reader import read_ywf
+from nomad_dtu_nanolab_plugin.ywf_reader import read_ywa_metadata, read_ywf
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -161,6 +161,49 @@ class PLMetadata(ArchiveSection):
         unit='m',
         description='Configured detector wavelength range.',
     )
+    lot_id = Quantity(
+        type=str,
+        description='Lot identifier recorded in the YWafer overview file.',
+    )
+    wafer_number = Quantity(
+        type=str,
+        description='Wafer number recorded in the YWafer overview file.',
+    )
+    chamber = Quantity(
+        type=str,
+        description='Measurement chamber recorded in the YWafer overview file.',
+    )
+    scan_pitch = Quantity(
+        type=np.float64,
+        shape=[2],
+        unit='m',
+        description='X and Y scan pitch recorded in the YWafer overview file.',
+    )
+    scan_center = Quantity(
+        type=np.float64,
+        shape=[2],
+        unit='m',
+        description='X and Y scan center recorded in the YWafer overview file.',
+    )
+    wafer_radius = Quantity(
+        type=np.float64,
+        unit='m',
+        description='Wafer radius recorded in the YWafer overview file.',
+    )
+    edge_exclusion = Quantity(
+        type=np.float64,
+        unit='m',
+        description='Wafer edge exclusion recorded in the YWafer overview file.',
+    )
+    wafer_flat_angle = Quantity(
+        type=np.float64,
+        unit='deg',
+        description='Wafer flat angle recorded in the YWafer overview file.',
+    )
+    data_type = Quantity(
+        type=str,
+        description='YWafer map data type recorded in the overview file.',
+    )
     detector = Quantity(
         type=str,
         description='Detector identifier recorded in the native file.',
@@ -187,6 +230,17 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
             label='YWafer measurement file (.ywf)',
+        ),
+    )
+    pl_overview_file = Quantity(
+        type=str,
+        description=(
+            'Optional YWafer .ywa overview file with wafer geometry and scan settings.'
+        ),
+        a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+            label='YWafer overview file (.ywa)',
         ),
     )
     metadata = SubSection(
@@ -222,8 +276,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             self.samples = [CompositeSystemReference(lab_id=sample_prefix)]
             return
 
-        from elasticsearch.dsl import Q
-        from nomad.search import MetadataPagination, search
+        from nomad.search import MetadataPagination, Q, search
 
         query = Q(
             'bool',
@@ -330,6 +383,35 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             ),
             detector=metadata.get('detector'),
             emission_filter=metadata.get('emission_filter'),
+            lot_id=metadata.get('lot_id'),
+            wafer_number=metadata.get('wafer_number'),
+            chamber=metadata.get('chamber'),
+            scan_pitch=(
+                ureg.Quantity(metadata['scan_pitch_mm'], 'mm')
+                if 'scan_pitch_mm' in metadata
+                else None
+            ),
+            scan_center=(
+                ureg.Quantity(metadata['scan_center_mm'], 'mm')
+                if 'scan_center_mm' in metadata
+                else None
+            ),
+            wafer_radius=(
+                ureg.Quantity(metadata['wafer_radius_mm'], 'mm')
+                if 'wafer_radius_mm' in metadata
+                else None
+            ),
+            edge_exclusion=(
+                ureg.Quantity(metadata['edge_exclusion_mm'], 'mm')
+                if 'edge_exclusion_mm' in metadata
+                else None
+            ),
+            wafer_flat_angle=(
+                ureg.Quantity(metadata['wafer_flat_angle_deg'], 'deg')
+                if 'wafer_flat_angle_deg' in metadata
+                else None
+            ),
+            data_type=metadata.get('data_type'),
         )
         pl_metadata.normalize(archive, logger)
         self.metadata = pl_metadata
@@ -467,6 +549,9 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             self.add_pl_sample_references(self.pl_data_file, archive, logger)
             with archive.m_context.raw_file(self.pl_data_file, 'rb') as file:
                 parsed_data = read_ywf(file.read())
+            if self.pl_overview_file:
+                with archive.m_context.raw_file(self.pl_overview_file, 'rb') as file:
+                    parsed_data['metadata'].update(read_ywa_metadata(file.read()))
             self.write_pl_data(parsed_data, archive, logger)
 
             if self.sample_alignment is None:

@@ -8,7 +8,7 @@ from nomad.client import normalize_all, parse
 from nomad.datamodel import context as nomad_context
 
 from nomad_dtu_nanolab_plugin.schema_packages.PL import DTUPLMeasurement
-from nomad_dtu_nanolab_plugin.ywf_reader import read_ywf
+from nomad_dtu_nanolab_plugin.ywf_reader import read_ywa_metadata, read_ywf
 
 TRACE_COUNT = 12
 SPECTRUM_POINT_COUNT = 1024
@@ -25,8 +25,12 @@ MAP_CENTER_Y_MM = -17
 FIGURE_COUNT = 2
 MATCHING_SAMPLE_COUNT = 105
 EXPECTED_SEARCH_PAGE_COUNT = 2
+WAFER_RADIUS_MM = 50
+WAFER_FLAT_ANGLE_DEG = 270
+EDGE_EXCLUSION_MM = 0
 
 YWF_FILE = os.path.join('tests', 'data', 'mittma_0028_RTP--1.ywf')
+YWA_FILE = os.path.join('tests', 'data', 'mittma_0028_RTP--1.ywa')
 
 
 def test_read_native_ywf_traces():
@@ -52,6 +56,22 @@ def test_read_native_ywf_traces():
     assert parsed_data['metadata']['accumulations'] == 1
     assert parsed_data['metadata']['wavelength_range_nm'] == [480, 900]
     assert parsed_data['metadata']['laser_power_percentage'] == LASER_POWER_PERCENTAGE
+
+
+def test_read_ywa_overview_metadata():
+    with open(YWA_FILE, 'rb') as file:
+        metadata = read_ywa_metadata(file.read())
+
+    assert metadata['software_version'] == 'YWafer v7.06'
+    assert metadata['lot_id'] == 'mittma_0028_RTP'
+    assert metadata['wafer_number'] == '-1'
+    assert metadata['chamber'] == 'cbbmo'
+    assert metadata['scan_pitch_mm'] == [1, 1]
+    assert metadata['scan_center_mm'] == [0, 0]
+    assert metadata['wafer_radius_mm'] == WAFER_RADIUS_MM
+    assert metadata['edge_exclusion_mm'] == EDGE_EXCLUSION_MM
+    assert metadata['wafer_flat_angle_deg'] == WAFER_FLAT_ANGLE_DEG
+    assert metadata['data_type'] == 'YWafer'
 
 
 def test_native_pl_measurement_normalization(monkeypatch):
@@ -87,6 +107,22 @@ def test_native_pl_measurement_normalization(monkeypatch):
         480,
         900,
     ]
+    assert measurement.metadata.lot_id == 'mittma_0028_RTP'
+    assert measurement.metadata.wafer_number == '-1'
+    assert measurement.metadata.chamber == 'cbbmo'
+    assert measurement.metadata.scan_pitch.to('mm').magnitude.tolist() == [1, 1]
+    assert measurement.metadata.scan_center.to('mm').magnitude.tolist() == [0, 0]
+    assert (
+        measurement.metadata.wafer_radius.to('mm').magnitude == WAFER_RADIUS_MM
+    )
+    assert (
+        measurement.metadata.edge_exclusion.to('mm').magnitude == EDGE_EXCLUSION_MM
+    )
+    assert (
+        measurement.metadata.wafer_flat_angle.to('deg').magnitude
+        == WAFER_FLAT_ANGLE_DEG
+    )
+    assert measurement.metadata.data_type == 'YWafer'
 
     first_result = measurement.results[0]
     assert first_result.trace_id == 'PL1 #1'
@@ -171,5 +207,12 @@ def test_pl_links_all_matching_samples_across_search_pages(monkeypatch):
     assert len(measurement.samples) == MATCHING_SAMPLE_COUNT
     assert len(calls) == EXPECTED_SEARCH_PAGE_COUNT
     assert [call['pagination'].page for call in calls] == [1, 2]
+    query = calls[0]['query'].to_dict()
+    assert query['bool']['should'][0]['term']['results.eln.lab_ids'] == (
+        'mittma_0028_RTP'
+    )
+    assert query['bool']['should'][1]['prefix']['results.eln.lab_ids'] == (
+        'mittma_0028_RTP_'
+    )
     assert measurement.samples[0].lab_id == 'mittma_0028_RTP_000'
     assert measurement.samples[-1].lab_id == 'mittma_0028_RTP_104'
