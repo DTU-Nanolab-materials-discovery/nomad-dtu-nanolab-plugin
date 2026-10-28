@@ -6,6 +6,9 @@ from nomad import search as nomad_search
 from nomad.client import normalize_all, parse
 
 import nomad_dtu_nanolab_plugin.schema_packages.rt as rt_module
+from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
+    DtuNanolabMeasurement,
+)
 
 """
 Names can be generated from the test file by running the following command:
@@ -140,6 +143,35 @@ def test_resolve_library_folder_uses_lab_id_search(monkeypatch):
     )
 
     assert folder == '../uploads/upload-456/archive'
+
+
+def test_measurement_alignment_uses_linked_library_geometry():
+    logger = __import__('logging').getLogger('test')
+    geometry = SimpleNamespace(width=0.04, length=0.03)
+    measurement = SimpleNamespace(
+        samples=[SimpleNamespace(reference=SimpleNamespace(geometry=geometry))],
+        results=[],
+        sample_alignment=SimpleNamespace(
+            width=0.02,
+            height=0.02,
+            x_upper_left=-0.01,
+            y_upper_left=0.01,
+            x_lower_right=0.01,
+            y_lower_right=-0.01,
+        ),
+    )
+    measurement._get_sample_dimensions = lambda current_logger: (
+        DtuNanolabMeasurement._get_sample_dimensions(measurement, current_logger)
+    )
+
+    DtuNanolabMeasurement._apply_library_geometry_to_alignment(measurement, logger)
+
+    assert measurement.sample_alignment.width == geometry.width
+    assert measurement.sample_alignment.height == geometry.length
+    assert measurement.sample_alignment.x_upper_left == -geometry.width / 2
+    assert measurement.sample_alignment.y_upper_left == geometry.length / 2
+    assert measurement.sample_alignment.x_lower_right == geometry.width / 2
+    assert measurement.sample_alignment.y_lower_right == -geometry.length / 2
 
 
 def test_rt_autosampler_schema():
