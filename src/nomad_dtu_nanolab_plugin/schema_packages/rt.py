@@ -1,4 +1,5 @@
 import os
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -33,6 +34,139 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 m_package = Package(name='DTU RT measurement schema')
+
+
+def _resolve_library_target(
+    archive: 'EntryArchive', logger: 'BoundLogger', library_lab_id: str
+) -> tuple[str | None, str, str]:
+    """Resolve upload and writable raw folder for the library lab_id.
+
+    Returns a tuple of:
+    1) target upload id (or None if unresolved),
+    2) writable raw folder path relative to the target upload,
+    3) archive-style folder reference for logging/debugging.
+    """
+    default_folder = str(PurePosixPath(archive.metadata.mainfile).parent)
+    current_upload_id = getattr(archive.metadata, 'upload_id', None)
+
+    try:
+        from nomad.search import MetadataPagination, search
+
+        user_id = None
+        main_author = getattr(archive.metadata, 'main_author', None)
+        if main_author is not None:
+            user_id = getattr(main_author, 'user_id', None)
+
+        search_result = search(
+            owner='all',
+            query={'results.eln.lab_ids': library_lab_id},
+            pagination=MetadataPagination(page_size=1),
+            user_id=user_id,
+        )
+        if search_result.pagination.total <= 0:
+            logger.warning(
+                'Could not resolve library reference for %s via direct lab_id search; '
+                'writing RTMeasurement in current entry folder.',
+                library_lab_id,
+            )
+            return None, default_folder, default_folder
+
+        entry = search_result.data[0]
+        upload_id = entry.get('upload_id')
+        entry_id = entry.get('entry_id')
+        if not upload_id or not entry_id:
+            logger.warning(
+                'Library %s matched search result but missing upload_id or entry_id; '
+                'writing RTMeasurement in the current entry folder.',
+                library_lab_id,
+            )
+            return None, default_folder, default_folder
+
+        # Try to locate the folder where the referenced library archive mainfile lives.
+        # This folder is writable within the *target* upload context.
+        target_folder = ''
+        library_mainfile = entry.get('mainfile')
+        if library_mainfile:
+            target_folder = str(PurePosixPath(library_mainfile).parent)
+        else:
+            try:
+                installation_url = getattr(archive.m_context, 'installation_url', None)
+                target_archive = archive.m_context.load_archive(
+                    entry_id, upload_id, installation_url
+                )
+                target_mainfile = getattr(target_archive.metadata, 'mainfile', None)
+                if target_mainfile:
+                    target_folder = str(PurePosixPath(target_mainfile).parent)
+            except Exception:
+                # Fall back to root-level write in
+                # target upload if mainfile lookup fails.
+                target_folder = ''
+
+        archive_reference_folder = str(
+            PurePosixPath('..') / 'uploads' / upload_id / 'archive'
+        )
+        if current_upload_id and upload_id != current_upload_id:
+            logger.info(
+                'Library %s resolved in another upload. Writing RTMeasurement using '
+                'ServerContext(upload=%s) into folder=%s.',
+                library_lab_id,
+                upload_id,
+                target_folder or '.',
+            )
+        return upload_id, target_folder, archive_reference_folder
+    except Exception as exc:  # pragma: no cover - defensive logging only
+        logger.warning(
+            'Failed to resolve library %s via explicit lab_id search; writing '
+            'RTMeasurement in current entry folder. Details: %s',
+            library_lab_id,
+            exc,
+            exc_info=True,
+        )
+        return None, default_folder, default_folder
+
+
+def resolve_library_folder(
+    archive: 'EntryArchive', logger: 'BoundLogger', library_lab_id: str
+) -> str:
+    """Resolve the folder for a library using the same explicit lab-id query as the
+    notebook analysis.
+
+    This avoids relying on a lazily populated ``CompositeSystemReference.reference``
+    that may not yet be normalized in the active processing context.
+    """
+    _, _, archive_reference_folder = _resolve_library_target(
+        archive, logger, library_lab_id
+    )
+    return archive_reference_folder
+
+
+def _create_archive_in_upload(
+    measurement: 'RTMeasurement',
+    archive: 'EntryArchive',
+    measurement_mainfile: str,
+    target_upload_id: str,
+) -> str:
+    """Create an archive file in the given upload context."""
+    current_upload_id = getattr(archive.metadata, 'upload_id', None)
+    if target_upload_id == current_upload_id:
+        return create_archive(measurement, archive, measurement_mainfile)
+
+    from nomad.datamodel.context import ServerContext
+    from nomad.processing import Upload
+    from nomad.utils import hash
+
+    target_upload = Upload.get(target_upload_id)
+    if target_upload is None:
+        raise ValueError(f'Could not get target upload: {target_upload_id}')
+
+    target_context = ServerContext(upload=target_upload)
+    with target_context.update_entry(
+        measurement_mainfile, write=True, process=True
+    ) as entry:
+        entry['data'] = measurement.m_to_dict(with_root_def=True)
+
+    target_entry_id = hash(target_upload_id, measurement_mainfile)
+    return f'../uploads/{target_upload_id}/archive/{target_entry_id}#data'
 
 
 class RTSpectrum(ArchiveSection):
@@ -251,6 +385,16 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='deg',
             label='Horizontal slit',
+        ),
+    )
+
+    detector_slit = Quantity(
+        type=MEnum('None (open)', '1°', '2°'),
+        default='None (open)',
+        description='Detector slit used during the measurement.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            label='Detector slit',
         ),
     )
 
@@ -595,6 +739,16 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='deg',
             label='Horizontal slit',
+        ),
+    )
+
+    detector_slit = Quantity(
+        type=MEnum('None (open)', '1°', '2°'),
+        default='None (open)',
+        description='Detector slit used during the measurement.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            label='Detector slit',
         ),
     )
 
