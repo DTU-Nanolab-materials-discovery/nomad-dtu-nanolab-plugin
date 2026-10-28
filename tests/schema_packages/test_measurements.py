@@ -4,11 +4,15 @@ from types import SimpleNamespace
 import pytest
 from nomad import search as nomad_search
 from nomad.client import normalize_all, parse
+from nomad.datamodel.metainfo.basesections import CompositeSystemReference
+from nomad_material_processing.general import RectangleCuboid
 
 import nomad_dtu_nanolab_plugin.schema_packages.rt as rt_module
-from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
-    DtuNanolabMeasurement,
+from nomad_dtu_nanolab_plugin.schema_packages.edx import (
+    DTUSampleAlignment,
+    EDXMeasurement,
 )
+from nomad_dtu_nanolab_plugin.schema_packages.sample import DTUCombinatorialLibrary
 
 """
 Names can be generated from the test file by running the following command:
@@ -42,21 +46,21 @@ Names can be generated from the test file by running the following command:
             'test_edx.archive.yaml',
             15,
             [
-                'Sample x = -9.1 mm, y = -14.2 mm',
-                'Sample x = -9.6 mm, y = -6.9 mm',
-                'Sample x = -10.2 mm, y = 0.5 mm',
-                'Sample x = -10.8 mm, y = 7.7 mm',
-                'Sample x = -11.3 mm, y = 15.1 mm',
-                'Sample x = 1.6 mm, y = -13.4 mm',
-                'Sample x = 1.0 mm, y = -6.0 mm',
-                'Sample x = 0.5 mm, y = 1.3 mm',
-                'Sample x = -0.2 mm, y = 8.7 mm',
-                'Sample x = -0.7 mm, y = 16.0 mm',
-                'Sample x = 12.2 mm, y = -12.4 mm',
-                'Sample x = 11.6 mm, y = -5.2 mm',
-                'Sample x = 11.1 mm, y = 2.2 mm',
-                'Sample x = 10.5 mm, y = 9.5 mm',
-                'Sample x = 10.0 mm, y = 16.8 mm',
+                'Stage x = -10.8 mm, y = -14.6 mm',
+                'Stage x = -10.7 mm, y = -7.3 mm',
+                'Stage x = -10.7 mm, y = 0.1 mm',
+                'Stage x = -10.7 mm, y = 7.4 mm',
+                'Stage x = -10.6 mm, y = 14.8 mm',
+                'Stage x = -0.1 mm, y = -14.7 mm',
+                'Stage x = -0.1 mm, y = -7.3 mm',
+                'Stage x = 0.0 mm, y = -0.0 mm',
+                'Stage x = 0.0 mm, y = 7.4 mm',
+                'Stage x = 0.1 mm, y = 14.7 mm',
+                'Stage x = 10.6 mm, y = -14.7 mm',
+                'Stage x = 10.6 mm, y = -7.4 mm',
+                'Stage x = 10.7 mm, y = -0.0 mm',
+                'Stage x = 10.7 mm, y = 7.3 mm',
+                'Stage x = 10.8 mm, y = 14.6 mm',
             ],
             id='edx',
         ),
@@ -147,31 +151,30 @@ def test_resolve_library_folder_uses_lab_id_search(monkeypatch):
 
 def test_measurement_alignment_uses_linked_library_geometry():
     logger = __import__('logging').getLogger('test')
-    geometry = SimpleNamespace(width=0.04, length=0.03)
-    measurement = SimpleNamespace(
-        samples=[SimpleNamespace(reference=SimpleNamespace(geometry=geometry))],
+    library = DTUCombinatorialLibrary(
+        geometry=RectangleCuboid(width=0.04, length=0.03)
+    )
+    measurement = EDXMeasurement(
+        samples=[CompositeSystemReference(reference=library)],
         results=[],
-        sample_alignment=SimpleNamespace(
-            width=0.02,
-            height=0.02,
+        sample_alignment=DTUSampleAlignment(
             x_upper_left=-0.01,
             y_upper_left=0.01,
             x_lower_right=0.01,
             y_lower_right=-0.01,
         ),
     )
-    measurement._get_sample_dimensions = lambda current_logger: (
-        DtuNanolabMeasurement._get_sample_dimensions(measurement, current_logger)
-    )
 
-    DtuNanolabMeasurement._apply_library_geometry_to_alignment(measurement, logger)
+    assert measurement.sample_alignment.width is None
+    assert measurement.sample_alignment.height is None
+    measurement._apply_library_geometry_to_alignment(logger)
 
-    assert measurement.sample_alignment.width == geometry.width
-    assert measurement.sample_alignment.height == geometry.length
-    assert measurement.sample_alignment.x_upper_left == -geometry.width / 2
-    assert measurement.sample_alignment.y_upper_left == geometry.length / 2
-    assert measurement.sample_alignment.x_lower_right == geometry.width / 2
-    assert measurement.sample_alignment.y_lower_right == -geometry.length / 2
+    assert measurement.sample_alignment.width == library.geometry.width
+    assert measurement.sample_alignment.height == library.geometry.length
+    assert measurement.sample_alignment.x_upper_left == -library.geometry.width / 2
+    assert measurement.sample_alignment.y_upper_left == library.geometry.length / 2
+    assert measurement.sample_alignment.x_lower_right == library.geometry.width / 2
+    assert measurement.sample_alignment.y_lower_right == -library.geometry.length / 2
 
 
 def test_rt_autosampler_schema():
