@@ -7,6 +7,8 @@ from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
     ELNAnnotation,
     ELNComponentEnum,
+    Filter,
+    SectionProperties,
 )
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
@@ -219,6 +221,27 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         categories=[DTUNanolabCategory],
         links=['http://purl.obolibrary.org/obo/CHMO_0000773'],
         label='PL Measurement',
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                order=[
+                    'name',
+                    'pl_data_file',
+                    'pl_overview_file',
+                    'around_barycenter',
+                    'datetime',
+                    'lab_id',
+                    'location',
+                    'description',
+                    'samples',
+                    'results',
+                    'sample_alignment',
+                    'metadata',
+                    'instruments',
+                    'figures',
+                ],
+                visible=Filter(exclude=['steps']),
+            )
+        ),
     )
     pl_data_file = Quantity(
         type=str,

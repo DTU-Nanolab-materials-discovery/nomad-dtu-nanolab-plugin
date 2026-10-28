@@ -6,6 +6,7 @@ import pytest
 from nomad import search as nomad_search
 from nomad.client import normalize_all, parse
 from nomad.datamodel import context as nomad_context
+from nomad.datamodel.metainfo.annotations import ELNComponentEnum
 
 from nomad_dtu_nanolab_plugin.schema_packages.PL import DTUPLMeasurement
 from nomad_dtu_nanolab_plugin.ywf_reader import read_ywa_metadata, read_ywf
@@ -72,6 +73,33 @@ def test_read_ywa_overview_metadata():
     assert metadata['edge_exclusion_mm'] == EDGE_EXCLUSION_MM
     assert metadata['wafer_flat_angle_deg'] == WAFER_FLAT_ANGLE_DEG
     assert metadata['data_type'] == 'YWafer'
+
+
+def test_pl_schema_shows_ywa_upload_and_orders_eln_fields():
+    section = DTUPLMeasurement.m_def
+    expected_order = [
+        'name',
+        'pl_data_file',
+        'pl_overview_file',
+        'around_barycenter',
+        'datetime',
+        'lab_id',
+        'location',
+        'description',
+        'samples',
+        'results',
+        'sample_alignment',
+        'metadata',
+        'instruments',
+        'figures',
+    ]
+
+    assert section.a_eln.properties.order == expected_order
+    assert section.a_eln.properties.visible.exclude == ['steps']
+    assert (
+        DTUPLMeasurement.pl_overview_file.a_eln.component
+        == ELNComponentEnum.FileEditQuantity
+    )
 
 
 def test_native_pl_measurement_normalization(monkeypatch):
