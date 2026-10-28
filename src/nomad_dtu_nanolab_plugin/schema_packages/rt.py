@@ -634,6 +634,7 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
 
                 measurement = RTMeasurement(
                     name=f'{library_id}_RT_{datetime_label}',
+                    lab_id=f'{library_id}_RT_{datetime_label}',
                     vertical_back_slit=self.vertical_back_slit,
                     vertical_front_slit=self.vertical_front_slit,
                     horizontal_slit=self.horizontal_slit,
