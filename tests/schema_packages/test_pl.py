@@ -112,12 +112,8 @@ def test_native_pl_measurement_normalization(monkeypatch):
     assert measurement.metadata.chamber == 'cbbmo'
     assert measurement.metadata.scan_pitch.to('mm').magnitude.tolist() == [1, 1]
     assert measurement.metadata.scan_center.to('mm').magnitude.tolist() == [0, 0]
-    assert (
-        measurement.metadata.wafer_radius.to('mm').magnitude == WAFER_RADIUS_MM
-    )
-    assert (
-        measurement.metadata.edge_exclusion.to('mm').magnitude == EDGE_EXCLUSION_MM
-    )
+    assert measurement.metadata.wafer_radius.to('mm').magnitude == WAFER_RADIUS_MM
+    assert measurement.metadata.edge_exclusion.to('mm').magnitude == EDGE_EXCLUSION_MM
     assert (
         measurement.metadata.wafer_flat_angle.to('deg').magnitude
         == WAFER_FLAT_ANGLE_DEG
