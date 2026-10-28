@@ -51,8 +51,35 @@ if TYPE_CHECKING:
 m_package = Package(name='DTU XRD measurement schema')
 
 
-class XRDMappingResult(MappingResult, XRDResult1D):  # , PlotSection
+class XRDMappingResult(MappingResult, XRDResult1D, PlotSection):
     m_def = Section()
+
+    def plot_pattern(self) -> None:
+        if self.two_theta is None or self.intensity is None:
+            return
+
+        figure = go.Figure(
+            go.Scatter(
+                x=self.two_theta.to('deg').magnitude,
+                y=self.intensity.to('').magnitude,
+                mode='lines',
+                name=self.name,
+                hoverlabel=dict(namelength=-1),
+            )
+        )
+        figure.update_layout(
+            title=self.name or 'XRD pattern',
+            xaxis_title='2<i>theta</i> (deg)',
+            yaxis_title='Intensity',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(fixedrange=False),
+            yaxis=dict(fixedrange=False, type='log'),
+        )
+        plot_json = figure.to_plotly_json()
+        plot_json['config'] = {'scrollZoom': False}
+        self.figures = [PlotlyFigure(label='Pattern', figure=plot_json)]
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -64,6 +91,7 @@ class XRDMappingResult(MappingResult, XRDResult1D):  # , PlotSection
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
+        self.plot_pattern()
 
 
 class DTUXRDMeasurement(XRayDiffraction, DtuNanolabMeasurement, PlotSection, Schema):

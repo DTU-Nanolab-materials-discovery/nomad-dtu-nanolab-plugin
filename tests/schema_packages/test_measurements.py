@@ -102,6 +102,12 @@ def test_mapping_schema(test_file, expected_result_count, expected_names):
 
     for result in entry_archive.data.results:
         assert result.name in expected_names
+        if test_file == 'test_xrd.archive.yaml':
+            assert len(result.figures) == 1
+            pattern_figure = result.figures[0].figure
+            assert len(pattern_figure['data']) == 1
+            assert len(pattern_figure['data'][0]['x']) > 0
+            assert len(pattern_figure['data'][0]['y']) > 0
 
 
 def test_resolve_library_folder_uses_lab_id_search(monkeypatch):
