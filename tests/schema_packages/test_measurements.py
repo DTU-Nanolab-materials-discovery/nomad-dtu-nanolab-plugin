@@ -151,9 +151,7 @@ def test_resolve_library_folder_uses_lab_id_search(monkeypatch):
 
 def test_measurement_alignment_uses_linked_library_geometry():
     logger = __import__('logging').getLogger('test')
-    library = DTUCombinatorialLibrary(
-        geometry=RectangleCuboid(width=0.04, length=0.03)
-    )
+    library = DTUCombinatorialLibrary(geometry=RectangleCuboid(width=0.04, length=0.03))
     measurement = EDXMeasurement(
         samples=[CompositeSystemReference(reference=library)],
         results=[],
