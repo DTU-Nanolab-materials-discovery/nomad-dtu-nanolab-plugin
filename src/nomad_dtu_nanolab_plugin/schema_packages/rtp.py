@@ -88,6 +88,213 @@ def _warn_once(obj, key: str, logger, message: str) -> None:
     setattr(obj, key, True)
 
 
+def _to_seconds(value) -> float:
+    if hasattr(value, 'to'):
+        return float(value.to('s').magnitude)
+    return float(getattr(value, 'magnitude', value))
+
+
+def _sanitize_log_path_value(path_value: str) -> str:
+    """Strip quoting/whitespace and normalize path separators to '/'."""
+    raw = str(path_value).strip().strip('"').strip("'")
+    raw = raw.replace('\r', '/').replace('\n', '/').replace('\t', '/')
+    return raw.replace('\\', '/')
+
+
+def _candidate_log_paths(path_value: str) -> list[str]:
+    """Return unique, plausible raw-file paths in lookup order."""
+    normalized = _sanitize_log_path_value(path_value)
+    candidates = [normalized]
+    if normalized.startswith('./'):
+        candidates.append(normalized[2:])
+    if normalized.startswith('/'):
+        candidates.append(normalized.lstrip('/'))
+    if '/raw/' in normalized:
+        candidates.append(normalized.split('/raw/', 1)[1])
+    if normalized.startswith('raw/'):
+        candidates.append(normalized[4:])
+
+    filename = normalized.rsplit('/', 1)[-1]
+    if filename:
+        candidates.append(filename)
+    return list(dict.fromkeys(candidate for candidate in candidates if candidate))
+
+
+def _get_log_path_base_dirs() -> list[Path]:
+    """Return project and processing roots used for filesystem fallbacks."""
+    package_root = Path(__file__).resolve()
+    return [
+        Path.cwd(),
+        package_root.parents[5],
+        package_root.parents[4],
+        package_root.parents[3],
+        package_root.parents[4] / 'nomad-FAIR',
+    ]
+
+
+def _resolve_raw_log_path(
+    archive, path_value: str
+) -> tuple[str | None, Exception | None]:
+    last_exc = None
+    for candidate in _candidate_log_paths(path_value):
+        try:
+            with archive.m_context.raw_file(candidate, 'r'):
+                return candidate, None
+        except Exception as exc:
+            last_exc = exc
+    return None, last_exc
+
+
+def _resolve_filesystem_log_path(path_value: str, base_dirs: list[Path]) -> str | None:
+    candidates = _candidate_log_paths(path_value)
+    candidates.insert(0, _sanitize_log_path_value(path_value))
+    for candidate in candidates:
+        try:
+            path = Path(candidate)
+            if path.is_file():
+                return str(path)
+            if path.is_absolute():
+                continue
+            for base in base_dirs:
+                resolved = (base / path).resolve()
+                if resolved.is_file():
+                    return str(resolved)
+        except Exception:
+            continue
+    return None
+
+
+def _find_staged_log_path(filename: str, base_dirs: list[Path]) -> str | None:
+    for base in base_dirs:
+        try:
+            staging_root = (base / '.volumes' / 'fs' / 'staging').resolve()
+            if not staging_root.exists():
+                continue
+            for hit in staging_root.rglob(filename):
+                if hit.is_file() and 'raw' in hit.parts:
+                    return str(hit)
+        except Exception:
+            continue
+    for base in base_dirs:
+        try:
+            fs_root = (base / '.volumes' / 'fs').resolve()
+            if not fs_root.exists():
+                continue
+            for hit in fs_root.rglob(filename):
+                if hit.is_file():
+                    return str(hit)
+        except Exception:
+            continue
+    return None
+
+
+def _find_log_path_by_extension(
+    expected_suffix: str, base_dirs: list[Path]
+) -> str | None:
+    suffix = expected_suffix.lower().lstrip('.')
+    for base in base_dirs:
+        try:
+            fs_root = (base / '.volumes' / 'fs').resolve()
+            if not fs_root.exists():
+                continue
+            candidates = [
+                hit
+                for hit in fs_root.rglob(f'*.{suffix}')
+                if hit.is_file() and 'raw' in hit.parts
+            ]
+            if not candidates:
+                continue
+            if suffix == 'csv':
+                preferred = [
+                    path
+                    for path in candidates
+                    if 'recording set' in path.name.lower()
+                    or '_rtp_' in path.name.lower()
+                ]
+            else:
+                preferred = [
+                    path
+                    for path in candidates
+                    if 'logfile' in path.name.lower() or '_rtp_' in path.name.lower()
+                ]
+            newest = max(preferred or candidates, key=lambda path: path.stat().st_mtime)
+            return str(newest)
+        except Exception:
+            continue
+    return None
+
+
+def _resolve_log_input_path(
+    archive, path_value: str, expected_suffix: str
+) -> tuple[str, str]:
+    """Resolve a saved log reference to NOMAD raw storage or a filesystem path."""
+    raw_path, last_exc = _resolve_raw_log_path(archive, path_value)
+    if raw_path is not None:
+        return 'raw', raw_path
+
+    base_dirs = _get_log_path_base_dirs()
+    filesystem_path = _resolve_filesystem_log_path(path_value, base_dirs)
+    if filesystem_path is not None:
+        return 'fs', filesystem_path
+
+    filename = _sanitize_log_path_value(path_value).rsplit('/', 1)[-1]
+    if filename:
+        staged_path = _find_staged_log_path(filename, base_dirs)
+        if staged_path is not None:
+            return 'fs', staged_path
+    extension_path = _find_log_path_by_extension(expected_suffix, base_dirs)
+    if extension_path is not None:
+        return 'fs', extension_path
+    if last_exc is not None:
+        raise last_exc
+    raise FileNotFoundError(path_value)
+
+
+def _parse_resolved_log_files(
+    archive,
+    logger,
+    eklipse_ref: tuple[str, str],
+    diagnostics_refs: list[tuple[str, str]],
+):
+    """Materialize raw-file references while parsing all resolved log files."""
+    eklipse_kind, eklipse_path = eklipse_ref
+    with ExitStack() as stack:
+
+        def materialize_raw_to_temp(raw_ref: str, suffix: str) -> str:
+            raw_handle = stack.enter_context(archive.m_context.raw_file(raw_ref, 'r'))
+            temp_file = tempfile.NamedTemporaryFile(
+                mode='w',
+                encoding='utf-8',
+                delete=False,
+                suffix=suffix,
+                newline='',
+            )
+            try:
+                temp_file.write(raw_handle.read())
+            finally:
+                temp_file.close()
+            stack.callback(lambda p=temp_file.name: Path(p).unlink(missing_ok=True))
+            return temp_file.name
+
+        if eklipse_kind == 'raw':
+            suffix = '.csv' if eklipse_path.lower().endswith('.csv') else '.txt'
+            eklipse_path = materialize_raw_to_temp(eklipse_path, suffix)
+
+        diagnostics_paths = []
+        for kind, raw_reference in diagnostics_refs:
+            reference = raw_reference
+            if kind == 'raw':
+                suffix = '.txt' if reference.lower().endswith('.txt') else '.csv'
+                reference = materialize_raw_to_temp(reference, suffix)
+            diagnostics_paths.append(reference)
+
+        return parse_rtp_logfiles(
+            eklipse_csv_path=eklipse_path,
+            cx_thermo_diagnostics_txt_paths=diagnostics_paths,
+            logger=logger,
+        )
+
+
 #################### DEFINE INPUT_SAMPLES (SUBSECTION) ######################
 class DtuRTPInputSampleMounting(ArchiveSection):
     """
@@ -1480,143 +1687,115 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
 
     ############################## PLOTS #################################
+    def _find_temperature_end_time(
+        self,
+        time_s: list,
+        temperature_c: list,
+        cooling_start: float,
+        cooling_end: float,
+        end_temp_c: float | None,
+    ) -> float | None:
+        if end_temp_c is None:
+            return None
+        for raw_time, temperature in zip(time_s, temperature_c):
+            time_value = float(raw_time)
+            if time_value < cooling_start:
+                continue
+            if time_value > cooling_end:
+                break
+            if np.isfinite(temperature) and float(temperature) <= end_temp_c:
+                return time_value
+        return None
+
+    def _find_gas_shutoff_time(
+        self, time_s: list, cooling_start: float, cooling_end: float
+    ) -> float | None:
+        flows = [
+            getattr(self, '_log_ar_flow_sccm', []) or [],
+            getattr(self, '_log_n2_flow_sccm', []) or [],
+            getattr(self, '_log_ph3_flow_sccm', []) or [],
+            getattr(self, '_log_h2s_flow_sccm', []) or [],
+        ]
+        if any(len(flow) != len(time_s) for flow in flows):
+            return None
+
+        had_gas_on = False
+        for samples in zip(time_s, *flows):
+            time_value = float(samples[0])
+            if time_value < cooling_start:
+                continue
+            if time_value > cooling_end:
+                break
+            gas_on = any(
+                np.isfinite(flow) and abs(float(flow)) > MIN_USED_GAS_FLOW_SCCM
+                for flow in samples[1:]
+            )
+            if gas_on:
+                had_gas_on = True
+            elif had_gas_on:
+                return time_value
+        return None
+
+    def _get_cooling_end_time(self, cooling_segment) -> float:
+        cooling_start = _to_seconds(cooling_segment[1])
+        cooling_end = _to_seconds(cooling_segment[2])
+        time_s = getattr(self, '_log_time_s', []) or getattr(self, '_time', [])
+        temperature_c = getattr(self, '_log_temperature_c', []) or getattr(
+            self, '_temperature_profile', []
+        )
+        if not time_s or not temperature_c or len(time_s) != len(temperature_c):
+            return cooling_end
+
+        end_temp = None
+        if self.overview is not None:
+            end_temp = getattr(self.overview, 'end_of_process_temperature', None)
+        if hasattr(end_temp, 'to'):
+            end_temp_c = float(end_temp.to('celsius').magnitude)
+        elif end_temp is not None:
+            end_temp_c = float(end_temp) - CELSIUS_TO_KELVIN_OFFSET
+        else:
+            end_temp_c = None
+
+        reached_time = self._find_temperature_end_time(
+            time_s, temperature_c, cooling_start, cooling_end, end_temp_c
+        )
+        if reached_time is None:
+            reached_time = self._find_gas_shutoff_time(
+                time_s, cooling_start, cooling_end
+            )
+        if reached_time is None:
+            return cooling_end
+        return min(float(time_s[-1]), reached_time + POST_END_PROCESS_WINDOW_S)
+
     def _get_full_plot_time_range(self) -> tuple[float, float] | None:
         """Return plot range from heating start to 30 s after process end temp.
 
         Falls back to full available range when phase labels or temperature
         samples are missing.
         """
-
-        def _to_seconds(value) -> float:
-            if hasattr(value, 'to'):
-                return float(value.to('s').magnitude)
-            return float(getattr(value, 'magnitude', value))
-
         series = getattr(self, '_log_time_s', []) or getattr(self, '_time', []) or []
         if not series:
             return None
 
-        # Default to the full available range; narrowed below if phase
-        # segments are available.
         start_time = _to_seconds(series[0])
         end_time = _to_seconds(series[-1])
-
         segments = getattr(self, '_phase_segments', []) or []
         if segments:
-            # Trim the leading edge: skip any time before heating starts
-            # (e.g. idle/setup time at the very start of the log).
             heating_segment = next(
                 (segment for segment in segments if 'heat' in segment[0].lower()),
                 None,
             )
             if heating_segment is not None:
                 start_time = _to_seconds(heating_segment[1])
-
             cooling_segment = next(
                 (segment for segment in segments if 'cool' in segment[0].lower()),
                 None,
             )
             if cooling_segment is not None:
-                cooling_start = _to_seconds(cooling_segment[1])
-                cooling_end = _to_seconds(cooling_segment[2])
-                # Default trailing edge: the end of the cooling segment.
-                # Narrowed below to end shortly after the process actually
-                # reaches its end-of-process temperature, if that point can
-                # be found within the cooling window.
-                end_time = cooling_end
+                end_time = self._get_cooling_end_time(cooling_segment)
+            end_time = min(end_time, _to_seconds(segments[-1][2]))
 
-                time_s = getattr(self, '_log_time_s', []) or getattr(self, '_time', [])
-                temperature_c = getattr(self, '_log_temperature_c', []) or getattr(
-                    self, '_temperature_profile', []
-                )
-                end_temp = None
-                if self.overview is not None:
-                    end_temp = getattr(
-                        self.overview, 'end_of_process_temperature', None
-                    )
-                if hasattr(end_temp, 'to'):
-                    end_temp_c = float(end_temp.to('celsius').magnitude)
-                elif end_temp is not None:
-                    # end_temp is a bare Kelvin number here (no unit
-                    # wrapper), so convert manually.
-                    end_temp_c = float(end_temp) - CELSIUS_TO_KELVIN_OFFSET
-                else:
-                    end_temp_c = None
-
-                if time_s and temperature_c and len(time_s) == len(temperature_c):
-                    reached_time = None
-                    if end_temp_c is not None:
-                        # Scan forward within the cooling window for the
-                        # first sample at or below the configured
-                        # end-of-process temperature.
-                        for t, temp in zip(time_s, temperature_c):
-                            t_f = float(t)
-                            if t_f < cooling_start:
-                                continue
-                            if t_f > cooling_end:
-                                break
-                            if np.isfinite(temp) and float(temp) <= end_temp_c:
-                                reached_time = t_f
-                                break
-
-                    # Fallback: infer end-of-process directly from gas shutoff
-                    # timing in the cooling segment if overview end temperature
-                    # is missing or not reached in plotted data.
-                    if reached_time is None:
-                        ar = getattr(self, '_log_ar_flow_sccm', []) or []
-                        n2 = getattr(self, '_log_n2_flow_sccm', []) or []
-                        ph3 = getattr(self, '_log_ph3_flow_sccm', []) or []
-                        h2s = getattr(self, '_log_h2s_flow_sccm', []) or []
-                        if (
-                            len(ar) == len(time_s)
-                            and len(n2) == len(time_s)
-                            and len(ph3) == len(time_s)
-                            and len(h2s) == len(time_s)
-                        ):
-                            # Walk the cooling window looking for the
-                            # transition from "some gas flowing" to "all
-                            # gases off" - that transition point is treated
-                            # as the end of the process.
-                            had_gas_on = False
-                            for t, ar_f, n2_f, ph3_f, h2s_f in zip(
-                                time_s, ar, n2, ph3, h2s
-                            ):
-                                t_f = float(t)
-                                if t_f < cooling_start:
-                                    continue
-                                if t_f > cooling_end:
-                                    break
-
-                                flows = [ar_f, n2_f, ph3_f, h2s_f]
-                                gas_on = any(
-                                    np.isfinite(flow)
-                                    and abs(float(flow)) > MIN_USED_GAS_FLOW_SCCM
-                                    for flow in flows
-                                )
-                                if gas_on:
-                                    had_gas_on = True
-                                elif had_gas_on:
-                                    reached_time = t_f
-                                    break
-
-                    if reached_time is not None:
-                        # Extend a fixed window past the detected
-                        # end-of-process point so the plot shows some of the
-                        # cooldown tail, but never past the actual end of
-                        # the logged data.
-                        end_time = min(
-                            float(series[-1]), reached_time + POST_END_PROCESS_WINDOW_S
-                        )
-        # Clamp x-axis end to the last phase segment's end so the plot
-        # range never extends past the last active step boundary.
-        if segments:
-            last_seg_end = _to_seconds(segments[-1][2])
-            end_time = min(end_time, last_seg_end)
-
-        # Guard against a degenerate/inverted range (e.g. if trimming above
-        # pushed end_time before start_time for unusual logs).
-        end_time = max(end_time, start_time)
-        return (start_time, end_time)
+        return start_time, max(end_time, start_time)
 
     def _build_phase_segments(self) -> list[tuple[str, float, float]]:
         """Build (name, start_s, end_s) segments from step durations.
@@ -1972,19 +2151,8 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
         )
 
-    # Helper function to plot a sample on the susceptor. It is called in the next.
-    def plot_sample_on_susceptor(self, fig, input_sample):
+    def _get_sample_dimensions(self, input_sample, rel_pos) -> tuple[float, float]:
         geometry = getattr(input_sample.input_combi_lib, 'geometry', None)
-        rel_pos = getattr(input_sample, 'relative_position', None)
-        x = getattr(input_sample, 'position_x', None)
-        y = getattr(input_sample, 'position_y', None)
-        rotation = getattr(input_sample, 'rotation', None)
-        if rel_pos is None and x is None and y is None:
-            logger.warning(
-                f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}'"
-                ' has no relative position, x, or y set.'
-                ' It will be placed at the center by default.'
-            )
         if geometry is not None:
             width = getattr(geometry, 'width', 10)
             length = getattr(geometry, 'length', 10)
@@ -2011,6 +2179,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 width, length = 9.5, 40
             else:
                 width, length = 10, 10
+        return width, length
+
+    def _get_sample_position(self, input_sample) -> tuple[float, float]:
+        x = getattr(input_sample, 'position_x', None)
+        y = getattr(input_sample, 'position_y', None)
         if x is None or y is None:
             x = 0
             y = 0
@@ -2018,16 +2191,34 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             x = x.to('mm').magnitude
         if hasattr(y, 'magnitude'):
             y = y.to('mm').magnitude
+        return x, y
+
+    def _get_sample_rotation(self, input_sample) -> float:
+        rotation = getattr(input_sample, 'rotation', None)
         if rotation is None:
             logger.warning(
                 f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}' "
                 'has no rotation specified; defaulting to 0 radians.'
             )
-            angle_rad = 0.0
-        elif hasattr(rotation, 'to'):
-            angle_rad = float(rotation.to('rad').magnitude)
-        else:
-            angle_rad = float(rotation)
+            return 0.0
+        if hasattr(rotation, 'to'):
+            return float(rotation.to('rad').magnitude)
+        return float(rotation)
+
+    # Helper function to plot a sample on the susceptor. It is called in the next.
+    def plot_sample_on_susceptor(self, fig, input_sample):
+        rel_pos = getattr(input_sample, 'relative_position', None)
+        raw_x = getattr(input_sample, 'position_x', None)
+        raw_y = getattr(input_sample, 'position_y', None)
+        if rel_pos is None and raw_x is None and raw_y is None:
+            logger.warning(
+                f"Input sample '{getattr(input_sample, 'name', 'Unnamed')}'"
+                ' has no relative position, x, or y set.'
+                ' It will be placed at the center by default.'
+            )
+        width, length = self._get_sample_dimensions(input_sample, rel_pos)
+        x, y = self._get_sample_position(input_sample)
+        angle_rad = self._get_sample_rotation(input_sample)
 
         # Build the sample's rectangle in its own local coordinate frame
         # (centered on the origin), then rotate and translate it into place
@@ -2149,6 +2340,184 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             )
         )
 
+    def _store_log_series(
+        self, attribute, timeseries, overwrite, series_config
+    ) -> None:
+        preferred_key, fallback_key, conversion, factor = series_config
+        if not overwrite and getattr(self, attribute, []):
+            return
+        if preferred_key in timeseries:
+            values = timeseries.get(preferred_key, [])
+            if conversion is not None:
+                values = [
+                    self._convert_log_value(value, conversion, factor)
+                    for value in values
+                ]
+        elif fallback_key is not None:
+            values = timeseries.get(fallback_key, [])
+        else:
+            values = []
+        setattr(self, attribute, values)
+
+    @staticmethod
+    def _convert_log_value(value, conversion, factor):
+        if not np.isfinite(value):
+            return float('nan')
+        if conversion == 'subtract':
+            return float(value) - factor
+        return float(value) / factor
+
+    def _store_log_timeseries(self, parsed, overwrite) -> None:
+        timeseries = parsed.timeseries or {}
+        series = [
+            ('_log_time_s', ('time_s', None, None, 0.0)),
+            (
+                '_log_temperature_c',
+                (
+                    'temperature_k',
+                    'temperature_c',
+                    'subtract',
+                    CELSIUS_TO_KELVIN_OFFSET,
+                ),
+            ),
+            (
+                '_temperature_setpoint_profile',
+                (
+                    'temperature_setpoint_k',
+                    'temperature_setpoint_c',
+                    'subtract',
+                    CELSIUS_TO_KELVIN_OFFSET,
+                ),
+            ),
+            ('_lamp_power_profile', ('lamp_power', None, None, 0.0)),
+            (
+                '_log_pressure_torr',
+                ('pressure_pa', 'pressure_torr', 'divide', TORR_TO_PA),
+            ),
+            (
+                '_log_ar_flow_sccm',
+                ('ar_flow_m3_s', 'ar_flow_sccm', 'divide', SCCM_TO_M3_S),
+            ),
+            (
+                '_log_n2_flow_sccm',
+                ('n2_flow_m3_s', 'n2_flow_sccm', 'divide', SCCM_TO_M3_S),
+            ),
+            (
+                '_log_ph3_flow_sccm',
+                (
+                    'ph3_in_ar_flow_m3_s',
+                    'ph3_in_ar_flow_sccm',
+                    'divide',
+                    SCCM_TO_M3_S,
+                ),
+            ),
+            (
+                '_log_h2s_flow_sccm',
+                (
+                    'h2s_in_ar_flow_m3_s',
+                    'h2s_in_ar_flow_sccm',
+                    'divide',
+                    SCCM_TO_M3_S,
+                ),
+            ),
+        ]
+        for attribute, series_config in series:
+            self._store_log_series(
+                attribute,
+                timeseries,
+                overwrite,
+                series_config,
+            )
+
+        if overwrite or not getattr(self, '_log_phase_segments', []):
+            self._log_phase_segments = [
+                (step.name, step.start_time_s, step.end_time_s)
+                for step in parsed.steps
+                if step.start_time_s is not None and step.end_time_s is not None
+            ]
+
+    def _set_overview_fields(self, parsed, overwrite, fields) -> None:
+        for attribute in fields:
+            if overwrite or getattr(self.overview, attribute) is None:
+                setattr(
+                    self.overview,
+                    attribute,
+                    parsed.overview.get(attribute),
+                )
+
+    def _store_log_overview(self, parsed, has_detected_annealing, overwrite) -> None:
+        if self.overview is None:
+            self.overview = RTPOverview()
+        annealing_fields = (
+            'annealing_pressure',
+            'annealing_time',
+            'annealing_temperature',
+            'annealing_ar_flow',
+            'annealing_n2_flow',
+            'annealing_ph3_in_ar_flow',
+            'annealing_nh3_in_ar_flow',
+            'annealing_h2s_in_ar_flow',
+        )
+        if has_detected_annealing:
+            if overwrite or self.overview.no_dwell_steps is None:
+                self.overview.no_dwell_steps = sum(
+                    1
+                    for step in parsed.steps
+                    if re.match(
+                        r'^\s*(?:\d+(?:st|nd|rd|th)\s+)?(?:dwell|anneal(?:ing)?)\b',
+                        str(step.name or '').lower(),
+                    )
+                )
+            self._set_overview_fields(
+                parsed,
+                overwrite,
+                (*annealing_fields, 'total_heating_time', 'total_cooling_time'),
+            )
+        else:
+            if overwrite or self.overview.no_dwell_steps is None:
+                self.overview.no_dwell_steps = 0
+            if overwrite:
+                for attribute in annealing_fields:
+                    setattr(self.overview, attribute, None)
+
+        self._set_overview_fields(
+            parsed,
+            overwrite,
+            ('total_heating_time', 'total_cooling_time', 'end_of_process_temperature'),
+        )
+
+    def _create_step_from_log(self, parsed_step):
+        step = DTURTPSteps(name=parsed_step.name)
+        step.step_overview = RTPStepOverview(
+            duration=parsed_step.duration_s,
+            step_ar_flow=parsed_step.ar_flow_m3_s,
+            step_n2_flow=parsed_step.n2_flow_m3_s,
+            step_ph3_in_ar_flow=parsed_step.ph3_in_ar_flow_m3_s,
+            step_nh3_in_ar_flow=parsed_step.nh3_in_ar_flow_m3_s,
+            step_h2s_in_ar_flow=parsed_step.h2s_in_ar_flow_m3_s,
+            initial_temperature=parsed_step.initial_temperature_k,
+            final_temperature=parsed_step.final_temperature_k,
+        )
+        if parsed_step.pressure_pa is not None:
+            step.step_overview.pressure = parsed_step.pressure_pa
+        return step
+
+    def _store_log_steps(self, parsed, logger, overwrite) -> None:
+        if not (overwrite or not self.steps):
+            return
+        for parsed_step in parsed.steps:
+            initial_c = parsed_step.initial_temperature_k - CELSIUS_TO_KELVIN_OFFSET
+            final_c = parsed_step.final_temperature_k - CELSIUS_TO_KELVIN_OFFSET
+            logger.warning(
+                f'Parsed RTP step "{parsed_step.name}": '
+                f'initial_temperature={initial_c:.1f} °C, '
+                f'final_temperature={final_c:.1f} °C, '
+                f'duration={parsed_step.duration_s:.1f} s'
+            )
+        self.steps = []
+        for parsed_step in parsed.steps:
+            self.steps.append(self._create_step_from_log(parsed_step))
+
     def parse_log_files(
         self,
         archive: 'EntryArchive',
@@ -2172,285 +2541,24 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         if not self.log_file_eklipse or not deduped_diagnostics_inputs:
             return
 
-        def _sanitize_path_value(path_value: str) -> str:
-            """Strip quoting/whitespace and normalize path separators to '/'."""
-            raw = str(path_value).strip().strip('"').strip("'")
-            # Some serialized paths can contain escaped control chars where
-            # backslashes were interpreted (e.g. "\raw" -> "\r" + "aw").
-            raw = raw.replace('\r', '/').replace('\n', '/').replace('\t', '/')
-            raw = raw.replace('\\', '/')
-            return raw
-
-        def _candidate_raw_paths(path_value: str) -> list[str]:
-            """Generate plausible variants of a stored path to try against
-            NOMAD's raw-file storage (`archive.m_context.raw_file`).
-
-            The exact path string saved on the quantity can differ from
-            what `raw_file()` expects depending on how/where it was
-            entered (with or without a leading './' or '/', with or
-            without a 'raw/' prefix, or just a bare filename). Rather than
-            guessing which form is correct, every plausible variant is
-            tried in order by `_resolve_input_path` below.
-            """
-            normalized = _sanitize_path_value(path_value)
-            candidates = [normalized]
-
-            # Try common normalized alternatives that may match how the path
-            # was stored in NOMAD or entered by the user.
-            if normalized.startswith('./'):
-                candidates.append(normalized[2:])
-            if normalized.startswith('/'):
-                candidates.append(normalized.lstrip('/'))
-            if '/raw/' in normalized:
-                candidates.append(normalized.split('/raw/', 1)[1])
-            if normalized.startswith('raw/'):
-                candidates.append(normalized[4:])
-
-            # Fall back to filename-only lookup as a last variant.
-            filename = normalized.rsplit('/', 1)[-1]
-            if filename:
-                candidates.append(filename)
-
-            # Deduplicate while preserving candidate order.
-            deduped: list[str] = []
-            for candidate in candidates:
-                if candidate and candidate not in deduped:
-                    deduped.append(candidate)
-            return deduped
-
-        def _resolve_input_path(
-            path_value: str, expected_suffix: str
-        ) -> tuple[str, str]:
-            """Resolve a stored log-file path to an actual readable file.
-
-            Tries progressively broader fallback tiers, since the stored
-            quantity value may be a NOMAD raw-file reference, a path on
-            local disk left over from local/dev processing, or - in the
-            worst case - missing/stale, in which case the file is searched
-            for by name or by extension+naming-convention.
-
-            Returns a (kind, ref) tuple where kind is 'raw' (resolved via
-            NOMAD's raw-file context) or 'fs' (resolved via a direct
-            filesystem path), and ref is the corresponding reference/path.
-            """
-            # Tier 1: try every candidate variant of the path against
-            # NOMAD's own raw-file storage - the expected/normal case.
-            last_exc: Exception | None = None
-            for candidate in _candidate_raw_paths(path_value):
-                try:
-                    with archive.m_context.raw_file(candidate, 'r'):
-                        return ('raw', candidate)
-                except Exception as exc:
-                    last_exc = exc
-
-            # Fallback for local processing where values can point to staging
-            # paths directly (e.g. .volumes/fs/staging/.../raw/file.csv).
-            fs_candidates = _candidate_raw_paths(path_value)
-            fs_candidates.insert(0, _sanitize_path_value(path_value))
-
-            # Plausible repo/processing root directories to resolve relative
-            # paths against, ordered from most to least specific. The
-            # parents[N] indices depend on this file's location within the
-            # plugin's package structure.
-            base_dirs = [
-                Path.cwd(),
-                Path(__file__).resolve().parents[5],
-                Path(__file__).resolve().parents[4],
-                Path(__file__).resolve().parents[3],
-                Path(__file__).resolve().parents[4] / 'nomad-FAIR',
-            ]
-
-            # Tier 2: try each candidate path directly on disk (absolute),
-            # or resolved relative to each base directory.
-            for candidate in fs_candidates:
-                try:
-                    p = Path(candidate)
-                    if p.is_file():
-                        return ('fs', str(p))
-
-                    # If the candidate is relative, try resolving it under
-                    # each plausible project/staging root.
-                    if not p.is_absolute():
-                        for base in base_dirs:
-                            resolved = (base / p).resolve()
-                            if resolved.is_file():
-                                return ('fs', str(resolved))
-                except Exception:
-                    continue
-
-            # Final fallback: find staged file by basename under .volumes staging.
-            filename = _sanitize_path_value(path_value).rsplit('/', 1)[-1]
-            if filename:
-                # Tier 3: search NOMAD's staging area specifically (files
-                # not yet promoted to a final "raw" location), restricted
-                # to paths that contain a 'raw' directory component to avoid
-                # matching unrelated staged files with the same basename.
-                for base in base_dirs:
-                    try:
-                        staging_root = (base / '.volumes' / 'fs' / 'staging').resolve()
-                        if not staging_root.exists():
-                            continue
-                        for hit in staging_root.rglob(filename):
-                            if hit.is_file() and 'raw' in hit.parts:
-                                return ('fs', str(hit))
-                    except Exception:
-                        continue
-
-                # Broader fallback inspired by sputter parser pragmatism:
-                # search all known .volumes/fs trees regardless of subfolder.
-                for base in base_dirs:
-                    try:
-                        fs_root = (base / '.volumes' / 'fs').resolve()
-                        if not fs_root.exists():
-                            continue
-                        for hit in fs_root.rglob(filename):
-                            if hit.is_file():
-                                return ('fs', str(hit))
-                    except Exception:
-                        continue
-
-            # Tier 4 (last resort): the exact filename couldn't be found
-            # anywhere, so search by file extension and typical RTP naming
-            # patterns instead, and use the most recently modified match.
-            # Format-driven fallback for variable file names:
-            # search latest matching file by expected extension and typical RTP naming.
-            suffix = expected_suffix.lower().lstrip('.')
-            for base in base_dirs:
-                try:
-                    fs_root = (base / '.volumes' / 'fs').resolve()
-                    if not fs_root.exists():
-                        continue
-
-                    pattern = f'*.{suffix}'
-                    candidates = [
-                        hit
-                        for hit in fs_root.rglob(pattern)
-                        if hit.is_file() and 'raw' in hit.parts
-                    ]
-
-                    if not candidates:
-                        continue
-
-                    # CSV files are expected to be Eklipse gas/pressure
-                    # logs; anything else (txt) is expected to be a
-                    # CX-Thermo diagnostics log. Prefer files whose name
-                    # matches the typical naming convention for that kind
-                    # of log over an arbitrary match.
-                    if suffix == 'csv':
-                        preferred = [
-                            p
-                            for p in candidates
-                            if 'recording set' in p.name.lower()
-                            or '_rtp_' in p.name.lower()
-                        ]
-                    else:
-                        preferred = [
-                            p
-                            for p in candidates
-                            if 'logfile' in p.name.lower() or '_rtp_' in p.name.lower()
-                        ]
-
-                    # Use the naming-convention-preferred matches if any
-                    # were found, otherwise fall back to any file with the
-                    # right extension. Among the remaining candidates, pick
-                    # the most recently modified one, since that's most
-                    # likely to be the relevant/current log file when the
-                    # exact path couldn't be matched.
-                    pool = preferred if preferred else candidates
-                    newest = max(pool, key=lambda p: p.stat().st_mtime)
-                    return ('fs', str(newest))
-                except Exception:
-                    continue
-
-            # Re-raise the most relevant raw-file error if available,
-            # otherwise report the unresolved path directly.
-            if last_exc is not None:
-                raise last_exc
-            raise FileNotFoundError(path_value)
-
         try:
             # Resolve the primary Eklipse log and all diagnostics logs to either
             # NOMAD raw references or concrete filesystem paths.
-            eklipse_kind, eklipse_ref = _resolve_input_path(
-                self.log_file_eklipse, 'csv'
+            eklipse_kind, eklipse_ref = _resolve_log_input_path(
+                archive, self.log_file_eklipse, 'csv'
             )
             resolved_diagnostics_refs = [
-                _resolve_input_path(path, 'txt') for path in deduped_diagnostics_inputs
+                _resolve_log_input_path(archive, path, 'txt')
+                for path in deduped_diagnostics_inputs
             ]
 
-            # ExitStack is used so temporary files and raw-file handles are all
-            # cleaned up automatically when parsing is finished.
-            with ExitStack() as stack:
-
-                def _materialize_raw_to_temp(raw_ref: str, suffix: str) -> str:
-                    """Copy a file from NOMAD's raw-file storage into a real
-                    temp file on disk.
-
-                    `parse_rtp_logfiles` expects ordinary filesystem paths,
-                    but files resolved via `archive.m_context.raw_file`
-                    ('raw' kind from `_resolve_input_path`) are only
-                    accessible through that context manager, not as a plain
-                    path. This bridges the two by writing the raw content
-                    out to a temp file, registering its cleanup on the
-                    ExitStack so it's removed once parsing finishes
-                    regardless of success or failure.
-                    """
-                    raw_handle = stack.enter_context(
-                        archive.m_context.raw_file(raw_ref, 'r')
-                    )
-                    temp_file = tempfile.NamedTemporaryFile(
-                        mode='w',
-                        encoding='utf-8',
-                        delete=False,
-                        suffix=suffix,
-                        newline='',
-                    )
-                    try:
-                        temp_file.write(raw_handle.read())
-                    finally:
-                        temp_file.close()
-
-                    # Ensure the temporary file always gets removed.
-                    stack.callback(
-                        lambda p=temp_file.name: Path(p).unlink(missing_ok=True)
-                    )
-                    return temp_file.name
-
-                # Convert raw-file references into real temp files only when needed;
-                # filesystem paths can be used directly.
-                if eklipse_kind == 'raw':
-                    eklipse_suffix = (
-                        '.csv' if eklipse_ref.lower().endswith('.csv') else '.txt'
-                    )
-                    eklipse_path = _materialize_raw_to_temp(eklipse_ref, eklipse_suffix)
-                else:
-                    eklipse_path = eklipse_ref
-
-                diagnostics_paths = []
-                for diagnostics_kind, diagnostics_ref in resolved_diagnostics_refs:
-                    if diagnostics_kind == 'raw':
-                        diagnostics_suffix = (
-                            '.txt'
-                            if diagnostics_ref.lower().endswith('.txt')
-                            else '.csv'
-                        )
-                        diagnostics_paths.append(
-                            _materialize_raw_to_temp(
-                                diagnostics_ref, diagnostics_suffix
-                            )
-                        )
-                    else:
-                        diagnostics_paths.append(diagnostics_ref)
-
-                # Parse all resolved log files into a structured RTP result object.
-                parsed = parse_rtp_logfiles(
-                    eklipse_csv_path=eklipse_path,
-                    cx_thermo_diagnostics_txt_paths=diagnostics_paths,
-                    logger=logger,
-                )
-                has_detected_annealing = getattr(
-                    parsed, 'has_detected_annealing', False
-                )
+            parsed = _parse_resolved_log_files(
+                archive,
+                logger,
+                (eklipse_kind, eklipse_ref),
+                resolved_diagnostics_refs,
+            )
+            has_detected_annealing = getattr(parsed, 'has_detected_annealing', False)
 
         except Exception as exc:
             # Parsing is optional enrichment: failures are logged but do not
@@ -2466,236 +2574,62 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                 'No process gases detected in RTP logs. All used_gases are empty.'
             )
 
-        # Populate scalar process quantities only if overwrite is enabled
-        # or the target quantity has not yet been set.
-        if (
-            overwrite or self.base_pressure is None
-        ) and parsed.base_pressure_pa is not None:
-            self.base_pressure = parsed.base_pressure_pa
-        if (
-            overwrite or self.base_pressure_ballast is None
-        ) and parsed.base_pressure_ballast_pa is not None:
-            self.base_pressure_ballast = parsed.base_pressure_ballast_pa
-        if (
-            overwrite or self.rate_of_rise is None
-        ) and parsed.rate_of_rise_pa_s is not None:
-            self.rate_of_rise = parsed.rate_of_rise_pa_s
-        # Chiller flow is intentionally not inferred from logs.
+        for attribute, value in (
+            ('base_pressure', parsed.base_pressure_pa),
+            ('base_pressure_ballast', parsed.base_pressure_ballast_pa),
+            ('rate_of_rise', parsed.rate_of_rise_pa_s),
+        ):
+            if (overwrite or getattr(self, attribute) is None) and value is not None:
+                setattr(self, attribute, value)
 
-        # Store timeseries for plotting.
-        ts = parsed.timeseries or {}
+        self._store_log_timeseries(parsed, overwrite)
+        self._store_log_overview(parsed, has_detected_annealing, overwrite)
+        self._store_log_steps(parsed, logger, overwrite)
 
-        # Save parsed time axis.
-        if overwrite or not getattr(self, '_log_time_s', []):
-            self._log_time_s = ts.get('time_s', [])
-
-        # Prefer Kelvin series if available and convert to Celsius for storage;
-        # otherwise use the Celsius series directly.
-        if overwrite or not getattr(self, '_log_temperature_c', []):
-            if 'temperature_k' in ts:
-                self._log_temperature_c = [
-                    (float(v) - CELSIUS_TO_KELVIN_OFFSET)
-                    if np.isfinite(v)
-                    else float('nan')
-                    for v in ts.get('temperature_k', [])
-                ]
-            else:
-                self._log_temperature_c = ts.get('temperature_c', [])
-
-        # Same conversion logic for the setpoint temperature profile.
-        if overwrite or not getattr(self, '_temperature_setpoint_profile', []):
-            if 'temperature_setpoint_k' in ts:
-                self._temperature_setpoint_profile = [
-                    (float(v) - CELSIUS_TO_KELVIN_OFFSET)
-                    if np.isfinite(v)
-                    else float('nan')
-                    for v in ts.get('temperature_setpoint_k', [])
-                ]
-            else:
-                self._temperature_setpoint_profile = ts.get(
-                    'temperature_setpoint_c', []
-                )
-
-        # Lamp power is stored as-is from the parsed timeseries.
-        if overwrite or not getattr(self, '_lamp_power_profile', []):
-            self._lamp_power_profile = ts.get('lamp_power', [])
-
-        # Prefer SI pressure (Pa) if available and convert to Torr for storage.
-        if overwrite or not getattr(self, '_log_pressure_torr', []):
-            if 'pressure_pa' in ts:
-                self._log_pressure_torr = [
-                    (float(v) / TORR_TO_PA) if np.isfinite(v) else float('nan')
-                    for v in ts.get('pressure_pa', [])
-                ]
-            else:
-                self._log_pressure_torr = ts.get('pressure_torr', [])
-
-        # Convert flow series from SI units to sccm where needed.
-        if overwrite or not getattr(self, '_log_ar_flow_sccm', []):
-            if 'ar_flow_m3_s' in ts:
-                self._log_ar_flow_sccm = [
-                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
-                    for v in ts.get('ar_flow_m3_s', [])
-                ]
-            else:
-                self._log_ar_flow_sccm = ts.get('ar_flow_sccm', [])
-        if overwrite or not getattr(self, '_log_n2_flow_sccm', []):
-            if 'n2_flow_m3_s' in ts:
-                self._log_n2_flow_sccm = [
-                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
-                    for v in ts.get('n2_flow_m3_s', [])
-                ]
-            else:
-                self._log_n2_flow_sccm = ts.get('n2_flow_sccm', [])
-        if overwrite or not getattr(self, '_log_ph3_flow_sccm', []):
-            if 'ph3_in_ar_flow_m3_s' in ts:
-                self._log_ph3_flow_sccm = [
-                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
-                    for v in ts.get('ph3_in_ar_flow_m3_s', [])
-                ]
-            else:
-                self._log_ph3_flow_sccm = ts.get('ph3_in_ar_flow_sccm', [])
-        if overwrite or not getattr(self, '_log_h2s_flow_sccm', []):
-            if 'h2s_in_ar_flow_m3_s' in ts:
-                self._log_h2s_flow_sccm = [
-                    (float(v) / SCCM_TO_M3_S) if np.isfinite(v) else float('nan')
-                    for v in ts.get('h2s_in_ar_flow_m3_s', [])
-                ]
-            else:
-                self._log_h2s_flow_sccm = ts.get('h2s_in_ar_flow_sccm', [])
-
-        # Store phase boundaries derived from actual log timestamps.
-        if overwrite or not getattr(self, '_log_phase_segments', []):
-            self._log_phase_segments = [
-                (ps.name, ps.start_time_s, ps.end_time_s)
-                for ps in parsed.steps
-                if ps.start_time_s is not None and ps.end_time_s is not None
-            ]
-
-        # Ensure overview section exists before filling any summary values.
-        if self.overview is None:
-            self.overview = RTPOverview()
-
-        if has_detected_annealing:
-            # Count dwell/anneal-type steps from parsed step names using a regex
-            # that supports optional numbering prefixes (e.g. "1st dwell").
-            if overwrite or self.overview.no_dwell_steps is None:
-                self.overview.no_dwell_steps = sum(
-                    1
-                    for step in parsed.steps
-                    if re.match(
-                        r'^\s*(?:\d+(?:st|nd|rd|th)\s+)?(?:dwell|anneal(?:ing)?)\b',
-                        str(step.name or '').lower(),
-                    )
-                )
-
-            # Copy annealing-related overview values only when a real annealing
-            # step was detected.
-            if overwrite or self.overview.annealing_pressure is None:
-                self.overview.annealing_pressure = parsed.overview.get(
-                    'annealing_pressure'
-                )
-            if overwrite or self.overview.annealing_time is None:
-                self.overview.annealing_time = parsed.overview.get('annealing_time')
-            if overwrite or self.overview.annealing_temperature is None:
-                self.overview.annealing_temperature = parsed.overview.get(
-                    'annealing_temperature'
-                )
-            if overwrite or self.overview.annealing_ar_flow is None:
-                self.overview.annealing_ar_flow = parsed.overview.get(
-                    'annealing_ar_flow'
-                )
-            if overwrite or self.overview.annealing_n2_flow is None:
-                self.overview.annealing_n2_flow = parsed.overview.get(
-                    'annealing_n2_flow'
-                )
-            if overwrite or self.overview.annealing_ph3_in_ar_flow is None:
-                self.overview.annealing_ph3_in_ar_flow = parsed.overview.get(
-                    'annealing_ph3_in_ar_flow'
-                )
-            if overwrite or self.overview.annealing_nh3_in_ar_flow is None:
-                self.overview.annealing_nh3_in_ar_flow = parsed.overview.get(
-                    'annealing_nh3_in_ar_flow'
-                )
-            if overwrite or self.overview.annealing_h2s_in_ar_flow is None:
-                self.overview.annealing_h2s_in_ar_flow = parsed.overview.get(
-                    'annealing_h2s_in_ar_flow'
-                )
-            if overwrite or self.overview.total_heating_time is None:
-                self.overview.total_heating_time = parsed.overview.get(
-                    'total_heating_time'
-                )
-            if overwrite or self.overview.total_cooling_time is None:
-                self.overview.total_cooling_time = parsed.overview.get(
-                    'total_cooling_time'
-                )
-
-        else:
-            # Still report explicitly that no annealing/dwell plateau was found.
-            if overwrite or self.overview.no_dwell_steps is None:
-                self.overview.no_dwell_steps = 0
-
-            # If overwrite is requested, clear previously auto-derived overview
-            # values so the overview remains empty rather than keeping stale data.
-            if overwrite:
-                self.overview.annealing_pressure = None
-                self.overview.annealing_time = None
-                self.overview.annealing_temperature = None
-                self.overview.annealing_ar_flow = None
-                self.overview.annealing_n2_flow = None
-                self.overview.annealing_ph3_in_ar_flow = None
-                self.overview.annealing_nh3_in_ar_flow = None
-                self.overview.annealing_h2s_in_ar_flow = None
-
-        # total_heating_time and total_cooling_time are independent of annealing
-        # detection and should be populated whenever the parser could determine them.
-        if overwrite or self.overview.total_heating_time is None:
-            self.overview.total_heating_time = parsed.overview.get('total_heating_time')
-        if overwrite or self.overview.total_cooling_time is None:
-            self.overview.total_cooling_time = parsed.overview.get('total_cooling_time')
-
-        # end_of_process_temperature is independent of annealing detection and
-        # should still be populated whenever the parser could determine it.
-        if overwrite or self.overview.end_of_process_temperature is None:
-            self.overview.end_of_process_temperature = parsed.overview.get(
-                'end_of_process_temperature'
+    def _reconstruct_temperature_profile(self, logger) -> None:
+        times, temps, current_time = [], [], 0
+        steps_list = getattr(self, 'steps', []) or []
+        for step in steps_list:
+            step_overview = getattr(step, 'step_overview', None)
+            if (
+                step_overview is not None
+                and isinstance(step_overview.initial_temperature, ureg.Quantity)
+                and isinstance(step_overview.final_temperature, ureg.Quantity)
+                and isinstance(step_overview.duration, ureg.Quantity)
+            ):
+                temps.append(step_overview.initial_temperature.to('celsius').magnitude)
+                times.append(current_time)
+                current_time += step_overview.duration or 0
+                temps.append(step_overview.final_temperature.to('celsius').magnitude)
+                times.append(current_time)
+        if not times or not temps:
+            _warn_once(
+                self,
+                '_warned_empty_reconstructed_temperature_profile',
+                logger,
+                'No valid steps found to construct temperature profile. '
+                'Temperature profile will be empty.',
             )
+        self._time = times
+        self._temperature_profile = temps
 
-        # Rebuild step objects from parsed steps unless existing steps should
-        # be preserved and overwrite is disabled.
-        if overwrite or not self.steps:
-            # Log a short summary for each parsed step to aid debugging and validation.
-            for parsed_step in parsed.steps:
-                initial_c = parsed_step.initial_temperature_k - CELSIUS_TO_KELVIN_OFFSET
-                final_c = parsed_step.final_temperature_k - CELSIUS_TO_KELVIN_OFFSET
-                logger.warning(
-                    f'Parsed RTP step "{parsed_step.name}": '
-                    f'initial_temperature={initial_c:.1f} °C, '
-                    f'final_temperature={final_c:.1f} °C, '
-                    f'duration={parsed_step.duration_s:.1f} s'
-                )
-
-            # Replace any existing steps with a fresh list derived from the logs.
-            self.steps = []
-            for parsed_step in parsed.steps:
-                step = DTURTPSteps(name=parsed_step.name)
-                step.step_overview = RTPStepOverview(
-                    duration=parsed_step.duration_s,
-                    step_ar_flow=parsed_step.ar_flow_m3_s,
-                    step_n2_flow=parsed_step.n2_flow_m3_s,
-                    step_ph3_in_ar_flow=parsed_step.ph3_in_ar_flow_m3_s,
-                    step_nh3_in_ar_flow=parsed_step.nh3_in_ar_flow_m3_s,
-                    step_h2s_in_ar_flow=parsed_step.h2s_in_ar_flow_m3_s,
-                    initial_temperature=parsed_step.initial_temperature_k,
-                    final_temperature=parsed_step.final_temperature_k,
-                )
-
-                # Pressure is optional and only assigned when present
-                # in the parsed step.
-                if parsed_step.pressure_pa is not None:
-                    step.step_overview.pressure = parsed_step.pressure_pa
-
-                self.steps.append(step)
+    def _normalize_temperature_profile(self, logger) -> None:
+        log_time_s = getattr(self, '_log_time_s', []) or []
+        log_temp_c = getattr(self, '_log_temperature_c', []) or []
+        if log_time_s and log_temp_c and len(log_time_s) == len(log_temp_c):
+            self._time = log_time_s
+            self._temperature_profile = log_temp_c
+            return
+        if not log_time_s or not log_temp_c:
+            _warn_once(
+                self,
+                '_warned_reconstruct_temperature_profile',
+                logger,
+                'Temperature timeseries data from logs not available '
+                'or incomplete. Reconstructing profile from step '
+                'definitions.',
+            )
+        self._reconstruct_temperature_profile(logger)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -2755,53 +2689,7 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
         # Depends on parse_log_files() (step rebuild + _log_phase_segments)
         # and the step.normalize() loop above having already run.
         self._phase_segments = self._build_phase_segments()
-        log_time_s = getattr(self, '_log_time_s', []) or []
-        log_temp_c = getattr(self, '_log_temperature_c', []) or []
-        if log_time_s and log_temp_c and len(log_time_s) == len(log_temp_c):
-            self._time = log_time_s
-            self._temperature_profile = log_temp_c
-        else:
-            if not log_time_s or not log_temp_c:
-                _warn_once(
-                    self,
-                    '_warned_reconstruct_temperature_profile',
-                    logger,
-                    'Temperature timeseries data from logs not available '
-                    'or incomplete. Reconstructing profile from step '
-                    'definitions.',
-                )
-            times, temps, current_time = [], [], 0
-            step: DTURTPSteps
-            steps_list = getattr(self, 'steps', []) or []
-            for step in steps_list:  # Loop over all DTURTPSteps
-                step_overview = getattr(step, 'step_overview', None)
-                if (
-                    step_overview is not None
-                    and isinstance(step_overview.initial_temperature, ureg.Quantity)
-                    and isinstance(step_overview.final_temperature, ureg.Quantity)
-                    and isinstance(step_overview.duration, ureg.Quantity)
-                ):
-                    # Add initial point for the step
-                    temps.append(
-                        step_overview.initial_temperature.to('celsius').magnitude
-                    )
-                    times.append(current_time)
-                    # Add final point for the step
-                    current_time += step_overview.duration or 0
-                    temps.append(
-                        step_overview.final_temperature.to('celsius').magnitude
-                    )
-                    times.append(current_time)
-            if not times or not temps:
-                _warn_once(
-                    self,
-                    '_warned_empty_reconstructed_temperature_profile',
-                    logger,
-                    'No valid steps found to construct temperature profile. '
-                    'Temperature profile will be empty.',
-                )
-            self._time = times
-            self._temperature_profile = temps
+        self._normalize_temperature_profile(logger)
 
         # 6. RTP-specific derived state: source syncing, material space,
         # library creation.
