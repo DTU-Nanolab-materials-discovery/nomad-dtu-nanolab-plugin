@@ -263,167 +263,135 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
         2. All measurement positions grouped by sample (colored by sample)
         3. Sample labels and measurement point locations
         """
-        import pandas as pd
-        import plotly.graph_objs as go
-
-        # Try to parse the grid from config_file if available
         try:
-            if not self.config_file:
+            grid_df = self._read_grid_dataframe(archive, logger)
+            if grid_df is None:
                 return
-
-            # Use archive context to read config file
-            with archive.m_context.raw_file(self.config_file) as config_f:
-                grid_df = pd.read_csv(config_f.name, skiprows=0, header=0, decimal=',')
-
-            # Ensure we have X and Y columns
-            if 'X' not in grid_df.columns or 'Y' not in grid_df.columns:
-                # Try alternative column names
-                x_col = next((c for c in grid_df.columns if 'x' in c.lower()), None)
-                y_col = next((c for c in grid_df.columns if 'y' in c.lower()), None)
-                if x_col and y_col:
-                    grid_df.rename(columns={x_col: 'X', y_col: 'Y'}, inplace=True)
-                else:
-                    logger.debug('Could not find X/Y position columns in config file')
-                    return  # Cannot find position columns
-
-            # Extract unique samples
-            if (
-                'Sample Name' not in grid_df.columns
-                and 'Sample Number' in grid_df.columns
-            ):
-                grid_df['Sample Name'] = 'Sample_' + grid_df['Sample Number'].astype(
-                    str
-                )
-            elif 'Sample Name' not in grid_df.columns:
-                logger.debug('Config file missing Sample Name or Sample Number column')
-                return
-
-            fig = go.Figure()
-
-            # Add autosampler boundary circle (107 mm radius)
-            AUTOSAMPLER_RADIUS = 107  # mm
-            circle_angles = np.linspace(0, 2 * np.pi, 100)
-            circle_x = AUTOSAMPLER_RADIUS * np.cos(circle_angles)
-            circle_y = AUTOSAMPLER_RADIUS * np.sin(circle_angles)
-
-            fig.add_trace(
-                go.Scatter(
-                    x=circle_x,
-                    y=circle_y,
-                    mode='lines',
-                    name='Autosampler Boundary',
-                    line=dict(color='red', width=2, dash='dash'),
-                    hovertemplate='<b>Boundary</b><br>X: %{x:.2f} mm<br>Y: %{y:.2f} mm',
-                )
-            )
-
-            # Add baseline center if it exists
-            if 'Baseline' in grid_df['Sample Name'].values:
-                baseline_rows = grid_df[grid_df['Sample Name'] == 'Baseline']
-                if len(baseline_rows) > 0:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=baseline_rows['X'].values,
-                            y=baseline_rows['Y'].values,
-                            mode='markers',
-                            name='Baseline Center',
-                            marker=dict(size=10, color='black', symbol='star'),
-                            hovertemplate=(
-                                '<b>Baseline</b><br>X: %{x:.2f} mm<br>Y: %{y:.2f} mm'
-                            ),
-                        )
-                    )
-
-            # Color palette for samples
-            color_palette = [
-                '#1f77b4',
-                '#ff7f0e',
-                '#2ca02c',
-                '#d62728',
-                '#9467bd',
-                '#8c564b',
-                '#e377c2',
-                '#7f7f7f',
-                '#bcbd22',
-                '#17becf',
-            ]
-
-            # Add scatter plots for each sample
-            unique_samples = grid_df['Sample Name'].unique()
-            for idx, sample_name in enumerate(unique_samples):
-                if sample_name == 'Baseline':
-                    continue  # Already plotted above
-
-                sample_data = grid_df[grid_df['Sample Name'] == sample_name]
-                color = color_palette[idx % len(color_palette)]
-
-                # Prepare custom data for hover (sample coordinates if available)
-                has_sample_coords = (
-                    'Xsample' in sample_data.columns
-                    and 'Ysample' in sample_data.columns
-                )
-
-                if has_sample_coords:
-                    customdata = list(
-                        zip(
-                            sample_data['Xsample'].values, sample_data['Ysample'].values
-                        )
-                    )
-                    hover_template = (
-                        f'<b>{sample_name}</b><br>'
-                        '<b>Autosampler Coords:</b><br>'
-                        'X: %{x:.2f} mm<br>'
-                        'Y: %{y:.2f} mm<br>'
-                        '<b>Sample Coords:</b><br>'
-                        'X_sample: %{customdata[0]:.2f} mm<br>'
-                        'Y_sample: %{customdata[1]:.2f} mm<extra></extra>'
-                    )
-                else:
-                    customdata = None
-                    hover_template = (
-                        f'<b>{sample_name}</b><br>'
-                        'X: %{x:.2f} mm<br>'
-                        'Y: %{y:.2f} mm<extra></extra>'
-                    )
-
-                fig.add_trace(
-                    go.Scatter(
-                        x=sample_data['X'].values,
-                        y=sample_data['Y'].values,
-                        mode='markers',
-                        name=sample_name,
-                        marker=dict(size=8, color=color),
-                        text=sample_name,
-                        customdata=customdata,
-                        hovertemplate=hover_template,
-                    )
-                )
-
-            # Update layout
-            fig.update_layout(
-                title='Autosampler Measurement Grid',
-                xaxis_title='X Position (mm)',
-                yaxis_title='Y Position (mm)',
-                template='plotly_white',
-                hovermode='closest',
-                xaxis=dict(scaleanchor='y', scaleratio=1),
-                yaxis=dict(scaleanchor='x', scaleratio=1),
-                width=800,
-                height=800,
-            )
-
-            plot_json = fig.to_plotly_json()
-            plot_json['config'] = dict(scrollZoom=False)
-            self.figures.append(
-                PlotlyFigure(
-                    label='Measurement Grid Layout',
-                    figure=plot_json,
-                )
-            )
-
+            self._append_grid_figure(grid_df)
         except Exception as e:
             logger.debug(
                 f'Could not generate autosampler grid plot: {e}', exc_info=True
+            )
+
+    def _read_grid_dataframe(self, archive, logger):
+        import pandas as pd
+
+        if not self.config_file:
+            return None
+        with archive.m_context.raw_file(self.config_file) as config_f:
+            grid_df = pd.read_csv(config_f.name, skiprows=0, header=0, decimal=',')
+        if 'X' not in grid_df.columns or 'Y' not in grid_df.columns:
+            x_col = next((c for c in grid_df.columns if 'x' in c.lower()), None)
+            y_col = next((c for c in grid_df.columns if 'y' in c.lower()), None)
+            if not (x_col and y_col):
+                logger.debug('Could not find X/Y position columns in config file')
+                return None
+            grid_df.rename(columns={x_col: 'X', y_col: 'Y'}, inplace=True)
+        if 'Sample Name' not in grid_df.columns:
+            if 'Sample Number' not in grid_df.columns:
+                logger.debug('Config file missing Sample Name or Sample Number column')
+                return None
+            grid_df['Sample Name'] = 'Sample_' + grid_df['Sample Number'].astype(str)
+        return grid_df
+
+    def _append_grid_figure(self, grid_df):
+        import plotly.graph_objs as go
+
+        fig = go.Figure()
+        angles = np.linspace(0, 2 * np.pi, 100)
+        fig.add_trace(
+            go.Scatter(
+                x=107 * np.cos(angles),
+                y=107 * np.sin(angles),
+                mode='lines',
+                name='Autosampler Boundary',
+                line=dict(color='red', width=2, dash='dash'),
+                hovertemplate='<b>Boundary</b><br>X: %{x:.2f} mm<br>Y: %{y:.2f} mm',
+            )
+        )
+        self._add_baseline_trace(fig, grid_df, go)
+        self._add_sample_traces(fig, grid_df, go)
+        fig.update_layout(
+            title='Autosampler Measurement Grid',
+            xaxis_title='X Position (mm)',
+            yaxis_title='Y Position (mm)',
+            template='plotly_white',
+            hovermode='closest',
+            xaxis=dict(scaleanchor='y', scaleratio=1),
+            yaxis=dict(scaleanchor='x', scaleratio=1),
+            width=800,
+            height=800,
+        )
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+        self.figures.append(
+            PlotlyFigure(label='Measurement Grid Layout', figure=plot_json)
+        )
+
+    @staticmethod
+    def _add_baseline_trace(fig, grid_df, go):
+        if 'Baseline' not in grid_df['Sample Name'].values:
+            return
+        baseline_rows = grid_df[grid_df['Sample Name'] == 'Baseline']
+        if len(baseline_rows) == 0:
+            return
+        fig.add_trace(
+            go.Scatter(
+                x=baseline_rows['X'].values,
+                y=baseline_rows['Y'].values,
+                mode='markers',
+                name='Baseline Center',
+                marker=dict(size=10, color='black', symbol='star'),
+                hovertemplate='<b>Baseline</b><br>X: %{x:.2f} mm<br>Y: %{y:.2f} mm',
+            )
+        )
+
+    @staticmethod
+    def _add_sample_traces(fig, grid_df, go):
+        color_palette = [
+            '#1f77b4',
+            '#ff7f0e',
+            '#2ca02c',
+            '#d62728',
+            '#9467bd',
+            '#8c564b',
+            '#e377c2',
+            '#7f7f7f',
+            '#bcbd22',
+            '#17becf',
+        ]
+        for idx, sample_name in enumerate(grid_df['Sample Name'].unique()):
+            if sample_name == 'Baseline':
+                continue
+            sample_data = grid_df[grid_df['Sample Name'] == sample_name]
+            has_sample_coords = (
+                'Xsample' in sample_data.columns and 'Ysample' in sample_data.columns
+            )
+            customdata = (
+                list(zip(sample_data['Xsample'].values, sample_data['Ysample'].values))
+                if has_sample_coords
+                else None
+            )
+            hover_template = (
+                f'<b>{sample_name}</b><br><b>Autosampler Coords:</b><br>'
+                'X: %{x:.2f} mm<br>Y: %{y:.2f} mm<br><b>Sample Coords:</b><br>'
+                'X_sample: %{customdata[0]:.2f} mm<br>'
+                'Y_sample: %{customdata[1]:.2f} mm<extra></extra>'
+                if has_sample_coords
+                else f'<b>{sample_name}</b><br>X: %{{x:.2f}} mm<br>'
+                'Y: %{y:.2f} mm<extra></extra>'
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=sample_data['X'].values,
+                    y=sample_data['Y'].values,
+                    mode='markers',
+                    name=sample_name,
+                    marker=dict(size=8, color=color_palette[idx % len(color_palette)]),
+                    text=sample_name,
+                    customdata=customdata,
+                    hovertemplate=hover_template,
+                )
             )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -446,131 +414,17 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
             return
 
         try:
-            # Parse files using autosampler_reader
-            with archive.m_context.raw_file(self.data_file) as data_f:
-                with archive.m_context.raw_file(self.config_file) as config_f:
-                    collects = autosampler_reader.parse_file(data_f.name, config_f.name)
-
-            # Group measurements by sample
-            samples = autosampler_reader.group_samples(collects)
-
-            # Group measurements by position for each sample
-            library_data = autosampler_reader.group_measurements_position(samples)
-
-            measurements: list[ExperimentStep] = []
-
-            # Create a measurement archive for each library
-            for library_id, position_data in library_data.items():
-                # Skip baseline samples (we might not to skip it in the future)
-                if library_id == 'Baseline':
-                    continue
-
-                # Extract datetime from first measurement for uniqueness
-                first_multi_measurement = next(iter(position_data.values()))
-                collection_time = None
-                if first_multi_measurement.measurements:
-                    first_measurement = first_multi_measurement.measurements[0]
-                    collection_time = first_measurement.metadata.get('Collection Time')
-
-                # Format datetime for name uniqueness
-                if collection_time is not None:
-                    if hasattr(collection_time, 'strftime'):
-                        datetime_label = collection_time.strftime('%Y%m%d_%H%M%S')
-                    else:
-                        datetime_label = (
-                            str(collection_time).replace(' ', '_').replace(':', '')
-                        )
-                else:
-                    datetime_label = 'unknown'
-
-                measurement = RTMeasurement(
-                    name=f'{library_id}_RT_{datetime_label}',
-                    vertical_back_slit=self.vertical_back_slit,
-                    vertical_front_slit=self.vertical_front_slit,
-                    horizontal_slit=self.horizontal_slit,
-                )
-
-                # Create results for each position
-                results = []
-                for position_key, multi_measurement in position_data.items():
-                    result = RTResult(
-                        name=f'Position {position_key}',
+            library_data = self._parse_autosampler_data(archive)
+            measurements = [
+                step
+                for library_id, position_data in library_data.items()
+                if library_id != 'Baseline'
+                for step in [
+                    self._create_library_step(
+                        library_id, position_data, archive, logger
                     )
-                    # Set positions after creation (inherited from MappingResult)
-                    if multi_measurement.position_x is not None:
-                        result.x_absolute = multi_measurement.position_x * ureg('mm')
-                        result.x_relative = multi_measurement.position_x * ureg('mm')
-                    if multi_measurement.position_y is not None:
-                        result.y_absolute = multi_measurement.position_y * ureg('mm')
-                        result.y_relative = multi_measurement.position_y * ureg('mm')
-
-                    # Create spectra from measurements
-                    spectra = []
-                    for single_meas in multi_measurement.measurements:
-                        # Determine spectrum type from metadata
-                        meas_type = single_meas.metadata.get(
-                            'MeasurementType', 'Unknown'
-                        )
-                        if meas_type == 'T':
-                            spectrum_type = 'Transmission'
-                        elif meas_type == 'R':
-                            spectrum_type = 'Reflection'
-                        else:
-                            logger.warning(f'Unknown measurement type: {meas_type}')
-                            continue
-
-                        # Create spectrum object
-                        spectrum = RTSpectrum(
-                            spectrum_type=spectrum_type,
-                            wavelength=(
-                                single_meas.data['Wavelength'].values * ureg('nm')
-                            ),
-                            intensity=single_meas.data['Intensity'].values / 100.0,
-                        )
-
-                        # Extract measurement geometry from metadata
-                        if 'DetectorAngle' in single_meas.metadata:
-                            spectrum.detector_angle = float(
-                                single_meas.metadata['DetectorAngle']
-                            ) * ureg('degree')
-                        if 'SampleAngle' in single_meas.metadata:
-                            spectrum.sample_angle = float(
-                                single_meas.metadata['SampleAngle']
-                            ) * ureg('degree')
-                        if 'Polarization' in single_meas.metadata:
-                            logger.debug(single_meas.metadata['PolarizationAngle'])
-                            logger.debug(single_meas.metadata['Polarization'])
-                            spectrum.polarization = single_meas.metadata['Polarization']
-
-                        spectra.append(spectrum)
-
-                    result.spectra = spectra
-
-                    # Verify positions were set correctly before adding to results
-                    results.append(result)
-
-                measurement.results = results
-                measurement.accessory = 'UMA'
-
-                # Log positions from results after assignment
-                # Results are stored in the archive via create_archive
-
-                # Link to sample using lab_id (optional - can be set manually later)
-                measurement.samples = [CompositeSystemReference(lab_id=library_id)]
-
-                # Create archive file for this measurement with datetime identifier
-                measurement_ref = create_archive(
-                    measurement,
-                    archive,
-                    f'{library_id}_rt_measurement_{datetime_label}.archive.json',
-                )
-
-                measurements.append(
-                    ExperimentStep(
-                        name=f'{library_id}_rt_measurement_{datetime_label}',
-                        activity=measurement_ref,
-                    )
-                )
+                ]
+            ]
 
             self.steps = measurements
 
@@ -585,6 +439,91 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
 
         except Exception as e:
             logger.error(f'Error parsing autosampler data: {e}', exc_info=True)
+
+    def _parse_autosampler_data(self, archive):
+        with archive.m_context.raw_file(self.data_file) as data_f:
+            with archive.m_context.raw_file(self.config_file) as config_f:
+                collects = autosampler_reader.parse_file(data_f.name, config_f.name)
+        samples = autosampler_reader.group_samples(collects)
+        return autosampler_reader.group_measurements_position(samples)
+
+    @staticmethod
+    def _collection_datetime_label(position_data):
+        first_multi_measurement = next(iter(position_data.values()))
+        if not first_multi_measurement.measurements:
+            return 'unknown'
+        collection_time = first_multi_measurement.measurements[0].metadata.get(
+            'Collection Time'
+        )
+        if collection_time is None:
+            return 'unknown'
+        if hasattr(collection_time, 'strftime'):
+            return collection_time.strftime('%Y%m%d_%H%M%S')
+        return str(collection_time).replace(' ', '_').replace(':', '')
+
+    def _create_library_step(self, library_id, position_data, archive, logger):
+        datetime_label = self._collection_datetime_label(position_data)
+        measurement = RTMeasurement(
+            name=f'{library_id}_RT_{datetime_label}',
+            vertical_back_slit=self.vertical_back_slit,
+            vertical_front_slit=self.vertical_front_slit,
+            horizontal_slit=self.horizontal_slit,
+        )
+        measurement.results = [
+            self._create_position_result(key, data, logger)
+            for key, data in position_data.items()
+        ]
+        measurement.accessory = 'UMA'
+        measurement.samples = [CompositeSystemReference(lab_id=library_id)]
+        measurement_ref = create_archive(
+            measurement,
+            archive,
+            f'{library_id}_rt_measurement_{datetime_label}.archive.json',
+        )
+        return ExperimentStep(
+            name=f'{library_id}_rt_measurement_{datetime_label}',
+            activity=measurement_ref,
+        )
+
+    def _create_position_result(self, position_key, multi_measurement, logger):
+        result = RTResult(name=f'Position {position_key}')
+        if multi_measurement.position_x is not None:
+            result.x_absolute = multi_measurement.position_x * ureg('mm')
+            result.x_relative = multi_measurement.position_x * ureg('mm')
+        if multi_measurement.position_y is not None:
+            result.y_absolute = multi_measurement.position_y * ureg('mm')
+            result.y_relative = multi_measurement.position_y * ureg('mm')
+        result.spectra = [
+            spectrum
+            for single_meas in multi_measurement.measurements
+            if (spectrum := self._create_autosampler_spectrum(single_meas, logger))
+            is not None
+        ]
+        return result
+
+    @staticmethod
+    def _create_autosampler_spectrum(single_meas, logger):
+        meas_type = single_meas.metadata.get('MeasurementType', 'Unknown')
+        spectrum_types = {'T': 'Transmission', 'R': 'Reflection'}
+        spectrum_type = spectrum_types.get(meas_type)
+        if spectrum_type is None:
+            logger.warning(f'Unknown measurement type: {meas_type}')
+            return None
+        spectrum = RTSpectrum(
+            spectrum_type=spectrum_type,
+            wavelength=single_meas.data['Wavelength'].values * ureg('nm'),
+            intensity=single_meas.data['Intensity'].values / 100.0,
+        )
+        metadata = single_meas.metadata
+        if 'DetectorAngle' in metadata:
+            spectrum.detector_angle = float(metadata['DetectorAngle']) * ureg('degree')
+        if 'SampleAngle' in metadata:
+            spectrum.sample_angle = float(metadata['SampleAngle']) * ureg('degree')
+        if 'Polarization' in metadata:
+            logger.debug(metadata['PolarizationAngle'])
+            logger.debug(metadata['Polarization'])
+            spectrum.polarization = metadata['Polarization']
+        return spectrum
 
 
 class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
@@ -691,86 +630,75 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     )
 
     def plot(self) -> None:
-        """
-        Create interactive Plotly visualizations of RT measurement data.
-
-        Creates two types of plots:
-        1. "R and T Spectra": All spectra overlaid
-        2. "Individual Configuration Heatmaps": One spatial heatmap per
-           unique measurement configuration (spectrum type, detector angle,
-           sample angle, polarization) showing average intensity over the
-           wavelength range defined by WAVELENGTH_MIN-WAVELENGTH_MAX class
-           constants.
-
-        Each unique configuration gets its own heatmap with measurement
-        details in the title.
-        """
+        """Create spectra and spatial visualizations for this measurement."""
         import plotly.graph_objs as go
-        from nomad.datamodel.metainfo.plot import PlotlyFigure
         from scipy.interpolate import griddata
 
         if not self.results:
             return
+        self._append_spectra_plot(go)
+        configs = self._get_spectrum_configs()
+        positions, config_values = self._collect_config_values(configs)
+        if not positions:
+            return
+        x_values = [point[0] for point in positions]
+        y_values = [point[1] for point in positions]
+        unique_x, unique_y = len(set(x_values)), len(set(y_values))
+        spatial_data = configs, config_values, x_values, y_values
+        if unique_x > 1 and unique_y > 1:
+            self._append_configuration_heatmaps(spatial_data, go, griddata)
+        else:
+            self._append_configuration_lines(spatial_data, unique_x, go)
 
-        # ===== Plot 1: All R and T Spectra =====
-        fig_spectra = go.Figure()
+    def _append_spectra_plot(self, go):
+        from nomad.datamodel.metainfo.plot import PlotlyFigure
 
-        MAX_TRACES = 25  # Limit traces for performance
+        fig = go.Figure()
+        max_traces = 25
         trace_count = 0
         max_traces_reached = False
-
         for result in self.results:
             if max_traces_reached:
                 break
-
             position_label = result.name or 'Unknown'
-
             for spectrum in result.spectra:
-                if trace_count >= MAX_TRACES:
+                if trace_count >= max_traces:
                     max_traces_reached = True
                     break
-
                 if spectrum.wavelength is None or spectrum.intensity is None:
                     continue
-
-                # Convert wavelength to nm if it's a Quantity
-                if hasattr(spectrum.wavelength, 'magnitude'):
-                    wavelength = spectrum.wavelength.to('nm').magnitude
-                else:
-                    wavelength = spectrum.wavelength
-
-                intensity = spectrum.intensity
+                wavelength = (
+                    spectrum.wavelength.to('nm').magnitude
+                    if hasattr(spectrum.wavelength, 'magnitude')
+                    else spectrum.wavelength
+                )
                 spectrum_type = spectrum.spectrum_type or 'Unknown'
-
+                detector = getattr(spectrum, 'detector_angle', None)
+                sample = getattr(spectrum, 'sample_angle', None)
                 detector_label = (
-                    f'{spectrum.detector_angle.to("degree").magnitude:g} deg'
-                    if getattr(spectrum, 'detector_angle', None) is not None
+                    f'{detector.to("degree").magnitude:g} deg'
+                    if detector is not None
                     else 'n/a'
                 )
                 sample_label = (
-                    f'{spectrum.sample_angle.to("degree").magnitude:g} deg'
-                    if getattr(spectrum, 'sample_angle', None) is not None
+                    f'{sample.to("degree").magnitude:g} deg'
+                    if sample is not None
                     else 'n/a'
                 )
-                polarization_label = spectrum.polarization or 'n/a'
-
-                # Create trace label with position and type
+                polarization = spectrum.polarization or 'n/a'
                 trace_name = (
                     f'{position_label}_{spectrum_type} '
-                    f'({detector_label}, {sample_label}, {polarization_label})'
+                    f'({detector_label}, {sample_label}, {polarization})'
                 )
-
-                # Use different colors/styles for R vs T
-                line_style = dict()
+                line_style = {}
                 if spectrum_type == 'Reflection':
                     line_style['dash'] = 'solid'
                 elif spectrum_type == 'Transmission':
                     line_style['dash'] = 'dot'
-
-                fig_spectra.add_trace(
+                fig.add_trace(
                     go.Scatter(
                         x=wavelength,
-                        y=intensity,
+                        y=spectrum.intensity,
                         mode='lines',
                         name=trace_name,
                         line=line_style,
@@ -778,13 +706,10 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     )
                 )
                 trace_count += 1
-
-        # Update title to indicate if traces were limited
         title = 'Reflection (solid) and Transmission (dot) Spectra'
         if max_traces_reached:
-            title += f' (showing first {MAX_TRACES} traces only)'
-
-        fig_spectra.update_layout(
+            title += f' (showing first {max_traces} traces only)'
+        fig.update_layout(
             title=title,
             xaxis_title='Wavelength (nm)',
             yaxis_title='R, T (fraction)',
@@ -794,384 +719,199 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             xaxis=dict(fixedrange=False),
             yaxis=dict(fixedrange=False),
         )
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+        self.figures.append(PlotlyFigure(label='R and T Spectra', figure=plot_json))
 
-        plot_json_spectra = fig_spectra.to_plotly_json()
-        plot_json_spectra['config'] = dict(scrollZoom=False)
-        self.figures.append(
-            PlotlyFigure(
-                label='R and T Spectra',
-                figure=plot_json_spectra,
-            )
-        )
-
-        # ===== Plot 2: Individual Configuration Heatmaps =====
-        # Collect all unique spectrum configurations present in the data
-        # Each unique combination of (type, detector_angle, sample_angle,
-        # polarization) gets its own heatmap
-
-        spectrum_configs = {}
-
+    def _get_spectrum_configs(self):
+        configs = {}
         for result in self.results:
             for spectrum in result.spectra:
-                if spectrum.spectrum_type:
-                    # Create a unique key for this spectrum configuration
-                    detector_angle = getattr(spectrum, 'detector_angle', None)
-                    sample_angle = getattr(spectrum, 'sample_angle', None)
-                    polarization = getattr(spectrum, 'polarization', None)
-
-                    det_val = (
-                        detector_angle.to('degree').magnitude
-                        if detector_angle is not None
-                        else None
-                    )
-                    samp_val = (
-                        sample_angle.to('degree').magnitude
-                        if sample_angle is not None
-                        else None
-                    )
-                    pol_val = polarization if polarization else 'unknown'
-
-                    config_key = (spectrum.spectrum_type, det_val, samp_val, pol_val)
-
-                    if config_key not in spectrum_configs:
-                        spectrum_configs[config_key] = []
-
-        # Collect position and average data for each spectrum configuration
-        def compute_avg_for_config(result: RTResult, config_key: tuple) -> float:
-            """Compute average intensity for a specific spectrum configuration."""
-            wv_start = self.WAVELENGTH_MIN
-            wv_end = self.WAVELENGTH_MAX
-            spectrum_type, det_angle, samp_angle, pol = config_key
-
-            for spectrum in result.spectra:
-                if spectrum.spectrum_type != spectrum_type:
+                if not spectrum.spectrum_type:
                     continue
-
-                # Match all configuration parameters
-                det_val = getattr(spectrum, 'detector_angle', None)
-                det_val = (
-                    det_val.to('degree').magnitude if det_val is not None else None
+                detector = getattr(spectrum, 'detector_angle', None)
+                sample = getattr(spectrum, 'sample_angle', None)
+                detector_value = (
+                    detector.to('degree').magnitude if detector is not None else None
                 )
-                samp_val = getattr(spectrum, 'sample_angle', None)
-                samp_val = (
-                    samp_val.to('degree').magnitude if samp_val is not None else None
+                sample_value = (
+                    sample.to('degree').magnitude if sample is not None else None
                 )
-                pol_val = getattr(spectrum, 'polarization', None) or 'unknown'
+                polarization = getattr(spectrum, 'polarization', None) or 'unknown'
+                config_key = (
+                    spectrum.spectrum_type,
+                    detector_value,
+                    sample_value,
+                    polarization,
+                )
+                configs.setdefault(config_key, [])
+        return configs
 
-                if det_val == det_angle and samp_val == samp_angle and pol_val == pol:
-                    if spectrum.wavelength is None or spectrum.intensity is None:
-                        continue
+    def _compute_avg_for_config(self, result, config_key):
+        spectrum_type, detector_angle, sample_angle, polarization = config_key
+        for spectrum in result.spectra:
+            if spectrum.spectrum_type != spectrum_type:
+                continue
+            detector = getattr(spectrum, 'detector_angle', None)
+            sample = getattr(spectrum, 'sample_angle', None)
+            detector_value = (
+                detector.to('degree').magnitude if detector is not None else None
+            )
+            sample_value = sample.to('degree').magnitude if sample is not None else None
+            polarization_value = getattr(spectrum, 'polarization', None) or 'unknown'
+            if (detector_value, sample_value, polarization_value) != (
+                detector_angle,
+                sample_angle,
+                polarization,
+            ):
+                continue
+            if spectrum.wavelength is None or spectrum.intensity is None:
+                continue
+            wavelength = (
+                spectrum.wavelength.to('nm').magnitude
+                if hasattr(spectrum.wavelength, 'magnitude')
+                else spectrum.wavelength
+            )
+            mask = (wavelength >= self.WAVELENGTH_MIN) & (
+                wavelength <= self.WAVELENGTH_MAX
+            )
+            if np.any(mask):
+                return float(np.mean(spectrum.intensity[mask]))
+        return np.nan
 
-                    if hasattr(spectrum.wavelength, 'magnitude'):
-                        wavelength = spectrum.wavelength.to('nm').magnitude
-                    else:
-                        wavelength = spectrum.wavelength
-
-                    mask = (wavelength >= wv_start) & (wavelength <= wv_end)
-                    if np.any(mask):
-                        return float(np.mean(spectrum.intensity[mask]))
-
-            return np.nan
-
-        # Populate data for each configuration
+    def _collect_config_values(self, configs):
         positions = []
         for result in self.results:
-            pos_x_attr = getattr(result, 'x_absolute', None)
-            pos_y_attr = getattr(result, 'y_absolute', None)
+            pos_x = getattr(result, 'x_absolute', None)
+            pos_y = getattr(result, 'y_absolute', None)
+            if pos_x is None or pos_y is None:
+                continue
+            pos_x = pos_x.to('mm').magnitude if hasattr(pos_x, 'magnitude') else pos_x
+            pos_y = pos_y.to('mm').magnitude if hasattr(pos_y, 'magnitude') else pos_y
+            positions.append((pos_x, pos_y))
+            for config_key, values in configs.items():
+                values.append(self._compute_avg_for_config(result, config_key))
+        return positions, list(configs.values())
 
-            if pos_x_attr is not None and pos_y_attr is not None:
-                if hasattr(pos_x_attr, 'magnitude'):
-                    pos_x = pos_x_attr.to('mm').magnitude
-                else:
-                    pos_x = pos_x_attr
+    def _configuration_labels(self, config_key):
+        spectrum_type, detector_angle, sample_angle, polarization = config_key
+        detector_label = (
+            f'{detector_angle:.1f}\u00b0' if detector_angle is not None else 'n/a'
+        )
+        sample_label = (
+            f'{sample_angle:.1f}\u00b0' if sample_angle is not None else 'n/a'
+        )
+        polarization_label = polarization if polarization else 'n/a'
+        title = (
+            f'Avg. {spectrum_type} {self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm '
+            f'(detector: {detector_label}, sample: {sample_label}, '
+            f'{polarization_label})'
+        )
+        label = (
+            f'{spectrum_type[0]} {detector_label}_{sample_label}_{polarization_label}'
+        )
+        return spectrum_type, title, label
 
-                if hasattr(pos_y_attr, 'magnitude'):
-                    pos_y = pos_y_attr.to('mm').magnitude
-                else:
-                    pos_y = pos_y_attr
+    def _append_configuration_heatmaps(self, spatial_data, go, griddata):
+        from nomad.datamodel.metainfo.plot import PlotlyFigure
 
-                positions.append((pos_x, pos_y))
+        configs, config_values, x_values, y_values = spatial_data
+        xi, yi = np.meshgrid(
+            np.linspace(min(x_values), max(x_values), 100),
+            np.linspace(min(y_values), max(y_values), 100),
+        )
+        for (config_key, _), values in zip(configs.items(), config_values):
+            if all(np.isnan(values)):
+                continue
+            spectrum_type, title, label = self._configuration_labels(config_key)
+            zi = griddata((x_values, y_values), values, (xi, yi), method='linear')
+            heatmap = go.Heatmap(
+                x=xi[0],
+                y=yi[:, 0],
+                z=zi,
+                colorscale='Viridis',
+                colorbar=dict(title=spectrum_type),
+            )
+            scatter = go.Scatter(
+                x=x_values,
+                y=y_values,
+                mode='markers',
+                marker=dict(
+                    size=15,
+                    color=values,
+                    colorscale='Viridis',
+                    showscale=False,
+                    line=dict(width=2, color='DarkSlateGrey'),
+                ),
+                customdata=values,
+                hovertemplate=(
+                    '<b>Value:</b> %{customdata:.3f}<br>'
+                    '<b>X:</b> %{x:.2f} mm<br><b>Y:</b> %{y:.2f} mm'
+                ),
+            )
+            self._append_spatial_figure(
+                go.Figure(data=[heatmap, scatter]),
+                (title, label, 'X Position (mm)', 'Y Position (mm)'),
+                PlotlyFigure,
+            )
 
-                # Compute average for each spectrum configuration
-                for config_key, config_values in spectrum_configs.items():
-                    avg_val = compute_avg_for_config(result, config_key)
-                    config_values.append(avg_val)
+    def _append_configuration_lines(self, spatial_data, unique_x, go):
+        from nomad.datamodel.metainfo.plot import PlotlyFigure
 
-        if positions:
-            # Create heatmap for each unique spectrum configuration
-            pos_x_vals = [p[0] for p in positions]
-            pos_y_vals = [p[1] for p in positions]
+        configs, config_values, x_values, y_values = spatial_data
+        x_axis = x_values if unique_x > 1 else y_values
+        x_label = 'X Position (mm)' if unique_x > 1 else 'Y Position (mm)'
+        colors = {'Transmission': 'blue', 'Reflection': 'red'}
+        for (config_key, _), values in zip(configs.items(), config_values):
+            if all(np.isnan(values)):
+                continue
+            spectrum_type, title, label = self._configuration_labels(config_key)
+            fig = go.Figure()
+            fig.add_trace(
+                go.Scatter(
+                    x=x_axis,
+                    y=values,
+                    mode='lines+markers',
+                    line=dict(color=colors.get(spectrum_type, 'green')),
+                    marker=dict(size=8),
+                    hovertemplate=(
+                        f'{x_label}: %{{x}} mm<br>'
+                        f'{spectrum_type}: %{{y:.3f}}<extra></extra>'
+                    ),
+                )
+            )
+            self._append_spatial_figure(
+                fig, (title, label, x_label, spectrum_type), PlotlyFigure
+            )
 
-            # Check if we have a 2D grid or just a line
-            unique_x = len(set(pos_x_vals))
-            unique_y = len(set(pos_y_vals))
-
-            if unique_x > 1 and unique_y > 1:
-                # 2D heatmap for each spectrum configuration
-                for config_key, values in spectrum_configs.items():
-                    if not all(np.isnan(values)):
-                        spectrum_type, det_angle, samp_angle, polarization = config_key
-
-                        # Build title with all measurement details
-                        det_str = (
-                            f'{det_angle:.1f}°' if det_angle is not None else 'n/a'
-                        )
-                        samp_str = (
-                            f'{samp_angle:.1f}°' if samp_angle is not None else 'n/a'
-                        )
-                        pol_str = polarization if polarization else 'n/a'
-
-                        title = (
-                            f'Avg. {spectrum_type} '
-                            f'{self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm '
-                            f'(detector: {det_str}, sample: {samp_str}, '
-                            f'{pol_str})'
-                        )
-                        short_label = (
-                            f'{spectrum_type[0]} {det_str}_{samp_str}_{pol_str}'
-                        )
-
-                        # Create interpolation grid for smooth heatmap
-                        xi = np.linspace(min(pos_x_vals), max(pos_x_vals), 100)
-                        yi = np.linspace(min(pos_y_vals), max(pos_y_vals), 100)
-                        xi, yi = np.meshgrid(xi, yi)
-                        zi = griddata(
-                            (pos_x_vals, pos_y_vals),
-                            values,
-                            (xi, yi),
-                            method='linear',
-                        )
-
-                        # Create heatmap trace
-                        heatmap = go.Heatmap(
-                            x=xi[0],
-                            y=yi[:, 0],
-                            z=zi,
-                            colorscale='Viridis',
-                            colorbar=dict(title=spectrum_type),
-                        )
-
-                        # Create scatter overlay for actual measurement points
-                        scatter = go.Scatter(
-                            x=pos_x_vals,
-                            y=pos_y_vals,
-                            mode='markers',
-                            marker=dict(
-                                size=15,
-                                color=values,
-                                colorscale='Viridis',
-                                showscale=False,
-                                line=dict(width=2, color='DarkSlateGrey'),
-                            ),
-                            customdata=values,
-                            hovertemplate=(
-                                '<b>Value:</b> %{customdata:.3f}<br>'
-                                '<b>X:</b> %{x:.2f} mm<br>'
-                                '<b>Y:</b> %{y:.2f} mm'
-                            ),
-                        )
-
-                        # Combine heatmap and scatter
-                        fig_map = go.Figure(data=[heatmap, scatter])
-
-                        fig_map.update_layout(
-                            title=title,
-                            xaxis_title='X Position (mm)',
-                            yaxis_title='Y Position (mm)',
-                            template='plotly_white',
-                            hovermode='closest',
-                            dragmode='zoom',
-                            xaxis=dict(fixedrange=False),
-                            yaxis=dict(fixedrange=False),
-                        )
-
-                        plot_json_map = fig_map.to_plotly_json()
-                        plot_json_map['config'] = dict(scrollZoom=False)
-                        self.figures.append(
-                            PlotlyFigure(
-                                label=short_label,
-                                figure=plot_json_map,
-                            )
-                        )
-            else:
-                # 1D line plot - create separate plot for each spectrum configuration
-                x_axis = pos_x_vals if unique_x > 1 else pos_y_vals
-                x_label = 'X Position (mm)' if unique_x > 1 else 'Y Position (mm)'
-
-                color_map = {'Transmission': 'blue', 'Reflection': 'red'}
-
-                for config_key, values in spectrum_configs.items():
-                    if not all(np.isnan(values)):
-                        spectrum_type, det_angle, samp_angle, polarization = config_key
-
-                        # Build title with all measurement details
-                        det_str = (
-                            f'{det_angle:.1f}°' if det_angle is not None else 'n/a'
-                        )
-                        samp_str = (
-                            f'{samp_angle:.1f}°' if samp_angle is not None else 'n/a'
-                        )
-                        pol_str = polarization if polarization else 'n/a'
-
-                        title = (
-                            f'Avg. {spectrum_type} '
-                            f'{self.WAVELENGTH_MIN}-{self.WAVELENGTH_MAX}nm '
-                            f'(detector: {det_str}, sample: {samp_str}, '
-                            f'{pol_str})'
-                        )
-                        short_label = (
-                            f'{spectrum_type[0]} {det_str}_{samp_str}_{pol_str}'
-                        )
-
-                        # Get color based on spectrum type
-                        color = color_map.get(spectrum_type, 'green')
-
-                        fig_line = go.Figure()
-                        fig_line.add_trace(
-                            go.Scatter(
-                                x=x_axis,
-                                y=values,
-                                mode='lines+markers',
-                                line=dict(color=color),
-                                marker=dict(size=8),
-                                hovertemplate=(
-                                    f'{x_label}: %{{x}} mm<br>'
-                                    f'{spectrum_type}: %{{y:.3f}}<extra></extra>'
-                                ),
-                            )
-                        )
-
-                        fig_line.update_layout(
-                            title=title,
-                            xaxis_title=x_label,
-                            yaxis_title=spectrum_type,
-                            template='plotly_white',
-                            hovermode='closest',
-                            showlegend=False,
-                        )
-
-                        plot_json_line = fig_line.to_plotly_json()
-                        plot_json_line['config'] = dict(scrollZoom=False)
-                        self.figures.append(
-                            PlotlyFigure(
-                                label=short_label,
-                                figure=plot_json_line,
-                            )
-                        )
+    def _append_spatial_figure(self, fig, metadata, figure_type):
+        title, label, x_label, y_label = metadata
+        fig.update_layout(
+            title=title,
+            xaxis_title=x_label,
+            yaxis_title=y_label,
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(fixedrange=False),
+            yaxis=dict(fixedrange=False),
+        )
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+        self.figures.append(figure_type(label=label, figure=plot_json))
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        """
-        The normalizer for the `RTMeasurement` class.
-        """
-
-        # If no spatial results exist but CSV files were uploaded for a
-        # single-point measurement, use the autosampler_reader to parse
-        # and create a single result at position (0,0).
+        """Normalize measurement metadata, results, and visualizations."""
         if (not self.results or len(self.results) == 0) and self.data_file:
             try:
-                files = (
-                    self.data_file
-                    if isinstance(self.data_file, (list, tuple))
-                    else [self.data_file]
-                )
-
-                spectra_all = []
-                any_angle_meta = False
-
-                for f in files:
-                    with archive.m_context.raw_file(f) as rf:
-                        # try to parse with sequence parsing first,
-                        # if it fails, fallback to non-sequence parsing
-
-                        collects = autosampler_reader.parse_file(
-                            rf.name, parse_sequence=False
-                        )
-
-                    for single_meas in collects:
-                        meas_type = single_meas.metadata.get(
-                            'MeasurementType', 'Unknown'
-                        )
-                        if meas_type in {'T', 'Transmission'}:
-                            spectrum_type = 'Transmission'
-                        elif meas_type in {'R', 'Reflection'}:
-                            spectrum_type = 'Reflection'
-                        # fallback: try to infer from filename
-                        elif 'T' in f.upper():
-                            spectrum_type = 'Transmission'
-                        else:
-                            spectrum_type = 'Reflection'
-
-                        wavelength = single_meas.data.get('Wavelength')
-                        intensity = single_meas.data.get('Intensity')
-                        if wavelength is None or intensity is None:
-                            continue
-
-                        # convert to fraction (intensity is in percent)
-                        intensity_arr = intensity / 100.0
-
-                        spectrum = RTSpectrum(
-                            spectrum_type=spectrum_type,
-                            wavelength=(wavelength.values * ureg('nm'))
-                            if hasattr(wavelength, 'values')
-                            else (np.asarray(wavelength) * ureg('nm')),
-                            intensity=intensity_arr,
-                        )
-
-                        # attach geometry metadata when present
-                        if 'DetectorAngle' in single_meas.metadata:
-                            try:
-                                spectrum.detector_angle = float(
-                                    single_meas.metadata['DetectorAngle']
-                                ) * ureg('degree')
-                                any_angle_meta = True
-                            except Exception:
-                                pass
-                        if 'SampleAngle' in single_meas.metadata:
-                            try:
-                                spectrum.sample_angle = float(
-                                    single_meas.metadata['SampleAngle']
-                                ) * ureg('degree')
-                                any_angle_meta = True
-                            except Exception:
-                                pass
-                        if 'Polarization' in single_meas.metadata:
-                            logger.debug(single_meas.metadata['PolarizationAngle'])
-                            logger.debug(single_meas.metadata['Polarization'])
-                            spectrum.polarization = single_meas.metadata['Polarization']
-                            any_angle_meta = True
-
-                        spectra_all.append(spectrum)
-
-                if spectra_all:
-                    # Generate name from CSV filename (strip extension)
-                    result_name = 'Single point'
-                    if self.data_file:
-                        first_file = (
-                            self.data_file[0]
-                            if isinstance(self.data_file, (list, tuple))
-                            else self.data_file
-                        )
-                        result_name = os.path.splitext(os.path.basename(first_file))[0]
-                    result = RTResult(name=result_name)
-                    result.spectra = spectra_all
-                    # single-point stage position
-                    result.x_absolute = 0 * ureg('mm')
-                    result.y_absolute = 0 * ureg('mm')
-
-                    self.results = [result]
-
-                    # If accessory not set, infer from presence of angles
-                    if getattr(self, 'accessory', None) in (None, 'None'):
-                        self.accessory = 'UMA' if any_angle_meta else 'DRA'
+                self._normalize_single_point_csv(archive, logger)
             except Exception as e:
                 logger.error(
                     f'Error parsing csv with autosampler_reader: {e}',
                     exc_info=True,
                 )
-
         if self.location is None:
             self.location = 'DTU Nanolab RT Measurement'
-
         if self.data_file:
             first_file = (
                 self.data_file[0]
@@ -1179,12 +919,87 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 else self.data_file
             )
             self.add_sample_reference(first_file, 'RT', archive, logger)
-
         super().normalize(archive, logger)
-
         self.figures = []
         if len(self.results) > 0:
             self.plot()
+
+    def _normalize_single_point_csv(self, archive, logger):
+        files = (
+            self.data_file
+            if isinstance(self.data_file, (list, tuple))
+            else [self.data_file]
+        )
+        spectra = []
+        any_angle_meta = False
+        for file_name in files:
+            with archive.m_context.raw_file(file_name) as raw_file:
+                collects = autosampler_reader.parse_file(
+                    raw_file.name, parse_sequence=False
+                )
+            for measurement in collects:
+                spectrum, has_geometry = self._single_point_spectrum(
+                    measurement, file_name, logger
+                )
+                if spectrum is not None:
+                    spectra.append(spectrum)
+                    any_angle_meta = any_angle_meta or has_geometry
+        if not spectra:
+            return
+        first_file = files[0]
+        result_name = os.path.splitext(os.path.basename(first_file))[0]
+        result = RTResult(name=result_name)
+        result.spectra = spectra
+        result.x_absolute = 0 * ureg('mm')
+        result.y_absolute = 0 * ureg('mm')
+        self.results = [result]
+        if getattr(self, 'accessory', None) in (None, 'None'):
+            self.accessory = 'UMA' if any_angle_meta else 'DRA'
+
+    @staticmethod
+    def _single_point_spectrum(single_meas, file_name, logger):
+        metadata = single_meas.metadata
+        meas_type = metadata.get('MeasurementType', 'Unknown')
+        if meas_type in {'T', 'Transmission'}:
+            spectrum_type = 'Transmission'
+        elif meas_type in {'R', 'Reflection'}:
+            spectrum_type = 'Reflection'
+        elif 'T' in file_name.upper():
+            spectrum_type = 'Transmission'
+        else:
+            spectrum_type = 'Reflection'
+        wavelength = single_meas.data.get('Wavelength')
+        intensity = single_meas.data.get('Intensity')
+        if wavelength is None or intensity is None:
+            return None, False
+        spectrum = RTSpectrum(
+            spectrum_type=spectrum_type,
+            wavelength=(wavelength.values * ureg('nm'))
+            if hasattr(wavelength, 'values')
+            else (np.asarray(wavelength) * ureg('nm')),
+            intensity=intensity / 100.0,
+        )
+        has_geometry = False
+        for metadata_key, attribute in (
+            ('DetectorAngle', 'detector_angle'),
+            ('SampleAngle', 'sample_angle'),
+        ):
+            if metadata_key in metadata:
+                try:
+                    setattr(
+                        spectrum,
+                        attribute,
+                        float(metadata[metadata_key]) * ureg('degree'),
+                    )
+                    has_geometry = True
+                except Exception:
+                    pass
+        if 'Polarization' in metadata:
+            logger.debug(metadata['PolarizationAngle'])
+            logger.debug(metadata['Polarization'])
+            spectrum.polarization = metadata['Polarization']
+            has_geometry = True
+        return spectrum, has_geometry
 
 
 m_package.__init_metainfo__()
