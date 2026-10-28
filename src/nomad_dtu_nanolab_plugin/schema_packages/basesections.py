@@ -194,10 +194,11 @@ class DtuNanolabMeasurement(MappingMeasurement):
     ) -> None:
         from nomad.datamodel.context import ServerContext
 
-        # Define the regex pattern
+        filename = filename.replace('\\', '/').rsplit('/', 1)[-1]
         pattern = r'^(?P<lab_id>([^_]*_){3}[^_.]*)'
-        # Match the pattern
         match = re.match(pattern, filename)
+        if not match:
+            match = re.match(r'^(?P<lab_id>.+)--\d+(?:\.[^.]+)?$', filename)
         if not match:
             logger.warning(f'Could not match lab_id in: {filename}')
             return

@@ -8,22 +8,31 @@ This schema package defines:
 
 - **DTUPLMeasurement** - PL measurements with excitation conditions, emission spectra, and optical properties
 
-PL measurements extend [BaseMeasurement](basesections.md), providing:
+PL measurements extend the mapping measurement schema and take a native YSystems
+YWafer `.ywf` file as their input. The normalizer extracts the saved spectra, stage
+coordinates, and acquisition settings. The first three underscore-separated name
+parts identify the related samples, and every matching sample is linked.
+
+PL measurements provide:
 
 - Links to measured [samples](samples.md) and [instrument](instruments.md)
-- Excitation source parameters (wavelength, power, spot size)
-- Detection configuration (spectrometer, detector, filters)
-- Emission spectra and peak analysis
-- Temperature-dependent measurements
+- Excitation wavelength and laser power
+- Detection settings including detector, filter, integration time, and accumulations
+- Emission spectra, peak parameters, and position-resolved maps
+- Sample alignment from referenced sample geometry
 
 ## Typical Usage
 
-1. **Select samples**: Reference [samples](samples.md) to characterize
-2. **Set excitation**: Laser wavelength, power, spot size, beam profile
-3. **Configure detection**: Spectrometer grating, detector, integration time
-4. **Measure spectrum**: Collect emission intensity vs. wavelength
-5. **Analysis**: Identify peaks, calculate bandgap, extract quantum efficiency
-6. **Temperature dependence** (optional): PL at multiple temperatures
+1. Upload the native YWafer `.ywf` measurement file.
+2. The filename's lab ID is used to link the measurement to its sample or library.
+3. Saved PL1 spectra and stage positions are extracted automatically.
+4. Acquisition settings such as excitation, integration time, detector, filter, and
+   wavelength range are read from the file when available.
+5. Sample alignment is centered on the measured positions using the referenced
+   sample geometry.
+
+The binary reader supports the reverse-engineered YWafer v7.x layout. Automatic
+sample alignment requires the referenced sample or library to expose a geometry.
 
 !!! note "Position-Based Mapping"
     PL measurements are inherently position-aware, mapping optical properties to specific coordinates. Each measured position corresponds to a [sample position](samples.md) entry on [combinatorial libraries](samples.md), enabling composition-property correlations across gradient libraries. Multiple positions can be measured and their data aggregated to create property maps.
