@@ -1480,9 +1480,9 @@ rt_measurements = AppEntryPoint(
         ),
         columns=[
             Column(
-                search_quantity=f'data.lab_id#{rt_schema}',
+                search_quantity=f'data.name#{rt_schema}',
                 selected=True,
-                label='R/T ID',
+                label='R/T name',
             ),
             Column(
                 search_quantity=f'data.datetime#{rt_schema}',
