@@ -58,33 +58,99 @@ class DtuNanolabMeasurement(MappingMeasurement):
             )
             return None
 
-        # Try library.geometry first, then substrate.reference.geometry
-        geometry = getattr(library, 'geometry', None)
-        if geometry is None:
-            substrate_ref = getattr(library, 'substrate', None)
-            if substrate_ref is not None:
-                substrate = getattr(substrate_ref, 'reference', None)
-                if substrate is not None:
-                    geometry = getattr(substrate, 'geometry', None)
+        geometries = [getattr(library, 'geometry', None)]
+        substrate_ref = getattr(library, 'substrate', None)
+        if substrate_ref is not None:
+            substrate = getattr(substrate_ref, 'reference', None)
+            if substrate is not None:
+                geometries.append(getattr(substrate, 'geometry', None))
 
-        if geometry is None:
+        for geometry in geometries:
+            if geometry is None:
+                continue
+            width = getattr(geometry, 'width', None)
+            length = getattr(geometry, 'length', None)
+            if width is None or length is None:
+                radius = getattr(geometry, 'radius', None)
+                if radius is not None:
+                    width = length = radius * 2
+            if width is None or length is None:
+                continue
+
+            width_m = width.to('m').magnitude if hasattr(width, 'to') else float(width)
+            height_m = (
+                length.to('m').magnitude if hasattr(length, 'to') else float(length)
+            )
+            return width_m, height_m
+
+        if not any(geometry is not None for geometry in geometries):
             logger.warning(
                 'Cannot determine sample dimensions: '
                 'no geometry found on library or substrate.'
             )
-            return None
-
-        width = getattr(geometry, 'width', None)
-        length = getattr(geometry, 'length', None)
-        if width is None or length is None:
+        else:
             logger.warning(
                 'Cannot determine sample dimensions: geometry has no width or length.'
             )
-            return None
+        return None
 
-        width_m = width.to('m').magnitude if hasattr(width, 'to') else float(width)
-        height_m = length.to('m').magnitude if hasattr(length, 'to') else float(length)
-        return width_m, height_m
+    def _apply_library_geometry_to_alignment(self, logger: 'BoundLogger') -> None:
+        """Set the sample alignment size from the linked library geometry."""
+        alignment = getattr(self, 'sample_alignment', None)
+        if alignment is None:
+            return
+
+        dimensions = self._get_sample_dimensions(logger)
+        if dimensions is None:
+            return
+        width_m, height_m = dimensions
+
+        def to_meters(value):
+            if value is None:
+                return None
+            return value.to('m').magnitude if hasattr(value, 'to') else float(value)
+
+        x_upper_left = to_meters(getattr(alignment, 'x_upper_left', None))
+        y_upper_left = to_meters(getattr(alignment, 'y_upper_left', None))
+        x_lower_right = to_meters(getattr(alignment, 'x_lower_right', None))
+        y_lower_right = to_meters(getattr(alignment, 'y_lower_right', None))
+
+        if x_upper_left is not None and x_lower_right is not None:
+            x_center = (x_upper_left + x_lower_right) / 2
+        else:
+            x_positions = [
+                to_meters(getattr(result, 'x_absolute', None))
+                for result in self.results or []
+            ]
+            x_positions = [value for value in x_positions if value is not None]
+            x_center = (
+                (min(x_positions) + max(x_positions)) / 2 if x_positions else None
+            )
+
+        if y_upper_left is not None and y_lower_right is not None:
+            y_center = (y_upper_left + y_lower_right) / 2
+        else:
+            y_positions = [
+                to_meters(getattr(result, 'y_absolute', None))
+                for result in self.results or []
+            ]
+            y_positions = [value for value in y_positions if value is not None]
+            y_center = (
+                (min(y_positions) + max(y_positions)) / 2 if y_positions else None
+            )
+
+        alignment.width = width_m
+        alignment.height = height_m
+        if x_center is not None and y_center is not None:
+            alignment.x_upper_left = x_center - width_m / 2
+            alignment.y_upper_left = y_center + height_m / 2
+            alignment.x_lower_right = x_center + width_m / 2
+            alignment.y_lower_right = y_center - height_m / 2
+
+        logger.info(
+            'Set sample alignment size from linked library geometry: '
+            f'width={width_m:.6f} m, height={height_m:.6f} m'
+        )
 
     def _compute_alignment_from_barycenter(
         self,
@@ -160,6 +226,7 @@ class DtuNanolabMeasurement(MappingMeasurement):
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         if self.around_barycenter:
             self._compute_alignment_from_barycenter(archive, logger)
+        self._apply_library_geometry_to_alignment(logger)
         super().normalize(archive, logger)
 
     def set_lab_id(

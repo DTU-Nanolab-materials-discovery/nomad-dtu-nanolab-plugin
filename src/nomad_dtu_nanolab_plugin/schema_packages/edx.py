@@ -108,7 +108,6 @@ class DTUSampleAlignment(RectangularSampleAlignment):
     m_def = Section()
     width = Quantity(
         type=np.float64,
-        default=0.04,
         description='The width of the sample.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
@@ -118,7 +117,6 @@ class DTUSampleAlignment(RectangularSampleAlignment):
     )
     height = Quantity(
         type=np.float64,
-        default=0.04,
         description='The height of the sample.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
@@ -148,10 +146,9 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         type=str,
         shape=['*'],
         description="""
-            Data files containing the electron images. Images are automatically mapped
-            to their respective spectra by extracting numbers from image filenames and
-            matching them with the spectrum numbers from the 'Spectrum Label' column
-            in the EDX data file (e.g., 'SE Image 1.png' matches 'Spectrum 1').
+            Data files containing the electron images. When the number of images
+            matches the number of EDX results, images are naturally sorted by filename
+            and assigned to results in order.
         """,
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.FileEditQuantity,
@@ -385,32 +382,33 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 )
             )
 
-    def _create_image_mapping(self, logger: 'BoundLogger') -> dict[int, str]:
-        """
-        Create a mapping from spectrum numbers to image file paths.
-
-        Returns:
-            dict[int, str]: A dictionary mapping spectrum numbers to image paths.
-        """
-        image_mapping = {}
-
-        if not self.electron_image_files:
-            return image_mapping
-
-        # Ensure electron_image_files is a list
+    def _create_image_mapping(
+        self, result_count: int, logger: 'BoundLogger'
+    ) -> dict[int, str]:
+        """Map naturally sorted images to results when their counts match."""
         image_files = self.electron_image_files
         if isinstance(image_files, str):
             image_files = [image_files]
+        if not image_files:
+            return {}
 
-        for img_file in image_files:
-            # Extract spectrum number from filename
-            # Pattern: "SE Image - Before/After X" where X is the spectrum number
-            match = re.search(r'(?:Before|After)\s*(\d+)', img_file)
-            if match:
-                spectrum_num = int(match.group(1))
-                image_mapping[spectrum_num] = img_file
+        if len(image_files) != result_count:
+            logger.warning(
+                'Skipping SEM image assignment: '
+                f'{len(image_files)} images for {result_count} EDX results.'
+            )
+            return {}
 
-        return image_mapping
+        def natural_sort_key(filename: str) -> list[tuple[int, int | str]]:
+            return [
+                (1, int(part)) if part.isdigit() else (0, part.casefold())
+                for part in re.split(r'(\d+)', filename)
+            ]
+
+        return {
+            index: filename
+            for index, filename in enumerate(sorted(image_files, key=natural_sort_key))
+        }
 
     def write_edx_data(
         self,
@@ -456,12 +454,12 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             label for label in df_data.columns if re.match(pattern, label)
         ]
 
-        # Create image mapping from spectrum numbers to file paths
-        image_mapping = self._create_image_mapping(logger)
+        # Assign images by filename order only when every result has one image.
+        image_mapping = self._create_image_mapping(len(df_data), logger)
         logger.debug(f'Image mapping: {image_mapping}')
 
         results = []
-        for _, row in df_data.iterrows():
+        for result_index, (_, row) in enumerate(df_data.iterrows()):
             quantifications = []
             for label in percentage_labels:
                 element = label.split(' ')[2]
@@ -483,14 +481,8 @@ class EDXMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             elif self.avg_density is not None:
                 result.assumed_material_density = avg_density
 
-            # Associate electron image with result if available
-            if 'Spectrum Label' in df_data.columns:
-                spectrum_label = row['Spectrum Label']
-                match = re.search(r'\d+', str(spectrum_label))
-                spectrum_num = int(match.group()) if match else None
-
-                if spectrum_num is not None and spectrum_num in image_mapping:
-                    result.electron_image = image_mapping[spectrum_num]
+            if result_index in image_mapping:
+                result.electron_image = image_mapping[result_index]
 
             result.normalize(archive, logger)
             results.append(result)
