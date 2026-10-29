@@ -197,6 +197,38 @@ def test_measurement_dimensions_fall_back_to_substrate_geometry():
     ) == pytest.approx((0.05, 0.025))
 
 
+def test_edx_images_are_naturally_ordered_and_assigned_by_result_order():
+    measurement = EDXMeasurement(
+        electron_image_files=[
+            'SEM Image 10.png',
+            'SEM Image 2.png',
+            'SEM Image 1.png',
+        ]
+    )
+
+    image_mapping = measurement._create_image_mapping(
+        3, __import__('logging').getLogger('test')
+    )
+
+    assert list(image_mapping.values()) == [
+        'SEM Image 1.png',
+        'SEM Image 2.png',
+        'SEM Image 10.png',
+    ]
+
+
+def test_edx_images_are_not_assigned_when_counts_differ():
+    measurement = EDXMeasurement(
+        electron_image_files=['SEM Image 1.png', 'SEM Image 2.png']
+    )
+
+    image_mapping = measurement._create_image_mapping(
+        3, __import__('logging').getLogger('test')
+    )
+
+    assert image_mapping == {}
+
+
 def test_rt_autosampler_schema():
     """
     Test the RT autosampler measurement schema.
