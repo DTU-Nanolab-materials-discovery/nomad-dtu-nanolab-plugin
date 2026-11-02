@@ -1,3 +1,4 @@
+import logging
 import os
 from types import SimpleNamespace
 
@@ -7,8 +8,14 @@ from nomad import search as nomad_search
 from nomad.client import normalize_all, parse
 from nomad.datamodel import context as nomad_context
 from nomad.datamodel.metainfo.annotations import ELNComponentEnum
+from nomad.datamodel.metainfo.basesections import CompositeSystemReference
+from nomad.units import ureg
 
-from nomad_dtu_nanolab_plugin.schema_packages.PL import DTUPLMeasurement
+from nomad_dtu_nanolab_plugin.schema_packages.PL import (
+    DTUPLMeasurement,
+    PLMappingResult,
+    PLSampleLocation,
+)
 from nomad_dtu_nanolab_plugin.ywf_reader import read_ywa_metadata, read_ywf
 
 TRACE_COUNT = 12
@@ -24,11 +31,10 @@ SAMPLE_HEIGHT_MM = 40
 MAP_CENTER_X_MM = 14
 MAP_CENTER_Y_MM = -17
 FIGURE_COUNT = 2
-MATCHING_SAMPLE_COUNT = 105
-EXPECTED_SEARCH_PAGE_COUNT = 2
 WAFER_RADIUS_MM = 50
 WAFER_FLAT_ANGLE_DEG = 270
 EDGE_EXCLUSION_MM = 0
+UNIQUE_MATCH_PAGE_SIZE = 1
 
 YWF_FILE = os.path.join('tests', 'data', 'mittma_0028_RTP--1.ywf')
 YWA_FILE = os.path.join('tests', 'data', 'mittma_0028_RTP--1.ywa')
@@ -87,6 +93,7 @@ def test_pl_schema_shows_ywa_upload_and_orders_eln_fields():
         'location',
         'description',
         'samples',
+        'sample_locations',
         'results',
         'sample_alignment',
         'metadata',
@@ -165,7 +172,7 @@ def test_native_pl_measurement_normalization(monkeypatch):
     assert len(spectrum_figure['data'][0]['y']) == SPECTRUM_POINT_COUNT
     assert all(len(result.figures) == 1 for result in measurement.results)
 
-    assert measurement.around_barycenter is True
+    assert measurement.around_barycenter is False
     assert measurement.sample_alignment.width.to('mm').magnitude == pytest.approx(
         SAMPLE_WIDTH_MM
     )
@@ -187,7 +194,7 @@ def test_read_native_ywf_rejects_files_without_saved_pl_traces():
         read_ywf(b'not a YWafer measurement')
 
 
-def test_pl_links_all_matching_samples_across_search_pages(monkeypatch):
+def test_pl_automatically_links_only_unique_exact_four_part_match(monkeypatch):
     class FakeServerContext:
         pass
 
@@ -195,24 +202,16 @@ def test_pl_links_all_matching_samples_across_search_pages(monkeypatch):
     calls = []
 
     def fake_search(**kwargs):
-        page = kwargs['pagination'].page
         calls.append(kwargs)
-        first_index = (page - 1) * 100
-        last_index = min(first_index + 100, MATCHING_SAMPLE_COUNT)
         entries = [
             {
-                'entry_id': f'entry-{index}',
+                'entry_id': 'exact-entry',
                 'upload_id': 'upload-1',
-                'results': {
-                    'eln': {
-                        'lab_ids': [f'mittma_0028_RTP_{index:03d}'],
-                    }
-                },
+                'results': {'eln': {'lab_ids': ['mittma_0028_RTP_ha']}},
             }
-            for index in range(first_index, last_index)
         ]
         return SimpleNamespace(
-            pagination=SimpleNamespace(total=MATCHING_SAMPLE_COUNT),
+            pagination=SimpleNamespace(total=1),
             data=entries,
         )
 
@@ -220,23 +219,89 @@ def test_pl_links_all_matching_samples_across_search_pages(monkeypatch):
 
     measurement = DTUPLMeasurement()
     measurement.add_pl_sample_references(
-        'nested/path/mittma_0028_RTP--1.ywf',
+        'nested/path/mittma_0028_RTP_ha--1.ywf',
         SimpleNamespace(
             m_context=FakeServerContext(),
             metadata=SimpleNamespace(main_author=SimpleNamespace(user_id='test-user')),
         ),
-        __import__('logging').getLogger('test'),
+        logging.getLogger('test'),
     )
 
-    assert len(measurement.samples) == MATCHING_SAMPLE_COUNT
-    assert len(calls) == EXPECTED_SEARCH_PAGE_COUNT
-    assert [call['pagination'].page for call in calls] == [1, 2]
-    query = calls[0]['query'].to_dict()
-    assert query['bool']['should'][0]['term']['results.eln.lab_ids'] == (
-        'mittma_0028_RTP'
+    assert len(calls) == 1
+    assert calls[0]['query'].to_dict() == {
+        'term': {'results.eln.lab_ids': 'mittma_0028_RTP_ha'}
+    }
+    assert calls[0]['pagination'].page_size == UNIQUE_MATCH_PAGE_SIZE
+    assert len(measurement.samples) == 1
+    assert measurement.samples[0].lab_id == 'mittma_0028_RTP_ha'
+
+
+def test_pl_requires_manual_samples_and_full_point_coverage_when_match_is_not_unique(
+    monkeypatch,
+):
+    class FakeServerContext:
+        pass
+
+    monkeypatch.setattr(nomad_context, 'ServerContext', FakeServerContext)
+    monkeypatch.setattr(
+        nomad_search,
+        'search',
+        lambda **kwargs: SimpleNamespace(
+            pagination=SimpleNamespace(total=2),
+            data=[
+                {
+                    'entry_id': f'entry-{index}',
+                    'upload_id': f'upload-{index}',
+                    'results': {'eln': {'lab_ids': ['mittma_0028_RTP_ha']}},
+                }
+                for index in range(2)
+            ],
+        ),
     )
-    assert query['bool']['should'][1]['prefix']['results.eln.lab_ids'] == (
-        'mittma_0028_RTP_'
+    measurement = DTUPLMeasurement(
+        results=[
+            PLMappingResult(
+                x_absolute=ureg.Quantity(x, 'mm'),
+                y_absolute=ureg.Quantity(y, 'mm'),
+            )
+            for x, y in [(0, 0), (12, 4)]
+        ]
     )
-    assert measurement.samples[0].lab_id == 'mittma_0028_RTP_000'
-    assert measurement.samples[-1].lab_id == 'mittma_0028_RTP_104'
+    archive = SimpleNamespace(
+        m_context=FakeServerContext(),
+        metadata=SimpleNamespace(main_author=SimpleNamespace(user_id='test-user')),
+    )
+    logger = logging.getLogger('test')
+    with pytest.raises(ValueError, match='Add each library and its measured position'):
+        measurement.add_pl_sample_references(
+            'mittma_0028_RTP_ha--1.ywf', archive, logger
+        )
+
+    measurement.sample_locations = [
+        PLSampleLocation(
+            sample=CompositeSystemReference(lab_id='manual-library-1'),
+            x_min=ureg.Quantity(-1, 'mm'),
+            x_max=ureg.Quantity(1, 'mm'),
+            y_min=ureg.Quantity(-1, 'mm'),
+            y_max=ureg.Quantity(1, 'mm'),
+        )
+    ]
+    with pytest.raises(ValueError, match='cover every measurement point'):
+        measurement.add_pl_sample_references(
+            'mittma_0028_RTP_ha--1.ywf', archive, logger
+        )
+
+    measurement.sample_locations.append(
+        PLSampleLocation(
+            sample=CompositeSystemReference(lab_id='manual-library-2'),
+            x_min=ureg.Quantity(11, 'mm'),
+            x_max=ureg.Quantity(13, 'mm'),
+            y_min=ureg.Quantity(3, 'mm'),
+            y_max=ureg.Quantity(5, 'mm'),
+        )
+    )
+    measurement.add_pl_sample_references('mittma_0028_RTP_ha--1.ywf', archive, logger)
+    assert [sample.lab_id for sample in measurement.samples] == [
+        'manual-library-1',
+        'manual-library-2',
+    ]

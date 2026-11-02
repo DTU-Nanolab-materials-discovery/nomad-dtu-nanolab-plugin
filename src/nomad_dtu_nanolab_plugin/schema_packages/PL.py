@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
 
 m_package = Package(name='DTU PL measurement schema')
+PL_SAMPLE_NAME_PARTS = 4
 
 
 class PLMappingResult(MappingResult, PlotSection):
@@ -216,6 +217,58 @@ class PLMetadata(ArchiveSection):
     )
 
 
+class PLSampleLocation(ArchiveSection):
+    m_def = Section(
+        label='PL sample location',
+        description='A manually assigned library and its measured sample bounds.',
+    )
+
+    sample = SubSection(
+        section_def=CompositeSystemReference,
+        description='Library measured within the specified position bounds.',
+    )
+    x_min = Quantity(
+        type=np.float64,
+        unit='m',
+        description='Minimum stage X coordinate of this library region.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            label='X minimum',
+        ),
+    )
+    x_max = Quantity(
+        type=np.float64,
+        unit='m',
+        description='Maximum stage X coordinate of this library region.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            label='X maximum',
+        ),
+    )
+    y_min = Quantity(
+        type=np.float64,
+        unit='m',
+        description='Minimum stage Y coordinate of this library region.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            label='Y minimum',
+        ),
+    )
+    y_max = Quantity(
+        type=np.float64,
+        unit='m',
+        description='Maximum stage Y coordinate of this library region.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            label='Y maximum',
+        ),
+    )
+
+
 class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
@@ -233,6 +286,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     'location',
                     'description',
                     'samples',
+                    'sample_locations',
                     'results',
                     'sample_alignment',
                     'metadata',
@@ -279,6 +333,14 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         section_def=RectangularSampleAlignment,
         description='Automatically determined alignment from the sample geometry.',
     )
+    sample_locations = SubSection(
+        section_def=PLSampleLocation,
+        description=(
+            'For manual sample assignment, specify each library and its measured '
+            'position bounds.'
+        ),
+        repeats=True,
+    )
 
     def add_pl_sample_references(
         self,
@@ -289,86 +351,104 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         from nomad.datamodel.context import ServerContext
 
         filename = filename.replace('\\', '/').rsplit('/', 1)[-1]
-        sample_prefix = filename.split('--', 1)[0].rsplit('.', 1)[0]
-        sample_prefix = '_'.join(sample_prefix.split('_')[:3])
-        if not sample_prefix:
-            logger.warning('Could not determine PL sample prefix from: %s', filename)
-            return
-
-        if not isinstance(archive.m_context, ServerContext):
-            self.samples = [CompositeSystemReference(lab_id=sample_prefix)]
-            return
-
-        from nomad.search import MetadataPagination, Q, search
-
-        query = Q(
-            'bool',
-            should=[
-                Q('term', **{'results.eln.lab_ids': sample_prefix}),
-                Q('prefix', **{'results.eln.lab_ids': f'{sample_prefix}_'}),
-            ],
-            minimum_should_match=1,
+        name_parts = filename.split('--', 1)[0].rsplit('.', 1)[0].split('_')
+        library_name = (
+            '_'.join(name_parts[:PL_SAMPLE_NAME_PARTS])
+            if len(name_parts) >= PL_SAMPLE_NAME_PARTS
+            else None
         )
-        page_size = 100
-        user_id = getattr(
-            getattr(archive.metadata, 'main_author', None), 'user_id', None
-        )
-        first_page = search(
-            owner='all',
-            query=query,
-            pagination=MetadataPagination(page_size=page_size, page=1),
-            user_id=user_id,
-        )
-        total = first_page.pagination.total
-        entries = list(first_page.data)
-        page_count = (total + page_size - 1) // page_size
-        for page in range(2, page_count + 1):
+        entry = None
+        if isinstance(archive.m_context, ServerContext) and library_name:
+            from nomad.search import MetadataPagination, Q, search
+
+            user_id = getattr(
+                getattr(archive.metadata, 'main_author', None), 'user_id', None
+            )
             result = search(
                 owner='all',
-                query=query,
-                pagination=MetadataPagination(page_size=page_size, page=page),
+                query=Q('term', **{'results.eln.lab_ids': library_name}),
+                pagination=MetadataPagination(page_size=1),
                 user_id=user_id,
             )
-            entries.extend(result.data)
+            if result.pagination.total == 1:
+                entry = next(iter(result.data), None)
 
-        references = []
-        seen_entry_ids = set()
-        for entry in entries:
-            entry_id = entry.get('entry_id')
-            upload_id = entry.get('upload_id')
-            lab_ids = entry.get('results', {}).get('eln', {}).get('lab_ids', [])
+        if entry:
+            lab_ids = entry.get('results', {}).get('eln', {}).get('lab_ids') or []
             if isinstance(lab_ids, str):
                 lab_ids = [lab_ids]
-            matching_lab_id = next(
-                (
-                    lab_id
-                    for lab_id in lab_ids
-                    if lab_id == sample_prefix or lab_id.startswith(f'{sample_prefix}_')
-                ),
-                None,
-            )
             if (
-                not entry_id
-                or not upload_id
-                or matching_lab_id is None
-                or entry_id in seen_entry_ids
+                entry.get('entry_id')
+                and entry.get('upload_id')
+                and library_name in lab_ids
             ):
-                continue
-            seen_entry_ids.add(entry_id)
-            references.append(
-                CompositeSystemReference(
-                    name=matching_lab_id,
-                    lab_id=matching_lab_id,
-                    reference=f'../uploads/{upload_id}/archive/{entry_id}#data',
-                )
-            )
+                self.samples = [
+                    CompositeSystemReference(
+                        name=library_name,
+                        lab_id=library_name,
+                        reference=(
+                            f'../uploads/{entry["upload_id"]}/archive/'
+                            f'{entry["entry_id"]}#data'
+                        ),
+                    )
+                ]
+                return
 
-        self.samples = references
-        if not references:
-            logger.warning(
-                'No samples found with the first three name parts %s.',
-                sample_prefix,
+        if self._assign_manual_samples_if_covered(archive, logger):
+            return
+
+        raise ValueError(
+            f'Could not uniquely match a library named "{library_name or "<invalid>"}" '
+            f'to {filename}. Add each library and its measured position in Sample '
+            'locations; the assigned regions must cover every measurement point.'
+        )
+
+    def _assign_manual_samples_if_covered(
+        self, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> bool:
+        locations = self.sample_locations or []
+        if not locations or any(
+            location.sample is None
+            or any(
+                getattr(location, key) is None
+                for key in ('x_min', 'x_max', 'y_min', 'y_max')
             )
+            for location in locations
+        ):
+            return False
+        if not self.results or not all(
+            result.x_absolute is not None and result.y_absolute is not None
+            for result in self.results
+        ):
+            return False
+        if not all(
+            any(
+                location.x_min.to('m').magnitude
+                <= result.x_absolute.to('m').magnitude
+                <= location.x_max.to('m').magnitude
+                and location.y_min.to('m').magnitude
+                <= result.y_absolute.to('m').magnitude
+                <= location.y_max.to('m').magnitude
+                for location in locations
+            )
+            for result in self.results
+        ):
+            return False
+        self.samples = [location.sample for location in locations]
+        self.around_barycenter = False
+        if len(locations) == 1 and self.sample_alignment is None:
+            location = locations[0]
+            alignment = RectangularSampleAlignment(
+                width=location.x_max - location.x_min,
+                height=location.y_max - location.y_min,
+                x_upper_left=location.x_min,
+                y_upper_left=location.y_max,
+                x_lower_right=location.x_max,
+                y_lower_right=location.y_min,
+            )
+            alignment.normalize(archive, logger)
+            self.sample_alignment = alignment
+        return True
 
     def write_pl_data(
         self,
@@ -569,15 +649,15 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             self.location = 'DTU Nanolab PL measurement'
 
         if self.pl_data_file:
-            self.add_pl_sample_references(self.pl_data_file, archive, logger)
             with archive.m_context.raw_file(self.pl_data_file, 'rb') as file:
                 parsed_data = read_ywf(file.read())
             if self.pl_overview_file:
                 with archive.m_context.raw_file(self.pl_overview_file, 'rb') as file:
                     parsed_data['metadata'].update(read_ywa_metadata(file.read()))
             self.write_pl_data(parsed_data, archive, logger)
+            self.add_pl_sample_references(self.pl_data_file, archive, logger)
 
-            if self.sample_alignment is None:
+            if self.sample_alignment is None and not self.sample_locations:
                 self.around_barycenter = True
         else:
             logger.warning('Upload a native YWafer .ywf file to extract PL data.')

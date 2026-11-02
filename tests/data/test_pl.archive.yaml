@@ -2,3 +2,10 @@ data:
   m_def: nomad_dtu_nanolab_plugin.schema_packages.PL.DTUPLMeasurement
   pl_data_file: mittma_0028_RTP--1.ywf
   pl_overview_file: mittma_0028_RTP--1.ywa
+  sample_locations:
+    - sample:
+        lab_id: mittma_0028_RTP
+      x_min: -0.011
+      x_max: 0.039
+      y_min: -0.037
+      y_max: 0.003

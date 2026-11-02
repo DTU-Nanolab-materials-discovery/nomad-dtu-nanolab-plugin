@@ -10,8 +10,11 @@ This schema package defines:
 
 PL measurements extend the mapping measurement schema and take a native YSystems
 YWafer `.ywf` file as their input. The normalizer extracts the saved spectra, stage
-coordinates, and acquisition settings. The first three underscore-separated name
-parts identify the related samples, and every matching sample is linked.
+coordinates, and acquisition settings. A library is linked automatically only when
+exactly one library matches the first four underscore-separated parts of the filename.
+If there is no unique match, add each library and its measured position bounds in
+**Sample locations**; normalization continues only when those regions cover every
+measurement point.
 An optional companion `.ywa` overview file can be uploaded to add the lot, wafer,
 chamber, scan pitch and center, wafer radius, edge exclusion, and flat angle metadata.
 
@@ -27,7 +30,8 @@ PL measurements provide:
 
 1. Upload the native YWafer `.ywf` measurement file. The companion `.ywa` overview
    file is optional.
-2. The filename's lab ID is used to link the measurement to its sample or library.
+2. A unique exact four-part library-name match is linked automatically. Otherwise,
+   add the library references and their position bounds in **Sample locations**.
 3. Saved PL1 spectra and stage positions are extracted automatically.
 4. Acquisition settings such as excitation, integration time, detector, filter, and
    wavelength range are read from the file when available.
