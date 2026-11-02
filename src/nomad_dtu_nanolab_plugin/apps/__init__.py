@@ -24,7 +24,7 @@ sputtering = AppEntryPoint(
         path='sputtering',
         category='Activities',
         description="""
-        Explore the sputtering processes.
+        Explore the rock'n'roll processes.
         """,
         search_quantities=SearchQuantities(
             include=[
