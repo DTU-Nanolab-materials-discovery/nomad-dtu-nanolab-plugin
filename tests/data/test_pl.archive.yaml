@@ -5,6 +5,6 @@ data:
   samples:
     - name: mittma_0028_RTP
       lab_id: mittma_0028_RTP
-      position_top_left_x: -0.011
-      position_top_left_y: 0.003
+      position_top_left_x: -11
+      position_top_left_y: 3
       rotation: 0

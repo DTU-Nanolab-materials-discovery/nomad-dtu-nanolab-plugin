@@ -127,7 +127,8 @@ def test_pl_schema_shows_ywa_upload_and_orders_eln_fields():
     ]
     assert all(
         getattr(PLSampleReference, quantity).a_eln.component is None
-        and getattr(PLSampleReference, quantity).a_eln.defaultDisplayUnit == 'cm'
+        and getattr(PLSampleReference, quantity).unit == 'mm'
+        and getattr(PLSampleReference, quantity).a_eln.defaultDisplayUnit == 'mm'
         for quantity in (
             'measurement_x_max',
             'measurement_x_min',
@@ -141,6 +142,10 @@ def test_pl_schema_shows_ywa_upload_and_orders_eln_fields():
     assert PLSampleReference.position_top_left_y.a_eln.component == (
         ELNComponentEnum.NumberEditQuantity
     )
+    assert PLSampleReference.position_top_left_x.unit == 'mm'
+    assert PLSampleReference.position_top_left_y.unit == 'mm'
+    assert PLSampleReference.position_top_left_x.a_eln.defaultDisplayUnit == 'mm'
+    assert PLSampleReference.position_top_left_y.a_eln.defaultDisplayUnit == 'mm'
     assert PLSampleReference.rotation.a_eln.component == (
         ELNComponentEnum.NumberEditQuantity
     )
@@ -410,6 +415,8 @@ def test_pl_sample_plot_labels_and_colors_each_library(monkeypatch):
         'library-two',
     ]
     assert data[0]['line']['color'] != data[2]['line']['color']
+    assert data[0]['x'] == pytest.approx([0, 2, 2, 0, 0])
+    assert data[0]['y'] == pytest.approx([2, 2, 0, 0, 2])
 
 
 def test_pl_uses_library_geometry_and_rotates_footprint():

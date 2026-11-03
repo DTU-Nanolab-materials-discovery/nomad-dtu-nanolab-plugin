@@ -247,45 +247,45 @@ class PLSampleReference(DtuLibraryReference):
 
     measurement_x_max = Quantity(
         type=np.float64,
-        unit='m',
+        unit='mm',
         description='Maximum stage X position detected in the measurement file.',
-        a_eln=ELNAnnotation(label='X max', defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(label='X max', defaultDisplayUnit='mm'),
     )
     measurement_x_min = Quantity(
         type=np.float64,
-        unit='m',
+        unit='mm',
         description='Minimum stage X position detected in the measurement file.',
-        a_eln=ELNAnnotation(label='X min', defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(label='X min', defaultDisplayUnit='mm'),
     )
     measurement_y_max = Quantity(
         type=np.float64,
-        unit='m',
+        unit='mm',
         description='Maximum stage Y position detected in the measurement file.',
-        a_eln=ELNAnnotation(label='Y max', defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(label='Y max', defaultDisplayUnit='mm'),
     )
     measurement_y_min = Quantity(
         type=np.float64,
-        unit='m',
+        unit='mm',
         description='Minimum stage Y position detected in the measurement file.',
-        a_eln=ELNAnnotation(label='Y min', defaultDisplayUnit='cm'),
+        a_eln=ELNAnnotation(label='Y min', defaultDisplayUnit='mm'),
     )
     position_top_left_x = Quantity(
         type=np.float64,
-        unit='m',
+        unit='mm',
         description='Stage X coordinate of the library top-left corner.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='cm',
+            defaultDisplayUnit='mm',
             label='Top-left X',
         ),
     )
     position_top_left_y = Quantity(
         type=np.float64,
-        unit='m',
+        unit='mm',
         description='Stage Y coordinate of the library top-left corner.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='cm',
+            defaultDisplayUnit='mm',
             label='Top-left Y',
         ),
     )
@@ -450,8 +450,8 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     def _set_sample_measurement_ranges(self) -> None:
         points = [
             (
-                result.x_absolute.to('m').magnitude,
-                result.y_absolute.to('m').magnitude,
+                result.x_absolute.to('mm').magnitude,
+                result.y_absolute.to('mm').magnitude,
             )
             for result in self.results or []
             if result.x_absolute is not None and result.y_absolute is not None
@@ -823,7 +823,10 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             red, green, blue = color.removeprefix('rgb(').removesuffix(')').split(',')
             fillcolor = f'rgba({red}, {green}, {blue}, 0.12)'
             label = sample.name or sample.lab_id or f'Library {index + 1}'
-            x_corners, y_corners = zip(*corners, strict=True)
+            x_corners, y_corners = zip(
+                *((x * 1000, y * 1000) for x, y in corners),
+                strict=True,
+            )
             figure.add_trace(
                 go.Scatter(
                     x=[*x_corners, x_corners[0]],
