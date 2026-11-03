@@ -18,6 +18,7 @@ from nomad_measurements.mapping.schema import (
     MappingResult,
     RectangularSampleAlignment,
 )
+from plotly.colors import sample_colorscale
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
@@ -32,14 +33,17 @@ if TYPE_CHECKING:
 
 m_package = Package(name='DTU PL measurement schema')
 PL_SAMPLE_NAME_PARTS = 4
-PL_SAMPLE_RANGE_QUANTITY_ORDER = [
+PL_SAMPLE_QUANTITY_ORDER = [
     'name',
     'reference',
     'lab_id',
-    'measurement_x_range',
-    'measurement_y_range',
-    'library_x_range',
-    'library_y_range',
+    'measurement_x_max',
+    'measurement_x_min',
+    'measurement_y_max',
+    'measurement_y_min',
+    'position_top_left_x',
+    'position_top_left_y',
+    'rotation',
 ]
 
 
@@ -237,42 +241,62 @@ class PLSampleReference(DtuLibraryReference):
         label='PL sample',
         description='A combinatorial library measured by this PL measurement.',
         a_eln=ELNAnnotation(
-            properties=SectionProperties(order=PL_SAMPLE_RANGE_QUANTITY_ORDER)
+            properties=SectionProperties(order=PL_SAMPLE_QUANTITY_ORDER)
         ),
     )
 
-    measurement_x_range = Quantity(
+    measurement_x_max = Quantity(
         type=np.float64,
-        shape=[2],
         unit='m',
-        description='Detected minimum and maximum stage X positions in the file.',
+        description='Maximum stage X position detected in the measurement file.',
+        a_eln=ELNAnnotation(label='X max', defaultDisplayUnit='cm'),
     )
-    measurement_y_range = Quantity(
+    measurement_x_min = Quantity(
         type=np.float64,
-        shape=[2],
         unit='m',
-        description='Detected minimum and maximum stage Y positions in the file.',
+        description='Minimum stage X position detected in the measurement file.',
+        a_eln=ELNAnnotation(label='X min', defaultDisplayUnit='cm'),
     )
-    library_x_range = Quantity(
+    measurement_y_max = Quantity(
         type=np.float64,
-        shape=[2],
         unit='m',
-        description='Minimum and maximum stage X positions covered by this library.',
+        description='Maximum stage Y position detected in the measurement file.',
+        a_eln=ELNAnnotation(label='Y max', defaultDisplayUnit='cm'),
+    )
+    measurement_y_min = Quantity(
+        type=np.float64,
+        unit='m',
+        description='Minimum stage Y position detected in the measurement file.',
+        a_eln=ELNAnnotation(label='Y min', defaultDisplayUnit='cm'),
+    )
+    position_top_left_x = Quantity(
+        type=np.float64,
+        unit='m',
+        description='Stage X coordinate of the library top-left corner.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-            label='Library X range',
+            defaultDisplayUnit='cm',
+            label='Top-left X',
         ),
     )
-    library_y_range = Quantity(
+    position_top_left_y = Quantity(
         type=np.float64,
-        shape=[2],
         unit='m',
-        description='Minimum and maximum stage Y positions covered by this library.',
+        description='Stage Y coordinate of the library top-left corner.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-            label='Library Y range',
+            defaultDisplayUnit='cm',
+            label='Top-left Y',
+        ),
+    )
+    rotation = Quantity(
+        type=np.float64,
+        unit='rad',
+        description='Counterclockwise rotation of the library in the stage plane.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='degree',
+            label='Sample rotation',
         ),
     )
 
@@ -409,19 +433,18 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if self.samples:
             if self._manual_samples_cover_measurement():
                 self.around_barycenter = False
-                self._set_sample_alignment_from_library_range(archive, logger)
+                self._set_sample_alignment_from_library_position(archive, logger)
             else:
                 logger.warning(
-                    'Assigned library X/Y ranges do not cover every PL measurement '
-                    'point; processing will continue with the assigned samples.'
+                    'Assigned sample positions and library geometries do not cover '
+                    'every PL measurement point; processing will continue.'
                 )
             return
 
         raise ValueError(
             f'Could not uniquely match a library named "{library_name or "<invalid>"}" '
             f'to {filename}. Add each combinatorial library in Samples and enter '
-            'its library X and Y ranges; the assigned regions must cover every '
-            'measurement point.'
+            'its top-left position and rotation.'
         )
 
     def _set_sample_measurement_ranges(self) -> None:
@@ -435,26 +458,16 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         ]
         if not points:
             return
-        x_range = ureg.Quantity(
-            [min(point[0] for point in points), max(point[0] for point in points)], 'm'
-        )
-        y_range = ureg.Quantity(
-            [min(point[1] for point in points), max(point[1] for point in points)], 'm'
-        )
+        x_values, y_values = zip(*points, strict=True)
         for sample in self.samples or []:
-            sample.measurement_x_range = x_range
-            sample.measurement_y_range = y_range
+            sample.measurement_x_max = max(x_values)
+            sample.measurement_x_min = min(x_values)
+            sample.measurement_y_max = max(y_values)
+            sample.measurement_y_min = min(y_values)
 
     def _manual_samples_cover_measurement(self) -> bool:
         samples = self.samples or []
-        if (
-            not samples
-            or not self.results
-            or any(
-                sample.library_x_range is None or sample.library_y_range is None
-                for sample in samples
-            )
-        ):
+        if not samples or not self.results:
             return False
         if not all(
             result.x_absolute is not None and result.y_absolute is not None
@@ -463,16 +476,86 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             return False
         return all(
             any(
-                min(sample.library_x_range.to('m').magnitude)
-                <= result.x_absolute.to('m').magnitude
-                <= max(sample.library_x_range.to('m').magnitude)
-                and min(sample.library_y_range.to('m').magnitude)
-                <= result.y_absolute.to('m').magnitude
-                <= max(sample.library_y_range.to('m').magnitude)
+                self._sample_contains_position(
+                    sample,
+                    result.x_absolute.to('m').magnitude,
+                    result.y_absolute.to('m').magnitude,
+                )
                 for sample in samples
             )
             for result in self.results
         )
+
+    @staticmethod
+    def _sample_geometry_dimensions(
+        sample: PLSampleReference,
+    ) -> tuple[float, float] | None:
+        library = getattr(sample, 'reference', None)
+        geometry = getattr(library, 'geometry', None)
+        if geometry is None:
+            substrate_reference = getattr(library, 'substrate', None)
+            substrate = getattr(substrate_reference, 'reference', None)
+            geometry = getattr(substrate, 'geometry', None)
+        width = getattr(geometry, 'width', None)
+        length = getattr(geometry, 'length', None)
+        if width is None or length is None:
+            return None
+        width_m = width.to('m').magnitude if hasattr(width, 'to') else float(width)
+        length_m = length.to('m').magnitude if hasattr(length, 'to') else float(length)
+        return width_m, length_m
+
+    def _sample_corners(
+        self, sample: PLSampleReference
+    ) -> list[tuple[float, float]] | None:
+        if (
+            sample.position_top_left_x is None
+            or sample.position_top_left_y is None
+            or sample.rotation is None
+        ):
+            return None
+        dimensions = self._sample_geometry_dimensions(sample)
+        if dimensions is None:
+            return None
+        width, length = dimensions
+        x = sample.position_top_left_x.to('m').magnitude
+        y = sample.position_top_left_y.to('m').magnitude
+        angle = sample.rotation.to('rad').magnitude
+        cosine, sine = np.cos(angle), np.sin(angle)
+        return [
+            (x, y),
+            (x + width * cosine, y + width * sine),
+            (
+                x + width * cosine + length * sine,
+                y + width * sine - length * cosine,
+            ),
+            (x + length * sine, y - length * cosine),
+        ]
+
+    def _sample_contains_position(
+        self, sample: PLSampleReference, x: float, y: float
+    ) -> bool:
+        corners = self._sample_corners(sample)
+        if corners is None:
+            return False
+        inside = False
+        previous_x, previous_y = corners[-1]
+        for current_x, current_y in corners:
+            cross = (x - previous_x) * (current_y - previous_y) - (y - previous_y) * (
+                current_x - previous_x
+            )
+            if (
+                np.isclose(cross, 0, atol=1e-12)
+                and min(previous_x, current_x) <= x <= max(previous_x, current_x)
+                and min(previous_y, current_y) <= y <= max(previous_y, current_y)
+            ):
+                return True
+            if (current_y > y) != (previous_y > y) and x < (
+                (previous_x - current_x) * (y - current_y) / (previous_y - current_y)
+                + current_x
+            ):
+                inside = not inside
+            previous_x, previous_y = current_x, current_y
+        return inside
 
     def _assign_result_samples(self) -> None:
         for result in self.results or []:
@@ -481,14 +564,11 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             matching_samples = [
                 sample
                 for sample in self.samples or []
-                if sample.library_x_range is not None
-                and sample.library_y_range is not None
-                and min(sample.library_x_range.to('m').magnitude)
-                <= result.x_absolute.to('m').magnitude
-                <= max(sample.library_x_range.to('m').magnitude)
-                and min(sample.library_y_range.to('m').magnitude)
-                <= result.y_absolute.to('m').magnitude
-                <= max(sample.library_y_range.to('m').magnitude)
+                if self._sample_contains_position(
+                    sample,
+                    result.x_absolute.to('m').magnitude,
+                    result.y_absolute.to('m').magnitude,
+                )
             ]
             if not matching_samples and len(self.samples or []) == 1:
                 matching_samples = self.samples
@@ -501,20 +581,25 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 for sample in matching_samples
             ]
 
-    def _set_sample_alignment_from_library_range(
+    def _set_sample_alignment_from_library_position(
         self, archive: 'EntryArchive', logger: 'BoundLogger'
     ) -> None:
         if len(self.samples or []) == 1 and self.sample_alignment is None:
             sample = self.samples[0]
-            x_min, x_max = sorted(sample.library_x_range.to('m').magnitude)
-            y_min, y_max = sorted(sample.library_y_range.to('m').magnitude)
+            dimensions = self._sample_geometry_dimensions(sample)
+            corners = self._sample_corners(sample)
+            if dimensions is None or corners is None:
+                return
+            width, length = dimensions
+            x0, y0 = corners[0]
+            x2, y2 = corners[2]
             alignment = RectangularSampleAlignment(
-                width=x_max - x_min,
-                height=y_max - y_min,
-                x_upper_left=x_min,
-                y_upper_left=y_max,
-                x_lower_right=x_max,
-                y_lower_right=y_min,
+                width=width,
+                height=length,
+                x_upper_left=x0,
+                y_upper_left=y0,
+                x_lower_right=x2,
+                y_lower_right=y2,
             )
             alignment.normalize(archive, logger)
             self.sample_alignment = alignment
@@ -725,30 +810,42 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             return
 
         figure = go.Figure()
-        colors = [
-            ('#636EFA', 'rgba(99, 110, 250, 0.12)'),
-            ('#EF553B', 'rgba(239, 85, 59, 0.12)'),
-            ('#00CC96', 'rgba(0, 204, 150, 0.12)'),
-            ('#AB63FA', 'rgba(171, 99, 250, 0.12)'),
-            ('#FFA15A', 'rgba(255, 161, 90, 0.12)'),
-        ]
-        for index, sample in enumerate(self.samples or []):
-            if sample.library_x_range is None or sample.library_y_range is None:
+        samples = self.samples or []
+        colors = sample_colorscale(
+            'Turbo',
+            [index / max(len(samples) - 1, 1) for index in range(len(samples))],
+        )
+        for index, sample in enumerate(samples):
+            corners = self._sample_corners(sample)
+            if corners is None:
                 continue
-            x_min, x_max = sorted(sample.library_x_range.to('mm').magnitude)
-            y_min, y_max = sorted(sample.library_y_range.to('mm').magnitude)
-            color, fillcolor = colors[index % len(colors)]
+            color = colors[index]
+            red, green, blue = color.removeprefix('rgb(').removesuffix(')').split(',')
+            fillcolor = f'rgba({red}, {green}, {blue}, 0.12)'
             label = sample.name or sample.lab_id or f'Library {index + 1}'
+            x_corners, y_corners = zip(*corners, strict=True)
             figure.add_trace(
                 go.Scatter(
-                    x=[x_min, x_max, x_max, x_min, x_min],
-                    y=[y_min, y_min, y_max, y_max, y_min],
+                    x=[*x_corners, x_corners[0]],
+                    y=[*y_corners, y_corners[0]],
                     mode='lines',
                     fill='toself',
                     fillcolor=fillcolor,
                     line={'color': color},
                     name=label,
                     hoverinfo='name',
+                )
+            )
+            figure.add_trace(
+                go.Scatter(
+                    x=[sum(x_corners) / len(x_corners)],
+                    y=[sum(y_corners) / len(y_corners)],
+                    mode='text',
+                    text=[label],
+                    textposition='middle center',
+                    textfont={'color': color, 'size': 12},
+                    showlegend=False,
+                    hoverinfo='skip',
                 )
             )
         figure.add_trace(
@@ -792,8 +889,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             self.add_pl_sample_references(self.pl_data_file, archive, logger)
 
             if self.sample_alignment is None and not any(
-                sample.library_x_range is not None
-                and sample.library_y_range is not None
+                self._sample_corners(sample) is not None
                 for sample in self.samples or []
             ):
                 self.around_barycenter = True

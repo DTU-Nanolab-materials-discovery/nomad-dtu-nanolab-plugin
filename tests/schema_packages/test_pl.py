@@ -37,6 +37,10 @@ WAFER_RADIUS_MM = 50
 WAFER_FLAT_ANGLE_DEG = 270
 EDGE_EXCLUSION_MM = 0
 UNIQUE_MATCH_PAGE_SIZE = 1
+MEASUREMENT_X_MIN_MM = -2
+MEASUREMENT_X_MAX_MM = 30
+MEASUREMENT_Y_MIN_MM = -30
+MEASUREMENT_Y_MAX_MM = -4
 
 YWF_FILE = os.path.join('tests', 'data', 'mittma_0028_RTP--1.ywf')
 YWA_FILE = os.path.join('tests', 'data', 'mittma_0028_RTP--1.ywa')
@@ -113,21 +117,34 @@ def test_pl_schema_shows_ywa_upload_and_orders_eln_fields():
         'name',
         'reference',
         'lab_id',
-        'measurement_x_range',
-        'measurement_y_range',
-        'library_x_range',
-        'library_y_range',
+        'measurement_x_max',
+        'measurement_x_min',
+        'measurement_y_max',
+        'measurement_y_min',
+        'position_top_left_x',
+        'position_top_left_y',
+        'rotation',
     ]
-    assert not PLSampleReference.measurement_x_range.m_annotations
-    assert not PLSampleReference.measurement_y_range.m_annotations
-    assert (
-        PLSampleReference.library_x_range.a_eln.component
-        == ELNComponentEnum.NumberEditQuantity
+    assert all(
+        getattr(PLSampleReference, quantity).a_eln.component is None
+        and getattr(PLSampleReference, quantity).a_eln.defaultDisplayUnit == 'cm'
+        for quantity in (
+            'measurement_x_max',
+            'measurement_x_min',
+            'measurement_y_max',
+            'measurement_y_min',
+        )
     )
-    assert (
-        PLSampleReference.library_y_range.a_eln.component
-        == ELNComponentEnum.NumberEditQuantity
+    assert PLSampleReference.position_top_left_x.a_eln.component == (
+        ELNComponentEnum.NumberEditQuantity
     )
+    assert PLSampleReference.position_top_left_y.a_eln.component == (
+        ELNComponentEnum.NumberEditQuantity
+    )
+    assert PLSampleReference.rotation.a_eln.component == (
+        ELNComponentEnum.NumberEditQuantity
+    )
+    assert PLSampleReference.rotation.a_eln.defaultDisplayUnit == 'degree'
     assert (
         PLMappingResult.samples.sub_section.section_cls.m_def
         is DtuLibraryReference.m_def
@@ -137,11 +154,8 @@ def test_pl_schema_shows_ywa_upload_and_orders_eln_fields():
 def test_native_pl_measurement_normalization(monkeypatch):
     monkeypatch.setattr(
         DTUPLMeasurement,
-        '_get_sample_dimensions',
-        lambda self, logger: (
-            SAMPLE_WIDTH_MM / 1000,
-            SAMPLE_HEIGHT_MM / 1000,
-        ),
+        '_sample_geometry_dimensions',
+        staticmethod(lambda sample: (SAMPLE_WIDTH_MM / 1000, SAMPLE_HEIGHT_MM / 1000)),
     )
     archive_path = os.path.join('tests', 'data', 'test_pl.archive.yaml')
     archive = parse(archive_path)[0]
@@ -150,14 +164,22 @@ def test_native_pl_measurement_normalization(monkeypatch):
     measurement = archive.data
     assert len(measurement.results) == TRACE_COUNT
     assert measurement.samples[0].lab_id == 'mittma_0028_RTP'
-    assert measurement.samples[0].measurement_x_range.to('mm').magnitude.tolist() == [
-        -2,
-        30,
-    ]
-    assert measurement.samples[0].measurement_y_range.to('mm').magnitude.tolist() == [
-        -30,
-        -4,
-    ]
+    assert (
+        measurement.samples[0].measurement_x_min.to('mm').magnitude
+        == MEASUREMENT_X_MIN_MM
+    )
+    assert (
+        measurement.samples[0].measurement_x_max.to('mm').magnitude
+        == MEASUREMENT_X_MAX_MM
+    )
+    assert (
+        measurement.samples[0].measurement_y_min.to('mm').magnitude
+        == MEASUREMENT_Y_MIN_MM
+    )
+    assert (
+        measurement.samples[0].measurement_y_max.to('mm').magnitude
+        == MEASUREMENT_Y_MAX_MM
+    )
     assert measurement.metadata.software_version == 'YWafer v7.06'
     assert (
         measurement.metadata.excitation_wavelength.to('nm').magnitude
@@ -223,6 +245,7 @@ def test_native_pl_measurement_normalization(monkeypatch):
     position_figure = measurement.figures[2].figure
     assert position_figure['data'][-1]['name'] == 'Measurement points'
     assert position_figure['data'][0]['name'] == 'mittma_0028_RTP'
+    assert position_figure['data'][1]['text'] == ['mittma_0028_RTP']
     assert measurement.results[0].samples[0].lab_id == 'mittma_0028_RTP'
 
 
@@ -304,6 +327,11 @@ def test_pl_requires_manual_samples_and_full_point_coverage_when_match_is_not_un
             for x, y in [(0, 0), (12, 4)]
         ]
     )
+    monkeypatch.setattr(
+        DTUPLMeasurement,
+        '_sample_geometry_dimensions',
+        staticmethod(lambda sample: (2e-3, 2e-3)),
+    )
     archive = SimpleNamespace(
         m_context=FakeServerContext(),
         metadata=SimpleNamespace(main_author=SimpleNamespace(user_id='test-user')),
@@ -319,8 +347,9 @@ def test_pl_requires_manual_samples_and_full_point_coverage_when_match_is_not_un
         PLSampleReference(
             name='manual-library-1',
             lab_id='manual-library-1',
-            library_x_range=ureg.Quantity([-1, 1], 'mm'),
-            library_y_range=ureg.Quantity([-1, 1], 'mm'),
+            position_top_left_x=ureg.Quantity(-1, 'mm'),
+            position_top_left_y=ureg.Quantity(1, 'mm'),
+            rotation=ureg.Quantity(0, 'degree'),
         )
     ]
     measurement.add_pl_sample_references('mittma_0028_RTP_ha--1.ywf', archive, logger)
@@ -331,8 +360,9 @@ def test_pl_requires_manual_samples_and_full_point_coverage_when_match_is_not_un
         PLSampleReference(
             name='manual-library-2',
             lab_id='manual-library-2',
-            library_x_range=ureg.Quantity([11, 13], 'mm'),
-            library_y_range=ureg.Quantity([3, 5], 'mm'),
+            position_top_left_x=ureg.Quantity(11, 'mm'),
+            position_top_left_y=ureg.Quantity(5, 'mm'),
+            rotation=ureg.Quantity(0, 'degree'),
         )
     )
     measurement.add_pl_sample_references('mittma_0028_RTP_ha--1.ywf', archive, logger)
@@ -341,6 +371,69 @@ def test_pl_requires_manual_samples_and_full_point_coverage_when_match_is_not_un
         'manual-library-2',
     ]
     assert [len(result.samples) for result in measurement.results] == [1, 1]
+
+
+def test_pl_sample_plot_labels_and_colors_each_library(monkeypatch):
+    monkeypatch.setattr(
+        DTUPLMeasurement,
+        '_sample_geometry_dimensions',
+        staticmethod(lambda sample: (2e-3, 2e-3)),
+    )
+    measurement = DTUPLMeasurement(
+        samples=[
+            PLSampleReference(
+                name='library-one',
+                position_top_left_x=ureg.Quantity(0, 'mm'),
+                position_top_left_y=ureg.Quantity(2, 'mm'),
+                rotation=ureg.Quantity(0, 'degree'),
+            ),
+            PLSampleReference(
+                name='library-two',
+                position_top_left_x=ureg.Quantity(3, 'mm'),
+                position_top_left_y=ureg.Quantity(2, 'mm'),
+                rotation=ureg.Quantity(0, 'degree'),
+            ),
+        ],
+        results=[
+            PLMappingResult(
+                x_absolute=ureg.Quantity(1, 'mm'),
+                y_absolute=ureg.Quantity(1, 'mm'),
+            )
+        ],
+    )
+
+    measurement.plot_sample_positions()
+
+    data = measurement.figures[0].figure['data']
+    assert [data[1]['text'][0], data[3]['text'][0]] == [
+        'library-one',
+        'library-two',
+    ]
+    assert data[0]['line']['color'] != data[2]['line']['color']
+
+
+def test_pl_uses_library_geometry_and_rotates_footprint():
+    sample = SimpleNamespace(
+        reference=SimpleNamespace(
+            geometry=SimpleNamespace(
+                width=ureg.Quantity(2, 'mm'),
+                length=ureg.Quantity(1, 'mm'),
+            )
+        ),
+        position_top_left_x=ureg.Quantity(0, 'mm'),
+        position_top_left_y=ureg.Quantity(0, 'mm'),
+        rotation=ureg.Quantity(90, 'degree'),
+    )
+    measurement = DTUPLMeasurement()
+
+    corners = measurement._sample_corners(sample)
+
+    assert DTUPLMeasurement._sample_geometry_dimensions(sample) == pytest.approx(
+        (0.002, 0.001)
+    )
+    assert np.asarray(corners) == pytest.approx(
+        np.asarray([(0, 0), (0, 0.002), (0.001, 0.002), (0.001, 0)])
+    )
 
 
 def test_pl_builds_plots_before_raising_for_missing_samples(monkeypatch):
