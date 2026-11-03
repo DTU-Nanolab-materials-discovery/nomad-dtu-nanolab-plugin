@@ -1,3 +1,5 @@
+import importlib
+import io
 import logging
 import os
 from types import SimpleNamespace
@@ -8,14 +10,14 @@ from nomad import search as nomad_search
 from nomad.client import normalize_all, parse
 from nomad.datamodel import context as nomad_context
 from nomad.datamodel.metainfo.annotations import ELNComponentEnum
-from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.units import ureg
 
 from nomad_dtu_nanolab_plugin.schema_packages.PL import (
     DTUPLMeasurement,
     PLMappingResult,
-    PLSampleLocation,
+    PLSampleReference,
 )
+from nomad_dtu_nanolab_plugin.schema_packages.sample import DtuLibraryReference
 from nomad_dtu_nanolab_plugin.ywf_reader import read_ywa_metadata, read_ywf
 
 TRACE_COUNT = 12
@@ -30,7 +32,7 @@ SAMPLE_WIDTH_MM = 50
 SAMPLE_HEIGHT_MM = 40
 MAP_CENTER_X_MM = 14
 MAP_CENTER_Y_MM = -17
-FIGURE_COUNT = 2
+FIGURE_COUNT = 3
 WAFER_RADIUS_MM = 50
 WAFER_FLAT_ANGLE_DEG = 270
 EDGE_EXCLUSION_MM = 0
@@ -93,7 +95,6 @@ def test_pl_schema_shows_ywa_upload_and_orders_eln_fields():
         'location',
         'description',
         'samples',
-        'sample_locations',
         'results',
         'sample_alignment',
         'metadata',
@@ -106,6 +107,30 @@ def test_pl_schema_shows_ywa_upload_and_orders_eln_fields():
     assert (
         DTUPLMeasurement.pl_overview_file.a_eln.component
         == ELNComponentEnum.FileEditQuantity
+    )
+    sample_def = PLSampleReference.m_def
+    assert sample_def.a_eln.properties.order == [
+        'name',
+        'reference',
+        'lab_id',
+        'measurement_x_range',
+        'measurement_y_range',
+        'library_x_range',
+        'library_y_range',
+    ]
+    assert not PLSampleReference.measurement_x_range.m_annotations
+    assert not PLSampleReference.measurement_y_range.m_annotations
+    assert (
+        PLSampleReference.library_x_range.a_eln.component
+        == ELNComponentEnum.NumberEditQuantity
+    )
+    assert (
+        PLSampleReference.library_y_range.a_eln.component
+        == ELNComponentEnum.NumberEditQuantity
+    )
+    assert (
+        PLMappingResult.samples.sub_section.section_cls.m_def
+        is DtuLibraryReference.m_def
     )
 
 
@@ -125,6 +150,14 @@ def test_native_pl_measurement_normalization(monkeypatch):
     measurement = archive.data
     assert len(measurement.results) == TRACE_COUNT
     assert measurement.samples[0].lab_id == 'mittma_0028_RTP'
+    assert measurement.samples[0].measurement_x_range.to('mm').magnitude.tolist() == [
+        -2,
+        30,
+    ]
+    assert measurement.samples[0].measurement_y_range.to('mm').magnitude.tolist() == [
+        -30,
+        -4,
+    ]
     assert measurement.metadata.software_version == 'YWafer v7.06'
     assert (
         measurement.metadata.excitation_wavelength.to('nm').magnitude
@@ -187,6 +220,10 @@ def test_native_pl_measurement_normalization(monkeypatch):
     map_data = measurement.figures[1].figure['data'][0]
     assert map_data['x'][0] == pytest.approx(-16)
     assert map_data['y'][0] == pytest.approx(13)
+    position_figure = measurement.figures[2].figure
+    assert position_figure['data'][-1]['name'] == 'Measurement points'
+    assert position_figure['data'][0]['name'] == 'mittma_0028_RTP'
+    assert measurement.results[0].samples[0].lab_id == 'mittma_0028_RTP'
 
 
 def test_read_native_ywf_rejects_files_without_saved_pl_traces():
@@ -219,7 +256,7 @@ def test_pl_automatically_links_only_unique_exact_four_part_match(monkeypatch):
 
     measurement = DTUPLMeasurement()
     measurement.add_pl_sample_references(
-        'nested/path/mittma_0028_RTP_ha--1.ywf',
+        'nested/path/mittma_0028_RTP--ha--1.ywf',
         SimpleNamespace(
             m_context=FakeServerContext(),
             metadata=SimpleNamespace(main_author=SimpleNamespace(user_id='test-user')),
@@ -271,33 +308,31 @@ def test_pl_requires_manual_samples_and_full_point_coverage_when_match_is_not_un
         m_context=FakeServerContext(),
         metadata=SimpleNamespace(main_author=SimpleNamespace(user_id='test-user')),
     )
-    logger = logging.getLogger('test')
-    with pytest.raises(ValueError, match='Add each library and its measured position'):
+    warning_messages = []
+    logger = SimpleNamespace(warning=warning_messages.append)
+    with pytest.raises(ValueError, match='Add each combinatorial library in Samples'):
         measurement.add_pl_sample_references(
             'mittma_0028_RTP_ha--1.ywf', archive, logger
         )
 
-    measurement.sample_locations = [
-        PLSampleLocation(
-            sample=CompositeSystemReference(lab_id='manual-library-1'),
-            x_min=ureg.Quantity(-1, 'mm'),
-            x_max=ureg.Quantity(1, 'mm'),
-            y_min=ureg.Quantity(-1, 'mm'),
-            y_max=ureg.Quantity(1, 'mm'),
+    measurement.samples = [
+        PLSampleReference(
+            name='manual-library-1',
+            lab_id='manual-library-1',
+            library_x_range=ureg.Quantity([-1, 1], 'mm'),
+            library_y_range=ureg.Quantity([-1, 1], 'mm'),
         )
     ]
-    with pytest.raises(ValueError, match='cover every measurement point'):
-        measurement.add_pl_sample_references(
-            'mittma_0028_RTP_ha--1.ywf', archive, logger
-        )
+    measurement.add_pl_sample_references('mittma_0028_RTP_ha--1.ywf', archive, logger)
+    assert 'do not cover every PL measurement point' in warning_messages[0]
+    assert len(measurement.samples) == 1
 
-    measurement.sample_locations.append(
-        PLSampleLocation(
-            sample=CompositeSystemReference(lab_id='manual-library-2'),
-            x_min=ureg.Quantity(11, 'mm'),
-            x_max=ureg.Quantity(13, 'mm'),
-            y_min=ureg.Quantity(3, 'mm'),
-            y_max=ureg.Quantity(5, 'mm'),
+    measurement.samples.append(
+        PLSampleReference(
+            name='manual-library-2',
+            lab_id='manual-library-2',
+            library_x_range=ureg.Quantity([11, 13], 'mm'),
+            library_y_range=ureg.Quantity([3, 5], 'mm'),
         )
     )
     measurement.add_pl_sample_references('mittma_0028_RTP_ha--1.ywf', archive, logger)
@@ -305,3 +340,49 @@ def test_pl_requires_manual_samples_and_full_point_coverage_when_match_is_not_un
         'manual-library-1',
         'manual-library-2',
     ]
+    assert [len(result.samples) for result in measurement.results] == [1, 1]
+
+
+def test_pl_builds_plots_before_raising_for_missing_samples(monkeypatch):
+    class FakeServerContext:
+        def raw_file(self, _path, _mode):
+            return io.BytesIO(b'fake')
+
+    monkeypatch.setattr(nomad_context, 'ServerContext', FakeServerContext)
+    monkeypatch.setattr(
+        nomad_search,
+        'search',
+        lambda **kwargs: SimpleNamespace(
+            pagination=SimpleNamespace(total=0),
+            data=[],
+        ),
+    )
+    pl_schema = importlib.import_module('nomad_dtu_nanolab_plugin.schema_packages.PL')
+    monkeypatch.setattr(
+        pl_schema,
+        'read_ywf',
+        lambda _data: {
+            'metadata': {},
+            'traces': [
+                {
+                    'name': 'PL1 #1',
+                    'x': 1,
+                    'y': 2,
+                    'wavelength_nm': [500, 600],
+                    'intensity': [1, 2],
+                }
+            ],
+        },
+    )
+    measurement = DTUPLMeasurement(pl_data_file='no_matching_sample--1.ywf')
+    archive = SimpleNamespace(
+        m_context=FakeServerContext(),
+        metadata=SimpleNamespace(main_author=SimpleNamespace(user_id='test-user')),
+    )
+
+    with pytest.raises(ValueError, match='Add each combinatorial library in Samples'):
+        measurement.normalize(archive, logging.getLogger('test'))
+
+    assert len(measurement.figures) == FIGURE_COUNT
+    assert len(measurement.results[0].figures) == 1
+    assert measurement.samples == []

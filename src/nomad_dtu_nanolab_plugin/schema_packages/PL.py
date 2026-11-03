@@ -1,3 +1,4 @@
+import re
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -10,7 +11,6 @@ from nomad.datamodel.metainfo.annotations import (
     Filter,
     SectionProperties,
 )
-from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
@@ -24,6 +24,7 @@ from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
     DtuNanolabMeasurement,
 )
+from nomad_dtu_nanolab_plugin.schema_packages.sample import DtuLibraryReference
 from nomad_dtu_nanolab_plugin.ywf_reader import read_ywa_metadata, read_ywf
 
 if TYPE_CHECKING:
@@ -31,11 +32,25 @@ if TYPE_CHECKING:
 
 m_package = Package(name='DTU PL measurement schema')
 PL_SAMPLE_NAME_PARTS = 4
+PL_SAMPLE_RANGE_QUANTITY_ORDER = [
+    'name',
+    'reference',
+    'lab_id',
+    'measurement_x_range',
+    'measurement_y_range',
+    'library_x_range',
+    'library_y_range',
+]
 
 
 class PLMappingResult(MappingResult, PlotSection):
     m_def = Section()
 
+    samples = SubSection(
+        section_def=DtuLibraryReference,
+        description='Combinatorial libraries assigned to this measurement position.',
+        repeats=True,
+    )
     trace_id = Quantity(
         type=str,
         description='The trace identifier assigned by the YWafer software.',
@@ -217,54 +232,47 @@ class PLMetadata(ArchiveSection):
     )
 
 
-class PLSampleLocation(ArchiveSection):
+class PLSampleReference(DtuLibraryReference):
     m_def = Section(
-        label='PL sample location',
-        description='A manually assigned library and its measured sample bounds.',
+        label='PL sample',
+        description='A combinatorial library measured by this PL measurement.',
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(order=PL_SAMPLE_RANGE_QUANTITY_ORDER)
+        ),
     )
 
-    sample = SubSection(
-        section_def=CompositeSystemReference,
-        description='Library measured within the specified position bounds.',
-    )
-    x_min = Quantity(
+    measurement_x_range = Quantity(
         type=np.float64,
+        shape=[2],
         unit='m',
-        description='Minimum stage X coordinate of this library region.',
+        description='Detected minimum and maximum stage X positions in the file.',
+    )
+    measurement_y_range = Quantity(
+        type=np.float64,
+        shape=[2],
+        unit='m',
+        description='Detected minimum and maximum stage Y positions in the file.',
+    )
+    library_x_range = Quantity(
+        type=np.float64,
+        shape=[2],
+        unit='m',
+        description='Minimum and maximum stage X positions covered by this library.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm',
-            label='X minimum',
+            label='Library X range',
         ),
     )
-    x_max = Quantity(
+    library_y_range = Quantity(
         type=np.float64,
+        shape=[2],
         unit='m',
-        description='Maximum stage X coordinate of this library region.',
+        description='Minimum and maximum stage Y positions covered by this library.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='mm',
-            label='X maximum',
-        ),
-    )
-    y_min = Quantity(
-        type=np.float64,
-        unit='m',
-        description='Minimum stage Y coordinate of this library region.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-            label='Y minimum',
-        ),
-    )
-    y_max = Quantity(
-        type=np.float64,
-        unit='m',
-        description='Maximum stage Y coordinate of this library region.',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-            label='Y maximum',
+            label='Library Y range',
         ),
     )
 
@@ -286,7 +294,6 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     'location',
                     'description',
                     'samples',
-                    'sample_locations',
                     'results',
                     'sample_alignment',
                     'metadata',
@@ -320,6 +327,11 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             label='YWafer overview file (.ywa)',
         ),
     )
+    samples = SubSection(
+        section_def=PLSampleReference,
+        description='Combinatorial libraries measured in this PL measurement.',
+        repeats=True,
+    )
     metadata = SubSection(
         section_def=PLMetadata,
         description='Acquisition metadata extracted from the native YWafer file.',
@@ -333,14 +345,6 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         section_def=RectangularSampleAlignment,
         description='Automatically determined alignment from the sample geometry.',
     )
-    sample_locations = SubSection(
-        section_def=PLSampleLocation,
-        description=(
-            'For manual sample assignment, specify each library and its measured '
-            'position bounds.'
-        ),
-        repeats=True,
-    )
 
     def add_pl_sample_references(
         self,
@@ -351,7 +355,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         from nomad.datamodel.context import ServerContext
 
         filename = filename.replace('\\', '/').rsplit('/', 1)[-1]
-        name_parts = filename.split('--', 1)[0].rsplit('.', 1)[0].split('_')
+        name_parts = re.split(r'_+|--', filename.rsplit('.', 1)[0])
         library_name = (
             '_'.join(name_parts[:PL_SAMPLE_NAME_PARTS])
             if len(name_parts) >= PL_SAMPLE_NAME_PARTS
@@ -382,73 +386,138 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 and entry.get('upload_id')
                 and library_name in lab_ids
             ):
-                self.samples = [
-                    CompositeSystemReference(
-                        name=library_name,
-                        lab_id=library_name,
-                        reference=(
-                            f'../uploads/{entry["upload_id"]}/archive/'
-                            f'{entry["entry_id"]}#data'
-                        ),
-                    )
-                ]
+                sample = next(
+                    (
+                        item
+                        for item in self.samples or []
+                        if item.lab_id == library_name
+                    ),
+                    PLSampleReference(),
+                )
+                sample.name = library_name
+                sample.lab_id = library_name
+                sample.reference = (
+                    f'../uploads/{entry["upload_id"]}/archive/{entry["entry_id"]}#data'
+                )
+                self.samples = [sample]
+                self._set_sample_measurement_ranges()
+                self._assign_result_samples()
                 return
 
-        if self._assign_manual_samples_if_covered(archive, logger):
+        self._set_sample_measurement_ranges()
+        self._assign_result_samples()
+        if self.samples:
+            if self._manual_samples_cover_measurement():
+                self.around_barycenter = False
+                self._set_sample_alignment_from_library_range(archive, logger)
+            else:
+                logger.warning(
+                    'Assigned library X/Y ranges do not cover every PL measurement '
+                    'point; processing will continue with the assigned samples.'
+                )
             return
 
         raise ValueError(
             f'Could not uniquely match a library named "{library_name or "<invalid>"}" '
-            f'to {filename}. Add each library and its measured position in Sample '
-            'locations; the assigned regions must cover every measurement point.'
+            f'to {filename}. Add each combinatorial library in Samples and enter '
+            'its library X and Y ranges; the assigned regions must cover every '
+            'measurement point.'
         )
 
-    def _assign_manual_samples_if_covered(
-        self, archive: 'EntryArchive', logger: 'BoundLogger'
-    ) -> bool:
-        locations = self.sample_locations or []
-        if not locations or any(
-            location.sample is None
-            or any(
-                getattr(location, key) is None
-                for key in ('x_min', 'x_max', 'y_min', 'y_max')
+    def _set_sample_measurement_ranges(self) -> None:
+        points = [
+            (
+                result.x_absolute.to('m').magnitude,
+                result.y_absolute.to('m').magnitude,
             )
-            for location in locations
+            for result in self.results or []
+            if result.x_absolute is not None and result.y_absolute is not None
+        ]
+        if not points:
+            return
+        x_range = ureg.Quantity(
+            [min(point[0] for point in points), max(point[0] for point in points)], 'm'
+        )
+        y_range = ureg.Quantity(
+            [min(point[1] for point in points), max(point[1] for point in points)], 'm'
+        )
+        for sample in self.samples or []:
+            sample.measurement_x_range = x_range
+            sample.measurement_y_range = y_range
+
+    def _manual_samples_cover_measurement(self) -> bool:
+        samples = self.samples or []
+        if (
+            not samples
+            or not self.results
+            or any(
+                sample.library_x_range is None or sample.library_y_range is None
+                for sample in samples
+            )
         ):
             return False
-        if not self.results or not all(
+        if not all(
             result.x_absolute is not None and result.y_absolute is not None
             for result in self.results
         ):
             return False
-        if not all(
+        return all(
             any(
-                location.x_min.to('m').magnitude
+                min(sample.library_x_range.to('m').magnitude)
                 <= result.x_absolute.to('m').magnitude
-                <= location.x_max.to('m').magnitude
-                and location.y_min.to('m').magnitude
+                <= max(sample.library_x_range.to('m').magnitude)
+                and min(sample.library_y_range.to('m').magnitude)
                 <= result.y_absolute.to('m').magnitude
-                <= location.y_max.to('m').magnitude
-                for location in locations
+                <= max(sample.library_y_range.to('m').magnitude)
+                for sample in samples
             )
             for result in self.results
-        ):
-            return False
-        self.samples = [location.sample for location in locations]
-        self.around_barycenter = False
-        if len(locations) == 1 and self.sample_alignment is None:
-            location = locations[0]
+        )
+
+    def _assign_result_samples(self) -> None:
+        for result in self.results or []:
+            if result.x_absolute is None or result.y_absolute is None:
+                continue
+            matching_samples = [
+                sample
+                for sample in self.samples or []
+                if sample.library_x_range is not None
+                and sample.library_y_range is not None
+                and min(sample.library_x_range.to('m').magnitude)
+                <= result.x_absolute.to('m').magnitude
+                <= max(sample.library_x_range.to('m').magnitude)
+                and min(sample.library_y_range.to('m').magnitude)
+                <= result.y_absolute.to('m').magnitude
+                <= max(sample.library_y_range.to('m').magnitude)
+            ]
+            if not matching_samples and len(self.samples or []) == 1:
+                matching_samples = self.samples
+            result.samples = [
+                DtuLibraryReference(
+                    name=sample.name,
+                    lab_id=sample.lab_id,
+                    reference=sample.reference,
+                )
+                for sample in matching_samples
+            ]
+
+    def _set_sample_alignment_from_library_range(
+        self, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
+        if len(self.samples or []) == 1 and self.sample_alignment is None:
+            sample = self.samples[0]
+            x_min, x_max = sorted(sample.library_x_range.to('m').magnitude)
+            y_min, y_max = sorted(sample.library_y_range.to('m').magnitude)
             alignment = RectangularSampleAlignment(
-                width=location.x_max - location.x_min,
-                height=location.y_max - location.y_min,
-                x_upper_left=location.x_min,
-                y_upper_left=location.y_max,
-                x_lower_right=location.x_max,
-                y_lower_right=location.y_min,
+                width=x_max - x_min,
+                height=y_max - y_min,
+                x_upper_left=x_min,
+                y_upper_left=y_max,
+                x_lower_right=x_max,
+                y_lower_right=y_min,
             )
             alignment.normalize(archive, logger)
             self.sample_alignment = alignment
-        return True
 
     def write_pl_data(
         self,
@@ -644,6 +713,68 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             plot_json['config'] = {'scrollZoom': False}
             self.figures.append(PlotlyFigure(label='PL peak map', figure=plot_json))
 
+        self.plot_sample_positions()
+
+    def plot_sample_positions(self) -> None:
+        positioned = [
+            result
+            for result in self.results or []
+            if result.x_absolute is not None and result.y_absolute is not None
+        ]
+        if not positioned:
+            return
+
+        figure = go.Figure()
+        colors = [
+            ('#636EFA', 'rgba(99, 110, 250, 0.12)'),
+            ('#EF553B', 'rgba(239, 85, 59, 0.12)'),
+            ('#00CC96', 'rgba(0, 204, 150, 0.12)'),
+            ('#AB63FA', 'rgba(171, 99, 250, 0.12)'),
+            ('#FFA15A', 'rgba(255, 161, 90, 0.12)'),
+        ]
+        for index, sample in enumerate(self.samples or []):
+            if sample.library_x_range is None or sample.library_y_range is None:
+                continue
+            x_min, x_max = sorted(sample.library_x_range.to('mm').magnitude)
+            y_min, y_max = sorted(sample.library_y_range.to('mm').magnitude)
+            color, fillcolor = colors[index % len(colors)]
+            label = sample.name or sample.lab_id or f'Library {index + 1}'
+            figure.add_trace(
+                go.Scatter(
+                    x=[x_min, x_max, x_max, x_min, x_min],
+                    y=[y_min, y_min, y_max, y_max, y_min],
+                    mode='lines',
+                    fill='toself',
+                    fillcolor=fillcolor,
+                    line={'color': color},
+                    name=label,
+                    hoverinfo='name',
+                )
+            )
+        figure.add_trace(
+            go.Scatter(
+                x=[result.x_absolute.to('mm').magnitude for result in positioned],
+                y=[result.y_absolute.to('mm').magnitude for result in positioned],
+                mode='markers',
+                marker={'color': '#111111', 'size': 8},
+                text=[result.trace_id for result in positioned],
+                name='Measurement points',
+                hovertemplate=(
+                    '%{text}<br>X: %{x:.3f} mm<br>Y: %{y:.3f} mm<extra></extra>'
+                ),
+            )
+        )
+        figure.update_layout(
+            title='PL sample regions and measurement points',
+            xaxis_title='Stage X (mm)',
+            yaxis_title='Stage Y (mm)',
+            template='plotly_white',
+            hovermode='closest',
+        )
+        plot_json = figure.to_plotly_json()
+        plot_json['config'] = {'scrollZoom': False}
+        self.figures.append(PlotlyFigure(label='PL sample positions', figure=plot_json))
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         if self.location is None:
             self.location = 'DTU Nanolab PL measurement'
@@ -655,9 +786,16 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 with archive.m_context.raw_file(self.pl_overview_file, 'rb') as file:
                     parsed_data['metadata'].update(read_ywa_metadata(file.read()))
             self.write_pl_data(parsed_data, archive, logger)
+            self._set_sample_measurement_ranges()
+            self.figures = []
+            self.plot()
             self.add_pl_sample_references(self.pl_data_file, archive, logger)
 
-            if self.sample_alignment is None and not self.sample_locations:
+            if self.sample_alignment is None and not any(
+                sample.library_x_range is not None
+                and sample.library_y_range is not None
+                for sample in self.samples or []
+            ):
                 self.around_barycenter = True
         else:
             logger.warning('Upload a native YWafer .ywf file to extract PL data.')
