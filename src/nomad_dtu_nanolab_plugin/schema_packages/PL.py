@@ -32,6 +32,8 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
 
 m_package = Package(name='DTU PL measurement schema')
+# Filename matching is intentionally strict: `_` and `--` delimit parts, and the
+# first four parts must identify exactly one library before automatic linking.
 PL_SAMPLE_NAME_PARTS = 4
 PL_SAMPLE_QUANTITY_ORDER = [
     'name',
@@ -376,6 +378,11 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         archive: 'EntryArchive',
         logger: 'BoundLogger',
     ) -> None:
+        """Link the uniquely named library or retain manual sample assignments.
+
+        Keep the matching rule synchronized with the user-facing guidance and
+        tests: ambiguous or missing matches must not silently choose a library.
+        """
         from nomad.datamodel.context import ServerContext
 
         filename = filename.replace('\\', '/').rsplit('/', 1)[-1]
@@ -386,6 +393,8 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             else None
         )
         entry = None
+        # Search is available only in the server context; local/test normalization
+        # therefore relies on sample references explicitly entered in the ELN.
         if isinstance(archive.m_context, ServerContext) and library_name:
             from nomad.search import MetadataPagination, Q, search
 
@@ -466,6 +475,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             sample.measurement_y_min = min(y_values)
 
     def _manual_samples_cover_measurement(self) -> bool:
+        """Return whether every measured stage point lies in an assigned footprint."""
         samples = self.samples or []
         if not samples or not self.results:
             return False
@@ -490,6 +500,12 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     def _sample_geometry_dimensions(
         sample: PLSampleReference,
     ) -> tuple[float, float] | None:
+        """Read library width/length in meters, including substrate fallback.
+
+        Geometry dimensions are stored in SI while the editable placement fields
+        are shown in millimeters. The polygon and coverage calculations use meters;
+        convert only when presenting coordinates on the millimeter plot.
+        """
         library = getattr(sample, 'reference', None)
         geometry = getattr(library, 'geometry', None)
         if geometry is None:
@@ -507,6 +523,12 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     def _sample_corners(
         self, sample: PLSampleReference
     ) -> list[tuple[float, float]] | None:
+        """Return the rotated footprint corners from its top-left stage position.
+
+        Rotation is counterclockwise in stage coordinates. At zero degrees the
+        library extends toward +X and -Y from the top-left corner, matching the
+        usual upper-left origin for a rectangular sample.
+        """
         if (
             sample.position_top_left_x is None
             or sample.position_top_left_y is None
@@ -534,6 +556,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     def _sample_contains_position(
         self, sample: PLSampleReference, x: float, y: float
     ) -> bool:
+        """Use the same rotated polygon as the plot for sample-point assignment."""
         corners = self._sample_corners(sample)
         if corners is None:
             return False
@@ -558,6 +581,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         return inside
 
     def _assign_result_samples(self) -> None:
+        """Attach every library footprint containing each PL measurement point."""
         for result in self.results or []:
             if result.x_absolute is None or result.y_absolute is None:
                 continue
@@ -584,6 +608,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     def _set_sample_alignment_from_library_position(
         self, archive: 'EntryArchive', logger: 'BoundLogger'
     ) -> None:
+        """Initialize mapping alignment from the sole placed library footprint."""
         if len(self.samples or []) == 1 and self.sample_alignment is None:
             sample = self.samples[0]
             dimensions = self._sample_geometry_dimensions(sample)
@@ -610,6 +635,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         archive: 'EntryArchive',
         logger: 'BoundLogger',
     ) -> None:
+        """Map parsed reader output into NOMAD quantities and per-trace results."""
         metadata = parsed_data['metadata']
         wavelength_range = metadata.get('wavelength_range_nm')
         pl_metadata = PLMetadata(
@@ -801,6 +827,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         self.plot_sample_positions()
 
     def plot_sample_positions(self) -> None:
+        """Plot rotated library footprints and stage positions in millimeters."""
         positioned = [
             result
             for result in self.results or []
@@ -823,6 +850,8 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             red, green, blue = color.removeprefix('rgb(').removesuffix(')').split(',')
             fillcolor = f'rgba({red}, {green}, {blue}, 0.12)'
             label = sample.name or sample.lab_id or f'Library {index + 1}'
+            # Geometry corners are calculated in meters; trace positions and plot
+            # axes are millimeters, so convert the polygon before adding its traces.
             x_corners, y_corners = zip(
                 *((x * 1000, y * 1000) for x, y in corners),
                 strict=True,
@@ -876,6 +905,11 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         self.figures.append(PlotlyFigure(label='PL sample positions', figure=plot_json))
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """Parse native uploads, create plots, then resolve library assignments.
+
+        Plot before linking so the spectra and position maps remain available when
+        no unique sample match exists and normalization raises a guidance error.
+        """
         if self.location is None:
             self.location = 'DTU Nanolab PL measurement'
 

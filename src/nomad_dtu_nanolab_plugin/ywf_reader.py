@@ -11,6 +11,8 @@ from typing import Any
 
 import numpy as np
 
+# YWafer stores trace names as UTF-16LE text inside a binary record. Keep these
+# layout limits together: the parser and its fixture tests rely on the v7.x format.
 TRACE_PATTERN = re.compile(rb'P\x00L\x001\x00 \x00#\x00(?:[0-9]\x00)+')
 WAVELENGTH_LABEL = 'Wavelength'.encode('utf-16le')
 COORDINATE_INTEGER_TOLERANCE = 1e-5
@@ -21,7 +23,12 @@ MAXIMUM_WAVELENGTH_NM = 3000
 
 
 def read_ywa_metadata(data: bytes) -> dict[str, Any]:
-    """Read wafer and scan metadata from a YSystems YWafer overview file."""
+    """Read wafer and scan metadata from a YSystems YWafer overview file.
+
+    The .ywa companion is CSV text; labels in the first column identify scalar
+    metadata or numeric scan settings. Stop at ``xadr``, where scan-point data
+    begins and is not measurement-level metadata.
+    """
     text = data.decode('utf-8-sig')
     rows = list(csv.reader(io.StringIO(text)))
     if not rows or not rows[0][0].startswith('YSystems -- YWafer'):
@@ -68,6 +75,7 @@ def read_ywa_metadata(data: bytes) -> dict[str, Any]:
 
 
 def _float32(data: bytes, offset: int) -> float:
+    """Read one little-endian float32, the numeric type used in YWafer records."""
     return struct.unpack_from('<f', data, offset)[0]
 
 
@@ -81,6 +89,12 @@ def _clean_coordinate(value: float) -> float | int:
 
 
 def _trace_records(data: bytes) -> list[dict[str, Any]]:
+    """Find PL1 trace records and decode their stage coordinates.
+
+    In the reverse-engineered v7.x layout the X/Y float32 values are at fixed
+    offsets from each UTF-16LE trace name. Bounds and finiteness checks keep
+    unrelated matching byte strings from being treated as valid records.
+    """
     records = []
     for match in TRACE_PATTERN.finditer(data):
         name = match.group().decode('utf-16le')
@@ -89,6 +103,8 @@ def _trace_records(data: bytes) -> list[dict[str, Any]]:
             continue
 
         record_data_start = record_start + 4 + 2 * len(name)
+        # These offsets are format-specific. Keep them covered by the native
+        # fixture tests if support for another YWafer version is added.
         x_offset = record_data_start + 437
         y_offset = record_data_start + 465
         if y_offset + 4 > len(data):
@@ -114,6 +130,12 @@ def _trace_records(data: bytes) -> list[dict[str, Any]]:
 def _spectrum_at(
     data: bytes, label_position: int
 ) -> tuple[np.ndarray, np.ndarray] | None:
+    """Locate a plausible wavelength/intensity pair following a Wavelength label.
+
+    Candidate blocks are length-prefixed arrays of little-endian float32 values.
+    Validate both arrays before accepting a candidate because the binary file can
+    contain other labels and numeric blocks with similar structure.
+    """
     search_start = label_position + len(WAVELENGTH_LABEL)
     search_end = min(len(data) - 4, search_start + 200)
     for count_position in range(search_start, search_end):
@@ -147,6 +169,7 @@ def _spectrum_at(
 
 
 def _spectrum_blocks(data: bytes) -> list[dict[str, Any]]:
+    """Collect valid spectra and mark reference traces from their nearby text."""
     blocks = []
     start = 0
     while (label_position := data.find(WAVELENGTH_LABEL, start)) != -1:
@@ -172,6 +195,7 @@ def _spectrum_blocks(data: bytes) -> list[dict[str, Any]]:
 
 
 def _metadata_strings(data: bytes) -> list[str]:
+    """Extract unique printable UTF-16LE strings used by metadata parsing."""
     strings = []
     pattern = re.compile(rb'(?:[\x20-\x7e]\x00){4,200}')
     for match in pattern.finditer(data):
@@ -182,6 +206,11 @@ def _metadata_strings(data: bytes) -> list[str]:
 
 
 def _measurement_metadata(data: bytes) -> dict[str, Any]:
+    """Convert recognizable YWafer setup strings into typed metadata values.
+
+    Keep the raw setup string as well as parsed fields so new instrument formats
+    remain inspectable even when a particular setting is not recognized here.
+    """
     strings = _metadata_strings(data)
     text = '\n'.join(strings)
     setup = next(
@@ -240,11 +269,15 @@ def read_ywf(data: bytes) -> dict[str, Any]:
     """Extract saved PL1 spectra, stage positions, and acquisition settings.
 
     The binary record layout was reverse-engineered from YWafer v7.x files.
+    Maintenance keywords: YWafer v7.x, PL1 trace record, float32 offsets,
+    spectrum block association. Preserve source order and boundaries when
+    changing how spectra are matched to trace records.
     """
     records = sorted(_trace_records(data), key=lambda record: record['record_start'])
     if not records:
         raise ValueError('No saved PL1 traces were found in the YWafer file.')
 
+    # Reference scans may contain spectra too, but are not measurement points.
     sample_blocks = [
         block for block in _spectrum_blocks(data) if not block['is_reference']
     ]
@@ -260,6 +293,9 @@ def read_ywf(data: bytes) -> dict[str, Any]:
             for block_index, block in enumerate(sample_blocks)
             if record['record_start'] < block['position'] < end
         ]
+        # Prefer an unambiguous spectrum inside the trace's byte interval. Some
+        # files place the spectra elsewhere, so the count-matched fallback below
+        # handles only the remaining one-to-one case.
         if len(matches) == 1:
             block_index, block = matches[0]
             used.add(block_index)
