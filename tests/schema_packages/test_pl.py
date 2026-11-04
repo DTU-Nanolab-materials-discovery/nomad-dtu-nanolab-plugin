@@ -230,6 +230,9 @@ def test_native_pl_measurement_normalization(monkeypatch):
     assert len(spectrum_figure['data']) == 1
     assert len(spectrum_figure['data'][0]['x']) == SPECTRUM_POINT_COUNT
     assert len(spectrum_figure['data'][0]['y']) == SPECTRUM_POINT_COUNT
+    expected_energy_ev = 1239.8419843320026 / first_result.wavelength.to('nm').magnitude
+    assert spectrum_figure['layout']['xaxis']['title']['text'] == 'Photon energy (eV)'
+    assert spectrum_figure['data'][0]['x'] == pytest.approx(expected_energy_ev)
     assert all(len(result.figures) == 1 for result in measurement.results)
 
     assert measurement.around_barycenter is False
@@ -244,7 +247,11 @@ def test_native_pl_measurement_normalization(monkeypatch):
     assert x_upper_left_mm == pytest.approx(MAP_CENTER_X_MM - SAMPLE_WIDTH_MM / 2)
     assert y_upper_left_mm == pytest.approx(MAP_CENTER_Y_MM + SAMPLE_HEIGHT_MM / 2)
     assert len(measurement.figures) == FIGURE_COUNT
+    spectra_plot = measurement.figures[0].figure
+    assert spectra_plot['layout']['xaxis']['title']['text'] == 'Photon energy (eV)'
+    assert spectra_plot['data'][0]['x'] == pytest.approx(expected_energy_ev)
     map_data = measurement.figures[1].figure['data'][0]
+    assert map_data['marker']['colorbar']['title']['text'] == 'Peak energy (eV)'
     assert map_data['x'][0] == pytest.approx(-16)
     assert map_data['y'][0] == pytest.approx(13)
     position_figure = measurement.figures[2].figure

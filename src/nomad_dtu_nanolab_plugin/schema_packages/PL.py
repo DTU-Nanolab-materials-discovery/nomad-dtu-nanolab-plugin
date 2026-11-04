@@ -35,6 +35,8 @@ m_package = Package(name='DTU PL measurement schema')
 # Filename matching is intentionally strict: `_` and `--` delimit parts, and the
 # first four parts must identify exactly one library before automatic linking.
 PL_SAMPLE_NAME_PARTS = 4
+# hc/e expressed in eV·nm, used to convert the stored wavelength axis for display.
+PL_EV_NM = 1239.8419843320026
 PL_SAMPLE_QUANTITY_ORDER = [
     'name',
     'reference',
@@ -47,6 +49,15 @@ PL_SAMPLE_QUANTITY_ORDER = [
     'position_top_left_y',
     'rotation',
 ]
+
+
+def _wavelength_nm_to_energy_ev(wavelength_nm: Any) -> Any:
+    """Convert wavelength values in nm to photon energies in eV for plots.
+
+    Photon energy follows E = hc/lambda, so this constant divided by wavelength
+    yields eV directly; retain wavelength as the underlying measurement quantity.
+    """
+    return PL_EV_NM / np.asarray(wavelength_nm)
 
 
 class PLMappingResult(MappingResult, PlotSection):
@@ -111,7 +122,7 @@ class PLMappingResult(MappingResult, PlotSection):
 
         figure = go.Figure(
             go.Scatter(
-                x=self.wavelength.to('nm').magnitude,
+                x=_wavelength_nm_to_energy_ev(self.wavelength.to('nm').magnitude),
                 y=self.intensity,
                 mode='lines',
                 name=self.trace_id or self.name,
@@ -119,7 +130,7 @@ class PLMappingResult(MappingResult, PlotSection):
         )
         figure.update_layout(
             title=self.trace_id or self.name or 'PL spectrum',
-            xaxis_title='Wavelength (nm)',
+            xaxis_title='Photon energy (eV)',
             yaxis_title='Intensity',
             template='plotly_white',
             hovermode='closest',
@@ -745,7 +756,9 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             for result in spectra:
                 figure.add_trace(
                     go.Scatter(
-                        x=result.wavelength.to('nm').magnitude,
+                        x=_wavelength_nm_to_energy_ev(
+                            result.wavelength.to('nm').magnitude
+                        ),
                         y=result.intensity,
                         mode='lines',
                         name=result.name or result.trace_id,
@@ -753,7 +766,7 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 )
             figure.update_layout(
                 title='Photoluminescence spectra',
-                xaxis_title='Wavelength (nm)',
+                xaxis_title='Photon energy (eV)',
                 yaxis_title='Intensity',
                 template='plotly_white',
                 hovermode='closest',
@@ -799,22 +812,24 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     marker={
                         'size': 14,
                         'color': [
-                            result.peak_lambda.to('nm').magnitude
+                            _wavelength_nm_to_energy_ev(
+                                result.peak_lambda.to('nm').magnitude
+                            )
                             for result in positioned
                         ],
                         'colorscale': 'Viridis',
                         'showscale': True,
-                        'colorbar': {'title': 'Peak wavelength (nm)'},
+                        'colorbar': {'title': 'Peak energy (eV)'},
                     },
                     text=[result.trace_id for result in positioned],
                     hovertemplate=(
                         '%{text}<br>X: %{x:.3f} mm<br>Y: %{y:.3f} mm'
-                        '<br>Peak wavelength: %{marker.color:.2f} nm<extra></extra>'
+                        '<br>Peak energy: %{marker.color:.3f} eV<extra></extra>'
                     ),
                 )
             )
             figure.update_layout(
-                title='PL peak wavelength map',
+                title='PL peak energy map',
                 xaxis_title=f'X {position_label.lower()} (mm)',
                 yaxis_title=f'Y {position_label.lower()} (mm)',
                 template='plotly_white',
