@@ -49,13 +49,12 @@ if TYPE_CHECKING:
 
 
 FIRST_CODE_CELL = """from nomad.client import ArchiveQuery
-from nomad.config import client
 
 analysis_id = "%s"
 a_query = ArchiveQuery(
     query={'entry_id:any': [analysis_id]},
     required='*',
-    url=client.url,
+    url='https://nomad.nanolab.dtu.dk/nomad-oasis/api',#client.url,
 )
 entry_list = a_query.download()
 analysis = entry_list[0].data"""
