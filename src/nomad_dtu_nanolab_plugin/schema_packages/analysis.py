@@ -197,7 +197,6 @@ class DtuSampleAnalysisResult(AnalysisResult, CombinatorialSampleInfo):
     )
 
 
-
 class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],

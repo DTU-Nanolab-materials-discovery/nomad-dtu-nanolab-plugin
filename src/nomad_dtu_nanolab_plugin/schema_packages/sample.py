@@ -509,7 +509,7 @@ class CombinatorialSampleInfo(ArchiveSection):
     xps_data = SubSection(section_def=XpsData, repeats=True)
     ellipsometry_data = SubSection(section_def=EllipsometryData, repeats=True)
     uv_vis_data = SubSection(section_def=UvVisData, repeats=True)
-    
+
     additional_properties = SubSection(
         section_def=SampleProperty,
         repeats=True,
