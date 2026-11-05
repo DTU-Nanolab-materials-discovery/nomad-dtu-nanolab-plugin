@@ -37,6 +37,7 @@ from nomad_material_processing.general import (
 from nomad_measurements.utils import create_archive
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.basesections import BaseDtuFlag
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -50,6 +51,8 @@ if TYPE_CHECKING:
     )
 
 # Constants
+MIN_CONFIDENCE_LEVEL = 1
+MAX_CONFIDENCE_LEVEL = 5
 MAX_SPACE_GROUP_NUMBER = 230  # 1-230 space groups, so range goes to 231
 SPACE_GROUP_SYMBOL_TO_NUMBER = {
     Spacegroup(no).symbol: no for no in range(1, MAX_SPACE_GROUP_NUMBER + 1)
@@ -57,17 +60,85 @@ SPACE_GROUP_SYMBOL_TO_NUMBER = {
 
 m_package = Package()
 
+# Flags available for combinatorial samples and analysis results.
+# Material flags are examples and can be extended; free text is also accepted.
+SAMPLE_FLAG_DESCRIPTIONS = {
+    'REPRESENTATIVE_PROPERTY': (
+        'Flags that this combinatorial sample or analysis result is a '
+        'representative measurement or property for a given class of material. '
+        'Combine it with a material flag (e.g. Cu3PS4) to specify which one.'
+    ),
+    'Zr2SN2': 'The sample or result relates to the material Zr2SN2.',
+    'Cu3PS4': 'The sample or result relates to the material Cu3PS4.',
+    'Cu7PS6': 'The sample or result relates to the material Cu7PS6.',
+    'SnPS3': 'The sample or result relates to the material SnPS3.',
+    'BaP4Te2': 'The sample or result relates to the material BaP4Te2.',
+}
+
 
 class SampleProperty(ArchiveSection):
+    # measurement source
     source = Quantity(
         type=Activity,
-        description='The source of the sample property.',
+        description='The source entry (e.g.g measurement) of the sample property.',
+    )
+    # analysis notebook source
+    analysis = Quantity(
+        type=Activity,
+        description='The analysis that produced the sample property.',
+    )
+    # analysis result source
+    analysis_result = Quantity(
+        type=Activity,
+        description='The analysis result from where the sample property was obtained.',
     )
     interpolation = Quantity(
         type=MEnum(['None', 'Nearest', 'Linear', 'Cubic']),
         description='The interpolation method used to obtain the sample property.',
         default='None',
     )
+    confidence = Quantity(
+        type=int,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.SliderEditQuantity,
+            minValue=MIN_CONFIDENCE_LEVEL,
+            maxValue=MAX_CONFIDENCE_LEVEL,
+        ),
+        description=(
+            'A relative confidence level for the sample property: '
+            '1 = very low confidence, based mainly on assumptions or weak evidence; '
+            '2 = low confidence, based on limited or indirect evidence; '
+            '3 = moderate confidence, supported by reasonable evidence or agreement '
+            'between methods; '
+            '4 = high confidence, supported by reproducible or well-established '
+            'measurements; '
+            '5 = highest confidence, based on a direct measurement or a highly '
+            'trusted measurement. '
+            'The scale is relative and should be interpreted in the context of the '
+            'material property and available evidence.'
+        ),
+    )
+    description = Quantity(
+        type=str,
+        description='A description of the sample property.',
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        if self.confidence > MAX_CONFIDENCE_LEVEL:
+            self.confidence = MAX_CONFIDENCE_LEVEL
+            logger.warning(
+                f'Confidence level {self.confidence} '
+                f'is greater than {MAX_CONFIDENCE_LEVEL}. '
+                f'Setting confidence level to {MAX_CONFIDENCE_LEVEL}.'
+            )
+        elif self.confidence < MIN_CONFIDENCE_LEVEL:
+            self.confidence = MIN_CONFIDENCE_LEVEL
+            logger.warning(
+                f'Confidence level {self.confidence} '
+                f'is less than {MIN_CONFIDENCE_LEVEL}. '
+                f'Setting confidence level to {MIN_CONFIDENCE_LEVEL}.'
+            )
 
 
 class Composition(SampleProperty):
@@ -160,8 +231,10 @@ class AbsorptionCoefficient(SampleProperty):
     energy = Quantity(
         type=np.float64,
         shape=['*'],
-        description='The corresponding energies for the absorption coefficient values.',
-        unit='nm',
+        description=(
+            'The corresponding photon energies for the absorption coefficient values.'
+        ),
+        unit='eV',
     )
     absorption_edge = Quantity(
         type=np.float64,
@@ -180,6 +253,34 @@ class Thickness(SampleProperty):
         type=np.float64,
         description='The thickness of the sample.',
         unit='nm',
+    )
+
+
+class RefractiveIndex(SampleProperty):
+    """
+    A single scalar refractive index value, technique-agnostic.
+
+    Use this for a single value that does not amount to a full dispersion
+    spectrum, e.g. the extrapolated low-photon-energy/IR-limit (sub-bandgap,
+    wavelength -> infinity) refractive index obtained from a Cauchy or Sellmeier
+    dispersion fit, or a value reported at one photon energy by any optical
+    technique. For a full n(wavelength)/k(wavelength) spectrum from a genuine
+    ellipsometry measurement, use EllipsometryData instead.
+    """
+
+    value = Quantity(
+        type=np.float64,
+        description='The refractive index value.',
+        unit='dimensionless',
+    )
+    energy = Quantity(
+        type=np.float64,
+        description=(
+            'The photon energy at which this refractive index value applies. '
+            'Leave unset for an extrapolated low-photon-energy/IR-limit '
+            '(wavelength -> infinity) value that is not tied to one photon energy.'
+        ),
+        unit='eV',
     )
 
 
@@ -325,6 +426,15 @@ class EllipsometryData(SampleProperty):
         description='The wavelength of the light used for ellipsometry.',
         unit='nm',
     )
+    sub_bandgap_refractive_index = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description=(
+            'The refractive index of the sample below the bandgap, '
+            'at the lowest photon energy recorded or extrapolated.'
+        ),
+        unit='dimensionless',
+    )
 
 
 class UvVisData(SampleProperty):
@@ -348,7 +458,71 @@ class UvVisData(SampleProperty):
     )
 
 
-class DTUCombinatorialSample(CombinatorialSample, Schema):
+class DtuSampleFlag(BaseDtuFlag):
+    """
+    Flag for a combinatorial sample or analysis result. Flags can be combined,
+    e.g. REPRESENTATIVE_PROPERTY together with a material flag such as Cu3PS4
+    to mark the entry as representative of that material.
+    """
+
+    m_def = Section()
+
+    flag = Quantity(
+        type=str,
+        description=(
+            'Flag name associated with the combinatorial sample or analysis result. '
+            'Several flags can be combined (see description of each flag).'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            props=dict(suggestions=list(SAMPLE_FLAG_DESCRIPTIONS)),
+        ),
+    )
+
+    flag_descriptions = SAMPLE_FLAG_DESCRIPTIONS
+
+
+class CombinatorialSampleInfo(ArchiveSection):
+    """
+    Section defining the quantities and properties of a combinatorial sample and
+    of a combinatorial analysis result (see analysis.py).
+    """
+
+    flags = SubSection(
+        section_def=DtuSampleFlag,
+        repeats=True,
+        description=(
+            'Flags qualifying this sample or result. Combine flags, e.g. '
+            'REPRESENTATIVE_PROPERTY and Cu3PS4, to mark it as representative '
+            'of a given material.'
+        ),
+    )
+
+    band_gap = SubSection(section_def=BandGap, repeats=True)
+    absorption_coefficient = SubSection(section_def=AbsorptionCoefficient, repeats=True)
+    thickness = SubSection(section_def=Thickness, repeats=True)
+    refractive_index = SubSection(section_def=RefractiveIndex, repeats=True)
+    composition = SubSection(section_def=Composition, repeats=True)
+    surface_composition = SubSection(section_def=Composition, repeats=True)
+    deposition = SubSection(section_def=Deposition, repeats=True)
+    main_phase = SubSection(section_def=CrystalStructure, repeats=True)
+    secondary_phases = SubSection(section_def=CrystalStructure, repeats=True)
+    xrd_data = SubSection(section_def=XrdData, repeats=True)
+    xps_data = SubSection(section_def=XpsData, repeats=True)
+    ellipsometry_data = SubSection(section_def=EllipsometryData, repeats=True)
+    uv_vis_data = SubSection(section_def=UvVisData, repeats=True)
+
+    additional_properties = SubSection(
+        section_def=SampleProperty,
+        repeats=True,
+        description=(
+            'Additional properties of the sample. '
+            'Consider adding a description to the property.'
+        ),
+    )
+
+
+class DTUCombinatorialSample(CombinatorialSample, CombinatorialSampleInfo, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Combinatorial Sample',
@@ -359,18 +533,6 @@ class DTUCombinatorialSample(CombinatorialSample, Schema):
             ),
         ),
     )
-    band_gap = SubSection(section_def=BandGap)
-    absorption_coefficient = SubSection(section_def=AbsorptionCoefficient)
-    thickness = SubSection(section_def=Thickness)
-    composition = SubSection(section_def=Composition)
-    surface_composition = SubSection(section_def=Composition)
-    deposition = SubSection(section_def=Deposition)
-    main_phase = SubSection(section_def=CrystalStructure)
-    secondary_phases = SubSection(section_def=CrystalStructure, repeats=True)
-    xrd_data = SubSection(section_def=XrdData)
-    xps_data = SubSection(section_def=XpsData)
-    ellipsometry_data = SubSection(section_def=EllipsometryData)
-    uv_vis_data = SubSection(section_def=UvVisData)
 
     def normalize(self, archive, logger):
         composition = {}
