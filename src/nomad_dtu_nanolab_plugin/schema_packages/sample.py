@@ -71,6 +71,8 @@ SAMPLE_FLAG_DESCRIPTIONS = {
     'Zr2SN2': 'The sample or result relates to the material Zr2SN2.',
     'Cu3PS4': 'The sample or result relates to the material Cu3PS4.',
     'Cu7PS6': 'The sample or result relates to the material Cu7PS6.',
+    'SnPS3': 'The sample or result relates to the material SnPS3.',
+    'BaP4Te2': 'The sample or result relates to the material BaP4Te2.',
 }
 
 
