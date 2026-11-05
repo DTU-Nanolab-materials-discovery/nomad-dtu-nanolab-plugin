@@ -1,80 +1,114 @@
+import re
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, Schema
-from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import (
     BrowserAnnotation,
     ELNAnnotation,
     ELNComponentEnum,
+    Filter,
+    SectionProperties,
 )
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_measurements.mapping.schema import (
     MappingResult,
+    RectangularSampleAlignment,
 )
-from nomad_measurements.utils import merge_sections
+from plotly.colors import sample_colorscale
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.basesections import (
     DtuNanolabMeasurement,
 )
+from nomad_dtu_nanolab_plugin.schema_packages.sample import DtuLibraryReference
+from nomad_dtu_nanolab_plugin.ywf_reader import read_ywa_metadata, read_ywf
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
-    from structlog.stdlib import BoundLogger
 
-m_package = Package()  # fill out later
+m_package = Package(name='DTU PL measurement schema')
+# Filename matching is intentionally strict: `_` and `--` delimit parts, and the
+# first four parts must identify exactly one library before automatic linking.
+PL_SAMPLE_NAME_PARTS = 4
+# hc/e expressed in eV·nm, used to convert the stored wavelength axis for display.
+PL_EV_NM = 1239.8419843320026
+PL_SAMPLE_QUANTITY_ORDER = [
+    'name',
+    'reference',
+    'lab_id',
+    'measurement_x_max',
+    'measurement_x_min',
+    'measurement_y_max',
+    'measurement_y_min',
+    'position_top_left_x',
+    'position_top_left_y',
+    'rotation',
+]
+
+
+def _wavelength_nm_to_energy_ev(wavelength_nm: Any) -> Any:
+    """Convert wavelength values in nm to photon energies in eV for plots.
+
+    Photon energy follows E = hc/lambda, so this constant divided by wavelength
+    yields eV directly; retain wavelength as the underlying measurement quantity.
+    """
+    return PL_EV_NM / np.asarray(wavelength_nm)
 
 
 class PLMappingResult(MappingResult, PlotSection):
     m_def = Section()
 
-    position = Quantity(
+    samples = SubSection(
+        section_def=DtuLibraryReference,
+        description='Combinatorial libraries assigned to this measurement position.',
+        repeats=True,
+    )
+    trace_id = Quantity(
         type=str,
-        description='The position of the PL spectrum',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.StringEditQuantity,
-            label='Position',
-        ),
+        description='The trace identifier assigned by the YWafer software.',
+    )
+    wavelength = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        unit='m',
+        description='The wavelength axis of the PL spectrum.',
+    )
+    intensity = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+        description='The detector intensity in the units recorded by YWafer.',
     )
     peak_lambda = Quantity(
         type=np.float64,
         unit='m',
-        description='Peak wavelength of the PL spectrum',
+        description='Wavelength at maximum measured intensity.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='nm',
-            label='Peak Lambda',
+            label='Peak wavelength',
         ),
     )
     peak_intensity = Quantity(
         type=np.float64,
-        unit='V',
-        description='Peak intensity of the PL spectrum',
+        description='Maximum measured detector intensity.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='V',
-            label='Peak Intensity',
+            label='Peak intensity',
         ),
     )
     signal_intensity = Quantity(
         type=np.float64,
-        description='Signal intensity of the PL spectrum',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            label='Signal Intensity',
-        ),
+        description='Integrated detector intensity over wavelength.',
     )
     peak_fwhm = Quantity(
         type=np.float64,
         unit='m',
-        description='Peak full width at half maximum of the PL spectrum',
+        description='Full width at half maximum of the measured peak.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
             defaultDisplayUnit='nm',
@@ -82,184 +116,202 @@ class PLMappingResult(MappingResult, PlotSection):
         ),
     )
 
+    def plot_spectrum(self) -> None:
+        if self.wavelength is None or self.intensity is None:
+            return
+
+        figure = go.Figure(
+            go.Scatter(
+                x=_wavelength_nm_to_energy_ev(self.wavelength.to('nm').magnitude),
+                y=self.intensity,
+                mode='lines',
+                name=self.trace_id or self.name,
+            )
+        )
+        figure.update_layout(
+            title=self.trace_id or self.name or 'PL spectrum',
+            xaxis_title='Photon energy (eV)',
+            yaxis_title='Intensity',
+            template='plotly_white',
+            hovermode='closest',
+        )
+        plot_json = figure.to_plotly_json()
+        plot_json['config'] = {'scrollZoom': False}
+        self.figures = [
+            PlotlyFigure(label=self.trace_id or 'PL spectrum', figure=plot_json)
+        ]
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        """
-        The normalizer for the `PLMappingResult` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger (BoundLogger): A structlog logger.
-        """
-
         super().normalize(archive, logger)
+        self.plot_spectrum()
 
 
 class PLMetadata(ArchiveSection):
-    m_def = Section()
-    thickness = Quantity(
+    m_def = Section(
+        label='PL acquisition metadata',
+        description=(
+            'Measurement and instrument settings extracted from the YWafer file.'
+        ),
+    )
+
+    software_version = Quantity(
+        type=str,
+        description='YWafer version recorded in the native measurement file.',
+    )
+    measurement_setup = Quantity(
+        type=str,
+        description='Acquisition setup string recorded by YWafer.',
+    )
+    excitation_source = Quantity(
+        type=str,
+        description='Excitation source identifier from the measurement setup.',
+    )
+    excitation_wavelength = Quantity(
         type=np.float64,
         unit='m',
-        description='The thickness the machine assumes for the sample',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='um',
-            label='assumed Sample thickness',
-        ),
+        description='Excitation wavelength parsed from the source identifier.',
     )
-    wafer_diameter = Quantity(
-        type=np.float64,
-        unit='m',
-        description='The diameter of the wafer',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-            label='wafer holder size',
-        ),
-    )
-    scan_diameter = Quantity(
-        type=np.float64,
-        unit='m',
-        description='The diameter of the scan',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-            label='diamer of the scan',
-        ),
-    )
-    resolution = Quantity(
-        type=np.float64,
-        unit='m',
-        description='The resolution of the scan',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-            label='Resolution',
-        ),
-    )
-    scan_rate = Quantity(
-        type=np.float64,
-        unit='m/s',
-        description="""
-        The rate of the scan.
-        The unit is points per second (pts/s)
-        and therefore only right as long as the resolution is 1mm""",
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm/s',
-            label='scan rate',
-        ),
-    )
-    used_laser = Quantity(
-        type=np.float64,
-        unit='m',
-        description='The wavelength of the laser used',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='nm',
-            label='Laser wavelength',
-        ),
-    )
-    used_power = Quantity(
+    laser_power = Quantity(
         type=np.float64,
         unit='W',
-        description='The power of the laser used',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mW',
-            label='Laser Power',
-        ),
+        description='Excitation power recorded by YWafer.',
     )
-    used_filter = Quantity(
-        type=str,
-        description='The filter used for the measurement',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.StringEditQuantity,
-            label='used filter',
-        ),
-    )
-    gain_factor = Quantity(
+    laser_power_percentage = Quantity(
         type=np.float64,
-        description="""
-        The gain factor used for the measurement,
-        it is unitless and scales the signal intensity
-        """,
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            label='Gain Factor',
-        ),
+        unit='%',
+        description='Laser output as a percentage of maximum power.',
     )
-    temperature = Quantity(
+    integration_time = Quantity(
         type=np.float64,
-        unit='K',
-        description='The temperature during the measurement',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='degC',
-            label='Temperature',
-        ),
+        unit='s',
+        description='Integration time per accumulation.',
     )
-    center_wafelength = Quantity(
-        type=np.float64,
-        unit='m',
-        description='The center wavelength of the measurement',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='nm',
-            label='Center Wafelength',
-        ),
+    accumulations = Quantity(
+        type=int,
+        description='Number of accumulations for each saved trace.',
     )
     wavelength_range = Quantity(
         type=np.float64,
-        unit='m',
-        description='The range of the wavelength',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='nm',
-            label='Wavelength Range',
-        ),
         shape=[2],
+        unit='m',
+        description='Configured detector wavelength range.',
     )
-    slit_width = Quantity(
+    lot_id = Quantity(
+        type=str,
+        description='Lot identifier recorded in the YWafer overview file.',
+    )
+    wafer_number = Quantity(
+        type=str,
+        description='Wafer number recorded in the YWafer overview file.',
+    )
+    chamber = Quantity(
+        type=str,
+        description='Measurement chamber recorded in the YWafer overview file.',
+    )
+    scan_pitch = Quantity(
+        type=np.float64,
+        shape=[2],
+        unit='m',
+        description='X and Y scan pitch recorded in the YWafer overview file.',
+    )
+    scan_center = Quantity(
+        type=np.float64,
+        shape=[2],
+        unit='m',
+        description='X and Y scan center recorded in the YWafer overview file.',
+    )
+    wafer_radius = Quantity(
         type=np.float64,
         unit='m',
-        description='The slit width used for the measurement',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='mm',
-            label='Slit Width',
-        ),
+        description='Wafer radius recorded in the YWafer overview file.',
     )
-    gratings = Quantity(
+    edge_exclusion = Quantity(
         type=np.float64,
-        unit='g/m',
-        description='The gratings used for the measurement',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='g/mm',
-            label='Grating',
-        ),
+        unit='m',
+        description='Wafer edge exclusion recorded in the YWafer overview file.',
+    )
+    wafer_flat_angle = Quantity(
+        type=np.float64,
+        unit='deg',
+        description='Wafer flat angle recorded in the YWafer overview file.',
+    )
+    data_type = Quantity(
+        type=str,
+        description='YWafer map data type recorded in the overview file.',
     )
     detector = Quantity(
         type=str,
-        description='The detector used for the measurement',
+        description='Detector identifier recorded in the native file.',
+    )
+    emission_filter = Quantity(
+        type=str,
+        description='Emission filter identifier recorded in the native file.',
+    )
+
+
+class PLSampleReference(DtuLibraryReference):
+    m_def = Section(
+        label='PL sample',
+        description='A combinatorial library measured by this PL measurement.',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.StringEditQuantity,
-            label='Detector type',
+            properties=SectionProperties(order=PL_SAMPLE_QUANTITY_ORDER)
         ),
     )
 
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        """
-        The normalizer for the `PLMetadata` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger (BoundLogger): A structlog logger.
-        """
-
-        super().normalize(archive, logger)
+    measurement_x_max = Quantity(
+        type=np.float64,
+        unit='mm',
+        description='Maximum stage X position detected in the measurement file.',
+        a_eln=ELNAnnotation(label='X max', defaultDisplayUnit='mm'),
+    )
+    measurement_x_min = Quantity(
+        type=np.float64,
+        unit='mm',
+        description='Minimum stage X position detected in the measurement file.',
+        a_eln=ELNAnnotation(label='X min', defaultDisplayUnit='mm'),
+    )
+    measurement_y_max = Quantity(
+        type=np.float64,
+        unit='mm',
+        description='Maximum stage Y position detected in the measurement file.',
+        a_eln=ELNAnnotation(label='Y max', defaultDisplayUnit='mm'),
+    )
+    measurement_y_min = Quantity(
+        type=np.float64,
+        unit='mm',
+        description='Minimum stage Y position detected in the measurement file.',
+        a_eln=ELNAnnotation(label='Y min', defaultDisplayUnit='mm'),
+    )
+    position_top_left_x = Quantity(
+        type=np.float64,
+        unit='mm',
+        description='Stage X coordinate of the library top-left corner.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            label='Top-left X',
+        ),
+    )
+    position_top_left_y = Quantity(
+        type=np.float64,
+        unit='mm',
+        description='Stage Y coordinate of the library top-left corner.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='mm',
+            label='Top-left Y',
+        ),
+    )
+    rotation = Quantity(
+        type=np.float64,
+        unit='rad',
+        description='Counterclockwise rotation of the library in the stage plane.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.NumberEditQuantity,
+            defaultDisplayUnit='degree',
+            label='Sample rotation',
+        ),
+    )
 
 
 class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
@@ -267,316 +319,638 @@ class DTUPLMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         categories=[DTUNanolabCategory],
         links=['http://purl.obolibrary.org/obo/CHMO_0000773'],
         label='PL Measurement',
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                order=[
+                    'name',
+                    'pl_data_file',
+                    'pl_overview_file',
+                    'around_barycenter',
+                    'datetime',
+                    'lab_id',
+                    'location',
+                    'description',
+                    'samples',
+                    'results',
+                    'sample_alignment',
+                    'metadata',
+                    'instruments',
+                    'figures',
+                ],
+                visible=Filter(exclude=['steps']),
+            )
+        ),
     )
     pl_data_file = Quantity(
         type=str,
+        description=(
+            'Native YSystems YWafer .ywf measurement file. Spectra, stage positions, '
+            'and acquisition metadata are extracted automatically.'
+        ),
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
-        a_eln={'component': 'FileEditQuantity', 'label': 'full PL file'},
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+            label='YWafer measurement file (.ywf)',
+        ),
     )
     pl_overview_file = Quantity(
         type=str,
+        description=(
+            'Optional YWafer .ywa overview file with wafer geometry and scan settings.'
+        ),
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
-        a_eln={'component': 'FileEditQuantity', 'label': 'PL map file'},
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.FileEditQuantity,
+            label='YWafer overview file (.ywa)',
+        ),
+    )
+    samples = SubSection(
+        section_def=PLSampleReference,
+        description='Combinatorial libraries measured in this PL measurement.',
+        repeats=True,
     )
     metadata = SubSection(
         section_def=PLMetadata,
-        description='The metadata of the PL measurement',
+        description='Acquisition metadata extracted from the native YWafer file.',
     )
     results = SubSection(
         section_def=PLMappingResult,
-        description='The PL results.',
+        description='Saved PL spectra and their measurement positions.',
         repeats=True,
     )
+    sample_alignment = SubSection(
+        section_def=RectangularSampleAlignment,
+        description='Automatically determined alignment from the sample geometry.',
+    )
 
-    def remove_unit(self, value: str) -> float:
-        if value is not None:
-            filtered_chars = [c for c in value if c.isdigit() or c == '.']
-            filtered_entry = ''.join(filtered_chars)
-            return float(filtered_entry)
-        else:
-            return None
-
-    def write_PL_metadata(
+    def add_pl_sample_references(
         self,
-        metadata_dict: dict[str, Any],
+        filename: str,
         archive: 'EntryArchive',
         logger: 'BoundLogger',
     ) -> None:
-        metadata = metadata_dict
+        """Link the uniquely named library or retain manual sample assignments.
 
-        thickness = self.remove_unit(metadata.get('Thickness', None))
-        waferdiam = self.remove_unit(metadata.get('WaferDiam', None))
-        scandiam = self.remove_unit(metadata.get('ScanDiam', None))
-        resolution = self.remove_unit(metadata.get('Resolution', None))
-        scanrate = self.remove_unit(metadata.get('ScanRate', None))
-        laser = self.remove_unit(metadata.get('Laser', None))
-        power = self.remove_unit(metadata.get('Power', None))
-        filter = metadata.get('Filter', None)
-        gain = self.remove_unit(metadata.get('Gain', None))
-        temperature = self.remove_unit(metadata.get('Temperature', None))
-        centerwavelength = self.remove_unit(metadata.get('Centerwavelength', None))
-        slitwidth = self.remove_unit(metadata.get('Slitwidth', None))
-        gratings = self.remove_unit(metadata.get('Grating', None))
-        detector = metadata.get('Detector', None)
+        Keep the matching rule synchronized with the user-facing guidance and
+        tests: ambiguous or missing matches must not silently choose a library.
+        """
+        from nomad.datamodel.context import ServerContext
 
-        range_str = metadata.get('Range', None)
+        filename = filename.replace('\\', '/').rsplit('/', 1)[-1]
+        name_parts = re.split(r'_+|--', filename.rsplit('.', 1)[0])
+        library_name = (
+            '_'.join(name_parts[:PL_SAMPLE_NAME_PARTS])
+            if len(name_parts) >= PL_SAMPLE_NAME_PARTS
+            else None
+        )
+        entry = None
+        # Search is available only in the server context; local/test normalization
+        # therefore relies on sample references explicitly entered in the ELN.
+        if isinstance(archive.m_context, ServerContext) and library_name:
+            from nomad.search import MetadataPagination, Q, search
 
-        meta = PLMetadata(
-            thickness=ureg.Quantity(thickness, 'um'),
-            wafer_diameter=ureg.Quantity(waferdiam, 'mm'),
-            scan_diameter=ureg.Quantity(scandiam, 'mm'),
-            resolution=ureg.Quantity(resolution, 'mm'),
-            scan_rate=ureg.Quantity(scanrate, 'mm/s'),
-            used_laser=ureg.Quantity(laser, 'nm'),
-            used_power=ureg.Quantity(power, 'mW'),
-            used_filter=filter,
-            gain_factor=gain,
-            temperature=ureg.Quantity(temperature, 'degC'),
-            center_wafelength=ureg.Quantity(centerwavelength, 'nm'),
-            slit_width=ureg.Quantity(slitwidth, 'mm'),
-            gratings=ureg.Quantity(gratings, 'g/mm'),
-            detector=detector,
-            wavelength_range=[
-                (ureg.Quantity(float(self.remove_unit(part))), 'nm')
-                for part in range_str.split('to')
-                if part
-            ],
+            user_id = getattr(
+                getattr(archive.metadata, 'main_author', None), 'user_id', None
+            )
+            result = search(
+                owner='all',
+                query=Q('term', **{'results.eln.lab_ids': library_name}),
+                pagination=MetadataPagination(page_size=1),
+                user_id=user_id,
+            )
+            if result.pagination.total == 1:
+                entry = next(iter(result.data), None)
+
+        if entry:
+            lab_ids = entry.get('results', {}).get('eln', {}).get('lab_ids') or []
+            if isinstance(lab_ids, str):
+                lab_ids = [lab_ids]
+            if (
+                entry.get('entry_id')
+                and entry.get('upload_id')
+                and library_name in lab_ids
+            ):
+                sample = next(
+                    (
+                        item
+                        for item in self.samples or []
+                        if item.lab_id == library_name
+                    ),
+                    PLSampleReference(),
+                )
+                sample.name = library_name
+                sample.lab_id = library_name
+                sample.reference = (
+                    f'../uploads/{entry["upload_id"]}/archive/{entry["entry_id"]}#data'
+                )
+                self.samples = [sample]
+                self._set_sample_measurement_ranges()
+                self._assign_result_samples()
+                return
+
+        self._set_sample_measurement_ranges()
+        self._assign_result_samples()
+        if self.samples:
+            if self._manual_samples_cover_measurement():
+                self.around_barycenter = False
+                self._set_sample_alignment_from_library_position(archive, logger)
+            else:
+                logger.warning(
+                    'Assigned sample positions and library geometries do not cover '
+                    'every PL measurement point; processing will continue.'
+                )
+            return
+
+        raise ValueError(
+            f'Could not uniquely match a library named "{library_name or "<invalid>"}" '
+            f'to {filename}. Add each combinatorial library in Samples and enter '
+            'its top-left position and rotation.'
         )
 
-        merge_sections(self.metadata, meta, logger)
+    def _set_sample_measurement_ranges(self) -> None:
+        points = [
+            (
+                result.x_absolute.to('mm').magnitude,
+                result.y_absolute.to('mm').magnitude,
+            )
+            for result in self.results or []
+            if result.x_absolute is not None and result.y_absolute is not None
+        ]
+        if not points:
+            return
+        x_values, y_values = zip(*points, strict=True)
+        for sample in self.samples or []:
+            sample.measurement_x_max = max(x_values)
+            sample.measurement_x_min = min(x_values)
+            sample.measurement_y_max = max(y_values)
+            sample.measurement_y_min = min(y_values)
 
-    def write_PL_by_position(
+    def _manual_samples_cover_measurement(self) -> bool:
+        """Return whether every measured stage point lies in an assigned footprint."""
+        samples = self.samples or []
+        if not samples or not self.results:
+            return False
+        if not all(
+            result.x_absolute is not None and result.y_absolute is not None
+            for result in self.results
+        ):
+            return False
+        return all(
+            any(
+                self._sample_contains_position(
+                    sample,
+                    result.x_absolute.to('m').magnitude,
+                    result.y_absolute.to('m').magnitude,
+                )
+                for sample in samples
+            )
+            for result in self.results
+        )
+
+    @staticmethod
+    def _sample_geometry_dimensions(
+        sample: PLSampleReference,
+    ) -> tuple[float, float] | None:
+        """Read library width/length in meters, including substrate fallback.
+
+        Geometry dimensions are stored in SI while the editable placement fields
+        are shown in millimeters. The polygon and coverage calculations use meters;
+        convert only when presenting coordinates on the millimeter plot.
+        """
+        library = getattr(sample, 'reference', None)
+        geometry = getattr(library, 'geometry', None)
+        if geometry is None:
+            substrate_reference = getattr(library, 'substrate', None)
+            substrate = getattr(substrate_reference, 'reference', None)
+            geometry = getattr(substrate, 'geometry', None)
+        width = getattr(geometry, 'width', None)
+        length = getattr(geometry, 'length', None)
+        if width is None or length is None:
+            return None
+        width_m = width.to('m').magnitude if hasattr(width, 'to') else float(width)
+        length_m = length.to('m').magnitude if hasattr(length, 'to') else float(length)
+        return width_m, length_m
+
+    def _sample_corners(
+        self, sample: PLSampleReference
+    ) -> list[tuple[float, float]] | None:
+        """Return the rotated footprint corners from its top-left stage position.
+
+        Rotation is counterclockwise in stage coordinates. At zero degrees the
+        library extends toward +X and -Y from the top-left corner, matching the
+        usual upper-left origin for a rectangular sample.
+        """
+        if (
+            sample.position_top_left_x is None
+            or sample.position_top_left_y is None
+            or sample.rotation is None
+        ):
+            return None
+        dimensions = self._sample_geometry_dimensions(sample)
+        if dimensions is None:
+            return None
+        width, length = dimensions
+        x = sample.position_top_left_x.to('m').magnitude
+        y = sample.position_top_left_y.to('m').magnitude
+        angle = sample.rotation.to('rad').magnitude
+        cosine, sine = np.cos(angle), np.sin(angle)
+        return [
+            (x, y),
+            (x + width * cosine, y + width * sine),
+            (
+                x + width * cosine + length * sine,
+                y + width * sine - length * cosine,
+            ),
+            (x + length * sine, y - length * cosine),
+        ]
+
+    def _sample_contains_position(
+        self, sample: PLSampleReference, x: float, y: float
+    ) -> bool:
+        """Use the same rotated polygon as the plot for sample-point assignment."""
+        corners = self._sample_corners(sample)
+        if corners is None:
+            return False
+        inside = False
+        previous_x, previous_y = corners[-1]
+        for current_x, current_y in corners:
+            cross = (x - previous_x) * (current_y - previous_y) - (y - previous_y) * (
+                current_x - previous_x
+            )
+            if (
+                np.isclose(cross, 0, atol=1e-12)
+                and min(previous_x, current_x) <= x <= max(previous_x, current_x)
+                and min(previous_y, current_y) <= y <= max(previous_y, current_y)
+            ):
+                return True
+            if (current_y > y) != (previous_y > y) and x < (
+                (previous_x - current_x) * (y - current_y) / (previous_y - current_y)
+                + current_x
+            ):
+                inside = not inside
+            previous_x, previous_y = current_x, current_y
+        return inside
+
+    def _assign_result_samples(self) -> None:
+        """Attach every library footprint containing each PL measurement point."""
+        for result in self.results or []:
+            if result.x_absolute is None or result.y_absolute is None:
+                continue
+            matching_samples = [
+                sample
+                for sample in self.samples or []
+                if self._sample_contains_position(
+                    sample,
+                    result.x_absolute.to('m').magnitude,
+                    result.y_absolute.to('m').magnitude,
+                )
+            ]
+            if not matching_samples and len(self.samples or []) == 1:
+                matching_samples = self.samples
+            result.samples = [
+                DtuLibraryReference(
+                    name=sample.name,
+                    lab_id=sample.lab_id,
+                    reference=sample.reference,
+                )
+                for sample in matching_samples
+            ]
+
+    def _set_sample_alignment_from_library_position(
+        self, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
+        """Initialize mapping alignment from the sole placed library footprint."""
+        if len(self.samples or []) == 1 and self.sample_alignment is None:
+            sample = self.samples[0]
+            dimensions = self._sample_geometry_dimensions(sample)
+            corners = self._sample_corners(sample)
+            if dimensions is None or corners is None:
+                return
+            width, length = dimensions
+            x0, y0 = corners[0]
+            x2, y2 = corners[2]
+            alignment = RectangularSampleAlignment(
+                width=width,
+                height=length,
+                x_upper_left=x0,
+                y_upper_left=y0,
+                x_lower_right=x2,
+                y_lower_right=y2,
+            )
+            alignment.normalize(archive, logger)
+            self.sample_alignment = alignment
+
+    def write_pl_data(
         self,
-        data_dict: dict[str, Any],
+        parsed_data: dict[str, Any],
         archive: 'EntryArchive',
         logger: 'BoundLogger',
     ) -> None:
-        old_results: dict[str, PLMappingResult] = {}
-        if self.results is not None:
-            old_results = {
-                f'{result.x_absolute, result.y_absolute}': result
-                for result in self.results
-            }
+        """Map parsed reader output into NOMAD quantities and per-trace results."""
+        metadata = parsed_data['metadata']
+        wavelength_range = metadata.get('wavelength_range_nm')
+        pl_metadata = PLMetadata(
+            software_version=metadata.get('software_version'),
+            measurement_setup=metadata.get('measurement_setup'),
+            excitation_source=metadata.get('excitation_source'),
+            excitation_wavelength=(
+                ureg.Quantity(metadata['excitation_wavelength_nm'], 'nm')
+                if 'excitation_wavelength_nm' in metadata
+                else None
+            ),
+            laser_power=(
+                ureg.Quantity(metadata['laser_power_mw'], 'mW')
+                if 'laser_power_mw' in metadata
+                else None
+            ),
+            laser_power_percentage=metadata.get('laser_power_percentage'),
+            integration_time=(
+                ureg.Quantity(metadata['integration_time_ms'] / 1000, 's')
+                if 'integration_time_ms' in metadata
+                else None
+            ),
+            accumulations=metadata.get('accumulations'),
+            wavelength_range=(
+                ureg.Quantity(wavelength_range, 'nm')
+                if wavelength_range is not None
+                else None
+            ),
+            detector=metadata.get('detector'),
+            emission_filter=metadata.get('emission_filter'),
+            lot_id=metadata.get('lot_id'),
+            wafer_number=metadata.get('wafer_number'),
+            chamber=metadata.get('chamber'),
+            scan_pitch=(
+                ureg.Quantity(metadata['scan_pitch_mm'], 'mm')
+                if 'scan_pitch_mm' in metadata
+                else None
+            ),
+            scan_center=(
+                ureg.Quantity(metadata['scan_center_mm'], 'mm')
+                if 'scan_center_mm' in metadata
+                else None
+            ),
+            wafer_radius=(
+                ureg.Quantity(metadata['wafer_radius_mm'], 'mm')
+                if 'wafer_radius_mm' in metadata
+                else None
+            ),
+            edge_exclusion=(
+                ureg.Quantity(metadata['edge_exclusion_mm'], 'mm')
+                if 'edge_exclusion_mm' in metadata
+                else None
+            ),
+            wafer_flat_angle=(
+                ureg.Quantity(metadata['wafer_flat_angle_deg'], 'deg')
+                if 'wafer_flat_angle_deg' in metadata
+                else None
+            ),
+            data_type=metadata.get('data_type'),
+        )
+        pl_metadata.normalize(archive, logger)
+        self.metadata = pl_metadata
 
-        new_results = []
+        results = []
+        for trace in parsed_data['traces']:
+            wavelength_nm = trace['wavelength_nm']
+            intensity = trace['intensity']
+            result = PLMappingResult(
+                trace_id=trace['name'],
+                x_absolute=ureg.Quantity(trace['x'], 'mm'),
+                y_absolute=ureg.Quantity(trace['y'], 'mm'),
+            )
+            if wavelength_nm is not None and intensity is not None:
+                wavelength_nm = np.asarray(wavelength_nm, dtype=np.float64)
+                intensity = np.asarray(intensity, dtype=np.float64)
+                result.wavelength = ureg.Quantity(wavelength_nm, 'nm')
+                result.intensity = intensity
 
-        for key, values in data_dict.items():
-            if key in old_results:
-                result = old_results[key]
-            else:
-                result = PLMappingResult()
-
-            result.position = key
-            result.peak_lambda = ureg.Quantity(values[0], 'nm')
-            result.peak_intensity = ureg.Quantity(values[1], 'V')
-            result.signal_intensity = values[2]
-            result.peak_fwhm = ureg.Quantity(values[3], 'nm')
-
-            result.normalize(archive, logger)
-            new_results.append(result)
-        self.results = new_results
-        # add the information accoring to the key to the respective subsections
-
-    def plot_overview(self, data_df: pd.DataFrame) -> None:
-        # Sort the DataFrame by 'X' and 'Y' columns
-        data_df = data_df.sort_values(by=['X', 'Y'], key=lambda col: col.astype(float))
-
-        # Iterate over each column except 'X' and 'Y'
-        for column in data_df.columns:
-            if column not in ['X', 'Y']:
-                fig = px.scatter(
-                    data_df,
-                    x='X',
-                    y='Y',
-                    color=column,
-                    size=None,
-                    title=f'Scatter Plot of {column}',
-                )
-                fig.update_traces(marker=dict(size=20))  # Set size for all markers
-
-                plot_json = fig.to_plotly_json()
-                plot_json['config'] = dict(
-                    scrollZoom=False,
-                )
-                self.figures.append(
-                    PlotlyFigure(
-                        label=column,
-                        figure=plot_json,
+                peak_index = int(np.argmax(intensity))
+                result.peak_lambda = ureg.Quantity(wavelength_nm[peak_index], 'nm')
+                result.peak_intensity = float(intensity[peak_index])
+                result.signal_intensity = float(
+                    np.sum(
+                        (intensity[:-1] + intensity[1:]) * np.diff(wavelength_nm) / 2
                     )
                 )
+                half_maximum = intensity[peak_index] / 2
+                above_half_maximum = np.flatnonzero(intensity >= half_maximum)
+                if len(above_half_maximum) > 1:
+                    result.peak_fwhm = ureg.Quantity(
+                        wavelength_nm[above_half_maximum[-1]]
+                        - wavelength_nm[above_half_maximum[0]],
+                        'nm',
+                    )
+            result.normalize(archive, logger)
+            results.append(result)
+        self.results = results
 
-    def plot_spectra(
-        self,
-        data_dict: dict[str, Any],
-        archive: 'EntryArchive',
-        logger: 'BoundLogger',
-    ) -> None:
-        old_results: dict[str, PLMappingResult] = {}
-        if self.results is not None:
-            old_results = {
-                f'{result.x_absolute, result.y_absolute}': result
-                for result in self.results
-            }
-
-        new_results = []
-
-        for key, values in data_dict.items():
-            # create plot here
-            fig = go.Figure()
-
-            fig = px.line(
-                data_dict,
-                x='Wavelength in nm',
-                y=values,
-                title='Wavelength vs POS Columns',
-            )
-
-            # Customize the layout
-            fig.update_layout(
-                title=f'Line Plot for {key}',
-                xaxis_title='Index',
-                yaxis_title='Value',
+    def plot(self) -> None:
+        spectra = [
+            result
+            for result in self.results or []
+            if result.wavelength is not None and result.intensity is not None
+        ]
+        if spectra:
+            figure = go.Figure()
+            for result in spectra:
+                figure.add_trace(
+                    go.Scatter(
+                        x=_wavelength_nm_to_energy_ev(
+                            result.wavelength.to('nm').magnitude
+                        ),
+                        y=result.intensity,
+                        mode='lines',
+                        name=result.name or result.trace_id,
+                    )
+                )
+            figure.update_layout(
+                title='Photoluminescence spectra',
+                xaxis_title='Photon energy (eV)',
+                yaxis_title='Intensity',
                 template='plotly_white',
+                hovermode='closest',
             )
+            plot_json = figure.to_plotly_json()
+            plot_json['config'] = {'scrollZoom': False}
+            self.figures.append(PlotlyFigure(label='PL spectra', figure=plot_json))
 
-            plot_json = fig.to_plotly_json()
-            plot_json['config'] = dict(
-                scrollZoom=False,
+        positioned = [
+            result
+            for result in spectra
+            if result.x_absolute is not None
+            and result.y_absolute is not None
+            and result.peak_lambda is not None
+        ]
+        if positioned:
+            has_relative_positions = all(
+                result.x_relative is not None and result.y_relative is not None
+                for result in positioned
             )
-
-            # add plot to the right subsection
-            if key in old_results:
-                result = old_results[key]
+            position_label = (
+                'Sample position' if has_relative_positions else 'Stage position'
+            )
+            if has_relative_positions:
+                x_positions = [
+                    result.x_relative.to('mm').magnitude for result in positioned
+                ]
+                y_positions = [
+                    result.y_relative.to('mm').magnitude for result in positioned
+                ]
             else:
-                result = PLMappingResult()
-
-            result.figures.append(
-                PlotlyFigure(
-                    label='Wavelength in nm',
-                    figure=plot_json,
+                x_positions = [
+                    result.x_absolute.to('mm').magnitude for result in positioned
+                ]
+                y_positions = [
+                    result.y_absolute.to('mm').magnitude for result in positioned
+                ]
+            figure = go.Figure(
+                go.Scatter(
+                    x=x_positions,
+                    y=y_positions,
+                    mode='markers',
+                    marker={
+                        'size': 14,
+                        'color': [
+                            _wavelength_nm_to_energy_ev(
+                                result.peak_lambda.to('nm').magnitude
+                            )
+                            for result in positioned
+                        ],
+                        'colorscale': 'Viridis',
+                        'showscale': True,
+                        'colorbar': {'title': 'Peak energy (eV)'},
+                    },
+                    text=[result.trace_id for result in positioned],
+                    hovertemplate=(
+                        '%{text}<br>X: %{x:.3f} mm<br>Y: %{y:.3f} mm'
+                        '<br>Peak energy: %{marker.color:.3f} eV<extra></extra>'
+                    ),
                 )
             )
+            figure.update_layout(
+                title='PL peak energy map',
+                xaxis_title=f'X {position_label.lower()} (mm)',
+                yaxis_title=f'Y {position_label.lower()} (mm)',
+                template='plotly_white',
+                hovermode='closest',
+            )
+            plot_json = figure.to_plotly_json()
+            plot_json['config'] = {'scrollZoom': False}
+            self.figures.append(PlotlyFigure(label='PL peak map', figure=plot_json))
 
-            result.normalize(archive, logger)
-            new_results.append(result)
-        self.results = new_results
-        # add the information accoring to the key to the respective subsections
+        self.plot_sample_positions()
 
-    def arrange_metadata(self, metadata_lines: list[str]) -> dict[str, Any]:
-        metadata_dict = {}
-        # Transform metadata_lines into dictionary entries
-        for line in metadata_lines:
-            if ':' in line:
-                key, value = line.split(':', 1)
-                key = key.replace(' ', '')
-                value = value.replace(' ', '')
-                metadata_dict[key] = value
+    def plot_sample_positions(self) -> None:
+        """Plot rotated library footprints and stage positions in millimeters."""
+        positioned = [
+            result
+            for result in self.results or []
+            if result.x_absolute is not None and result.y_absolute is not None
+        ]
+        if not positioned:
+            return
 
-        return metadata_dict
-
-    def arrange_spectra(self, data_lines: list[str]) -> dict[str, Any]:
-        data_dict = {'Wavelength in nm': []}
-        current_header = 'Wavelength in nm'
-        data_dict[current_header] = []
-
-        for line in data_lines:
-            if line.startswith('POS:'):
-                # Extract the header from the line
-                current_header = line.split('POS:')[1].strip()
-                data_dict[current_header] = []
-            else:
-                data_dict[current_header].append(line)
-
-        data_dict = {k: v for k, v in data_dict.items() if v}
-        return data_dict
-
-    def arrange_map(self, data_lines: list[str]) -> tuple[pd.DataFrame, dict[str, Any]]:
-        # create a df from the data_lines (easier for plotting)
-        data_df = pd.DataFrame(data_lines)
-        # some cleanup of the dataframe
-        data_df.columns = data_df.iloc[0]
-        data_df = data_df.drop([0, 1])
-        data_df.columns = data_df.columns.str.replace(' ', '').str.replace('\t', '')
-        data_df = data_df.apply(pd.to_numeric, errors='ignore')
-
-        # make a dict for writing into the subsections
-        data_dict = {}
-        for index, row in data_df.iterrows():
-            key = f'{row["X"]},{row["Y"]}'
-            values = row.drop(['X', 'Y']).tolist()
-            data_dict[key] = values
-
-        return data_df, data_dict
+        figure = go.Figure()
+        samples = self.samples or []
+        colors = sample_colorscale(
+            'Turbo',
+            [index / max(len(samples) - 1, 1) for index in range(len(samples))],
+        )
+        for index, sample in enumerate(samples):
+            corners = self._sample_corners(sample)
+            if corners is None:
+                continue
+            color = colors[index]
+            red, green, blue = color.removeprefix('rgb(').removesuffix(')').split(',')
+            fillcolor = f'rgba({red}, {green}, {blue}, 0.12)'
+            label = sample.name or sample.lab_id or f'Library {index + 1}'
+            # Geometry corners are calculated in meters; trace positions and plot
+            # axes are millimeters, so convert the polygon before adding its traces.
+            x_corners, y_corners = zip(
+                *((x * 1000, y * 1000) for x, y in corners),
+                strict=True,
+            )
+            figure.add_trace(
+                go.Scatter(
+                    x=[*x_corners, x_corners[0]],
+                    y=[*y_corners, y_corners[0]],
+                    mode='lines',
+                    fill='toself',
+                    fillcolor=fillcolor,
+                    line={'color': color},
+                    name=label,
+                    hoverinfo='name',
+                )
+            )
+            figure.add_trace(
+                go.Scatter(
+                    x=[sum(x_corners) / len(x_corners)],
+                    y=[sum(y_corners) / len(y_corners)],
+                    mode='text',
+                    text=[label],
+                    textposition='middle center',
+                    textfont={'color': color, 'size': 12},
+                    showlegend=False,
+                    hoverinfo='skip',
+                )
+            )
+        figure.add_trace(
+            go.Scatter(
+                x=[result.x_absolute.to('mm').magnitude for result in positioned],
+                y=[result.y_absolute.to('mm').magnitude for result in positioned],
+                mode='markers',
+                marker={'color': '#111111', 'size': 8},
+                text=[result.trace_id for result in positioned],
+                name='Measurement points',
+                hovertemplate=(
+                    '%{text}<br>X: %{x:.3f} mm<br>Y: %{y:.3f} mm<extra></extra>'
+                ),
+            )
+        )
+        figure.update_layout(
+            title='PL sample regions and measurement points',
+            xaxis_title='Stage X (mm)',
+            yaxis_title='Stage Y (mm)',
+            template='plotly_white',
+            hovermode='closest',
+        )
+        plot_json = figure.to_plotly_json()
+        plot_json['config'] = {'scrollZoom': False}
+        self.figures.append(PlotlyFigure(label='PL sample positions', figure=plot_json))
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        """
-        The normalize function of the `DTUXRDMeasurement` section.
+        """Parse native uploads, create plots, then resolve library assignments.
 
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger (BoundLogger): A structlog logger.
+        Plot before linking so the spectra and position maps remain available when
+        no unique sample match exists and normalization raises a guidance error.
         """
+        if self.location is None:
+            self.location = 'DTU Nanolab PL measurement'
+
         if self.pl_data_file:
-            with archive.m_context.raw_file(self.pl_data_file) as file:
-                lines = file.readlines()
-
-            metadata_lines = []
-            data_lines = []
-            data_section = False
-
-            for line in lines:
-                stripped_line = line.strip()
-                if stripped_line == 'DATA:':
-                    data_section = True
-                    continue
-                if data_section:
-                    data_lines.append(stripped_line)
-                else:
-                    metadata_lines.append(stripped_line)
-
-            metadata_dict = self.arrange_metadata(metadata_lines)
-            self.write_PL_metadata(metadata_dict, archive, logger)
-
-            data_dict = self.arrange_spectra(data_lines)
-
-            # the data_dict has all the spectra information with the position as the key
-            # use the dict to plot all the spectra in the respective subsections
-            # do i need a write section? or just the plot section?
+            with archive.m_context.raw_file(self.pl_data_file, 'rb') as file:
+                parsed_data = read_ywf(file.read())
+            if self.pl_overview_file:
+                with archive.m_context.raw_file(self.pl_overview_file, 'rb') as file:
+                    parsed_data['metadata'].update(read_ywa_metadata(file.read()))
+            self.write_pl_data(parsed_data, archive, logger)
+            self._set_sample_measurement_ranges()
             self.figures = []
-            self.plot_spectra(data_dict)
+            self.plot()
+            self.add_pl_sample_references(self.pl_data_file, archive, logger)
 
-        if self.pl_overview_file:
-            self.add_sample_reference(self.pl_overview_file, 'PL', archive, logger)
-            metadata_lines = []
-            data_lines = []
-
-            with archive.m_context.raw_file(self.pl_overview_file) as file:
-                lines = file.readlines()
-
-            for line in lines:
-                stripped_line = line.strip()
-                if not stripped_line:
-                    data_section = True
-                    continue
-                if data_section:
-                    # Split the line into columns based on ';' delimiter
-                    columns = stripped_line.split(';')
-                    data_lines.append(columns)
-                else:
-                    metadata_lines.append(stripped_line)
-
-            metadata_dict = self.arrange_metadata(metadata_lines)
-            self.write_PL_metadata(metadata_dict, archive, logger)
-
-            data_df, data_dict = self.arrange_map(data_lines)
-
-            self.write_PL_by_position(data_dict, archive, logger)
-            self.figures = []
-            self.plot_overview(data_df)
-            # add the plots of the spectra to the subsections
+            if self.sample_alignment is None and not any(
+                self._sample_corners(sample) is not None
+                for sample in self.samples or []
+            ):
+                self.around_barycenter = True
+        else:
+            logger.warning('Upload a native YWafer .ywf file to extract PL data.')
 
         super().normalize(archive, logger)
+        self.figures = []
+        self.plot()
 
 
 m_package.__init_metainfo__()

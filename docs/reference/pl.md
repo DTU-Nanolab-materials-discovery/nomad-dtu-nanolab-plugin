@@ -8,22 +8,44 @@ This schema package defines:
 
 - **DTUPLMeasurement** - PL measurements with excitation conditions, emission spectra, and optical properties
 
-PL measurements extend [BaseMeasurement](basesections.md), providing:
+PL measurements extend the mapping measurement schema and take a native YSystems
+YWafer `.ywf` file as their input. The normalizer extracts the saved spectra, stage
+coordinates, and acquisition settings. Both underscores and `--` delimit name parts.
+A library is linked automatically only when exactly one library matches the first
+four parts of the filename. If there is no unique match, add each library in the
+**Samples** entries and enter its top-left stage position and rotation. Library
+footprints are read from the linked library geometry. Incomplete footprint coverage
+emits a warning and processing continues; missing sample assignments remain an
+error. The detected overall X/Y ranges are recorded read-only on each sample entry.
+Each result references the library region containing its measurement point, and the
+sample-position plot shows each library as a differently colored, labeled region
+alongside the measurement locations.
+An optional companion `.ywa` overview file can be uploaded to add the lot, wafer,
+chamber, scan pitch and center, wafer radius, edge exclusion, and flat angle metadata.
+
+PL measurements provide:
 
 - Links to measured [samples](samples.md) and [instrument](instruments.md)
-- Excitation source parameters (wavelength, power, spot size)
-- Detection configuration (spectrometer, detector, filters)
-- Emission spectra and peak analysis
-- Temperature-dependent measurements
+- Excitation wavelength and laser power
+- Detection settings including detector, filter, integration time, and accumulations
+- Emission spectra, peak parameters, and position-resolved maps
+- Sample alignment from referenced sample geometry
 
 ## Typical Usage
 
-1. **Select samples**: Reference [samples](samples.md) to characterize
-2. **Set excitation**: Laser wavelength, power, spot size, beam profile
-3. **Configure detection**: Spectrometer grating, detector, integration time
-4. **Measure spectrum**: Collect emission intensity vs. wavelength
-5. **Analysis**: Identify peaks, calculate bandgap, extract quantum efficiency
-6. **Temperature dependence** (optional): PL at multiple temperatures
+1. Upload the native YWafer `.ywf` measurement file. The companion `.ywa` overview
+   file is optional.
+2. A unique exact four-part library-name match is linked automatically. Otherwise,
+   add library references and enter each library's top-left position and rotation in
+   **Samples**.
+3. Saved PL1 spectra and stage positions are extracted automatically.
+4. Acquisition settings such as excitation, integration time, detector, filter, and
+   wavelength range are read from the file when available.
+5. When library position and geometry are available, sample alignment and the sample
+   position plot use the geometry-derived rotated footprint.
+
+The binary reader supports the reverse-engineered YWafer v7.x layout. Automatic
+sample alignment requires the referenced sample or library to expose a geometry.
 
 !!! note "Position-Based Mapping"
     PL measurements are inherently position-aware, mapping optical properties to specific coordinates. Each measured position corresponds to a [sample position](samples.md) entry on [combinatorial libraries](samples.md), enabling composition-property correlations across gradient libraries. Multiple positions can be measured and their data aggregated to create property maps.
