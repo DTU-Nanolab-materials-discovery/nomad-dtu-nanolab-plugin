@@ -37,6 +37,7 @@ from nomad_material_processing.general import (
 from nomad_measurements.utils import create_archive
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
+from nomad_dtu_nanolab_plugin.schema_packages.basesections import BaseDtuFlag
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
@@ -58,6 +59,19 @@ SPACE_GROUP_SYMBOL_TO_NUMBER = {
 }  # Map of space group symbols to numbers
 
 m_package = Package()
+
+# Flags available for combinatorial samples and analysis results.
+# Material flags are examples and can be extended; free text is also accepted.
+SAMPLE_FLAG_DESCRIPTIONS = {
+    'REPRESENTATIVE_PROPERTY': (
+        'Flags that this combinatorial sample or analysis result is a '
+        'representative measurement or property for a given class of material. '
+        'Combine it with a material flag (e.g. Cu3PS4) to specify which one.'
+    ),
+    'Zr2SN2': 'The sample or result relates to the material Zr2SN2.',
+    'Cu3PS4': 'The sample or result relates to the material Cu3PS4.',
+    'Cu7PS6': 'The sample or result relates to the material Cu7PS6.',
+}
 
 
 class SampleProperty(ArchiveSection):
@@ -442,11 +456,45 @@ class UvVisData(SampleProperty):
     )
 
 
+class DtuSampleFlag(BaseDtuFlag):
+    """
+    Flag for a combinatorial sample or analysis result. Flags can be combined,
+    e.g. REPRESENTATIVE_PROPERTY together with a material flag such as Cu3PS4
+    to mark the entry as representative of that material.
+    """
+
+    m_def = Section()
+
+    flag = Quantity(
+        type=str,
+        description=(
+            'Flag name associated with the combinatorial sample or analysis result. '
+            'Several flags can be combined (see description of each flag).'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.EnumEditQuantity,
+            props=dict(suggestions=list(SAMPLE_FLAG_DESCRIPTIONS)),
+        ),
+    )
+
+    flag_descriptions = SAMPLE_FLAG_DESCRIPTIONS
+
+
 class CombinatorialSampleInfo(ArchiveSection):
     """
     Section defining the quantities and properties of a combinatorial sample and
     of a combinatorial analysis result (see analysis.py).
     """
+
+    flags = SubSection(
+        section_def=DtuSampleFlag,
+        repeats=True,
+        description=(
+            'Flags qualifying this sample or result. Combine flags, e.g. '
+            'REPRESENTATIVE_PROPERTY and Cu3PS4, to mark it as representative '
+            'of a given material.'
+        ),
+    )
 
     band_gap = SubSection(section_def=BandGap, repeats=True)
     absorption_coefficient = SubSection(section_def=AbsorptionCoefficient, repeats=True)
@@ -461,6 +509,15 @@ class CombinatorialSampleInfo(ArchiveSection):
     xps_data = SubSection(section_def=XpsData, repeats=True)
     ellipsometry_data = SubSection(section_def=EllipsometryData, repeats=True)
     uv_vis_data = SubSection(section_def=UvVisData, repeats=True)
+    
+    additional_properties = SubSection(
+        section_def=SampleProperty,
+        repeats=True,
+        description=(
+            'Additional properties of the sample. '
+            'Consider adding a description to the property.'
+        ),
+    )
 
 
 class DTUCombinatorialSample(CombinatorialSample, CombinatorialSampleInfo, Schema):

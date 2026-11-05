@@ -1,6 +1,7 @@
 import re
 from typing import TYPE_CHECKING
 
+from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import (
     CompositeSystemReference,
@@ -16,6 +17,35 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 m_package = Package()
+
+
+class BaseDtuFlag(ArchiveSection):
+    """
+    Base class for flags. Subclasses define the flags that apply to their context
+    by overriding the `flag` quantity (to provide dropdown suggestions) and by
+    filling `flag_descriptions`, which is used to autofill `flag_description`.
+    """
+
+    m_def = Section()
+
+    # flag name -> default description; filled in by the subclasses
+    flag_descriptions: dict[str, str] = {}
+
+    flag = Quantity(
+        type=str,
+        description='Name of the flag.',
+        a_eln=ELNAnnotation(component=ELNComponentEnum.EnumEditQuantity),
+    )
+
+    flag_description = Quantity(
+        type=str,
+        a_eln={'component': 'RichTextEditQuantity', 'label': 'Flag description'},
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        if self.flag is not None and self.flag_description is None:
+            self.flag_description = self.flag_descriptions.get(self.flag)
 
 
 class DtuNanolabMeasurement(MappingMeasurement):

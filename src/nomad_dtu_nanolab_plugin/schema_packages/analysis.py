@@ -43,7 +43,6 @@ from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
     CombinatorialSampleInfo,
     DTUCombinatorialLibrary,
-    SampleProperty,
 )
 
 if TYPE_CHECKING:
@@ -196,14 +195,7 @@ class DtuSampleAnalysisResult(AnalysisResult, CombinatorialSampleInfo):
             label='creation time',
         ),
     )
-    additional_properties = SubSection(
-        section_def=SampleProperty,
-        repeats=True,
-        description=(
-            'Additional properties of the sample. '
-            'Consider adding a description to the property.'
-        ),
-    )
+
 
 
 class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
