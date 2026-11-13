@@ -29,19 +29,20 @@ Create analysis entries through an ELN form:
 
 ```python
 from nomad.client import ArchiveQuery
-from nomad.config import client
 
 analysis_id = 'THE_ANALYSIS_ID'
 a_query = ArchiveQuery(
     query={'entry_id:any': [analysis_id]},
     required='*',
-    url=client.url,
+    url='https://example.org/nomad-oasis/api',
 )
 entry_list = a_query.download()
 analysis = entry_list[0].data
 ```
 
-The `analysis_id` is automatically replaced with the actual entry ID when the notebook is generated.
+When the notebook is generated, the entry ID and API URL are taken from the
+analysis entry and its NOMAD installation context. The URL above is an example;
+each Oasis writes its own URL. Existing notebooks are not updated automatically.
 
 ### Workflow
 
@@ -68,7 +69,14 @@ Reusable templates for complex analysis code (visualizations, ML models, statist
 Templates enable **reusing sophisticated analysis code with different data sources**:
 
 1. **Template Creation**: Convert existing analysis → Replace `analysis_id` with `"THE_ANALYSIS_ID"` placeholder → Store template
-2. **Template Instantiation**: Reference template → Select new libraries → Only API query cell is updated → All analysis code preserved
+2. **Template Instantiation**: Reference template → Select new libraries → The API query cell is updated with the new entry ID and Oasis URL → All analysis code preserved
+
+The standard query cell is also recognized in older notebooks that use
+`client.url` or a hardcoded URL. Creating a template from one replaces that cell
+with the current format; generating an analysis from the template then inserts the
+new analysis ID and the generating Oasis's URL. The original notebook or template
+is not modified. Substantial edits to the standard query cell can prevent it from
+being recognized; in that case, notebook generation logs a warning.
 
 ### Template Workflow
 
