@@ -32,14 +32,16 @@ from nomad.datamodel.metainfo.basesections import (
     ActivityStep,
     Analysis,
 )
+from nomad.datamodel.metainfo.basesections.v1 import AnalysisResult
 from nomad.datamodel.metainfo.plot import PlotSection
-from nomad.metainfo import Package, Quantity, Section, SubSection
+from nomad.metainfo import Datetime, Package, Quantity, Section, SubSection
 from nomad.metainfo.metainfo import Reference, SectionProxy
 from nomad_analysis.utils import create_entry_with_api
 from structlog.stdlib import BoundLogger
 
 from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
+    CombinatorialSampleInfo,
     DTUCombinatorialLibrary,
 )
 
@@ -50,6 +52,29 @@ if TYPE_CHECKING:
 
 FIRST_CODE_CELL = """from nomad.client import ArchiveQuery
 
+analysis_id = %r
+a_query = ArchiveQuery(
+    query={'entry_id:any': [analysis_id]},
+    required='*',
+    url=%r,
+)
+entry_list = a_query.download()
+analysis = entry_list[0].data"""
+
+LEGACY_FIRST_CODE_CELLS = (
+    """from nomad.client import ArchiveQuery
+from nomad.config import client
+
+analysis_id = "%s"
+a_query = ArchiveQuery(
+    query={'entry_id:any': [analysis_id]},
+    required='*',
+    url=client.url,
+)
+entry_list = a_query.download()
+analysis = entry_list[0].data""",
+    """from nomad.client import ArchiveQuery
+
 analysis_id = "%s"
 a_query = ArchiveQuery(
     query={'entry_id:any': [analysis_id]},
@@ -57,21 +82,39 @@ a_query = ArchiveQuery(
     url='https://nomad.nanolab.dtu.dk/nomad-oasis/api',#client.url,
 )
 entry_list = a_query.download()
-analysis = entry_list[0].data"""
+analysis = entry_list[0].data""",
+)
 
 
 def replace_analysis_id(
-    notebook: nbformat.notebooknode.NotebookNode, analysis_id: str
+    notebook: nbformat.notebooknode.NotebookNode,
+    analysis_id: str,
+    installation_url: str,
 ) -> nbformat.notebooknode.NotebookNode | None:
-    first_cell_pattern = re.compile(
-        re.escape(FIRST_CODE_CELL.strip()).replace('%s', '(.*)')
-    )
+    patterns = [
+        re.compile(re.escape(FIRST_CODE_CELL).replace('%r', r'[^\n]*')),
+        *(
+            re.compile(
+                re.escape(template)
+                .replace('%s', r'[^\n]*')
+                .replace(re.escape('url=client.url,'), r'url=[^\n]*,[^\n]*')
+                .replace(
+                    re.escape(
+                        "url='https://nomad.nanolab.dtu.dk/nomad-oasis/api',"
+                        '#client.url,'
+                    ),
+                    r'url=[^\n]*,[^\n]*',
+                )
+            )
+            for template in LEGACY_FIRST_CODE_CELLS
+        ),
+    ]
     for cell in notebook.cells:
-        if cell.cell_type == 'code':
-            match = first_cell_pattern.match(cell.source)
-            if match:
-                cell.source = FIRST_CODE_CELL % analysis_id
-                return notebook
+        if cell.cell_type == 'code' and any(
+            pattern.fullmatch(cell.source.strip()) for pattern in patterns
+        ):
+            cell.source = FIRST_CODE_CELL % (analysis_id, installation_url)
+            return notebook
     return
 
 
@@ -120,7 +163,9 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
         with context.raw_file(self.from_analysis.notebook, 'r') as src_file:
             source_notebook = nbformat.read(src_file, as_version=4)
 
-        template_notebook = replace_analysis_id(source_notebook, 'THE_ANALYSIS_ID')
+        template_notebook = replace_analysis_id(
+            source_notebook, 'THE_ANALYSIS_ID', archive.m_context.installation_url
+        )
         if template_notebook is None:
             logger.warn('Standard Analysis query block is not found in the notebook.')
             return self.template_notebook
@@ -152,6 +197,35 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
 
 class DtuAnalysisStep(ActivityStep, PlotSection):
     pass
+
+
+class DtuSampleAnalysisResult(AnalysisResult, CombinatorialSampleInfo):
+    """
+    class inheriting from CombinatorialSampleInfo to allow for the storage of
+    same properties as CombinatorialSample in the analysis result
+    However, DtuSampleAnalysisResult has an additional_properties subsection to
+    allow for the storage of additional properties that are not defined in
+    CombinatorialSampleInfo. This will incencive the user to write new properties
+    that are not defined in CombinatorialSampleInfo to the DtuSampleAnalysisResult
+    instead of just discarding them. This will allow for the future
+    expansion of CombinatorialSampleInfo
+    """
+
+    # AnalysisResult (via ActivityResult) only defines `name`; it has no
+    # timestamp of its own (unlike Activity, which has `datetime` for when
+    # the activity itself started). This records when this particular
+    # result object was created/written, e.g. by the export notebook cell.
+    datetime = Quantity(
+        type=Datetime,
+        description=(
+            'The date and time when this analysis result was created, '
+            'e.g. written out by an export/analysis notebook cell.'
+        ),
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.DateTimeEditQuantity,
+            label='creation time',
+        ),
+    )
 
 
 class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
@@ -233,7 +307,8 @@ class DtuJupyterAnalysis(Analysis, PlotSection, Schema):
                     source='Query for the analysis entry associated with this notebook:'
                 ),
                 nbformat.v4.new_code_cell(
-                    source=FIRST_CODE_CELL % archive.metadata.entry_id
+                    source=FIRST_CODE_CELL
+                    % (archive.metadata.entry_id, archive.m_context.installation_url)
                 ),
                 nbformat.v4.new_markdown_cell(source='### Analysis'),
                 nbformat.v4.new_markdown_cell(
@@ -296,7 +371,9 @@ analysis.save()"""
             source_notebook = nbformat.read(src_file, as_version=4)
 
         template_notebook = replace_analysis_id(
-            source_notebook, archive.metadata.entry_id
+            source_notebook,
+            archive.metadata.entry_id,
+            archive.m_context.installation_url,
         )
         if template_notebook is None:
             logger.warn('Standard Analysis query block is not found in the notebook.')
