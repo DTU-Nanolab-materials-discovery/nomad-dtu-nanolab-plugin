@@ -125,20 +125,22 @@ class SampleProperty(ArchiveSection):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
+        if self.confidence is None:
+            return
         if self.confidence > MAX_CONFIDENCE_LEVEL:
-            self.confidence = MAX_CONFIDENCE_LEVEL
             logger.warning(
                 f'Confidence level {self.confidence} '
                 f'is greater than {MAX_CONFIDENCE_LEVEL}. '
                 f'Setting confidence level to {MAX_CONFIDENCE_LEVEL}.'
             )
+            self.confidence = MAX_CONFIDENCE_LEVEL
         elif self.confidence < MIN_CONFIDENCE_LEVEL:
-            self.confidence = MIN_CONFIDENCE_LEVEL
             logger.warning(
                 f'Confidence level {self.confidence} '
                 f'is less than {MIN_CONFIDENCE_LEVEL}. '
                 f'Setting confidence level to {MIN_CONFIDENCE_LEVEL}.'
             )
+            self.confidence = MIN_CONFIDENCE_LEVEL
 
 
 class Composition(SampleProperty):
@@ -537,9 +539,9 @@ class DTUCombinatorialSample(CombinatorialSample, CombinatorialSampleInfo, Schem
     def normalize(self, archive, logger):
         composition = {}
         if self.composition:
-            composition = self.composition.m_to_dict()
+            composition = self.composition[0].m_to_dict()
         if len(composition) == 0 and self.surface_composition:
-            composition = self.surface_composition.m_to_dict()
+            composition = self.surface_composition[0].m_to_dict()
 
         self.elemental_composition = [
             ElementalComposition(element=e, atomic_fraction=v)
