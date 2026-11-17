@@ -857,10 +857,14 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         fig = go.Figure()
         max_traces = 25
         trace_count = 0
+        max_traces_reached = False
         for result in self.results:
+            if max_traces_reached:
+                break
             position_label = result.name or 'Unknown'
             for spectrum in result.spectra:
                 if trace_count >= max_traces:
+                    max_traces_reached = True
                     break
                 if spectrum.wavelength is None or spectrum.intensity is None:
                     continue
@@ -905,10 +909,8 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     )
                 )
                 trace_count += 1
-            if trace_count >= max_traces:
-                break
         title = 'Reflection (solid) and Transmission (dot) Spectra'
-        if trace_count >= max_traces:
+        if max_traces_reached:
             title += f' (showing first {max_traces} traces only)'
         self._append_spatial_figure(
             fig,
@@ -1065,6 +1067,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 continue
             spectrum_type, title, label = self._configuration_labels(config_key)
             fig = go.Figure()
+            fig.update_layout(showlegend=False)
             fig.add_trace(
                 go.Scatter(
                     x=x_axis,

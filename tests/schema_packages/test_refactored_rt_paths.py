@@ -8,6 +8,7 @@ from nomad.units import ureg
 
 rt = import_module('nomad_dtu_nanolab_plugin.schema_packages.rt')
 rtp = import_module('nomad_dtu_nanolab_plugin.schema_packages.rtp')
+MAX_RT_PLOT_TRACES = 25
 
 
 class _RawFile:
@@ -146,6 +147,75 @@ def test_collect_config_values_skips_results_without_complete_position():
     assert values == [[pytest.approx(0.3)]]
 
 
+@pytest.mark.parametrize(
+    ('trace_count', 'is_truncated'),
+    [
+        (MAX_RT_PLOT_TRACES, False),
+        (MAX_RT_PLOT_TRACES + 1, True),
+    ],
+)
+def test_rt_plot_limits_spectra_and_reports_only_truncation(trace_count, is_truncated):
+    measurement = rt.RTMeasurement(
+        results=[
+            rt.RTResult(
+                spectra=[
+                    rt.RTSpectrum(
+                        spectrum_type='Reflection',
+                        wavelength=np.array([500, 700]) * ureg('nm'),
+                        intensity=np.array([0.2, 0.4]),
+                    )
+                    for _ in range(trace_count)
+                ]
+            )
+        ]
+    )
+
+    measurement.plot()
+
+    spectra_figure = measurement.figures[0].figure
+    assert len(spectra_figure['data']) == MAX_RT_PLOT_TRACES
+    assert (
+        f'showing first {MAX_RT_PLOT_TRACES} traces only'
+        in spectra_figure['layout']['title']['text']
+    ) is is_truncated
+
+
+def test_rt_line_plot_hides_single_trace_legend():
+    measurement = rt.RTMeasurement(
+        results=[
+            rt.RTResult(
+                x_absolute=1 * ureg('mm'),
+                y_absolute=2 * ureg('mm'),
+                spectra=[
+                    rt.RTSpectrum(
+                        spectrum_type='Transmission',
+                        wavelength=np.array([500, 700]) * ureg('nm'),
+                        intensity=np.array([0.2, 0.4]),
+                    )
+                ],
+            ),
+            rt.RTResult(
+                x_absolute=3 * ureg('mm'),
+                y_absolute=2 * ureg('mm'),
+                spectra=[
+                    rt.RTSpectrum(
+                        spectrum_type='Transmission',
+                        wavelength=np.array([500, 700]) * ureg('nm'),
+                        intensity=np.array([0.4, 0.6]),
+                    )
+                ],
+            ),
+        ]
+    )
+
+    measurement.plot()
+
+    line_figure = next(
+        figure for figure in measurement.figures if figure.label.startswith('T ')
+    )
+    assert line_figure.figure['layout']['showlegend'] is False
+
+
 def test_autosampler_grid_plot_includes_boundary_baseline_and_samples():
     measurement = rt.DtuAutosamplerMeasurement()
     grid = pd.DataFrame(
@@ -168,6 +238,63 @@ def test_autosampler_grid_plot_includes_boundary_baseline_and_samples():
         'Library_A',
     ]
     assert figure['data'][2]['customdata'] == [[1.0, 3.0], [2.0, 4.0]]
+
+
+@pytest.mark.parametrize(
+    ('target_upload_id', 'archive_creator_name'),
+    [(None, 'create_archive'), ('target-upload', '_create_archive_in_upload')],
+)
+def test_autosampler_step_uses_resolved_archive_target(
+    monkeypatch, target_upload_id, archive_creator_name
+):
+    archive = SimpleNamespace()
+    logger = SimpleNamespace()
+    step_reference = 'test-entry#data'
+    archive_calls = []
+    monkeypatch.setattr(
+        rt,
+        '_resolve_library_target',
+        lambda *_args: (target_upload_id, 'library-folder', 'archive-folder'),
+    )
+    monkeypatch.setattr(
+        rt,
+        'create_archive',
+        lambda *args: archive_calls.append(('create_archive', args)) or step_reference,
+    )
+    monkeypatch.setattr(
+        rt,
+        '_create_archive_in_upload',
+        lambda *args: (
+            archive_calls.append(('_create_archive_in_upload', args)) or step_reference
+        ),
+    )
+    vertical_back_slit = 1.5
+    vertical_front_slit = 2.5
+    horizontal_slit = 3.5
+    autosampler = rt.DtuAutosamplerMeasurement(
+        vertical_back_slit=vertical_back_slit,
+        vertical_front_slit=vertical_front_slit,
+        horizontal_slit=horizontal_slit,
+        detector_slit='1°',
+    )
+    position_data = {
+        '1': SimpleNamespace(measurements=[], position_x=1.0, position_y=2.0)
+    }
+
+    step = autosampler._create_library_step('Library_A', position_data, archive, logger)
+
+    assert step.name == 'Library_A_rt_measurement_unknown'
+    assert step.activity.m_proxy_value == step_reference
+    assert len(archive_calls) == 1
+    creator_name, creator_args = archive_calls[0]
+    assert creator_name == archive_creator_name
+    measurement, _, mainfile = creator_args[:3]
+    assert mainfile == 'library-folder/Library_A_rt_measurement_unknown.archive.json'
+    assert measurement.lab_id == 'Library_A_RT_unknown'
+    assert measurement.vertical_back_slit.to('degree').magnitude == vertical_back_slit
+    assert measurement.vertical_front_slit.to('degree').magnitude == vertical_front_slit
+    assert measurement.horizontal_slit.to('degree').magnitude == horizontal_slit
+    assert measurement.detector_slit == '1°'
 
 
 def test_store_log_timeseries_converts_units_and_respects_overwrite():
