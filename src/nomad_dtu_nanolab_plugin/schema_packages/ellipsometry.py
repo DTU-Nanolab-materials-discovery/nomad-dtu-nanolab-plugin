@@ -13,6 +13,7 @@ including n&k optical constants and thickness/fit parameter maps.
 
 import ast
 import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -52,6 +53,19 @@ COORDINATE_MATCH_TOLERANCE_CM = 0.01
 MIN_POSITION_TUPLE_LENGTH = 2
 EPSILON_INF_COLUMN_CANDIDATES = ('E Inf', 'Einf')
 IR_POLE_AMP_COLUMN_CANDIDATES = ('IR Amp',)
+
+
+@dataclass
+class _ParameterMapData:
+    x_values: list
+    y_values: list
+    values: list
+    x_title: str
+    y_title: str
+    coord_type: str
+    y_axis_label: str
+    colorbar_title: str
+    hover_unit: str
 
 
 class DTUDeltaPsi(ArchiveSection):
@@ -975,6 +989,53 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             PlotlyFigure: An interactive plot if data exists for the parameter
             None: If no data is available for the parameter
         """
+        param_data, x_title, y_title, coord_type = self._collect_parameter_data(
+            parameter_name, unit
+        )
+        if not param_data:
+            return None
+
+        x_vals = [item['x'] for item in param_data]
+        y_vals = [item['y'] for item in param_data]
+        values = [item['value'] for item in param_data]
+        y_axis_label, colorbar_title, hover_unit = self._parameter_labels(
+            parameter_name, parameter_label, unit
+        )
+        plot_data = _ParameterMapData(
+            x_values=x_vals,
+            y_values=y_vals,
+            values=values,
+            x_title=x_title,
+            y_title=y_title,
+            coord_type=coord_type,
+            y_axis_label=y_axis_label,
+            colorbar_title=colorbar_title,
+            hover_unit=hover_unit,
+        )
+
+        x_range = max(x_vals) - min(x_vals)
+        y_range = max(y_vals) - min(y_vals)
+        tol = 1e-6
+        is_1d_x = x_range < tol
+        is_1d_y = y_range < tol
+
+        if is_1d_x or is_1d_y:
+            fig = self._create_parameter_line_plot(
+                parameter_label,
+                plot_data,
+                is_1d_x,
+            )
+        else:
+            fig = self._create_parameter_heatmap(parameter_label, plot_data)
+
+        plot_json = fig.to_plotly_json()
+        plot_json['config'] = dict(scrollZoom=False)
+        return PlotlyFigure(
+            label=f'{parameter_label} Map',
+            figure=plot_json,
+        )
+
+    def _collect_parameter_data(self, parameter_name, unit):
         # Collect parameter values and coordinates from all measurement positions
         param_data = []
         x_title = 'X Position (mm)'
@@ -1021,15 +1082,10 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     }
                 )
 
-        if not param_data:
-            return None
+        return param_data, x_title, y_title, coord_type
 
-        # Extract coordinate and value arrays for plotting
-        x_vals = [d['x'] for d in param_data]
-        y_vals = [d['y'] for d in param_data]
-        values = [d['value'] for d in param_data]
-
-        # Format axis labels with or without units
+    @staticmethod
+    def _parameter_labels(parameter_name, parameter_label, unit):
         if parameter_name == 'carrier_concentration':
             y_axis_label = f'{parameter_label} (1e20 cm-3)'
             colorbar_title = f'{parameter_label} (1e20 cm-3)'
@@ -1042,122 +1098,87 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             y_axis_label = parameter_label
             colorbar_title = parameter_label
             hover_unit = ''
+        return y_axis_label, colorbar_title, hover_unit
 
-        # Determine dimensionality by counting unique coordinates
-        # This tells us if we have a line scan (1D) or area map (2D)
-        # Use a tolerance to handle floating-point noise (e.g. ~1e-15 values
-        # that should be treated as identical)
-        x_range = max(x_vals) - min(x_vals)
-        y_range = max(y_vals) - min(y_vals)
-        tol = 1e-6  # 1 nm tolerance
-        is_1d_x = x_range < tol  # all x approximately the same
-        is_1d_y = y_range < tol  # all y approximately the same
-
-        if is_1d_x or is_1d_y:
-            # 1D data - create a line plot with markers
-            if is_1d_x:
-                # Y varies
-                fig = go.Figure()
-                fig.add_trace(
-                    go.Scatter(
-                        x=y_vals,
-                        y=values,
-                        mode='lines+markers',
-                        name=parameter_label,
-                    )
-                )
-                fig.update_layout(
-                    title=f'{parameter_label} vs Y {coord_type} Position',
-                    xaxis_title='Y Position (mm)',
-                    yaxis_title=y_axis_label,
-                    template='plotly_white',
-                    hovermode='closest',
-                    dragmode='zoom',
-                    xaxis=dict(fixedrange=False),
-                    yaxis=dict(fixedrange=False),
-                )
-            else:
-                # X varies
-                fig = go.Figure()
-                fig.add_trace(
-                    go.Scatter(
-                        x=x_vals,
-                        y=values,
-                        mode='lines+markers',
-                        name=parameter_label,
-                    )
-                )
-                fig.update_layout(
-                    title=f'{parameter_label} vs X {coord_type} Position',
-                    xaxis_title='X Position (mm)',
-                    yaxis_title=y_axis_label,
-                    template='plotly_white',
-                    hovermode='closest',
-                    dragmode='zoom',
-                    xaxis=dict(fixedrange=False),
-                    yaxis=dict(fixedrange=False),
-                )
-        else:
-            # 2D data - create a heatmap with scatter overlay
-            # Generate a regular interpolation grid for smooth heatmap visualization
-            # The actual measurement points are shown as scatter markers on top
-            xi = np.linspace(min(x_vals), max(x_vals), 100)  # 100 points in x
-            yi = np.linspace(min(y_vals), max(y_vals), 100)  # 100 points in y
-            xi, yi = np.meshgrid(xi, yi)  # Create 2D grid
-            # Interpolate irregular measurement points onto regular grid
-            # using linear interpolation
-            zi = griddata((x_vals, y_vals), values, (xi, yi), method='linear')
-
-            # Create a heatmap
-            heatmap = go.Heatmap(
-                x=xi[0],
-                y=yi[:, 0],
-                z=zi,
-                colorscale='Viridis',
-                colorbar=dict(title=colorbar_title),
+    @staticmethod
+    def _create_parameter_line_plot(
+        parameter_label,
+        plot_data,
+        is_1d_x,
+    ):
+        axis = 'Y' if is_1d_x else 'X'
+        positions = plot_data.y_values if is_1d_x else plot_data.x_values
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=positions,
+                y=plot_data.values,
+                mode='lines+markers',
+                name=parameter_label,
             )
-
-            # Create a scatter plot overlay
-            scatter = go.Scatter(
-                x=x_vals,
-                y=y_vals,
-                mode='markers',
-                marker=dict(
-                    size=15,
-                    color=values,
-                    colorscale='Viridis',
-                    showscale=False,
-                    line=dict(
-                        width=2,
-                        color='DarkSlateGrey',
-                    ),
-                ),
-                customdata=values,
-                hovertemplate=(
-                    f'<b>{parameter_label}:</b> %{{customdata:.1f}}{hover_unit}'
-                ),
-            )
-
-            # Combine heatmap and scatter plot
-            fig = go.Figure(data=[heatmap, scatter])
-
-            fig.update_layout(
-                title=f'{parameter_label} {coord_type} Colormap',
-                xaxis_title=x_title,
-                yaxis_title=y_title,
-                template='plotly_white',
-                hovermode='closest',
-                dragmode='zoom',
-                xaxis=dict(fixedrange=False),
-                yaxis=dict(fixedrange=False),
-            )
-
-        plot_json = fig.to_plotly_json()
-        plot_json['config'] = dict(scrollZoom=False)
-        return PlotlyFigure(
-            label=f'{parameter_label} Map',
-            figure=plot_json,
         )
+        fig.update_layout(
+            title=f'{parameter_label} vs {axis} {plot_data.coord_type} Position',
+            xaxis_title=f'{axis} Position (mm)',
+            yaxis_title=plot_data.y_axis_label,
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(fixedrange=False),
+            yaxis=dict(fixedrange=False),
+        )
+        return fig
+
+    @staticmethod
+    def _create_parameter_heatmap(
+        parameter_label,
+        plot_data,
+    ):
+        xi = np.linspace(min(plot_data.x_values), max(plot_data.x_values), 100)
+        yi = np.linspace(min(plot_data.y_values), max(plot_data.y_values), 100)
+        xi, yi = np.meshgrid(xi, yi)
+        zi = griddata(
+            (plot_data.x_values, plot_data.y_values),
+            plot_data.values,
+            (xi, yi),
+            method='linear',
+        )
+
+        heatmap = go.Heatmap(
+            x=xi[0],
+            y=yi[:, 0],
+            z=zi,
+            colorscale='Viridis',
+            colorbar=dict(title=plot_data.colorbar_title),
+        )
+        scatter = go.Scatter(
+            x=plot_data.x_values,
+            y=plot_data.y_values,
+            mode='markers',
+            marker=dict(
+                size=15,
+                color=plot_data.values,
+                colorscale='Viridis',
+                showscale=False,
+                line=dict(width=2, color='DarkSlateGrey'),
+            ),
+            customdata=plot_data.values,
+            hovertemplate=(
+                f'<b>{parameter_label}:</b> %{{customdata:.1f}}{plot_data.hover_unit}'
+            ),
+        )
+        fig = go.Figure(data=[heatmap, scatter])
+        fig.update_layout(
+            title=f'{parameter_label} {plot_data.coord_type} Colormap',
+            xaxis_title=plot_data.x_title,
+            yaxis_title=plot_data.y_title,
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(fixedrange=False),
+            yaxis=dict(fixedrange=False),
+        )
+        return fig
 
     def plot(self) -> None:
         """
@@ -1329,19 +1350,30 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 normalized.
             logger (BoundLogger): A structlog logger for debugging and info messages.
         """
-        # Link to the sample being measured using filename from any available file
-        filename = None
-        if self.native_file:
-            filename = self.native_file
-        elif self.tabulated_data_file:
-            filename = self.tabulated_data_file
-        elif self.n_and_k_file:
-            filename = self.n_and_k_file
-        elif self.thickness_file:
-            filename = self.thickness_file
+        filename = next(
+            (
+                candidate
+                for candidate in (
+                    self.native_file,
+                    self.tabulated_data_file,
+                    self.n_and_k_file,
+                    self.thickness_file,
+                )
+                if candidate
+            ),
+            None,
+        )
         if filename:
             self.add_sample_reference(filename, 'Ellipsometry', archive, logger)
 
+        self._process_input_files(archive, logger)
+        super().normalize(archive, logger)
+
+        self.figures = []
+        if self.results:
+            self.plot()
+
+    def _process_input_files(self, archive, logger):
         # make sure .SE and .SEsnap are uploaded to force user to provide
         # necessary files for bookkeeping
         if not self.native_file or not self.native_data_file:
@@ -1390,13 +1422,6 @@ class DTUEllipsometryMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 self._populate_delta_psi_from_tabulated(
                     self.results, tabulated_df, logger
                 )
-
-        super().normalize(archive, logger)
-
-        # Create plots if we have results
-        self.figures = []
-        if self.results:
-            self.plot()
 
 
 m_package.__init_metainfo__()

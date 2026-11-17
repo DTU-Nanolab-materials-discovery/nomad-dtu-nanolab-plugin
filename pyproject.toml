@@ -99,10 +99,6 @@ select = [
 
 ignore = [
     "PLC0415", # `import` should be at the top-level of a file
-    "PLR0915", # Too many statements
-    "PLR0917", # new version of Too many positional arguments
-    "PLR0912", # Too many branches
-    "PLR0917", # Too many positional arguments
 ]
 
 fixable = ["ALL"]

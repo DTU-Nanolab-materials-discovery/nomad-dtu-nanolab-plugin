@@ -150,132 +150,101 @@ class MappingRamanMeas:
         for filename in filename_list:
             file_path = os.path.join(folder, filename)
             reader = WDFReader(file_path)
-
-            # Store the reader for metadata access
             self.wdf_reader = reader
-
-            # Debug information
             if verbose:
-                print(f'\n=== WDF File: {filename} ===')
-                print(f'Spectra shape: {reader.spectra.shape}')
-                print(f'Xdata shape: {reader.xdata.shape}')
-                if hasattr(reader, 'xpos') and hasattr(reader, 'ypos'):
-                    print(f'Number of positions: {len(reader.xpos)}')
-                    print(f'X positions: {reader.xpos[:5]}...')
-                    print(f'Y positions: {reader.ypos[:5]}...')
-
-            # Get wavenumber data (should be 1D)
-            wv_num = reader.xdata
-
-            # Extract optical images first
+                self._log_reader_info(reader, filename)
             optical_images = self._extract_optical_images_from_reader(
                 reader, verbose=verbose
             )
             if verbose:
                 print(f'Extracted {len(optical_images)} optical images')
-
-            # Check if we have position data
-            if (
-                hasattr(reader, 'xpos')
-                and hasattr(reader, 'ypos')
-                and len(reader.xpos) > 1
-            ):
-                # We have mapping data with positions
+            if self._has_mapping_positions(reader):
                 if verbose:
                     print('Processing mapping data with positions...')
-
-                # Handle 3D spectra array (e.g., 5x5x1015 grid)
-                spectra_array = reader.spectra
-                if len(spectra_array.shape) == 3:  # noqa: PLR2004
-                    # 3D array: reshape to 2D [position, wavenumber]
-                    if verbose:
-                        print(
-                            f'Reshaping spectra from {spectra_array.shape} to 2D array'
-                        )
-                    # original_shape = spectra_array.shape
-                    spectra_array = spectra_array.reshape(-1, spectra_array.shape[-1])
-                    if verbose:
-                        print(f'Reshaped to: {spectra_array.shape}')
-
-                for i in range(len(reader.xpos)):
-                    raman_meas = RamanMeas()
-                    """
-                    here the X direction needs to be swapped to match
-                    the stage coordinates of the renishaw raman system
-                    """
-                    raman_meas.x_pos = -reader.xpos[i]  # swap x
-                    raman_meas.y_pos = reader.ypos[i]
-                    raman_meas.laser_wavelength = reader.laser_length
-
-                    # Assign optical image if available
-                    if i < len(optical_images):
-                        raman_meas.image = optical_images[i]
-
-                    # Get intensity data for this position
-                    if len(spectra_array.shape) == 2:  # noqa: PLR2004
-                        # 2D array: [position, wavenumber]
-                        intensity = spectra_array[i]
-                        if verbose and i < NBR_SPECTRA:  # Debug first few spectra
-                            print(
-                                f'Spectrum {i}: '
-                                f'pos=({raman_meas.x_pos:.2f}, '
-                                f'{raman_meas.y_pos:.2f}), '
-                                f'intensity range {intensity.min():.2f} - '
-                                f'{intensity.max():.2f}, '
-                                f'has_image={raman_meas.image is not None}'
-                            )
-                    else:
-                        # 1D array: single spectrum
-                        if verbose:
-                            print(
-                                'Warning: Only single spectrum found,',
-                                'but multiple positions exist',
-                            )
-                        intensity = spectra_array
-
-                    # Ensure both arrays are 1D
-                    wv_num_flat = np.array(wv_num).flatten()
-                    intensity_flat = np.array(intensity).flatten()
-
-                    # Make sure arrays have same length
-                    min_length = min(len(wv_num_flat), len(intensity_flat))
-                    wv_num_flat = wv_num_flat[:min_length]
-                    intensity_flat = intensity_flat[:min_length]
-
-                    raman_meas.data = pd.DataFrame(
-                        {'wavenumber': wv_num_flat, 'intensity': intensity_flat}
-                    )
-                    self.raman_meas_list.append(raman_meas)
+                self._read_mapping_spectra(reader, optical_images, verbose)
             else:
-                # Single spectrum without position data
-                if verbose:
-                    print('Processing single spectrum...')
-                raman_meas = RamanMeas()
-                raman_meas.x_pos = 0
-                raman_meas.y_pos = 0
-
-                # Assign optical image if available
-                if len(optical_images) > 0:
-                    raman_meas.image = optical_images[0]
-                    if verbose:
-                        print('Assigned optical image to single spectrum')
-
-                # Ensure both arrays are 1D
-                wv_num_flat = np.array(wv_num).flatten()
-                intensity_flat = np.array(reader.spectra).flatten()
-
-                # Make sure arrays have same length
-                min_length = min(len(wv_num_flat), len(intensity_flat))
-                wv_num_flat = wv_num_flat[:min_length]
-                intensity_flat = intensity_flat[:min_length]
-
-                raman_meas.data = pd.DataFrame(
-                    {'wavenumber': wv_num_flat, 'intensity': intensity_flat}
-                )
-                self.raman_meas_list.append(raman_meas)
-
+                self._read_single_spectrum(reader, optical_images, verbose)
             if verbose:
                 print(f'Total spectra loaded: {len(self.raman_meas_list)}')
+
+    @staticmethod
+    def _log_reader_info(reader, filename):
+        print(f'\n=== WDF File: {filename} ===')
+        print(f'Spectra shape: {reader.spectra.shape}')
+        print(f'Xdata shape: {reader.xdata.shape}')
+        if hasattr(reader, 'xpos') and hasattr(reader, 'ypos'):
+            print(f'Number of positions: {len(reader.xpos)}')
+            print(f'X positions: {reader.xpos[:5]}...')
+            print(f'Y positions: {reader.ypos[:5]}...')
+
+    @staticmethod
+    def _has_mapping_positions(reader):
+        return (
+            hasattr(reader, 'xpos') and hasattr(reader, 'ypos') and len(reader.xpos) > 1
+        )
+
+    def _read_mapping_spectra(self, reader, optical_images, verbose):
+        spectra = reader.spectra
+        if len(spectra.shape) == 3:  # noqa: PLR2004
+            if verbose:
+                print(f'Reshaping spectra from {spectra.shape} to 2D array')
+            spectra = spectra.reshape(-1, spectra.shape[-1])
+            if verbose:
+                print(f'Reshaped to: {spectra.shape}')
+
+        for index in range(len(reader.xpos)):
+            measurement = RamanMeas()
+            measurement.x_pos = -reader.xpos[index]
+            measurement.y_pos = reader.ypos[index]
+            measurement.laser_wavelength = reader.laser_length
+            if index < len(optical_images):
+                measurement.image = optical_images[index]
+
+            if len(spectra.shape) == 2:  # noqa: PLR2004
+                intensity = spectra[index]
+                if verbose and index < NBR_SPECTRA:
+                    print(
+                        f'Spectrum {index}: '
+                        f'pos=({measurement.x_pos:.2f}, '
+                        f'{measurement.y_pos:.2f}), '
+                        f'intensity range {intensity.min():.2f} - '
+                        f'{intensity.max():.2f}, '
+                        f'has_image={measurement.image is not None}'
+                    )
+            else:
+                if verbose:
+                    print(
+                        'Warning: Only single spectrum found,',
+                        'but multiple positions exist',
+                    )
+                intensity = spectra
+
+            self._set_spectrum_data(measurement, reader.xdata, intensity)
+            self.raman_meas_list.append(measurement)
+
+    def _read_single_spectrum(self, reader, optical_images, verbose):
+        if verbose:
+            print('Processing single spectrum...')
+        measurement = RamanMeas()
+        if optical_images:
+            measurement.image = optical_images[0]
+            if verbose:
+                print('Assigned optical image to single spectrum')
+
+        self._set_spectrum_data(measurement, reader.xdata, reader.spectra)
+        self.raman_meas_list.append(measurement)
+
+    @staticmethod
+    def _set_spectrum_data(measurement, wavenumber, intensity):
+        wavenumber = np.array(wavenumber).flatten()
+        intensity = np.array(intensity).flatten()
+        min_length = min(len(wavenumber), len(intensity))
+        measurement.data = pd.DataFrame(
+            {
+                'wavenumber': wavenumber[:min_length],
+                'intensity': intensity[:min_length],
+            }
+        )
 
     def _extract_optical_images_from_reader(self, reader, verbose=False):
         """Extract optical microscopy images from WDF file WXDB block.
@@ -312,57 +281,54 @@ class MappingRamanMeas:
 
         from PIL import Image
 
+        if not hasattr(reader, 'file_obj') or not hasattr(reader, 'block_info'):
+            return []
+        if 'WXDB' not in reader.block_info:
+            return []
+
+        if verbose:
+            print('Found WXDB block, extracting optical images...')
+        _, offset, size = reader.block_info['WXDB']
+        reader.file_obj.seek(offset)
+        wxdb_data = reader.file_obj.read(size)
+        return self._decode_wxdb_images(wxdb_data, io, Image, verbose)
+
+    @staticmethod
+    def _decode_wxdb_images(wxdb_data, io, image_class, verbose):
+        jpeg_start = b'\xff\xd8\xff'
+        jpeg_end = b'\xff\xd9'
+        start_positions = []
+        position = 0
+        while True:
+            position = wxdb_data.find(jpeg_start, position)
+            if position == -1:
+                break
+            start_positions.append(position)
+            position += 1
+
         images = []
+        for index, start_pos in enumerate(start_positions):
+            end_pos = wxdb_data.find(jpeg_end, start_pos)
+            if end_pos == -1:
+                end_pos = (
+                    start_positions[index + 1]
+                    if index < len(start_positions) - 1
+                    else len(wxdb_data)
+                )
+            else:
+                end_pos += 2
 
-        # Try to extract from WXDB block
-        if hasattr(reader, 'file_obj') and hasattr(reader, 'block_info'):
-            if 'WXDB' in reader.block_info:
+            try:
+                image = image_class.open(io.BytesIO(wxdb_data[start_pos:end_pos]))
+                images.append(image)
                 if verbose:
-                    print('Found WXDB block, extracting optical images...')
-                block_type, offset, size = reader.block_info['WXDB']
-                reader.file_obj.seek(offset)
-                wxdb_data = reader.file_obj.read(size)
-
-                # Find all JPEG start positions
-                jpeg_start = b'\xff\xd8\xff'
-                jpeg_end = b'\xff\xd9'
-
-                start_positions = []
-                pos = 0
-                while True:
-                    pos = wxdb_data.find(jpeg_start, pos)
-                    if pos == -1:
-                        break
-                    start_positions.append(pos)
-                    pos += 1
-
-                # Extract each JPEG
-                for i, start_pos in enumerate(start_positions):
-                    # Find end of this JPEG
-                    end_pos = wxdb_data.find(jpeg_end, start_pos)
-                    if end_pos == -1:
-                        if i < len(start_positions) - 1:
-                            end_pos = start_positions[i + 1]
-                        else:
-                            end_pos = len(wxdb_data)
-                    else:
-                        end_pos += 2
-
-                    jpeg_data = wxdb_data[start_pos:end_pos]
-
-                    try:
-                        img = Image.open(io.BytesIO(jpeg_data))
-                        images.append(img)
-                        if verbose:
-                            print(
-                                f'Successfully extracted image {i + 1}, '
-                                f'size: {img.size}'
-                            )
-                    except Exception as e:
-                        if verbose:
-                            print(f'Failed to extract image {i + 1}: {e}')
-                        images.append(None)
-
+                    print(
+                        f'Successfully extracted image {index + 1}, size: {image.size}'
+                    )
+            except Exception as exc:
+                if verbose:
+                    print(f'Failed to extract image {index + 1}: {exc}')
+                images.append(None)
         return images
 
     def save_optical_images(self, folder, filename_prefix, verbose=False):

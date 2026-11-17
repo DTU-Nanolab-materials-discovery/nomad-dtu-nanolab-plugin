@@ -58,6 +58,113 @@ MIN_R = 0.9
 # Number of parts expected in measurement label when split by "__"
 MEASUREMENT_LABEL_PARTS = 4
 
+
+def _standard_treatment_options(args, kwargs):
+    defaults = {
+        'wv_start': WV_START,
+        'wv_end': WV_END,
+        'alpha_method': ALPHA_METHOD,
+        'tauc_method': TAUC_METHOD,
+        'max_energy': MAX_ENERGY,
+        'window_size': WINDOW_SIZE,
+        'window_size_intercept': WINDOW_SIZE_INTERCEPT,
+        'window_size_threshold': WINDOW_SIZE_THRESHOLD,
+        'alpha_threshold': ALPHA_THRESHOLD,
+        'method': 'normalized',
+        'min_r': MIN_R,
+        'min_slope': 1,
+    }
+    names = tuple(defaults)
+    if len(args) > len(names):
+        raise TypeError(
+            f'standard_treatment() takes {len(names)} positional arguments '
+            f'but {len(args)} were given'
+        )
+
+    options = dict(zip(names, args))
+    for name, value in kwargs.items():
+        if name not in defaults:
+            raise TypeError(
+                f"standard_treatment() got an unexpected keyword argument '{name}'"
+            )
+        if name in options:
+            raise TypeError(
+                f"standard_treatment() got multiple values for argument '{name}'"
+            )
+        options[name] = value
+    return {**defaults, **options}
+
+
+def _build_alpha_dataframes(transmission, reflection, source_measurement, method):
+    def format_values(reflectance, transmittance):
+        reflectance[reflectance > 1] = 1
+        transmittance[transmittance < 0] = T_THRESHOLD
+        return reflectance, transmittance
+
+    def one_front(transmittance, reflectance):
+        reflectance, transmittance = format_values(reflectance, transmittance)
+        return -np.log(transmittance / (1 - reflectance))
+
+    def front_and_back(transmittance, reflectance):
+        reflectance, transmittance = format_values(reflectance, transmittance)
+        return -np.log(transmittance / (1 - reflectance) ** 2)
+
+    def infinite_reflections(transmittance, reflectance):
+        reflectance, transmittance = format_values(reflectance, transmittance)
+        return -np.log(
+            -(
+                reflectance**2
+                + np.sqrt(
+                    reflectance**4
+                    + 4 * transmittance**2 * reflectance**2
+                    - 4 * reflectance**3
+                    + 6 * reflectance**2
+                    - 4 * reflectance
+                    + 1
+                )
+                - 2 * reflectance
+                - 1
+            )
+            / (2 * reflectance**2 * transmittance)
+        )
+
+    alpha_methods = {
+        '1fr': one_front,
+        '1fbr': front_and_back,
+        'infr': infinite_reflections,
+    }
+    t_df = pd.DataFrame(
+        {
+            'Wavelength': transmission['wavelength'],
+            'Energy': transmission['energy'],
+            'T': transmission['intensity'],
+        }
+    )
+    r_df = pd.DataFrame(
+        {
+            'Wavelength': reflection['wavelength'],
+            'Energy': reflection['energy'],
+            'R': reflection['intensity'],
+        }
+    )
+    alpha_df = pd.DataFrame(
+        {
+            'Wavelength': source_measurement.data['Wavelength'],
+            'Energy': source_measurement.data['Energy'],
+            'alpha': alpha_methods[method](
+                transmission['fraction'], reflection['fraction']
+            ),
+        }
+    )
+    alpha_df.loc[alpha_df['alpha'] > MAX_ALPHA, 'alpha'] = MAX_ALPHA
+    normalized_alpha_df = alpha_df.copy()
+    normalized_alpha_df['normalized_alpha'] = (
+        alpha_df['alpha'] - alpha_df['alpha'].min()
+    ) / (alpha_df['alpha'].max() - alpha_df['alpha'].min())
+    normalized_alpha_df.drop(columns=['alpha'], inplace=True)
+    return t_df, r_df, alpha_df, normalized_alpha_df
+
+
 # -----------------Classes------------------
 
 
@@ -281,123 +388,73 @@ class MultiMeasurement:
             # considers all reflections
         """
 
-        def format_R_T(R, T):
-            R[R > 1] = 1
-            T[T < 0] = T_THRESHOLD
-            return R, T
+        rt_measurements = self._get_rt_measurements()
+        if rt_measurements is None:
+            return
+        self._filter_rt_wavelengths(rt_measurements, wv_start, wv_end)
+        transmission, reflection, source_measurement = self._get_rt_arrays(
+            rt_measurements
+        )
+        t_df, r_df, alpha_df, normalized_alpha_df = _build_alpha_dataframes(
+            transmission, reflection, source_measurement, method
+        )
+        self.derived_data['T'] = t_df
+        self.derived_data['R'] = r_df
+        self.derived_data['alpha'] = alpha_df
+        self.derived_data['normalized_alpha'] = normalized_alpha_df
+        self.derived_data['alpha_method'] = method
 
-        # define the different methods to calculate the absorption coefficient
-        def method_1fr(T, R):
-            R, T = format_R_T(R, T)
-            return -np.log(T / (1 - R))
-
-        def method_1fbr(T, R):
-            R, T = format_R_T(R, T)
-            return -np.log(T / (1 - R) ** 2)
-
-        def method_infr(T, R):
-            R, T = format_R_T(R, T)
-            return -np.log(
-                -(
-                    R**2
-                    + np.sqrt(R**4 + 4 * T**2 * R**2 - 4 * R**3 + 6 * R**2 - 4 * R + 1)
-                    - 2 * R
-                    - 1
-                )
-                / (2 * R**2 * T)
-            )
-
-        # dictionary to store the methods
-        method_dict = {
-            '1fr': method_1fr,
-            '1fbr': method_1fbr,
-            'infr': method_infr,
-        }
-        # first group the measurements by the measurement type
-        rt_grouped_measurements = {}
+    def _get_rt_measurements(self):
+        grouped = {}
         for measurement in self.avg_sp_measurements:
             key = measurement.metadata['MeasurementType']
-            if key not in rt_grouped_measurements:
-                rt_grouped_measurements[key] = []
-            rt_grouped_measurements[key].append(measurement)
-        # and check there is a single R and T measurement
-        for key, measurements in rt_grouped_measurements.items():
+            grouped.setdefault(key, []).append(measurement)
+
+        for key, measurements in grouped.items():
             if len(measurements) != 1:
                 if self.verbose:
                     print(
                         f'Warning (point X={self.position_x}, '
                         f'Y={self.position_y}): {len(measurements)} {key} '
-                        f'measurements found'
+                        'measurements found'
                     )
-                return
-        # check that both R and T measurements are present
-        if 'T' not in rt_grouped_measurements or 'R' not in rt_grouped_measurements:
+                return None
+
+        if 'T' not in grouped or 'R' not in grouped:
             if self.verbose:
                 print(
                     f'Warning (point X={self.position_x}, '
                     f'Y={self.position_y}): T or R measurement missing'
                 )
-            return
-        # filter the measurements to the specified wavelength range if provided
-        if wv_start is not None and wv_end is not None:
-            for key, measurements in rt_grouped_measurements.items():
-                mask = (measurements[0].data['Wavelength'] >= wv_start) & (
-                    measurements[0].data['Wavelength'] <= wv_end
-                )
-                measurements[0].data = measurements[0].data[mask].reset_index(drop=True)
-        elif wv_start is not None:
-            for key, measurements in rt_grouped_measurements.items():
-                mask = measurements[0].data['Wavelength'] >= wv_start
-                measurements[0].data = measurements[0].data[mask].reset_index(drop=True)
-        elif wv_end is not None:
-            for key, measurements in rt_grouped_measurements.items():
-                mask = measurements[0].data['Wavelength'] <= wv_end
-                measurements[0].data = measurements[0].data[mask].reset_index(drop=True)
+            return None
+        return grouped
 
-        # calculate the absorption coefficient
-        for key, measurements in rt_grouped_measurements.items():
-            if key == 'T':
-                T = measurements[0].data['Intensity'] / 100
-                T_raw = measurements[0].data['Intensity']
-                T_wavelength = measurements[0].data['Wavelength']
-                T_energy = measurements[0].data['Energy']
-            if key == 'R':
-                R = measurements[0].data['Intensity'] / 100
-                R_raw = measurements[0].data['Intensity']
-                R_wavelength = measurements[0].data['Wavelength']
-                R_energy = measurements[0].data['Energy']
+    @staticmethod
+    def _filter_rt_wavelengths(rt_measurements, wv_start, wv_end):
+        for measurements in rt_measurements.values():
+            data = measurements[0].data
+            mask = pd.Series(True, index=data.index)
+            if wv_start is not None:
+                mask &= data['Wavelength'] >= wv_start
+            if wv_end is not None:
+                mask &= data['Wavelength'] <= wv_end
+            if wv_start is not None or wv_end is not None:
+                measurements[0].data = data[mask].reset_index(drop=True)
 
-        # Create R and T dataframes
-        T_df = pd.DataFrame()
-        T_df['Wavelength'] = T_wavelength
-        T_df['Energy'] = T_energy
-        T_df['T'] = T_raw
-
-        R_df = pd.DataFrame()
-        R_df['Wavelength'] = R_wavelength
-        R_df['Energy'] = R_energy
-        R_df['R'] = R_raw
-
-        # format the absorption coefficient into a dataframe
-        alpha_df = pd.DataFrame()
-        alpha_df['Wavelength'] = measurements[0].data['Wavelength']
-        alpha_df['Energy'] = measurements[0].data['Energy']
-        alpha_df['alpha'] = method_dict[method](T, R)
-        alpha_df.loc[alpha_df['alpha'] > MAX_ALPHA, 'alpha'] = MAX_ALPHA
-        # normalize the absorption coefficient between 0 and 1
-        normalized_alpha_df = alpha_df.copy()
-        normalized_alpha_df['normalized_alpha'] = (
-            alpha_df['alpha'] - alpha_df['alpha'].min()
-        ) / (alpha_df['alpha'].max() - alpha_df['alpha'].min())
-        # drop the alpha column to avoid confusion
-        normalized_alpha_df.drop(columns=['alpha'], inplace=True)
-
-        # Store all derived data
-        self.derived_data['T'] = T_df
-        self.derived_data['R'] = R_df
-        self.derived_data['alpha'] = alpha_df
-        self.derived_data['normalized_alpha'] = normalized_alpha_df
-        self.derived_data['alpha_method'] = method
+    @staticmethod
+    def _get_rt_arrays(rt_measurements):
+        values = {}
+        source_measurement = None
+        for key, measurements in rt_measurements.items():
+            source_measurement = measurements[0]
+            data = source_measurement.data
+            values[key] = {
+                'fraction': data['Intensity'] / 100,
+                'intensity': data['Intensity'],
+                'wavelength': data['Wavelength'],
+                'energy': data['Energy'],
+            }
+        return values['T'], values['R'], source_measurement
 
     def calc_tauc(self, method='direct'):
         """
@@ -478,64 +535,21 @@ class MultiMeasurement:
         if edge_points_to_remove is None:
             edge_points_to_remove = window_size // 2
 
-        # Calculate spacing between wavelength values
-        wavelength_diff = np.diff(wavelength)
-        evenly_spaced = np.allclose(wavelength_diff, wavelength_diff[0])
-
-        if evenly_spaced:
-            # Use Savitzky–Golay smoothing and derivatives
-            smooth_alpha = signal.savgol_filter(alpha, window_size, 2)
-            first_derivative = signal.savgol_filter(
-                smooth_alpha, window_size, 2, deriv=1, mode='mirror'
-            )
-            second_derivative = signal.savgol_filter(
-                smooth_alpha, window_size, 2, deriv=2, mode='mirror'
-            )
-        else:
-            if self.verbose:
-                print(
-                    f'Warning (point X={self.position_x},'
-                    f' Y={self.position_y}): '
-                    'Wavelength values are not evenly spaced. Using rolling'
-                    ' average smoothing instead.'
-                )
-
-            # Rolling average smoothing
-            kernel = np.ones(window_size) / window_size
-            smooth_alpha = np.convolve(alpha, kernel, mode='same')
-
-            # Approximate derivatives with finite differences
-            first_derivative = np.gradient(smooth_alpha, wavelength)
-            second_derivative = np.gradient(first_derivative, wavelength)
-
-        # Remove edge points to avoid derivative artifacts
-        if len(wavelength) > 2 * edge_points_to_remove:
-            # Create slices excluding edge points
-            valid_slice = slice(edge_points_to_remove, -edge_points_to_remove)
-
-            wavelength_trimmed = wavelength[valid_slice]
-            smooth_alpha_trimmed = smooth_alpha[valid_slice]
-            first_derivative_trimmed = first_derivative[valid_slice]
-            second_derivative_trimmed = second_derivative[valid_slice]
-
-            if self.verbose:
-                print(
-                    f'Info (point X={self.position_x}, Y={self.position_y}): '
-                    f'Removed {edge_points_to_remove} points from each edge. '
-                    f'Working with {len(wavelength_trimmed)} points instead '
-                    f'of {len(wavelength)}.'
-                )
-        else:
-            if self.verbose:
-                print(
-                    f'Warning (point X={self.position_x}, Y={self.position_y}): '
-                    f'Not enough data points to remove edges safely. '
-                    f'Using all {len(wavelength)} points.'
-                )
-            wavelength_trimmed = wavelength
-            smooth_alpha_trimmed = smooth_alpha
-            first_derivative_trimmed = first_derivative
-            second_derivative_trimmed = second_derivative
+        smooth_alpha, first_derivative, second_derivative = self._smooth_alpha(
+            wavelength, alpha, window_size
+        )
+        (
+            wavelength_trimmed,
+            smooth_alpha_trimmed,
+            first_derivative_trimmed,
+            second_derivative_trimmed,
+        ) = self._trim_inflection_edges(
+            wavelength,
+            smooth_alpha,
+            first_derivative,
+            second_derivative,
+            edge_points_to_remove,
+        )
 
         # Inflection point: index of maximum |first derivative| (in trimmed data)
         inflection_idx_trimmed = np.argmax(np.abs(first_derivative_trimmed))
@@ -558,42 +572,11 @@ class MultiMeasurement:
         bandgap_wavelength = wavelength_trimmed[bandgap_idx_trimmed]
         bandgap_energy = 1239.84 / bandgap_wavelength
 
-        # Normalize the alpha values between 0 and 1 (using trimmed data)
-        normalized_smoothed_alpha_trimmed = (
-            smooth_alpha_trimmed - np.min(smooth_alpha_trimmed)
-        ) / (np.max(smooth_alpha_trimmed) - np.min(smooth_alpha_trimmed))
-
-        # Store results in derived_data (using trimmed arrays)
-        self.derived_data['normalized_smoothed_alpha'] = pd.DataFrame(
-            {
-                'Wavelength': wavelength_trimmed,
-                'Energy': 1239.84 / wavelength_trimmed,
-                'normalized_smoothed_alpha': normalized_smoothed_alpha_trimmed,
-            }
-        )
-
-        self.derived_data['smoothed_alpha'] = pd.DataFrame(
-            {
-                'Wavelength': wavelength_trimmed,
-                'Energy': 1239.84 / wavelength_trimmed,
-                'smoothed_alpha': smooth_alpha_trimmed,
-            }
-        )
-
-        self.derived_data['1st_deriv_alpha'] = pd.DataFrame(
-            {
-                'Wavelength': wavelength_trimmed,
-                'Energy': 1239.84 / wavelength_trimmed,
-                '1st_deriv_alpha': first_derivative_trimmed,
-            }
-        )
-
-        self.derived_data['2nd_deriv_alpha'] = pd.DataFrame(
-            {
-                'Wavelength': wavelength_trimmed,
-                'Energy': 1239.84 / wavelength_trimmed,
-                '2nd_deriv_alpha': second_derivative_trimmed,
-            }
+        self._store_inflection_data(
+            wavelength_trimmed,
+            smooth_alpha_trimmed,
+            first_derivative_trimmed,
+            second_derivative_trimmed,
         )
 
         # Before splitting the data, we check that not all smoothed alpha values
@@ -616,6 +599,94 @@ class MultiMeasurement:
             'edge_points_removed': edge_points_to_remove,
         }
 
+    def _smooth_alpha(self, wavelength, alpha, window_size):
+        wavelength_diff = np.diff(wavelength)
+        if np.allclose(wavelength_diff, wavelength_diff[0]):
+            smooth_alpha = signal.savgol_filter(alpha, window_size, 2)
+            first_derivative = signal.savgol_filter(
+                smooth_alpha, window_size, 2, deriv=1, mode='mirror'
+            )
+            second_derivative = signal.savgol_filter(
+                smooth_alpha, window_size, 2, deriv=2, mode='mirror'
+            )
+            return smooth_alpha, first_derivative, second_derivative
+
+        if self.verbose:
+            print(
+                f'Warning (point X={self.position_x},'
+                f' Y={self.position_y}): '
+                'Wavelength values are not evenly spaced. Using rolling'
+                ' average smoothing instead.'
+            )
+        kernel = np.ones(window_size) / window_size
+        smooth_alpha = np.convolve(alpha, kernel, mode='same')
+        first_derivative = np.gradient(smooth_alpha, wavelength)
+        second_derivative = np.gradient(first_derivative, wavelength)
+        return smooth_alpha, first_derivative, second_derivative
+
+    def _trim_inflection_edges(
+        self,
+        wavelength,
+        smooth_alpha,
+        first_derivative,
+        second_derivative,
+        edge_points_to_remove,
+    ):
+        if len(wavelength) > 2 * edge_points_to_remove:
+            valid_slice = slice(edge_points_to_remove, -edge_points_to_remove)
+            trimmed = tuple(
+                values[valid_slice]
+                for values in (
+                    wavelength,
+                    smooth_alpha,
+                    first_derivative,
+                    second_derivative,
+                )
+            )
+            if self.verbose:
+                print(
+                    f'Info (point X={self.position_x}, Y={self.position_y}): '
+                    f'Removed {edge_points_to_remove} points from each edge. '
+                    f'Working with {len(trimmed[0])} points instead '
+                    f'of {len(wavelength)}.'
+                )
+            return trimmed
+
+        if self.verbose:
+            print(
+                f'Warning (point X={self.position_x}, Y={self.position_y}): '
+                f'Not enough data points to remove edges safely. '
+                f'Using all {len(wavelength)} points.'
+            )
+        return wavelength, smooth_alpha, first_derivative, second_derivative
+
+    def _store_inflection_data(
+        self, wavelength, smooth_alpha, first_derivative, second_derivative
+    ):
+        energy = 1239.84 / wavelength
+        normalized = (smooth_alpha - np.min(smooth_alpha)) / (
+            np.max(smooth_alpha) - np.min(smooth_alpha)
+        )
+        self.derived_data['normalized_smoothed_alpha'] = pd.DataFrame(
+            {
+                'Wavelength': wavelength,
+                'Energy': energy,
+                'normalized_smoothed_alpha': normalized,
+            }
+        )
+        for key, values in (
+            ('smoothed_alpha', smooth_alpha),
+            ('1st_deriv_alpha', first_derivative),
+            ('2nd_deriv_alpha', second_derivative),
+        ):
+            self.derived_data[key] = pd.DataFrame(
+                {
+                    'Wavelength': wavelength,
+                    'Energy': energy,
+                    key: values,
+                }
+            )
+
     def estimate_bandgap_threshold(
         self,
         threshold=ALPHA_THRESHOLD,
@@ -632,36 +703,48 @@ class MultiMeasurement:
         the default takes as input the raw absorption coefficient, while the
         'normalized' method takes the normalized absorption coefficient as input.
         """
-        # Check that the alpha data is present
+        if not self._has_threshold_data(min_alpha):
+            return
+
+        alpha_df, alpha = self._threshold_alpha(method)
+        energy = alpha_df['Energy'].values
+        E_g = self._find_threshold_energy(energy, alpha, threshold, window_size)
+        self.derived_data['bandgap_threshold_energy'] = E_g
+        self.derived_data['bandgap_threshold_wavelength'] = 1239.84 / E_g
+        self.derived_data['bandgap_threshold_method'] = {
+            'threshold': threshold,
+            'window_size': window_size,
+        }
+
+    def _has_threshold_data(self, min_alpha):
         if 'alpha' not in self.derived_data:
             if self.verbose:
                 print(
                     f'Warning (point X={self.position_x}, '
                     f'Y={self.position_y}): Alpha data missing'
                 )
-            return
-
+            return False
         if 'smoothed_alpha' not in self.derived_data:
             if self.verbose:
                 print(
                     f'Warning (point X={self.position_x}, '
                     f'Y={self.position_y}): Smoothed alpha data missing'
                 )
-            return
-
-        # if all the alpha values are above the threshold, we return np.nan
-        # and print a warning
-        if all(self.derived_data['smoothed_alpha']['smoothed_alpha'] > min_alpha):
+            return False
+        smoothed_alpha = self.derived_data['smoothed_alpha']['smoothed_alpha']
+        if all(smoothed_alpha > min_alpha):
             if self.verbose:
                 print(
                     f'Warning (point X={self.position_x}, '
                     f'Y={self.position_y}): All alpha values are above the '
-                    f'threshold. Bandgap estimation impossible.'
+                    'threshold. Bandgap estimation impossible.'
                 )
             self.derived_data['bandgap_threshold_energy'] = np.nan
             self.derived_data['bandgap_threshold_wavelength'] = np.nan
-            return
+            return False
+        return True
 
+    def _threshold_alpha(self, method):
         if method == 'normalized':
             alpha_df = self.derived_data['normalized_alpha']
             alpha = alpha_df['normalized_alpha'].values
@@ -672,47 +755,30 @@ class MultiMeasurement:
             raise ValueError(
                 f"Unknown method: {method}. Use 'normalized' or 'default'."
             )
+        return alpha_df, alpha
 
-        energy = alpha_df['Energy'].values
-
-        # Slide a window across the data
-        for i in range(len(energy) - window_size):
-            # Take a window of size 'window_size'
-            E_window = energy[i : i + window_size]
-            alpha_window = alpha[i : i + window_size]
-
-            # Check if all alpha values are above the threshold
+    def _find_threshold_energy(self, energy, alpha, threshold, window_size):
+        for index in range(len(energy) - window_size):
+            energy_window = energy[index : index + window_size]
+            alpha_window = alpha[index : index + window_size]
             if all(alpha_window > threshold):
-                # if the very first window has all values above the threshold
-                # we say that the bandgap is np.nan
-                if i == 0:
+                if index == 0:
                     if self.verbose:
                         print(
                             f'Warning (point X={self.position_x}, '
                             f'Y={self.position_y}): All alpha values are above the '
-                            f'threshold. Bandgap estimation impossible.'
+                            'threshold. Bandgap estimation impossible.'
                         )
-                    E_g = np.nan
-                else:
-                    # Calculate the average energy value of the window
-                    E_g = np.mean(E_window)
-                break
-        else:
-            if self.verbose:
-                print(
-                    f'Warning (point X={self.position_x}, '
-                    f'Y={self.position_y}): No suitable region found for '
-                    f'bandgap estimation.'
-                )
-            E_g = np.nan
+                    return np.nan
+                return np.mean(energy_window)
 
-        # Store results in derived_data
-        self.derived_data['bandgap_threshold_energy'] = E_g
-        self.derived_data['bandgap_threshold_wavelength'] = 1239.84 / E_g
-        self.derived_data['bandgap_threshold_method'] = {
-            'threshold': threshold,
-            'window_size': window_size,
-        }
+        if self.verbose:
+            print(
+                f'Warning (point X={self.position_x}, '
+                f'Y={self.position_y}): No suitable region found for '
+                'bandgap estimation.'
+            )
+        return np.nan
 
     def estimate_bandgap_tauc(
         self, window_size=10, max_energy=None, min_r=MIN_R, min_slope=1
@@ -752,71 +818,13 @@ class MultiMeasurement:
         energy = filtered_data['Energy'].values
         tauc = filtered_data['tauc'].values
 
-        best_r = -1
-        best_region = None
-        best_region_center = None
-        best_fit = None
-
-        # Slide a window across the data
-        for i in range(len(energy) - window_size):
-            # Take a window of size 'window_size'
-            E_window = energy[i : i + window_size]
-            tauc_window = tauc[i : i + window_size]
-
-            # Perform linear regression on the window
-            model = LinearRegression()
-            model.fit(E_window.reshape(-1, 1), tauc_window)
-
-            # Calculate correlation coefficient (r)
-            r = np.corrcoef(E_window, tauc_window)[0, 1]
-
-            # Get the slope of the linear regression
-            slope = model.coef_[0]
-
-            # If the correlation coefficient is higher than previous best
-            # AND the slope is greater than 1, update best region
-            if r > best_r and slope > min_slope:
-                best_r = r
-                best_region = (i, i + window_size)
-                best_region_center = 0.5 * (best_region[0] + best_region[1])
-                best_fit = model
-
-        if best_fit is None:
-            if self.verbose:
-                print(
-                    f'Warning (point X={self.position_x}, '
-                    f'Y={self.position_y}): No suitable region found for '
-                    f'bandgap estimation (r>{min_r} and slope>{min_slope}).'
-                )
-            E_g = np.nan
-            best_r = np.nan
-            best_region = np.nan
-            best_region_center = np.nan
-        elif best_r < min_r:
-            if self.verbose:
-                print(
-                    f'Warning (point X={self.position_x}, '
-                    f'Y={self.position_y}): Best region correlation '
-                    f'coefficient below {min_r}. Bandgap estimation impossible.'
-                )
-            E_g = np.nan
-        elif all(alpha > MIN_ALPHA_BANDGAP):
-            if self.verbose:
-                print(
-                    f'Warning (point X={self.position_x}, '
-                    f'Y={self.position_y}): All alpha values are above '
-                    f'{MIN_ALPHA_BANDGAP}. Bandgap estimation impossible.'
-                )
-            E_g = np.nan
-            best_r = np.nan
-            best_region = np.nan
-            best_region_center = np.nan
-        else:
-            # Extrapolate the best region to the x-axis
-            # y = mx + b, solve for x when y=0
-            intercept = best_fit.intercept_
-            # Solve for E when y = 0 (intercept = 0)
-            E_g = -intercept / best_fit.coef_[0]
+        fit_result = self._find_tauc_fit(energy, tauc, window_size, min_slope)
+        E_g, best_r, best_region, best_region_center = self._resolve_tauc_fit(
+            alpha,
+            fit_result,
+            min_r,
+            min_slope,
+        )
 
         # Store results in derived_data
         self.derived_data['intercept_best_r'] = best_r
@@ -831,45 +839,96 @@ class MultiMeasurement:
         }
 
         # Also store the slope of the best fit
-        if best_fit is not None:
-            self.derived_data['intercept_best_slope'] = best_fit.coef_[0]
+        if fit_result[3] is not None:
+            self.derived_data['intercept_best_slope'] = fit_result[3].coef_[0]
 
         return best_region, best_r
 
-    def standard_treatment(  # noqa: PLR0913
+    @staticmethod
+    def _find_tauc_fit(energy, tauc, window_size, min_slope):
+        best_r = -1
+        best_region = None
+        best_region_center = None
+        best_fit = None
+        for index in range(len(energy) - window_size):
+            energy_window = energy[index : index + window_size]
+            tauc_window = tauc[index : index + window_size]
+            model = LinearRegression()
+            model.fit(energy_window.reshape(-1, 1), tauc_window)
+            correlation = np.corrcoef(energy_window, tauc_window)[0, 1]
+            if correlation > best_r and model.coef_[0] > min_slope:
+                best_r = correlation
+                best_region = (index, index + window_size)
+                best_region_center = 0.5 * (best_region[0] + best_region[1])
+                best_fit = model
+        return best_r, best_region, best_region_center, best_fit
+
+    def _resolve_tauc_fit(
         self,
-        wv_start=WV_START,
-        wv_end=WV_END,
-        alpha_method=ALPHA_METHOD,
-        tauc_method=TAUC_METHOD,
-        max_energy=MAX_ENERGY,
-        window_size=WINDOW_SIZE,
-        window_size_intercept=WINDOW_SIZE_INTERCEPT,
-        window_size_threshold=WINDOW_SIZE_THRESHOLD,
-        alpha_threshold=ALPHA_THRESHOLD,
-        method='normalized',
-        min_r=MIN_R,
-        min_slope=1,  # Add this parameter with default value
+        alpha,
+        fit_result,
+        min_r,
+        min_slope,
     ):
+        best_r, best_region, best_region_center, best_fit = fit_result
+        if best_fit is None:
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): No suitable region found for '
+                    f'bandgap estimation (r>{min_r} and slope>{min_slope}).'
+                )
+            return np.nan, np.nan, np.nan, np.nan
+        if best_r < min_r:
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): Best region correlation '
+                    f'coefficient below {min_r}. Bandgap estimation impossible.'
+                )
+            return np.nan, best_r, best_region, best_region_center
+        if all(alpha > MIN_ALPHA_BANDGAP):
+            if self.verbose:
+                print(
+                    f'Warning (point X={self.position_x}, '
+                    f'Y={self.position_y}): All alpha values are above '
+                    f'{MIN_ALPHA_BANDGAP}. Bandgap estimation impossible.'
+                )
+            return np.nan, np.nan, np.nan, np.nan
+        bandgap = -best_fit.intercept_ / best_fit.coef_[0]
+        return bandgap, best_r, best_region, best_region_center
+
+    def standard_treatment(self, *args, **kwargs):
         """
         method to perform the standard treatment of the data
         """
+        options = _standard_treatment_options(args, kwargs)
         self.avg_sp_pol()
-        self.calc_avg_transmission_refl(wv_start=wv_start, wv_end=wv_end)
-        self.find_max_transmission_refl(wv_start=wv_start, wv_end=wv_end)
-        self.calc_alpha(method=alpha_method, wv_start=wv_start, wv_end=wv_end)
-        self.calc_tauc(method=tauc_method)
-        self.estimate_bandgap_inflection(max_energy=max_energy, window_size=window_size)
+        self.calc_avg_transmission_refl(
+            wv_start=options['wv_start'], wv_end=options['wv_end']
+        )
+        self.find_max_transmission_refl(
+            wv_start=options['wv_start'], wv_end=options['wv_end']
+        )
+        self.calc_alpha(
+            method=options['alpha_method'],
+            wv_start=options['wv_start'],
+            wv_end=options['wv_end'],
+        )
+        self.calc_tauc(method=options['tauc_method'])
+        self.estimate_bandgap_inflection(
+            max_energy=options['max_energy'], window_size=options['window_size']
+        )
         self.estimate_bandgap_tauc(
-            window_size=window_size_intercept,
-            max_energy=max_energy,
-            min_r=min_r,
-            min_slope=min_slope,  # Add this parameter
+            window_size=options['window_size_intercept'],
+            max_energy=options['max_energy'],
+            min_r=options['min_r'],
+            min_slope=options['min_slope'],
         )
         self.estimate_bandgap_threshold(
-            threshold=alpha_threshold,
-            window_size=window_size_threshold,
-            method=method,
+            threshold=options['alpha_threshold'],
+            window_size=options['window_size_threshold'],
+            method=options['method'],
         )
 
     def add_measurement(self, measurement):
