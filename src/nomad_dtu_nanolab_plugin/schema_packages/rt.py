@@ -175,12 +175,15 @@ class RTSpectrum(ArchiveSection):
     """
 
     m_def = Section(
-        description='Single R or T spectrum with measurement geometry information.',
+        description=(
+            'Single Reflection or Transmission spectrum with measurement '
+            'geometry information.'
+        ),
     )
 
     spectrum_type = Quantity(
         type=MEnum('Reflection', 'Transmission'),
-        description='Type of spectrum: Reflection (R) or Transmission (T).',
+        description='Type of spectrum: Reflection or Transmission.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
         ),
@@ -196,7 +199,7 @@ class RTSpectrum(ArchiveSection):
     intensity = Quantity(
         type=np.dtype(np.float64),
         shape=['*'],
-        description='Intensity values (R or T as fraction 0-1).',
+        description='Intensity values for Reflection or Transmission (fraction 0-1).',
     )
 
     detector_angle = Quantity(
@@ -257,7 +260,8 @@ class RTSpectrum(ArchiveSection):
 
 class RTResult(MappingResult):
     """
-    Results from a single spatial position containing multiple R/T spectra.
+    Results from a single spatial position containing
+    Reflection/Transmission spectra.
     """
 
     # repeating subsection for multiple
@@ -274,7 +278,8 @@ class RTResult(MappingResult):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
-        Normalizes the results data for the RT measurement.
+        Normalizes the results data for the
+        Reflection/Transmission measurement.
         """
         super().normalize(archive, logger)
 
@@ -291,7 +296,9 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
         label='Autosampler Measurement',
-        description='Experiment container for autosampler R/T measurements',
+        description=(
+            'Experiment container for autosampler Reflection/Transmission measurements.'
+        ),
     )
 
     # .csv file exported from the Agilent Cary .bsw or .dsw file
@@ -300,14 +307,15 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
         a_eln={
             'component': 'FileEditQuantity',
-            'label': 'Data file (CSV with R/T spectra)',
+            'label': 'Data file (CSV with Reflection/Transmission spectra)',
         },
         description=(
-            'CSV file containing all R and T spectra recorded by the Agilent '
-            'Cary 7000 UMS autosampler. This file contains the raw spectral '
-            'data along with metadata and needs to be parsed together with '
-            'the config file to extract individual spectra and associate them '
-            'with the correct sample/library and position.'
+            'CSV file containing all Reflection and Transmission spectra '
+            'recorded by the Agilent Cary 7000 UMS autosampler. This file '
+            'contains the raw spectral data along with metadata and needs to '
+            'be parsed together with the config file to extract individual '
+            'spectra and associate them with the correct sample/library and '
+            'position.'
         ),
     )
 
@@ -389,9 +397,12 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
     )
 
     detector_slit = Quantity(
-        type=MEnum('None (open)', '1°', '2°'),
-        default='None (open)',
-        description='Detector slit used during the measurement.',
+        type=MEnum('None', '1°', '2°'),
+        default='None',
+        description=(
+            'Detector slit used during the measurement. None means the '
+            'detector slit is open.'
+        ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
             label='Detector slit',
@@ -752,8 +763,8 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
             self.plot_grid(archive, logger)
 
             logger.info(
-                f'Created {len(measurements)} RT measurement archives '
-                f'from autosampler data.'
+                f'Created {len(measurements)} Reflection/Transmission '
+                'measurement archives from autosampler data.'
             )
 
         except Exception as e:
@@ -767,7 +778,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             'http://purl.obolibrary.org/obo/CHMO_0002622',
             'http://purl.obolibrary.org/obo/CHMO_0000939',
         ],
-        label='RT Measurement',
+        label='Reflection/Transmission Measurement',
     )
 
     # Wavelength bounds for averaging (in nm). We choose the visible range.
@@ -833,26 +844,33 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
     )
 
     detector_slit = Quantity(
-        type=MEnum('None (open)', '1°', '2°'),
-        default='None (open)',
-        description='Detector slit used during the measurement.',
+        type=MEnum('None', '1°', '2°'),
+        default='None',
+        description=(
+            'Detector slit used during the measurement. None means the '
+            'detector slit is open.'
+        ),
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.EnumEditQuantity,
             label='Detector slit',
         ),
     )
 
-    # one csv (for example an UMA sequence with R, T, and R at different angles)
+    # one csv (for example an UMA sequence with Reflection, Transmission, and
+    # Reflection at different angles)
     # or several csv files measured at the name single point (for example two
-    # csv files obtained with the DRA integratingsphere, one with R, one with T)
+    # csv files obtained with the DRA integrating sphere, one with Reflection
+    # and one with Transmission)
     data_file = Quantity(
         type=str,
         shape=['*'],
         a_browser=BrowserAnnotation(adaptor='RawFileAdaptor'),
         a_eln={'component': 'FileEditQuantity', 'label': 'Data file (.csv)'},
         description=(
-            'CSV file(s) for single-point R/T measurement. '
-            'Can include R, T, or both spectra in one or multiple files. '
+            'CSV file(s) for single-point '
+            'Reflection/Transmission measurement. '
+            'Can include Reflection, Transmission, or both spectra in one or '
+            'multiple files. '
             'Only used when uploading single-point measurements directly; '
             'NOT used for autosampler batch experiments.'
         ),
@@ -875,10 +893,11 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
     def plot(self) -> None:
         """
-        Create interactive Plotly visualizations of RT measurement data.
+        Create interactive Plotly visualizations of Reflection/Transmission
+        measurement data.
 
         Creates two types of plots:
-        1. "R and T Spectra": All spectra overlaid
+        1. "Reflection and Transmission Spectra": All spectra overlaid
         2. "Individual Configuration Heatmaps": One spatial heatmap per
            unique measurement configuration (spectrum type, detector angle,
            sample angle, polarization) showing average intensity over the
@@ -895,7 +914,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         if not self.results:
             return
 
-        # ===== Plot 1: All R and T Spectra =====
+        # ===== Plot 1: Reflection and Transmission Spectra =====
         fig_spectra = go.Figure()
 
         MAX_TRACES = 25  # Limit traces for performance
@@ -943,7 +962,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     f'({detector_label}, {sample_label}, {polarization_label})'
                 )
 
-                # Use different colors/styles for R vs T
+                # Use different styles for Reflection vs Transmission
                 line_style = dict()
                 if spectrum_type == 'Reflection':
                     line_style['dash'] = 'solid'
@@ -970,7 +989,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         fig_spectra.update_layout(
             title=title,
             xaxis_title='Wavelength (nm)',
-            yaxis_title='R, T (fraction)',
+            yaxis_title='Reflection, Transmission (fraction)',
             template='plotly_white',
             hovermode='closest',
             dragmode='zoom',
@@ -982,7 +1001,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         plot_json_spectra['config'] = dict(scrollZoom=False)
         self.figures.append(
             PlotlyFigure(
-                label='R and T Spectra',
+                label='Reflection and Transmission Spectra',
                 figure=plot_json_spectra,
             )
         )
@@ -1254,7 +1273,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             try:
                 files = (
                     self.data_file
-                    if isinstance(self.data_file, (list, tuple))
+                    if isinstance(self.data_file, list | tuple)
                     else [self.data_file]
                 )
 
@@ -1331,7 +1350,7 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     if self.data_file:
                         first_file = (
                             self.data_file[0]
-                            if isinstance(self.data_file, (list, tuple))
+                            if isinstance(self.data_file, list | tuple)
                             else self.data_file
                         )
                         result_name = os.path.splitext(os.path.basename(first_file))[0]
@@ -1353,12 +1372,12 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                 )
 
         if self.location is None:
-            self.location = 'DTU Nanolab RT Measurement'
+            self.location = 'DTU Nanolab Reflection/Transmission Measurement'
 
         if self.data_file:
             first_file = (
                 self.data_file[0]
-                if isinstance(self.data_file, (list, tuple))
+                if isinstance(self.data_file, list | tuple)
                 else self.data_file
             )
             self.add_sample_reference(first_file, 'RT', archive, logger)

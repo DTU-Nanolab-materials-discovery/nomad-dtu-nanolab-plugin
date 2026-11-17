@@ -245,3 +245,8 @@ def test_rt_autosampler_schema():
         assert expected_name in step_library_names, (
             f'Expected library {expected_name} not found in steps'
         )
+
+
+def test_detector_slit_defaults_to_open():
+    assert rt_module.DtuAutosamplerMeasurement().detector_slit == 'None'
+    assert rt_module.RTMeasurement().detector_slit == 'None'
