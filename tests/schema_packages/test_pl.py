@@ -156,6 +156,74 @@ def test_pl_schema_shows_ywa_upload_and_orders_eln_fields():
     )
 
 
+def _assert_pl_metadata(measurement):
+    metadata = measurement.metadata
+    assert metadata.software_version == 'YWafer v7.06'
+    assert metadata.excitation_wavelength.to('nm').magnitude == EXCITATION_WAVELENGTH_NM
+    assert metadata.laser_power.to('mW').magnitude == pytest.approx(
+        LASER_POWER_PERCENTAGE
+    )
+    assert metadata.laser_power_percentage.to('%').magnitude == LASER_POWER_PERCENTAGE
+    assert metadata.integration_time.to('s').magnitude == INTEGRATION_TIME_S
+    assert metadata.wavelength_range.to('nm').magnitude.tolist() == [480, 900]
+    assert metadata.lot_id == 'mittma_0028_RTP'
+    assert metadata.wafer_number == '-1'
+    assert metadata.chamber == 'cbbmo'
+    assert metadata.scan_pitch.to('mm').magnitude.tolist() == [1, 1]
+    assert metadata.scan_center.to('mm').magnitude.tolist() == [0, 0]
+    assert metadata.wafer_radius.to('mm').magnitude == WAFER_RADIUS_MM
+    assert metadata.edge_exclusion.to('mm').magnitude == EDGE_EXCLUSION_MM
+    assert metadata.wafer_flat_angle.to('deg').magnitude == WAFER_FLAT_ANGLE_DEG
+    assert metadata.data_type == 'YWafer'
+
+
+def _assert_first_pl_result(measurement):
+    first_result = measurement.results[0]
+    assert first_result.trace_id == 'PL1 #1'
+    assert first_result.x_absolute.to('mm').magnitude == EXPECTED_FIRST_X_MM
+    assert first_result.y_absolute.to('mm').magnitude == EXPECTED_FIRST_Y_MM
+    assert first_result.x_relative.to('mm').magnitude == pytest.approx(-16)
+    assert first_result.y_relative.to('mm').magnitude == pytest.approx(13)
+    assert len(first_result.wavelength) == SPECTRUM_POINT_COUNT
+    assert len(first_result.intensity) == SPECTRUM_POINT_COUNT
+    assert np.isfinite(first_result.peak_lambda.magnitude)
+    assert first_result.peak_intensity == pytest.approx(max(first_result.intensity))
+    assert len(first_result.figures) == 1
+    spectrum_figure = first_result.figures[0].figure
+    expected_energy_ev = 1239.8419843320026 / first_result.wavelength.to('nm').magnitude
+    assert len(spectrum_figure['data']) == 1
+    assert len(spectrum_figure['data'][0]['x']) == SPECTRUM_POINT_COUNT
+    assert len(spectrum_figure['data'][0]['y']) == SPECTRUM_POINT_COUNT
+    assert spectrum_figure['layout']['xaxis']['title']['text'] == 'Photon energy (eV)'
+    assert spectrum_figure['data'][0]['x'] == pytest.approx(expected_energy_ev)
+    assert all(len(result.figures) == 1 for result in measurement.results)
+    return expected_energy_ev
+
+
+def _assert_pl_alignment_and_figures(measurement, expected_energy_ev):
+    assert measurement.around_barycenter is False
+    alignment = measurement.sample_alignment
+    assert alignment.width.to('mm').magnitude == pytest.approx(SAMPLE_WIDTH_MM)
+    assert alignment.height.to('mm').magnitude == pytest.approx(SAMPLE_HEIGHT_MM)
+    x_upper_left_mm = alignment.x_upper_left.to('mm').magnitude
+    y_upper_left_mm = alignment.y_upper_left.to('mm').magnitude
+    assert x_upper_left_mm == pytest.approx(MAP_CENTER_X_MM - SAMPLE_WIDTH_MM / 2)
+    assert y_upper_left_mm == pytest.approx(MAP_CENTER_Y_MM + SAMPLE_HEIGHT_MM / 2)
+    assert len(measurement.figures) == FIGURE_COUNT
+    spectra_plot = measurement.figures[0].figure
+    assert spectra_plot['layout']['xaxis']['title']['text'] == 'Photon energy (eV)'
+    assert spectra_plot['data'][0]['x'] == pytest.approx(expected_energy_ev)
+    map_data = measurement.figures[1].figure['data'][0]
+    assert map_data['marker']['colorbar']['title']['text'] == 'Peak energy (eV)'
+    assert map_data['x'][0] == pytest.approx(-16)
+    assert map_data['y'][0] == pytest.approx(13)
+    position_figure = measurement.figures[2].figure
+    assert position_figure['data'][-1]['name'] == 'Measurement points'
+    assert position_figure['data'][0]['name'] == 'mittma_0028_RTP'
+    assert position_figure['data'][1]['text'] == ['mittma_0028_RTP']
+    assert measurement.results[0].samples[0].lab_id == 'mittma_0028_RTP'
+
+
 def test_native_pl_measurement_normalization(monkeypatch):
     monkeypatch.setattr(
         DTUPLMeasurement,
@@ -185,80 +253,9 @@ def test_native_pl_measurement_normalization(monkeypatch):
         measurement.samples[0].measurement_y_max.to('mm').magnitude
         == MEASUREMENT_Y_MAX_MM
     )
-    assert measurement.metadata.software_version == 'YWafer v7.06'
-    assert (
-        measurement.metadata.excitation_wavelength.to('nm').magnitude
-        == EXCITATION_WAVELENGTH_NM
-    )
-    assert measurement.metadata.laser_power.to('mW').magnitude == pytest.approx(
-        LASER_POWER_PERCENTAGE
-    )
-    assert (
-        measurement.metadata.laser_power_percentage.to('%').magnitude
-        == LASER_POWER_PERCENTAGE
-    )
-    assert measurement.metadata.integration_time.to('s').magnitude == INTEGRATION_TIME_S
-    assert measurement.metadata.wavelength_range.to('nm').magnitude.tolist() == [
-        480,
-        900,
-    ]
-    assert measurement.metadata.lot_id == 'mittma_0028_RTP'
-    assert measurement.metadata.wafer_number == '-1'
-    assert measurement.metadata.chamber == 'cbbmo'
-    assert measurement.metadata.scan_pitch.to('mm').magnitude.tolist() == [1, 1]
-    assert measurement.metadata.scan_center.to('mm').magnitude.tolist() == [0, 0]
-    assert measurement.metadata.wafer_radius.to('mm').magnitude == WAFER_RADIUS_MM
-    assert measurement.metadata.edge_exclusion.to('mm').magnitude == EDGE_EXCLUSION_MM
-    assert (
-        measurement.metadata.wafer_flat_angle.to('deg').magnitude
-        == WAFER_FLAT_ANGLE_DEG
-    )
-    assert measurement.metadata.data_type == 'YWafer'
-
-    first_result = measurement.results[0]
-    assert first_result.trace_id == 'PL1 #1'
-    assert first_result.x_absolute.to('mm').magnitude == EXPECTED_FIRST_X_MM
-    assert first_result.y_absolute.to('mm').magnitude == EXPECTED_FIRST_Y_MM
-    assert first_result.x_relative.to('mm').magnitude == pytest.approx(-16)
-    assert first_result.y_relative.to('mm').magnitude == pytest.approx(13)
-    assert len(first_result.wavelength) == SPECTRUM_POINT_COUNT
-    assert len(first_result.intensity) == SPECTRUM_POINT_COUNT
-    assert np.isfinite(first_result.peak_lambda.magnitude)
-    assert first_result.peak_intensity == pytest.approx(max(first_result.intensity))
-    assert len(first_result.figures) == 1
-    spectrum_figure = first_result.figures[0].figure
-    assert len(spectrum_figure['data']) == 1
-    assert len(spectrum_figure['data'][0]['x']) == SPECTRUM_POINT_COUNT
-    assert len(spectrum_figure['data'][0]['y']) == SPECTRUM_POINT_COUNT
-    expected_energy_ev = 1239.8419843320026 / first_result.wavelength.to('nm').magnitude
-    assert spectrum_figure['layout']['xaxis']['title']['text'] == 'Photon energy (eV)'
-    assert spectrum_figure['data'][0]['x'] == pytest.approx(expected_energy_ev)
-    assert all(len(result.figures) == 1 for result in measurement.results)
-
-    assert measurement.around_barycenter is False
-    assert measurement.sample_alignment.width.to('mm').magnitude == pytest.approx(
-        SAMPLE_WIDTH_MM
-    )
-    assert measurement.sample_alignment.height.to('mm').magnitude == pytest.approx(
-        SAMPLE_HEIGHT_MM
-    )
-    x_upper_left_mm = measurement.sample_alignment.x_upper_left.to('mm').magnitude
-    y_upper_left_mm = measurement.sample_alignment.y_upper_left.to('mm').magnitude
-    assert x_upper_left_mm == pytest.approx(MAP_CENTER_X_MM - SAMPLE_WIDTH_MM / 2)
-    assert y_upper_left_mm == pytest.approx(MAP_CENTER_Y_MM + SAMPLE_HEIGHT_MM / 2)
-    assert len(measurement.figures) == FIGURE_COUNT
-    spectra_plot = measurement.figures[0].figure
-    assert spectra_plot['layout']['xaxis']['title']['text'] == 'Photon energy (eV)'
-    assert spectra_plot['data'][0]['x'] == pytest.approx(expected_energy_ev)
-    map_data = measurement.figures[1].figure['data'][0]
-    assert map_data['marker']['colorbar']['title']['text'] == 'Peak energy (eV)'
-    assert map_data['x'][0] == pytest.approx(-16)
-    assert map_data['y'][0] == pytest.approx(13)
-    position_figure = measurement.figures[2].figure
-    assert position_figure['data'][-1]['name'] == 'Measurement points'
-    assert position_figure['data'][0]['name'] == 'mittma_0028_RTP'
-    assert position_figure['data'][1]['text'] == ['mittma_0028_RTP']
-    assert measurement.results[0].samples[0].lab_id == 'mittma_0028_RTP'
+    _assert_pl_metadata(measurement)
+    expected_energy_ev = _assert_first_pl_result(measurement)
+    _assert_pl_alignment_and_figures(measurement, expected_energy_ev)
 
 
 def test_read_native_ywf_rejects_files_without_saved_pl_traces():

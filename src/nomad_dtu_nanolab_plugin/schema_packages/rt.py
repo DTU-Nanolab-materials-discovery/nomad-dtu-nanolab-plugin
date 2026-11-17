@@ -569,157 +569,24 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
             return
 
         try:
-            # Parse files using autosampler_reader
-            with archive.m_context.raw_file(self.data_file) as data_f:
-                with archive.m_context.raw_file(self.config_file) as config_f:
-                    collects = autosampler_reader.parse_file(data_f.name, config_f.name)
-
-            # Group measurements by sample
-            samples = autosampler_reader.group_samples(collects)
-
-            # Group measurements by position for each sample
-            library_data = autosampler_reader.group_measurements_position(samples)
-
-            measurements: list[ExperimentStep] = []
-
-            def _resolve_library_target_for_measurement(
-                library_lab_id: str,
-            ) -> tuple[str | None, str, str]:
-                return _resolve_library_target(archive, logger, library_lab_id)
-
-            # Create a measurement archive for each library
-            for library_id, position_data in library_data.items():
-                # Skip baseline samples (we might not to skip it in the future)
-                if library_id == 'Baseline':
-                    continue
-
-                # Extract datetime from first measurement for uniqueness
-                first_multi_measurement = next(iter(position_data.values()))
-                collection_time = None
-                if first_multi_measurement.measurements:
-                    first_measurement = first_multi_measurement.measurements[0]
-                    collection_time = first_measurement.metadata.get('Collection Time')
-
-                # Format datetime for name uniqueness
-                if collection_time is not None:
-                    if hasattr(collection_time, 'strftime'):
-                        datetime_label = collection_time.strftime('%Y%m%d_%H%M%S')
-                    else:
-                        datetime_label = (
-                            str(collection_time).replace(' ', '_').replace(':', '')
-                        )
-                else:
-                    datetime_label = 'unknown'
-
-                measurement = RTMeasurement(
-                    name=f'{library_id}_RT_{datetime_label}',
-                    lab_id=f'{library_id}_RT_{datetime_label}',
-                    vertical_back_slit=self.vertical_back_slit,
-                    vertical_front_slit=self.vertical_front_slit,
-                    horizontal_slit=self.horizontal_slit,
-                    detector_slit=self.detector_slit,
+            library_data = self._parse_autosampler_data(archive)
+            self.steps = [
+                self._create_library_step(
+                    library_id,
+                    position_data,
+                    archive,
+                    logger,
                 )
-
-                # Create results for each position
-                results = []
-                for position_key, multi_measurement in position_data.items():
-                    result = RTResult(
-                        name=f'Position {position_key}',
-                    )
-                    # Set positions after creation (inherited from MappingResult)
-                    if multi_measurement.position_x is not None:
-                        result.x_absolute = multi_measurement.position_x * ureg('mm')
-                        result.x_relative = multi_measurement.position_x * ureg('mm')
-                    if multi_measurement.position_y is not None:
-                        result.y_absolute = multi_measurement.position_y * ureg('mm')
-                        result.y_relative = multi_measurement.position_y * ureg('mm')
-
-                    # Create spectra from measurements
-                    spectra = []
-                    for single_meas in multi_measurement.measurements:
-                        # Determine spectrum type from metadata
-                        meas_type = single_meas.metadata.get(
-                            'MeasurementType', 'Unknown'
-                        )
-                        if meas_type == 'T':
-                            spectrum_type = 'Transmission'
-                        elif meas_type == 'R':
-                            spectrum_type = 'Reflection'
-                        else:
-                            logger.warning(f'Unknown measurement type: {meas_type}')
-                            continue
-
-                        # Create spectrum object
-                        spectrum = RTSpectrum(
-                            spectrum_type=spectrum_type,
-                            wavelength=(
-                                single_meas.data['Wavelength'].values * ureg('nm')
-                            ),
-                            intensity=single_meas.data['Intensity'].values / 100.0,
-                        )
-
-                        # Extract measurement geometry from metadata
-                        if 'DetectorAngle' in single_meas.metadata:
-                            spectrum.detector_angle = float(
-                                single_meas.metadata['DetectorAngle']
-                            ) * ureg('degree')
-                        if 'SampleAngle' in single_meas.metadata:
-                            spectrum.sample_angle = float(
-                                single_meas.metadata['SampleAngle']
-                            ) * ureg('degree')
-                        if 'Polarization' in single_meas.metadata:
-                            logger.debug(single_meas.metadata['PolarizationAngle'])
-                            logger.debug(single_meas.metadata['Polarization'])
-                            spectrum.polarization = single_meas.metadata['Polarization']
-
-                        spectra.append(spectrum)
-
-                    result.spectra = spectra
-
-                    # Verify positions were set correctly before adding to results
-                    results.append(result)
-
-                measurement.results = results
-                measurement.accessory = 'UMA'
-
-                # Log positions from results after assignment
-                # Results are stored in the archive via create_archive
-
-                # Link to sample using lab_id (optional - can be set manually later)
-                measurement.samples = [CompositeSystemReference(lab_id=library_id)]
-
-                (
-                    target_upload_id,
-                    target_folder,
-                    archive_folder,
-                ) = _resolve_library_target_for_measurement(library_id)
-                measurement_filename = (
-                    f'{library_id}_rt_measurement_{datetime_label}.archive.json'
-                )
-                measurement_mainfile = (
-                    str(PurePosixPath(target_folder) / measurement_filename)
-                    if target_folder
-                    else measurement_filename
-                )
-
-                # Create archive file for this measurement with datetime identifier
-                if target_upload_id is None:
-                    measurement_ref = create_archive(
-                        measurement,
-                        archive,
-                        measurement_mainfile,
-                    )
-                ]
+                for library_id, position_data in library_data.items()
+                if library_id != 'Baseline'
             ]
-
-            self.steps = measurements
 
             # Generate visualization of the measurement grid
             self.figures = []
             self.plot_grid(archive, logger)
 
             logger.info(
-                f'Created {len(measurements)} Reflection/Transmission '
+                f'Created {len(self.steps)} Reflection/Transmission '
                 'measurement archives from autosampler data.'
             )
 
@@ -751,9 +618,11 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
         datetime_label = self._collection_datetime_label(position_data)
         measurement = RTMeasurement(
             name=f'{library_id}_RT_{datetime_label}',
+            lab_id=f'{library_id}_RT_{datetime_label}',
             vertical_back_slit=self.vertical_back_slit,
             vertical_front_slit=self.vertical_front_slit,
             horizontal_slit=self.horizontal_slit,
+            detector_slit=self.detector_slit,
         )
         measurement.results = [
             self._create_position_result(key, data, logger)
@@ -761,11 +630,26 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
         ]
         measurement.accessory = 'UMA'
         measurement.samples = [CompositeSystemReference(lab_id=library_id)]
-        measurement_ref = create_archive(
-            measurement,
-            archive,
-            f'{library_id}_rt_measurement_{datetime_label}.archive.json',
+        target_upload_id, target_folder, _ = _resolve_library_target(
+            archive, logger, library_id
         )
+        measurement_filename = (
+            f'{library_id}_rt_measurement_{datetime_label}.archive.json'
+        )
+        measurement_mainfile = (
+            str(PurePosixPath(target_folder) / measurement_filename)
+            if target_folder
+            else measurement_filename
+        )
+        if target_upload_id is None:
+            measurement_ref = create_archive(measurement, archive, measurement_mainfile)
+        else:
+            measurement_ref = _create_archive_in_upload(
+                measurement,
+                archive,
+                measurement_mainfile,
+                target_upload_id,
+            )
         return ExperimentStep(
             name=f'{library_id}_rt_measurement_{datetime_label}',
             activity=measurement_ref,
@@ -967,20 +851,16 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
         else:
             self._append_configuration_lines(spatial_data, unique_x, go)
 
-        # ===== Plot 1: Reflection and Transmission Spectra =====
-        fig_spectra = go.Figure()
+    def _append_spectra_plot(self, go):
+        from nomad.datamodel.metainfo.plot import PlotlyFigure
 
         fig = go.Figure()
         max_traces = 25
         trace_count = 0
-        max_traces_reached = False
         for result in self.results:
-            if max_traces_reached:
-                break
             position_label = result.name or 'Unknown'
             for spectrum in result.spectra:
                 if trace_count >= max_traces:
-                    max_traces_reached = True
                     break
                 if spectrum.wavelength is None or spectrum.intensity is None:
                     continue
@@ -1025,39 +905,24 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     )
                 )
                 trace_count += 1
+            if trace_count >= max_traces:
+                break
         title = 'Reflection (solid) and Transmission (dot) Spectra'
-        if max_traces_reached:
+        if trace_count >= max_traces:
             title += f' (showing first {max_traces} traces only)'
-        fig.update_layout(
-            title=title,
-            xaxis_title='Wavelength (nm)',
-            yaxis_title='Reflection, Transmission (fraction)',
-            template='plotly_white',
-            hovermode='closest',
-            dragmode='zoom',
-            xaxis=dict(fixedrange=False),
-            yaxis=dict(fixedrange=False),
-        )
-        plot_json = fig.to_plotly_json()
-        plot_json['config'] = dict(scrollZoom=False)
-        self.figures.append(PlotlyFigure(label='R and T Spectra', figure=plot_json))
-
-        plot_json_spectra = fig_spectra.to_plotly_json()
-        plot_json_spectra['config'] = dict(scrollZoom=False)
-        self.figures.append(
-            PlotlyFigure(
-                label='Reflection and Transmission Spectra',
-                figure=plot_json_spectra,
-            )
+        self._append_spatial_figure(
+            fig,
+            (
+                title,
+                'Reflection and Transmission Spectra',
+                'Wavelength (nm)',
+                'Reflection, Transmission (fraction)',
+            ),
+            PlotlyFigure,
         )
 
-        # ===== Plot 2: Individual Configuration Heatmaps =====
-        # Collect all unique spectrum configurations present in the data
-        # Each unique combination of (type, detector_angle, sample_angle,
-        # polarization) gets its own heatmap
-
+    def _get_spectrum_configs(self):
         spectrum_configs = {}
-
         for result in self.results:
             for spectrum in result.spectra:
                 if not spectrum.spectrum_type:
@@ -1077,8 +942,8 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                     sample_value,
                     polarization,
                 )
-                configs.setdefault(config_key, [])
-        return configs
+                spectrum_configs.setdefault(config_key, [])
+        return spectrum_configs
 
     def _compute_avg_for_config(self, result, config_key):
         spectrum_type, detector_angle, sample_angle, polarization = config_key
@@ -1235,102 +1100,9 @@ class RTMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """Normalize measurement metadata, results, and visualizations."""
-        if (not self.results or len(self.results) == 0) and self.data_file:
+        if not self.results and self.data_file:
             try:
-                files = (
-                    self.data_file
-                    if isinstance(self.data_file, list | tuple)
-                    else [self.data_file]
-                )
-
-                spectra_all = []
-                any_angle_meta = False
-
-                for f in files:
-                    with archive.m_context.raw_file(f) as rf:
-                        # try to parse with sequence parsing first,
-                        # if it fails, fallback to non-sequence parsing
-
-                        collects = autosampler_reader.parse_file(
-                            rf.name, parse_sequence=False
-                        )
-
-                    for single_meas in collects:
-                        meas_type = single_meas.metadata.get(
-                            'MeasurementType', 'Unknown'
-                        )
-                        if meas_type in {'T', 'Transmission'}:
-                            spectrum_type = 'Transmission'
-                        elif meas_type in {'R', 'Reflection'}:
-                            spectrum_type = 'Reflection'
-                        # fallback: try to infer from filename
-                        elif 'T' in f.upper():
-                            spectrum_type = 'Transmission'
-                        else:
-                            spectrum_type = 'Reflection'
-
-                        wavelength = single_meas.data.get('Wavelength')
-                        intensity = single_meas.data.get('Intensity')
-                        if wavelength is None or intensity is None:
-                            continue
-
-                        # convert to fraction (intensity is in percent)
-                        intensity_arr = intensity / 100.0
-
-                        spectrum = RTSpectrum(
-                            spectrum_type=spectrum_type,
-                            wavelength=(wavelength.values * ureg('nm'))
-                            if hasattr(wavelength, 'values')
-                            else (np.asarray(wavelength) * ureg('nm')),
-                            intensity=intensity_arr,
-                        )
-
-                        # attach geometry metadata when present
-                        if 'DetectorAngle' in single_meas.metadata:
-                            try:
-                                spectrum.detector_angle = float(
-                                    single_meas.metadata['DetectorAngle']
-                                ) * ureg('degree')
-                                any_angle_meta = True
-                            except Exception:
-                                pass
-                        if 'SampleAngle' in single_meas.metadata:
-                            try:
-                                spectrum.sample_angle = float(
-                                    single_meas.metadata['SampleAngle']
-                                ) * ureg('degree')
-                                any_angle_meta = True
-                            except Exception:
-                                pass
-                        if 'Polarization' in single_meas.metadata:
-                            logger.debug(single_meas.metadata['PolarizationAngle'])
-                            logger.debug(single_meas.metadata['Polarization'])
-                            spectrum.polarization = single_meas.metadata['Polarization']
-                            any_angle_meta = True
-
-                        spectra_all.append(spectrum)
-
-                if spectra_all:
-                    # Generate name from CSV filename (strip extension)
-                    result_name = 'Single point'
-                    if self.data_file:
-                        first_file = (
-                            self.data_file[0]
-                            if isinstance(self.data_file, list | tuple)
-                            else self.data_file
-                        )
-                        result_name = os.path.splitext(os.path.basename(first_file))[0]
-                    result = RTResult(name=result_name)
-                    result.spectra = spectra_all
-                    # single-point stage position
-                    result.x_absolute = 0 * ureg('mm')
-                    result.y_absolute = 0 * ureg('mm')
-
-                    self.results = [result]
-
-                    # If accessory not set, infer from presence of angles
-                    if getattr(self, 'accessory', None) in (None, 'None'):
-                        self.accessory = 'UMA' if any_angle_meta else 'DRA'
+                self._normalize_single_point_csv(archive, logger)
             except Exception as e:
                 logger.error(
                     f'Error parsing csv with autosampler_reader: {e}',
