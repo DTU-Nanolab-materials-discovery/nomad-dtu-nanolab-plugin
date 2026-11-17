@@ -1467,11 +1467,11 @@ rt_measurements = AppEntryPoint(
     name='RT Measurements app',
     description='App for searching reflection/transmission measurements.',
     app=App(
-        label='R/T Measurements',
+        label='Reflection/Transmission Measurements',
         path='rt-measurements',
         category='Activities',
         description="""
-        Explore Reflection and Transmission (R/T) measurements.
+        Explore Reflection and Transmission measurements.
         """,
         filters=Filters(
             include=[
@@ -1480,9 +1480,9 @@ rt_measurements = AppEntryPoint(
         ),
         columns=[
             Column(
-                search_quantity=f'data.lab_id#{rt_schema}',
+                search_quantity=f'data.name#{rt_schema}',
                 selected=True,
-                label='R/T ID',
+                label='Reflection/Transmission name',
             ),
             Column(
                 search_quantity=f'data.datetime#{rt_schema}',

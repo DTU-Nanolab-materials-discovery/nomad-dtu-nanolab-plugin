@@ -16,6 +16,11 @@ Instruments extend NOMAD's `Instrument` entity, providing:
 - Configuration parameters
 - Maintenance and calibration history
 
+Sputter system chamber geometries are recorded in a separate, dated geometry
+history. Big maintenance entries can copy the latest geometry available at the
+maintenance date. Target changes also add dated source/target references to the
+sputter instrument's mounted-target history.
+
 ## Typical Usage
 
 1. **Register instruments**: Create `DTUInstrument` entries for sputter tools, XRD systems, XPS systems, etc.

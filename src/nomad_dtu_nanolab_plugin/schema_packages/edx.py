@@ -108,7 +108,6 @@ class DTUSampleAlignment(RectangularSampleAlignment):
     m_def = Section()
     width = Quantity(
         type=np.float64,
-        default=0.04,
         description='The width of the sample.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
@@ -118,7 +117,6 @@ class DTUSampleAlignment(RectangularSampleAlignment):
     )
     height = Quantity(
         type=np.float64,
-        default=0.04,
         description='The height of the sample.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
