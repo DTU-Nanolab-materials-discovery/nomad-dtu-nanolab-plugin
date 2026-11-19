@@ -24,7 +24,7 @@ sputtering = AppEntryPoint(
         path='sputtering',
         category='Activities',
         description="""
-        Explore the fantabulous sputtering world.
+        Explore the sputtering processes.
         """,
         search_quantities=SearchQuantities(
             include=[
@@ -735,6 +735,10 @@ rtp = AppEntryPoint(
             title='Material',
             size=MenuSizeEnum.XL,
             items=[
+                MenuItemPeriodicTable(
+                    quantity='results.material.elements',
+                    # quantity=f'data.results.quantifications.element#{rtp_schema}',
+                ),
                 MenuItemHistogram(
                     title='Process Date',
                     x=Axis(
