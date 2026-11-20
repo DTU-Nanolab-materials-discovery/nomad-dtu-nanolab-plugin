@@ -737,7 +737,6 @@ rtp = AppEntryPoint(
             items=[
                 MenuItemPeriodicTable(
                     quantity='results.material.elements',
-                    # quantity=f'data.results.quantifications.element#{rtp_schema}',
                 ),
                 MenuItemHistogram(
                     title='Process Date',
