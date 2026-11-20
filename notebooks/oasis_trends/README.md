@@ -90,6 +90,7 @@ Exp 3, 4, 5, and 6 are intentionally out of scope for now.
 
 - `exp1_exp2_composition_vs_sputtering.ipynb`
 - `base_pressure_and_ba_target_bias.ipynb`
+- `exp8_exp9_anion_stoichiometry_and_basins.ipynb`
 
 The query scopes and archive-fetch limits in each notebook are configurable.
 The current defaults cover the visible metadata counts observed during setup;
@@ -101,3 +102,42 @@ or run order is not a direct measurement of erosion.
 
 The notebook runtime needs Jupyter, `requests`, `pandas`, `numpy`, and `plotly`.
 Charts are interactive Plotly figures.
+
+The Exp8/Exp9 notebook also joins EDX maps to sputtering runs using library
+references, then divides each EDX result's fitted thickness by the
+shared run deposition time. It plots the paired oxygen and local rate, plus a
+base-pressure/rate proxy. Run-level summaries account for shared process
+conditions; they do not prove the oxygen source. Base pressure is not the
+oxygen partial pressure during deposition, and EDX thickness depends on the
+assumed density. Use the Plotly camera button to export SVG.
+It also fits an exploratory run-level oxygen model with inverse-rate and
+inverse-thickness terms, run-bootstrap intervals, held-out prediction errors,
+and a pressure/recorded-delay sensitivity. These terms are not proof of
+incorporation, substrate leakage, or a specific oxide thickness.
+An all-run comparison uses separate material-space intercepts and shared slope
+coefficients, with material-stratified run bootstrap and leave-one-space-out
+checks; these intervals are conditional on the shared-slope assumption. It
+also attempts separate fits for all systems, reports systems with insufficient
+data, and plots measured versus fitted oxygen against both rate and thickness.
+
+For composition maps, the Exp8/Exp9 notebook requests only combinatorial sample
+IDs, lab IDs, material spaces, and elemental compositions. Its phase formulas and planned vs.
+unplanned labels are user-supplied references, not independently calculated
+stability facts. It compares both atomic-fraction deficit and a matrix-normalized
+ratio to expose possible compositional-closure artifacts, and excludes records
+missing required formula elements. A nearest-composition ternary partition is
+geometric only; a system with one candidate phase has no comparative basin map.
+Neither establishes a thermodynamic basin or tests Vladan's theory without a
+specific prediction. The notebook includes literature context and explicitly
+distinguishes related 2D oxidation results from evidence for these materials.
+Exp8 analyzes the supplied candidate phases containing the selected S, Se or
+Te chalcogen; each phase's formula and matrix denominator are shown, and its
+plots use a selectable phase while the tables cover all eligible references.
+The oxygen section also queries recorded sputtering temperatures, pressures,
+gas flows, gun-specific power, voltage, target usage and presputtering, and
+sulfur-cracker temperatures and valve settings. It presents pairwise run counts,
+material-space correlations and a material-centered rank sensitivity. Gun
+positions need not contain the same target across runs; correlations are
+exploratory, and gas-derived partial pressures are not residual-gas readings.
+Reusable ternary-workflow guidance for Copilot is in
+`.github/skills/nomad-ternary-composition-analysis/SKILL.md`.

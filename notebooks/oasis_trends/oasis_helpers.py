@@ -79,11 +79,16 @@ def search_entries(schema: str, limit: int = 100) -> list[dict[str, Any]]:
 
 
 def fetch_archives(
-    entries: list[dict[str, Any]], limit: int
+    entries: list[dict[str, Any]],
+    limit: int,
+    required_data: dict[str, Any] | str = '*',
+    batch_size: int = 20,
 ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
-    """Fetch bounded archives in read-only batches, preserving their metadata."""
+    """Fetch bounded archives in read-only batches, optionally selecting data fields."""
     if limit < 0:
         raise ValueError('limit cannot be negative')
+    if batch_size < 1:
+        raise ValueError('batch_size must be positive')
     selected = entries[:limit]
     if not selected:
         return []
@@ -91,7 +96,6 @@ def fetch_archives(
     session = _session()
     endpoint = f'{BASE_URL}/entries/archive/query'
     archives: dict[str, dict[str, Any]] = {}
-    batch_size = 20
     for start in range(0, len(selected), batch_size):
         batch = selected[start : start + batch_size]
         entry_ids = [meta['entry_id'] for meta in batch]
@@ -101,7 +105,7 @@ def fetch_archives(
                 'owner': 'visible',
                 'query': {'entry_id:any': entry_ids},
                 'pagination': {'page_size': len(entry_ids)},
-                'required': {'include': ['entry_id'], 'data': '*'},
+                'required': {'include': ['entry_id'], 'data': required_data},
             },
             timeout=120,
         )
@@ -121,6 +125,47 @@ def fetch_archives(
             f'{next(iter(missing))}'
         )
     return [(meta, archives[meta['entry_id']]) for meta in selected]
+
+
+def query_archives(
+    query: dict[str, Any],
+    required_data: dict[str, Any] | str,
+    limit: int = 100_000,
+    page_size: int = 200,
+) -> tuple[list[tuple[str, dict[str, Any]]], int | None]:
+    """Search and fetch selected archive fields in paginated read-only requests."""
+    if limit < 1:
+        raise ValueError('limit must be positive')
+    if page_size < 1:
+        raise ValueError('page_size must be positive')
+
+    session = _session()
+    endpoint = f'{BASE_URL}/entries/archive/query'
+    body: dict[str, Any] = {
+        'owner': 'visible',
+        'query': query,
+        'required': {'include': ['entry_id'], 'data': required_data},
+        'pagination': {'page_size': min(page_size, limit)},
+    }
+    results: list[tuple[str, dict[str, Any]]] = []
+    total: int | None = None
+    while len(results) < limit:
+        body['pagination']['page_size'] = min(page_size, limit - len(results))
+        response = session.post(endpoint, json=body, timeout=120)
+        _raise_for_status(response)
+        payload = response.json()
+        total = payload.get('pagination', {}).get('total', total)
+        page = payload.get('data', [])
+        for item in page:
+            archive = item.get('archive') or {}
+            data = archive.get('data') if isinstance(archive, dict) else None
+            if isinstance(data, dict):
+                results.append((item['entry_id'], data))
+        next_value = payload.get('pagination', {}).get('next_page_after_value')
+        if not next_value or not page:
+            break
+        body['pagination']['page_after_value'] = next_value
+    return results, total
 
 
 def reference_entry_id(value: Any) -> str | None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 DEFAULT_API_URL = 'https://nomad.nanolab.dtu.dk/nomad-oasis/api/v1'
 
@@ -34,10 +35,15 @@ def api_base_url() -> str:
 
 
 def get_token() -> str | None:
-    """Token from the environment (NORTH/other runtimes), else the Windows DPAPI store."""
+    """Resolve the token from the environment, local token file, or Windows store."""
     token = os.environ.get('NOMAD_CLIENT_ACCESS_TOKEN')
     if token:
         return token
+    token_file = Path.home() / '.nomad' / 'token.txt'
+    if token_file.is_file():
+        token = token_file.read_text(encoding='utf-8-sig').strip()
+        if token:
+            return token
     if os.name == 'nt':
         from token_store import load_token
 
