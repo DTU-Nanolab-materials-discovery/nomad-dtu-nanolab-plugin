@@ -303,31 +303,32 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
                                 break
                     """
 
-            # Save images to the upload directory
-            # Handle both ClientContext (tests) and ServerContext (production)
-            from nomad.datamodel.context import ClientContext
-
-            if isinstance(archive.m_context, ClientContext):
-                # In test/client context, save to temp directory
-                import tempfile
-
-                upload_folder = tempfile.gettempdir()
-            else:
-                upload_folder = archive.m_context.upload_files.os_path
-
             meas_name = filename.split('.')[0]
 
             # Get the folder where raman_data_file is located (relative to upload)
             data_file_dir = os.path.dirname(self.raman_data_file)
 
-            # Save images to same folder as data file
-            img_save_folder = (
-                os.path.join(upload_folder, data_file_dir)
-                if data_file_dir
-                else upload_folder
-            )
+            def write_upload_file(img_filename: str, data: bytes) -> None:
+                """Persist bytes into the upload's raw file storage.
 
-            _, img_filenames = mapping.save_optical_images(img_save_folder, meas_name)
+                Uses `archive.m_context.raw_file`, the same context-aware API
+                already used to read `self.raman_data_file` above. This ensures
+                images end up under the upload's actual raw file tree (visible
+                in the Files browser, included on publish) instead of being
+                written to an arbitrary OS path, which was the root cause of
+                optical images being missing from the upload.
+                """
+                rel_path = (
+                    os.path.join(data_file_dir, img_filename)
+                    if data_file_dir
+                    else img_filename
+                )
+                with archive.m_context.raw_file(rel_path, 'wb') as target:
+                    target.write(data)
+
+            _, img_filenames = mapping.save_optical_images(
+                filename_prefix=meas_name, write_func=write_upload_file
+            )
             # Create relative paths for the images
             img_list = [
                 os.path.join(data_file_dir, img_name)
@@ -337,14 +338,16 @@ class RamanMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
             ]
 
             # Create and save the optical image grid
-            grid_path = os.path.join(img_save_folder, f'{meas_name}_optical_grid.png')
-            fig = mapping.create_image_grid(save_path=grid_path)
+            grid_filename = f'{meas_name}_optical_grid.png'
+            fig = mapping.create_image_grid(
+                write_func=write_upload_file, filename=grid_filename
+            )
             # Store the relative path to the optical image grid
             if fig:
                 self.optical_image_grid = (
-                    os.path.join(data_file_dir, f'{meas_name}_optical_grid.png')
+                    os.path.join(data_file_dir, grid_filename)
                     if data_file_dir
-                    else f'{meas_name}_optical_grid.png'
+                    else grid_filename
                 )
 
             # Write the data to results
