@@ -203,6 +203,19 @@ def test_measurement_dimensions_fall_back_to_substrate_geometry():
     ) == pytest.approx((0.05, 0.025))
 
 
+def test_measurement_samples_are_workflow_inputs():
+    library = DTUCombinatorialLibrary(name='Test library', lab_id='test-library')
+    sample = CompositeSystemReference(reference=library, name=library.name)
+    measurement = DtuNanolabMeasurement(samples=[sample, sample])
+    archive = SimpleNamespace(workflow2=None)
+
+    measurement.add_samples_to_workflow(archive)
+
+    assert len(archive.workflow2.inputs) == 1
+    assert archive.workflow2.inputs[0].name == 'Sample: Test library'
+    assert archive.workflow2.inputs[0].section is library
+
+
 def test_rt_autosampler_schema():
     """
     Test the RT autosampler measurement schema.
@@ -227,6 +240,7 @@ def test_rt_autosampler_schema():
 
     # The autosampler measurement should create steps (one per library)
     assert len(entry_archive.data.steps) == len(expected_libraries)
+    assert len(entry_archive.workflow2.outputs) == len(expected_libraries)
 
     # Extract library names from step names and verify they match expected
     step_library_names = []
@@ -238,6 +252,10 @@ def test_rt_autosampler_schema():
         step_library_names.append(library_name)
         # Each step should have an activity reference
         assert step.activity is not None
+        assert any(
+            output.name == step.name and output.section is not None
+            for output in entry_archive.workflow2.outputs
+        )
 
     # Check that we have the right libraries (order might vary)
     assert len(step_library_names) == len(expected_libraries)

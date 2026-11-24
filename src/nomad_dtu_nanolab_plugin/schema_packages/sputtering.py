@@ -2887,10 +2887,13 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         return gas_flow
 
-    def add_libraries(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+    def add_libraries(
+        self, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> list[Link]:
         libraries = []
+        workflow_outputs = []
         # substrate_mounting: DtuSubstrateMounting
-        for idx, substrate_mounting in enumerate(self.substrates):
+        for idx, substrate_mounting in enumerate(self.substrates or []):
             if substrate_mounting.substrate is None:
                 continue
             if isinstance(substrate_mounting.substrate, MProxy):
@@ -2919,6 +2922,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                 archive,
                 f'{layer.lab_id}.archive.json',
                 overwrite=configuration.overwrite_layers,
+            )
+            workflow_outputs.append(
+                Link(name=f'Thin film: {layer.lab_id}', section=layer_ref)
             )
             library.layers = [
                 ThinFilmReference(
@@ -2960,54 +2966,99 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         if configuration.overwrite_libraries:
             time.sleep(5)  # to ensure that layers are processed before samples
 
-        self.samples = [
-            CompositeSystemReference(
-                name=f'Sample {library.lab_id}'.replace('_', ' '),
-                reference=create_archive(
-                    library,
-                    archive,
-                    f'{library.lab_id}.archive.json',
-                    overwrite=configuration.overwrite_libraries,
-                ),
-                lab_id=library.lab_id,
+        self.samples = []
+        for library in libraries:
+            library_ref = create_archive(
+                library,
+                archive,
+                f'{library.lab_id}.archive.json',
+                overwrite=configuration.overwrite_libraries,
             )
-            for library in libraries
-        ]
+            workflow_outputs.append(
+                Link(name=f'Sample: {library.lab_id}', section=library_ref)
+            )
+            self.samples.append(
+                CompositeSystemReference(
+                    name=f'Sample {library.lab_id}'.replace('_', ' '),
+                    reference=library_ref,
+                    lab_id=library.lab_id,
+                )
+            )
+        return workflow_outputs
 
     def add_target_to_workflow(self, archive: 'EntryArchive') -> None:
         """
         Method to add the target to the workflow2.inputs list.
         """
-        for step in self.steps:
+        targets = {}
+        for step in self.steps or []:
             step: DTUSteps
-            for source in step.sources:
+            for source in step.sources or []:
                 source: DTUSource
-                for m in source.material:
+                for m in source.material or []:
                     if isinstance(m, DTUTargetComponent):
-                        archive.workflow2.inputs.append(
-                            Link(name=f'Target: {m.name}', section=m.system)
-                        )
-                        return
+                        if m.system is not None:
+                            targets.setdefault(
+                                str(m.system),
+                                (m.name or m.lab_id or 'Target', m.system),
+                            )
+
+        if self.deposition_parameters is not None:
+            for source_name in ['magkeeper3', 'magkeeper4', 'taurus']:
+                source_overview = getattr(self.deposition_parameters, source_name, None)
+                target_id = (
+                    source_overview.target_id if source_overview is not None else None
+                )
+                target = target_id.reference if target_id is not None else None
+                if target is not None:
+                    targets.setdefault(
+                        str(target),
+                        (target.name or target_id.lab_id or 'Target', target),
+                    )
+
+        for target_name, target in targets.values():
+            archive.workflow2.inputs.append(
+                Link(name=f'Target: {target_name}', section=target)
+            )
 
     def add_gas_supply_to_workflow(self, archive: 'EntryArchive') -> None:
         """
         Method to add the bottles to the workflow2.inputs list.
         """
 
-        # Collect all unique gas supply references from steps
-        unique_gas_supplies = {}  # Dict automatically handles uniqueness
+        unique_gas_supplies = {}
 
-        for step in self.steps:
+        def add_gas_supply(gas_name, gas_supply_ref):
+            if gas_supply_ref is not None:
+                unique_gas_supplies.setdefault(
+                    str(gas_supply_ref),
+                    (
+                        gas_name or getattr(gas_supply_ref, 'name', None) or 'Gas',
+                        gas_supply_ref,
+                    ),
+                )
+
+        for step in self.steps or []:
             step: DTUSteps
-            for gas_flow in step.environment.gas_flow:
-                gas_flow: DTUGasFlow
-                if gas_flow.gas_supply_reference is not None:
-                    unique_gas_supplies[gas_flow.gas_name] = (
-                        gas_flow.gas_supply_reference
-                    )
+            environment = step.environment
+            if environment is not None:
+                for gas_flow in environment.gas_flow or []:
+                    gas_flow: DTUGasFlow
+                    add_gas_supply(gas_flow.gas_name, gas_flow.gas_supply_reference)
 
-        # Add only those that aren't already in workflow inputs
-        for gas_name, gas_supply_ref in unique_gas_supplies.items():
+            for source in step.sources or []:
+                for material in source.material or []:
+                    if isinstance(material, DtuReactiveGasComponent):
+                        add_gas_supply(
+                            material.name or getattr(material.system, 'name', None),
+                            material.system,
+                        )
+
+        if self.deposition_parameters is not None:
+            for used_gas in self.deposition_parameters.used_gases or []:
+                add_gas_supply(used_gas.gas_name, used_gas.used_gas_supply)
+
+        for gas_name, gas_supply_ref in unique_gas_supplies.values():
             archive.workflow2.inputs.append(
                 Link(name=f'Gas Supply: {gas_name}', section=gas_supply_ref)
             )
@@ -3042,7 +3093,9 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
                     'of May 2025.'
                 )
 
-    def parse_log_file(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+    def parse_log_file(
+        self, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> list[Link]:
         """
         Method for parsing the log file and writing the data to the respective sections.
         Args:
@@ -3132,9 +3185,11 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # write the sulfur pressure from DTUSputtering into the nested level
         self.write_sulfur_pressure(archive, logger)
 
+        workflow_outputs = []
         # create combinatorial libraries if the parsing has been successful
         if self.deposition_parameters is not None:
-            self.add_libraries(archive, logger)
+            workflow_outputs = self.add_libraries(archive, logger)
+        return workflow_outputs
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -3145,21 +3200,43 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
+        workflow_outputs = []
         # Analysing log file
         if self.log_file and self.process_log_file:
             # call to the master function that parses the logfile
-            self.parse_log_file(archive, logger)
+            workflow_outputs = self.parse_log_file(archive, logger)
 
         archive.workflow2 = None
         super().normalize(archive, logger)
+        archive.workflow2.outputs.extend(workflow_outputs)
         self.add_target_to_workflow(archive)
         self.add_gas_supply_to_workflow(archive)
-        archive.workflow2.inputs.extend(
-            [
-                Link(name=f'Substrate: {substrate.name}', section=substrate.substrate)
-                for substrate in self.substrates
-            ]
-        )
+        for substrate in self.substrates or []:
+            if substrate.substrate_batch is not None:
+                archive.workflow2.inputs.append(
+                    Link(
+                        name=(
+                            'Substrate batch: '
+                            f'{getattr(substrate.substrate_batch, "name", None)}'
+                        ),
+                        section=substrate.substrate_batch,
+                    )
+                )
+            if substrate.substrate is not None:
+                archive.workflow2.inputs.append(
+                    Link(
+                        name=f'Substrate: {substrate.name}',
+                        section=substrate.substrate,
+                    )
+                )
+        for instrument in self.instruments or []:
+            if instrument.reference is not None:
+                archive.workflow2.inputs.append(
+                    Link(
+                        name=f'Instrument: {instrument.name or instrument.lab_id}',
+                        section=instrument.reference,
+                    )
+                )
         if self.deposition_parameters is not None:
             if archive.results is None:
                 archive.results = Results()

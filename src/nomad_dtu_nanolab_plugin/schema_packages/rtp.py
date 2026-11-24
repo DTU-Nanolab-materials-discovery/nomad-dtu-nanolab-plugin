@@ -21,6 +21,7 @@ from nomad.datamodel.metainfo.basesections import (
     CompositeSystemReference,
 )
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
+from nomad.datamodel.metainfo.workflow import Link, Workflow
 from nomad.datamodel.results import Material, Results
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.units import ureg
@@ -1426,6 +1427,11 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
                     f'{layer.lab_id}.archive.json',
                     overwrite=configuration.overwrite_layers,
                 )
+                if archive.workflow2 is None:
+                    archive.workflow2 = Workflow()
+                archive.workflow2.outputs.append(
+                    Link(name=f'Thin film: {layer.lab_id}', section=layer_ref)
+                )
                 # Create new library
                 library = DTUCombinatorialLibrary(
                     name=f'{rtp_name} {rtp_sample.name}',
@@ -1459,19 +1465,26 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
             # synchronous "wait until processed" API available here - hence
             # the fixed delay as a pragmatic (if fragile) workaround.
             time.sleep(5)
-        self.samples = [
-            CompositeSystemReference(
-                name=f'Sample {library.name}',
-                reference=create_archive(
-                    library,
-                    archive,
-                    f'{library.lab_id}.archive.json',
-                    overwrite=configuration.overwrite_libraries,
-                ),
-                lab_id=library.lab_id,
+        self.samples = []
+        for library in samples:
+            library_ref = create_archive(
+                library,
+                archive,
+                f'{library.lab_id}.archive.json',
+                overwrite=configuration.overwrite_libraries,
             )
-            for library in samples
-        ]
+            if archive.workflow2 is None:
+                archive.workflow2 = Workflow()
+            archive.workflow2.outputs.append(
+                Link(name=f'Sample: {library.lab_id}', section=library_ref)
+            )
+            self.samples.append(
+                CompositeSystemReference(
+                    name=f'Sample {library.name}',
+                    reference=library_ref,
+                    lab_id=library.lab_id,
+                )
+            )
         if not samples:
             logger.warning(
                 'No RTP sample libraries were created. '
@@ -2736,6 +2749,20 @@ class DtuRTP(ChemicalVaporDeposition, PlotSection, Schema):
 
         # 2. Generic schema normalization.
         super().normalize(archive, logger)
+        input_libraries = {}
+        for input_sample in self.input_samples or []:
+            library = input_sample.input_combi_lib
+            if library is not None:
+                input_libraries.setdefault(
+                    str(library),
+                    (library.name or library.lab_id, library),
+                )
+        if input_libraries and archive.workflow2 is None:
+            archive.workflow2 = Workflow()
+        for library_name, library in input_libraries.values():
+            archive.workflow2.inputs.append(
+                Link(name=f'Input library: {library_name}', section=library)
+            )
 
         # 3. Explicit subsection normalization. NOMAD's base normalize() does
         # not reliably cascade into these, so they're invoked directly here,

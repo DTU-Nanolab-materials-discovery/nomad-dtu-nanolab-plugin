@@ -15,6 +15,7 @@ from nomad.datamodel.metainfo.basesections import (
     PureSubstanceComponent,
     ReadableIdentifiers,
 )
+from nomad.datamodel.metainfo.workflow import Link, Workflow
 from nomad.metainfo import MEnum, MProxy, Package, Quantity, Section, SubSection
 from nomad_material_processing.general import (
     CrystallineSubstrate,
@@ -276,6 +277,14 @@ class DTUSubstrateBatch(Collection, Schema):
                 substrate.lab_id = f'{self.lab_id}-{i}'
                 file_name = f'{substrate.lab_id}.archive.json'
                 substrate_archive = create_archive(substrate, archive, file_name)
+                if archive.workflow2 is None:
+                    archive.workflow2 = Workflow()
+                archive.workflow2.outputs.append(
+                    Link(
+                        name=f'Substrate: {substrate.name}',
+                        section=substrate_archive,
+                    )
+                )
                 self.entities.append(
                     CompositeSystemReference(
                         reference=substrate_archive,
@@ -329,7 +338,24 @@ class DTUSubstrateCleaning(Process, Schema):
             logger (BoundLogger): A structlog logger.
         """
         self.samples = self.substrate_batch.entities
-        return super().normalize(archive, logger)
+        super().normalize(archive, logger)
+        if archive.workflow2 is None:
+            archive.workflow2 = Workflow()
+        if self.substrate_batch is not None:
+            archive.workflow2.inputs.append(
+                Link(
+                    name=f'Substrate batch: {self.substrate_batch.name}',
+                    section=self.substrate_batch,
+                )
+            )
+        for sample in self.samples or []:
+            if sample.reference is not None:
+                archive.workflow2.inputs.append(
+                    Link(
+                        name=f'Substrate: {sample.name or sample.lab_id}',
+                        section=sample.reference,
+                    )
+                )
 
 
 class DTUSubstrateCutting(Process, Schema):
@@ -397,7 +423,24 @@ class DTUSubstrateCutting(Process, Schema):
             logger (BoundLogger): A structlog logger.
         """
         self.samples = self.substrate_batch.entities
-        return super().normalize(archive, logger)
+        super().normalize(archive, logger)
+        if archive.workflow2 is None:
+            archive.workflow2 = Workflow()
+        if self.substrate_batch is not None:
+            archive.workflow2.inputs.append(
+                Link(
+                    name=f'Substrate batch: {self.substrate_batch.name}',
+                    section=self.substrate_batch,
+                )
+            )
+        for sample in self.samples or []:
+            if sample.reference is not None:
+                archive.workflow2.inputs.append(
+                    Link(
+                        name=f'Substrate: {sample.name or sample.lab_id}',
+                        section=sample.reference,
+                    )
+                )
 
 
 m_package.__init_metainfo__()

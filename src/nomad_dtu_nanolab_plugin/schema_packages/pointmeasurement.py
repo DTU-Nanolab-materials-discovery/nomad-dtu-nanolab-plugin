@@ -213,6 +213,7 @@ class PointMeasurement(DtuNanolabMeasurement, PlotSection, Schema):
 
         if self.raw_file is not None:
             self.add_sample_reference(self.raw_file[0], 'Raw Data', archive, logger)
+            self.add_samples_to_workflow(archive)
 
         self.figures = []
 
