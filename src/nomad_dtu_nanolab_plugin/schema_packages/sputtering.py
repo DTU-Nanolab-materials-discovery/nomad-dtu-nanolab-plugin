@@ -69,6 +69,7 @@ from nomad_dtu_nanolab_plugin.categories import DTUNanolabCategory
 from nomad_dtu_nanolab_plugin.schema_packages.gas import DTUGasSupply
 from nomad_dtu_nanolab_plugin.schema_packages.sample import (
     DTUCombinatorialLibrary,
+    DtuLibraryReference,
     ProcessParameterOverview,
 )
 from nomad_dtu_nanolab_plugin.schema_packages.substrate import (
@@ -141,6 +142,13 @@ class DtuSubstrateMounting(ArchiveSection):
     substrate = Quantity(
         type=DTUSubstrate,
         description='A reference to the substrate used.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.ReferenceEditQuantity,
+        ),
+    )
+    input_combi_lib = Quantity(
+        type=DTUCombinatorialLibrary,
+        description='The input combinatorial library used instead of a substrate.',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.ReferenceEditQuantity,
         ),
@@ -219,7 +227,7 @@ class DtuSubstrateMounting(ArchiveSection):
         super().normalize(archive, logger)
         if isinstance(self.substrate_batch, MProxy):
             self.substrate_batch.m_proxy_resolve()
-        if self.substrate is None and isinstance(
+        if self.substrate is None and self.input_combi_lib is None and isinstance(
             self.substrate_batch, DTUSubstrateBatch
         ):
             substrate = self.substrate_batch.next_not_used_in(DTUSputtering)
@@ -2890,42 +2898,118 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         libraries = []
         # substrate_mounting: DtuSubstrateMounting
         for idx, substrate_mounting in enumerate(self.substrates):
-            if substrate_mounting.substrate is None:
-                continue
-            if isinstance(substrate_mounting.substrate, MProxy):
-                substrate_mounting.substrate.m_proxy_resolve()
             library = DTUCombinatorialLibrary()
-            library.substrate = SubstrateReference(
-                reference=substrate_mounting.substrate.m_proxy_value
-            )
-            library.geometry = substrate_mounting.substrate.geometry
+            origin = getattr(substrate_mounting, 'input_combi_lib', None)
+            if isinstance(origin, MProxy):
+                origin.m_proxy_resolve()
+
+            if origin is not None:
+                origin = getattr(origin, 'm_proxy_value', origin)
+                library.geometry = getattr(origin, 'geometry', None)
+                library.substrate = getattr(origin, 'substrate', None)
+                library.components = getattr(origin, 'components', None)
+                library.layers = list(getattr(origin, 'layers', None) or [])
+                library.elemental_composition = list(
+                    getattr(origin, 'elemental_composition', None) or []
+                )
+                library.parent_library = DtuLibraryReference(
+                    reference=getattr(origin, 'm_proxy_value', origin),
+                    name=getattr(origin, 'name', None),
+                    lab_id=getattr(origin, 'lab_id', None),
+                )
+            else:
+                substrate = getattr(substrate_mounting, 'substrate', None)
+                if substrate is None:
+                    continue
+                if isinstance(substrate, MProxy):
+                    substrate.m_proxy_resolve()
+                substrate = getattr(substrate, 'm_proxy_value', substrate)
+                library.substrate = SubstrateReference(reference=substrate)
+                library.geometry = getattr(substrate, 'geometry', None)
+
             sample_id = str(idx)
             if substrate_mounting.name is not None:
                 sample_id = substrate_mounting.name.replace(' ', '-')
             if self.lab_id is not None:
                 lab_id = self.lab_id
             else:
-                lab_id = '_'.join(self.name.split())
+                lab_id = '_'.join((self.name or 'Sputtering').split())
             library.lab_id = f'{lab_id}_{sample_id}'
-            elements = self.deposition_parameters.material_space.split('-')
-            composition = [ElementalComposition(element=e) for e in elements if e]
-            layer = ThinFilm(
-                elemental_composition=composition,
-                lab_id=f'{library.lab_id}-Layer',
-            )
-            layer_ref = create_archive(
-                layer,
-                archive,
-                f'{layer.lab_id}.archive.json',
-                overwrite=configuration.overwrite_layers,
-            )
-            library.layers = [
-                ThinFilmReference(
-                    name='Main layer',
-                    reference=layer_ref,
-                    lab_id=layer.lab_id,
+            library.name = library.lab_id
+
+            material_space = None
+            if getattr(self, 'deposition_parameters', None) is not None:
+                material_space = getattr(
+                    self.deposition_parameters, 'material_space', None
                 )
+
+            sputter_elements = [
+                element.strip()
+                for element in (material_space or '').split('-')
+                if element and element.strip()
             ]
+            if sputter_elements:
+                origin_elements = [
+                    getattr(item, 'element', None)
+                    for item in (library.elemental_composition or [])
+                    if getattr(item, 'element', None) is not None
+                ]
+                merged_elements = origin_elements + [
+                    element
+                    for element in sputter_elements
+                    if element not in origin_elements
+                ]
+                if origin is not None:
+                    library.elemental_composition = [
+                        ElementalComposition(element=element)
+                        for element in merged_elements
+                    ]
+                else:
+                    library.elemental_composition = [
+                        ElementalComposition(element=element)
+                        for element in sputter_elements
+                    ]
+
+                composition = [
+                    ElementalComposition(element=element)
+                    for element in sputter_elements
+                ]
+                layer = ThinFilm(
+                    elemental_composition=composition,
+                    lab_id=f'{library.lab_id}-Layer',
+                )
+                layer_ref = create_archive(
+                    layer,
+                    archive,
+                    f'{layer.lab_id}.archive.json',
+                    overwrite=configuration.overwrite_layers,
+                )
+                if origin is not None:
+                    library.layers.append(
+                        ThinFilmReference(
+                            name='Sputtering layer',
+                            reference=layer_ref,
+                            lab_id=layer.lab_id,
+                        )
+                    )
+                else:
+                    library.layers = [
+                        ThinFilmReference(
+                            name='Main layer',
+                            reference=layer_ref,
+                            lab_id=layer.lab_id,
+                        )
+                    ]
+            elif origin is not None:
+                logger.warning(
+                    f"Could not determine deposition composition for derived library "
+                    f"'{library.lab_id}'. The input library and stack are preserved."
+                )
+            else:
+                logger.warning(
+                    f"Could not determine deposition composition for library "
+                    f"'{library.lab_id}'. Creating a library without a thin-film layer."
+                )
 
             library.process_parameter_overview = ProcessParameterOverview()
 
@@ -3068,30 +3152,45 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
             # parameter dict and one step dict
             events_plot, params, step_params = read_events(log_df)
 
-        # if the parsing has not failed
-        if params is not None:
+        sputtering = None
+        overview = params.get('overview') if isinstance(params, dict) else None
+        deposition = params.get('deposition') if isinstance(params, dict) else None
+        has_deposition_summary = (
+            isinstance(overview, dict)
+            and overview.get('log_start_time') is not None
+            and overview.get('log_end_time') is not None
+            and isinstance(deposition, dict)
+            and 'interrupted' in deposition
+        )
+        if has_deposition_summary:
             # we write logfile data from the master parameter dict to the
             # respective sections
             sputtering = self.generate_general_log_data(params, logger)
+        else:
+            logger.warning(
+                'Sputtering log parsing did not produce a complete deposition '
+                'summary; retaining manually entered data.'
+            )
 
-        if step_params is not None and sputtering is not None:
+        if step_params and sputtering is not None:
             # we write logfile data from the step parameter dict to the steps section
             steps = self.generate_step_log_data(step_params, archive, logger)
             sputtering.steps.extend(steps)
 
         # Merging the sputtering object with self
 
-        if self.overwrite:
-            # If we are overwriting, it means that we favour data incomming from the
-            # logfile parsing over the data that is already there in the entry
-            merge_sections(sputtering, self, logger)
-            for _, prop in self.m_def.all_properties.items():
-                if sputtering.m_is_set(prop):
-                    self.m_set(prop, None)
-                    self.m_set(prop, sputtering.m_get(prop))
-        else:
-            # if not, we favour data that is already in the entry
-            merge_sections(self, sputtering, logger)
+        if sputtering is not None:
+            if self.overwrite:
+                # If we are overwriting, we favour data from the logfile over
+                # data already present in the entry.
+                merge_sections(sputtering, self, logger)
+                for _, prop in self.m_def.all_properties.items():
+                    if sputtering.m_is_set(prop):
+                        self.m_set(prop, None)
+                        self.m_set(prop, sputtering.m_get(prop))
+            else:
+                # If not, we favour data already present in the entry.
+                merge_sections(self, sputtering, logger)
 
         # Run the nomalizer of the environment subsection
         for step in self.steps:
@@ -3131,10 +3230,6 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
         # write the sulfur pressure from DTUSputtering into the nested level
         self.write_sulfur_pressure(archive, logger)
 
-        # create combinatorial libraries if the parsing has been successful
-        if self.deposition_parameters is not None:
-            self.add_libraries(archive, logger)
-
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `DTUSputtering` class.
@@ -3151,20 +3246,42 @@ class DTUSputtering(SputterDeposition, PlotSection, Schema):
 
         archive.workflow2 = None
         super().normalize(archive, logger)
+        # Output libraries must not depend on successful log parsing.
+        self.add_libraries(archive, logger)
         self.add_target_to_workflow(archive)
         self.add_gas_supply_to_workflow(archive)
         archive.workflow2.inputs.extend(
             [
-                Link(name=f'Substrate: {substrate.name}', section=substrate.substrate)
-                for substrate in self.substrates
+                Link(
+                    name=(
+                        f'Substrate: {mounting.name}'
+                        if mounting.substrate is not None
+                        else f'Library: {mounting.name}'
+                    ),
+                    section=(
+                        mounting.substrate
+                        if mounting.substrate is not None
+                        else mounting.input_combi_lib
+                    ),
+                )
+                for mounting in self.substrates
+                if (
+                    mounting.substrate is not None
+                    or mounting.input_combi_lib is not None
+                )
             ]
         )
-        if self.deposition_parameters is not None:
+        material_space = (
+            getattr(self.deposition_parameters, 'material_space', None)
+            if self.deposition_parameters is not None
+            else None
+        )
+        if material_space:
             if archive.results is None:
                 archive.results = Results()
             if archive.results.material is None:
                 archive.results.material = Material()
-            elements = self.deposition_parameters.material_space.split('-')
+            elements = [element for element in material_space.split('-') if element]
             archive.results.material.elements = elements
 
 
