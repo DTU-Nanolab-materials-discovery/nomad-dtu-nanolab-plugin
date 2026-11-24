@@ -33,6 +33,7 @@ from nomad.datamodel.metainfo.basesections import (
     Analysis,
 )
 from nomad.datamodel.metainfo.plot import PlotSection
+from nomad.datamodel.metainfo.workflow import Link, Workflow
 from nomad.metainfo import Package, Quantity, Section, SubSection
 from nomad.metainfo.metainfo import Reference, SectionProxy
 from nomad_analysis.utils import create_entry_with_api
@@ -138,6 +139,12 @@ class DtuJupyterAnalysisTemplate(Analysis, Schema):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
+        if self.from_analysis is not None:
+            if archive.workflow2 is None:
+                archive.workflow2 = Workflow()
+            archive.workflow2.inputs.append(
+                Link(name='Source analysis', section=self.from_analysis)
+            )
         # small script to ensure the default value of active is True, and app-searchable
         if self.active is None:
             self.active = True

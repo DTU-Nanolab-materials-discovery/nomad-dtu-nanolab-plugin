@@ -15,6 +15,7 @@ from nomad.datamodel.metainfo.basesections import (
     ExperimentStep,
 )
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
+from nomad.datamodel.metainfo.workflow import Link, Workflow
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from nomad.units import ureg
 from nomad_measurements.mapping.schema import (
@@ -757,6 +758,16 @@ class DtuAutosamplerMeasurement(Experiment, PlotSection, Schema):
                 )
 
             self.steps = measurements
+            if measurements and archive.workflow2 is None:
+                archive.workflow2 = Workflow()
+            for measurement_step in measurements:
+                if measurement_step.activity is not None:
+                    archive.workflow2.outputs.append(
+                        Link(
+                            name=measurement_step.name,
+                            section=measurement_step.activity,
+                        )
+                    )
 
             # Generate visualization of the measurement grid
             self.figures = []

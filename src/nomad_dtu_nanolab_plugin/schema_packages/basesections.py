@@ -5,6 +5,7 @@ from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.datamodel.metainfo.basesections import (
     CompositeSystemReference,
 )
+from nomad.datamodel.metainfo.workflow import Link, Workflow
 from nomad.metainfo import Package, Quantity, Section
 from nomad_measurements.mapping.schema import (
     MappingMeasurement,
@@ -228,6 +229,32 @@ class DtuNanolabMeasurement(MappingMeasurement):
             self._compute_alignment_from_barycenter(archive, logger)
         self._apply_library_geometry_to_alignment(logger)
         super().normalize(archive, logger)
+        self.add_samples_to_workflow(archive)
+
+    def add_samples_to_workflow(self, archive: 'EntryArchive') -> None:
+        samples = {}
+        for sample in self.samples or []:
+            if sample.reference is not None:
+                samples.setdefault(
+                    str(sample.reference),
+                    (
+                        sample.name
+                        or sample.lab_id
+                        or getattr(sample.reference, 'name', None)
+                        or 'Referenced sample',
+                        sample.reference,
+                    ),
+                )
+
+        if not samples:
+            return
+        if archive.workflow2 is None:
+            archive.workflow2 = Workflow()
+
+        for sample_name, reference in samples.values():
+            archive.workflow2.inputs.append(
+                Link(name=f'Sample: {sample_name}', section=reference)
+            )
 
     def set_lab_id(
         self, lab_id: str, archive: 'EntryArchive', logger: 'BoundLogger'
