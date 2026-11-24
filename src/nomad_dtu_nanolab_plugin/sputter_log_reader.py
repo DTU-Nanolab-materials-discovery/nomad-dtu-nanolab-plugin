@@ -11,6 +11,7 @@ import copy
 import operator
 import os
 import re
+import warnings
 from functools import reduce
 
 # Chamber visualization
@@ -1415,21 +1416,55 @@ class Lf_Event:
         if dc_current_col in self.data and (
             (self.data[dc_current_col] > CURRENT_THRESHOLD).mean() >= TOLERANCE
         ):
-            if pulse_enable_col in self.data and (
-                self.data[pulse_enable_col].mean() >= POWER_TYPE_TOLERANCE
-            ):
+            pulse_enabled = (
+                pulse_enable_col in self.data
+                and self.data[pulse_enable_col].mean() >= POWER_TYPE_TOLERANCE
+            )
+            if pulse_enabled:
                 power_type = 'pulsed_DC'
             else:
                 power_type = 'DC'
         elif rf_bias_col in self.data and (
             (self.data[rf_bias_col] > BIAS_THRESHOLD).mean() >= POWER_TYPE_TOLERANCE
             or (
-                (self.data[fwd_power_col] - self.data[rfl_power_col])
+                (
+                    self.data.get(fwd_power_col, pd.Series(0, index=self.data.index))
+                    - self.data.get(rfl_power_col, pd.Series(0, index=self.data.index))
+                )
                 > POWER_FWD_RFL_THRESHOLD
             ).mean()
             >= POWER_TYPE_TOLERANCE
         ):
             power_type = 'RF'
+
+        # If telemetry is too sparse to meet the historical thresholds, use the
+        # source-to-supply mapping as a fallback. This is especially important for
+        # sources that are only sputtered intermittently during a deposition.
+        supply_col = f'Source {source_number} Power Supply'
+        if power_type is None and supply_col in self.data:
+            supply_types = {
+                'Power Supply 1': 'DC',
+                'Power Supply 2': 'RF',
+                'Power Supply 3': 'RF',
+            }
+            connected_supplies = [
+                supply
+                for supply in self.data[supply_col].dropna().unique()
+                if supply in supply_types
+            ]
+            inferred_types = {supply_types[supply] for supply in connected_supplies}
+            if len(inferred_types) == 1:
+                power_type = inferred_types.pop()
+                if power_type == 'DC' and pulse_enable_col in self.data:
+                    if self.data[pulse_enable_col].mean() >= POWER_TYPE_TOLERANCE:
+                        power_type = 'pulsed_DC'
+            elif len(inferred_types) > 1:
+                warnings.warn(
+                    f'Source {source_number} is mapped to both DC and RF power '
+                    'supplies; its power type is ambiguous.',
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
         return power_type
 
 
@@ -2849,36 +2884,96 @@ def get_source_list(data):
 def connect_source_to_power_supply(data: pd.DataFrame, source_list):
     for source_number in source_list:
         shutter_col = f'PC Source {source_number} Shutter Open'
-        if f'PC Source {source_number} Switch-PDC-PWS1' in data.columns:
-            switch_columns = {
-                f'PC Source {source_number} Switch-PDC-PWS1': 'Power Supply 1',
-                f'PC Source {source_number} Switch-RF1-PWS2': 'Power Supply 2',
-                f'PC Source {source_number} Switch-RF2-PWS3': 'Power Supply 3',
+        if shutter_col not in data.columns:
+            continue
+
+        switch_columns = {
+            f'PC Source {source_number} Switch-PDC-PWS1': 'Power Supply 1',
+            f'PC Source {source_number} Switch-RF1-PWS2': 'Power Supply 2',
+            f'PC Source {source_number} Switch-RF2-PWS3': 'Power Supply 3',
+        }
+        available_switches = {
+            switch_col: power_supply
+            for switch_col, power_supply in switch_columns.items()
+            if switch_col in data.columns
+        }
+
+        if available_switches:
+            supply_conditions = {
+                power_supply: (data[switch_col] == 1) & (data[shutter_col] == 1)
+                for switch_col, power_supply in available_switches.items()
             }
-            for switch_col, power_supply in switch_columns.items():
-                condition_met = (data[switch_col] == 1) & (data[shutter_col] == 1)
-                if condition_met.any():
-                    for col in data.columns:
-                        if col.startswith(power_supply):
-                            new_col = col.replace(
-                                power_supply, f'Source {source_number}'
-                            )
-                            data[new_col] = data[col]
-        elif f'PC Source {source_number} Switch-PDC-PWS1' not in data.columns:
-            for power_supply in ['Power Supply 1', 'Power Supply 2', 'Power Supply 3']:
-                condition_met = (data[f'{power_supply} Enabled'] == 1) & (
-                    data[shutter_col] == 1
-                )
-                if condition_met.any():
-                    for col in data.columns:
-                        if col.startswith(power_supply):
-                            new_col = col.replace(
-                                power_supply, f'Source {source_number}'
-                            )
-                            data[new_col] = data[col]
         else:
-            print('No source found')
-            break
+            supply_conditions = {
+                power_supply: (
+                    data.get(
+                        f'{power_supply} Enabled',
+                        pd.Series(False, index=data.index),
+                    )
+                    == 1
+                )
+                & (data[shutter_col] == 1)
+                for power_supply in [
+                    'Power Supply 1',
+                    'Power Supply 2',
+                    'Power Supply 3',
+                ]
+            }
+
+        supply_conditions = {
+            supply: condition
+            for supply, condition in supply_conditions.items()
+            if condition.any()
+        }
+        if not supply_conditions:
+            continue
+
+        condition_frame = pd.DataFrame(supply_conditions, index=data.index)
+        match_count = condition_frame.sum(axis=1)
+        ambiguous_rows = match_count > 1
+        if ambiguous_rows.any():
+            rows = int(ambiguous_rows.sum())
+            warnings.warn(
+                f'Source {source_number} is connected to multiple power supplies '
+                f'while its shutter is open in {rows} row(s); those rows are '
+                'excluded from source-to-supply mapping.',
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        # Record the connection at each timestep so sparse or missing electrical
+        # telemetry can still be classified from the supply used.
+        supply_series = pd.Series(pd.NA, index=data.index, dtype='object')
+        for supply, condition in supply_conditions.items():
+            supply_series.loc[condition & ~ambiguous_rows] = supply
+        data[f'Source {source_number} Power Supply'] = supply_series
+
+        # Keep the original whole-column copy when the source has one unambiguous
+        # connection. When it changes supplies, combine only the values associated
+        # with the active connection instead of allowing the last supply to win.
+        if len(supply_conditions) == 1 and not ambiguous_rows.any():
+            supply = next(iter(supply_conditions))
+            for col in data.columns:
+                if col.startswith(supply):
+                    new_col = col.replace(supply, f'Source {source_number}', 1)
+                    data[new_col] = data[col]
+            continue
+
+        source_prefix = f'Source {source_number}'
+        supply_columns = {}
+        for supply in supply_conditions:
+            for col in data.columns:
+                if col.startswith(supply):
+                    suffix = col[len(supply) :].lstrip()
+                    if suffix:
+                        supply_columns.setdefault(suffix, []).append((supply, col))
+
+        for suffix, columns in supply_columns.items():
+            source_col = f'{source_prefix} {suffix}'
+            data[source_col] = np.nan
+            for supply, supply_col in columns:
+                active_rows = supply_conditions[supply] & (match_count == 1)
+                data.loc[active_rows, source_col] = data.loc[active_rows, supply_col]
 
 
 # Method to rename all 'Sulfur Cracker Control Setpoint' columns to
