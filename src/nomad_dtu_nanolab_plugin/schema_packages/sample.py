@@ -23,7 +23,15 @@ from nomad.datamodel.metainfo.basesections.v1 import (
 )
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
 from nomad.datamodel.metainfo.workflow import Link
-from nomad.metainfo import MEnum, Package, Quantity, Section, SectionProxy, SubSection
+from nomad.metainfo import (
+    Datetime,
+    MEnum,
+    Package,
+    Quantity,
+    Section,
+    SectionProxy,
+    SubSection,
+)
 from nomad_material_processing.combinatorial import (
     CombinatorialLibrary,
     CombinatorialSample,
@@ -475,6 +483,36 @@ class ProcessParameterOverview(ArchiveSection):
     # )
 
 
+class AirExposure(ArchiveSection):
+    m_def = Section(label='Air exposure')
+
+    air_exposed = Quantity(
+        type=bool,
+        default=False,
+        description='Whether the library has been exposed to air.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.BoolEditQuantity,
+            label='Air exposed',
+        ),
+    )
+    date = Quantity(
+        type=Datetime,
+        description='The date and time of air exposure.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.DateTimeEditQuantity,
+            label='Air exposure date',
+        ),
+    )
+    method = Quantity(
+        type=str,
+        description='The method or description of the air exposure.',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.StringEditQuantity,
+            label='Method / description',
+        ),
+    )
+
+
 class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
     m_def = Section(
         categories=[DTUNanolabCategory],
@@ -494,6 +532,11 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         section_def=SectionProxy('DtuLibraryReference'),
         description='The parent library of the combinatorial library. '
         'Only applicable if this library is a child of another library.',
+    )
+
+    air_exposure = SubSection(
+        section_def=AirExposure,
+        description='Air exposure status and details for the library.',
     )
 
     def get_references(self, entry_type: type[Schema] = None) -> list:
@@ -520,6 +563,10 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
         )
 
         return self.get_references(DtuNanolabMeasurement)
+
+    def _mark_air_exposed_if_measured(self) -> None:
+        if self.get_measurements():
+            self.air_exposure.air_exposed = True
 
     def get_sputtering(self) -> 'DTUSputtering':
         from nomad_dtu_nanolab_plugin.schema_packages.sputtering import DTUSputtering
@@ -556,7 +603,13 @@ class DTUCombinatorialLibrary(CombinatorialLibrary, ThinFilmStack, Schema):
             except Exception:
                 pass
 
+        if self.air_exposure is None:
+            self.air_exposure = AirExposure()
+
         super().normalize(archive, logger)
+
+        if getattr(self, 'm_parent', None) and getattr(self, 'm_context', None):
+            self._mark_air_exposed_if_measured()
 
         # Ensure that the geometry is set to the default if not provided
         substrate_reference = getattr(substrate, 'reference', None)

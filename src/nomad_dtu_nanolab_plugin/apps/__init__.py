@@ -1314,6 +1314,64 @@ samples = AppEntryPoint(
 )
 
 
+combi_libraries_schema = (
+    'nomad_dtu_nanolab_plugin.schema_packages.sample.DTUCombinatorialLibrary'
+)
+
+combi_libraries = AppEntryPoint(
+    name='Combinatorial library app',
+    description='App for searching combinatorial libraries.',
+    app=App(
+        label='Combinatorial Libraries',
+        path='combinatorial-libraries',
+        category='Samples',
+        description='Explore combinatorial libraries and their air exposure status.',
+        filters=Filters(
+            include=[
+                f'*#{combi_libraries_schema}',
+            ],
+        ),
+        columns=[
+            Column(
+                search_quantity=f'data.lab_id#{combi_libraries_schema}',
+                selected=True,
+                label='Library ID',
+            ),
+            Column(
+                search_quantity=f'data.air_exposure.air_exposed#{combi_libraries_schema}',
+                selected=True,
+                label='Air exposed',
+            ),
+            Column(
+                search_quantity=f'data.air_exposure.date#{combi_libraries_schema}',
+                selected=True,
+                label='Air exposure date',
+            ),
+            Column(
+                search_quantity=f'data.air_exposure.method#{combi_libraries_schema}',
+                selected=True,
+                label='Method / description',
+            ),
+        ],
+        menu=Menu(
+            title='Air exposure',
+            items=[
+                MenuItemTerms(
+                    title='Air exposed',
+                    search_quantity=(
+                        f'data.air_exposure.air_exposed#{combi_libraries_schema}'
+                    ),
+                    show_input=True,
+                ),
+            ],
+        ),
+        filters_locked={
+            'entry_type': 'DTUCombinatorialLibrary',
+        },
+    ),
+)
+
+
 ellipsometry_schema = (
     'nomad_dtu_nanolab_plugin.schema_packages.ellipsometry.DTUEllipsometryMeasurement'
 )
