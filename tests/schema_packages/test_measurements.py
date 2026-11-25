@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 from nomad import search as nomad_search
 from nomad.client import normalize_all, parse
+from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
 from nomad.datamodel.metainfo.basesections import CompositeSystemReference
 from nomad_material_processing.general import RectangleCuboid
 
@@ -13,7 +14,10 @@ from nomad_dtu_nanolab_plugin.schema_packages.edx import (
     DTUSampleAlignment,
     EDXMeasurement,
 )
-from nomad_dtu_nanolab_plugin.schema_packages.sample import DTUCombinatorialLibrary
+from nomad_dtu_nanolab_plugin.schema_packages.sample import (
+    AirExposure,
+    DTUCombinatorialLibrary,
+)
 
 """
 Names can be generated from the test file by running the following command:
@@ -180,6 +184,34 @@ def test_measurement_alignment_uses_linked_library_geometry():
     assert measurement.sample_alignment.y_upper_left == library.geometry.length / 2
     assert measurement.sample_alignment.x_lower_right == library.geometry.width / 2
     assert measurement.sample_alignment.y_lower_right == -library.geometry.length / 2
+
+
+def test_library_air_exposure_is_manually_changeable():
+    library = DTUCombinatorialLibrary(air_exposure=AirExposure())
+
+    library.air_exposure.air_exposed = True
+    assert library.air_exposure.air_exposed is True
+
+    library.air_exposure.air_exposed = False
+    assert library.air_exposure.air_exposed is False
+
+
+def test_library_is_marked_air_exposed_when_measured(monkeypatch):
+    library = DTUCombinatorialLibrary(air_exposure=AirExposure())
+    archive = EntryArchive(
+        metadata=EntryMetadata(entry_name='library.archive.yaml'),
+        data=library,
+    )
+    library.m_context = SimpleNamespace(installation_url='http://example.test')
+    monkeypatch.setattr(
+        DTUCombinatorialLibrary,
+        'get_measurements',
+        lambda self: [object()],
+    )
+
+    library.normalize(archive, __import__('logging').getLogger('test'))
+
+    assert library.air_exposure.air_exposed is True
 
 
 def test_measurement_dimensions_fall_back_to_substrate_geometry():

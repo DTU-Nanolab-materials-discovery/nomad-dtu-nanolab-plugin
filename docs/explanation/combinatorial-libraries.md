@@ -122,6 +122,14 @@ graph TD
    - Creates composition-property maps using coordinate information
    - Interpolates between measured positions if needed
 
+## Air Exposure Tracking
+
+Each combinatorial library records whether it has been exposed to air, along with
+the exposure date and a method or description. A measurement referencing the
+library automatically marks it as air exposed during library normalization. The
+status and details remain editable in the ELN, and the Combinatorial Libraries
+search app can filter libraries by exposure status.
+
 ## Composition Mapping Workflow
 
 For libraries with composition gradients:
